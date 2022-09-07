@@ -16,6 +16,10 @@
 <h2><a name="description">Description</a></h2>Main module of Ceylan-Oceanic, in order to drive Enocean communications.
 <h2><a name="types">Data Types</a></h2>
 
+<h3 class="typedecl"><a name="type-entry_type">entry_type()</a></h3>
+<p><tt>entry_type() = <a href="file_utils.html#type-entry_type">file_utils:entry_type()</a></tt></p>
+
+
 <h3 class="typedecl"><a name="type-file_path">file_path()</a></h3>
 <p><tt>file_path() = <a href="file_utils.html#type-file_path">file_utils:file_path()</a></tt></p>
 
@@ -25,7 +29,11 @@
 <p> The PID of a process in charge of a serial connection.</p>
 
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#start-0">start/0</a></td><td>Starts the Enocean support, based on the default conventions regarding 
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#get_default_tty_path-0">get_default_tty_path/0</a></td><td>Returns the path to the default allocated TTY to the USB Enocean gateway.</td></tr>
+<tr><td valign="top"><a href="#has_tty-0">has_tty/0</a></td><td>Tells whether the default TTY exists and is a device.</td></tr>
+<tr><td valign="top"><a href="#has_tty-1">has_tty/1</a></td><td>Tells whether the specified TTY exists and is a device, together with any 
+failure reason.</td></tr>
+<tr><td valign="top"><a href="#start-0">start/0</a></td><td>Starts the Enocean support, based on the default conventions regarding 
 the TTY allocated to the USB Enocean gateway.</td></tr>
 <tr><td valign="top"><a href="#start-1">start/1</a></td><td>Starts the Enocean support, based on the specified path to the TTY 
 allocated to the USB Enocean gateway.</td></tr>
@@ -33,6 +41,31 @@ allocated to the USB Enocean gateway.</td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="get_default_tty_path-0">get_default_tty_path/0</a></h3>
+<div class="spec">
+<p><tt>get_default_tty_path() -&gt; <a href="#type-file_path">file_path()</a></tt><br></p>
+<p> </p>
+</div><p>Returns the path to the default allocated TTY to the USB Enocean gateway.</p>
+
+<h3 class="function"><a name="has_tty-0">has_tty/0</a></h3>
+<div class="spec">
+<p><tt>has_tty() -&gt; true | {false, non_existing | {not_device, <a href="#type-entry_type">entry_type()</a>}}</tt><br></p>
+<p> </p>
+</div><p><p>Tells whether the default TTY exists and is a device.</p>
+
+ Useful at least for testing.
+</p>
+
+<h3 class="function"><a name="has_tty-1">has_tty/1</a></h3>
+<div class="spec">
+<p><tt>has_tty(TtyPath::<a href="#type-file_path">file_path()</a>) -&gt; true | {false, non_existing | {not_device, <a href="#type-entry_type">entry_type()</a>}}</tt><br></p>
+<p> </p>
+</div><p><p>Tells whether the specified TTY exists and is a device, together with any 
+failure reason.</p>
+
+ Useful at least for testing.
+</p>
 
 <h3 class="function"><a name="start-0">start/0</a></h3>
 <div class="spec">
