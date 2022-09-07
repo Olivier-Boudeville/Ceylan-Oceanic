@@ -1,13 +1,13 @@
 OCEANIC_TOP = .
 
 
-.PHONY: help help-intro help-oceanic                                        \
-		all register-version-in-header register-oceanic list-beam-dirs      \
+.PHONY: help help-intro help-oceanic                                       \
+		all register-version-in-header register-oceanic list-beam-dirs     \
 		add-prerequisite-plts link-plt                                     \
 		release release-zip release-bz2 release-xz                         \
 		prepare-release clean-release clean-archive stats                  \
 		info-context info-versions info-paths                              \
-		info-compile info-conditionals info-deps
+		info-compile info-conditionals info-deps info-serial
 
 
 MODULES_DIRS = src doc conf test priv
@@ -133,8 +133,12 @@ info-conditionals:
 	@echo "OCEANIC_CHECK_FLAGS = $(OCEANIC_CHECK_FLAGS)"
 
 
-info-deps:
+info-deps: info-serial
 	@echo "MYRIAD_TOP = $(MYRIAD_TOP) (i.e. $$(realpath $(MYRIAD_TOP)))"
+
+
+info-serial:
+	@echo "ERLANG_SERIAL_BASE = $(ERLANG_SERIAL_BASE)"
 
 
 include $(OCEANIC_TOP)/GNUmakesettings.inc
