@@ -1,0 +1,33 @@
+# Listing path patterns that shall be ignored by git:
+*.beam
+include/*.hrl
+*.traces
+*.log
+*.plt
+*erlang.log.*
+declared-types-in-*.txt
+.eunit
+erl_crash.dump
+overview.edoc
+doc/index.html
+doc/api-doc/
+doc/mathjax
+
+# For Emacs temporary files:
+*.#*
+
+*~
+
+# Added in relation to rebar3:
+.rebar
+rebar3.crashdump
+.rebar3
+_*
+
+# Mere symlink:
+src/oceanic.app.src
+
+# Generated:
+conf/rebar.config
+doc/Ceylan-Oceanic-technical-manual-english.html
+doc/Ceylan-Oceanic-technical-manual-english.rst
