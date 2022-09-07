@@ -173,7 +173,7 @@ OCEANIC_BEAM_DIR := $(OCEANIC_SRC)
 
 
 # See Myriad counterpart variable (MYRIAD_BEAM_DIRS) for explanations:
-OCEANIC_BEAM_DIRS := $(OCEANIC_BEAM_DIR) $(ERLANG_SERIAL_BEAM_DIR) $(OCEANIC_TOP)/..
+OCEANIC_BEAM_DIRS := $(OCEANIC_BEAM_DIR) $(OCEANIC_TOP)/..
 
 
 
@@ -214,7 +214,13 @@ MYRIAD_PARSE_TRANSFORMS_PZ_OPT = -pz $(MYRIAD_OTP_BEAM_DIR_FROM_USUAL) \
 
 
 # We rely on Myriad as well:
+#
+# (erlang-serial not rebar-compliant and anyway meaningless for continuous
+# integration, hence no $(ERLANG_SERIAL_REBAR_INSTALL_BASE)/ebin in BEAM_DIRS):
+#
 BEAM_DIRS += $(OCEANIC_BEAM_DIRS)
+
+ABS_BEAM_DIRS += $(ERLANG_SERIAL_SOFTWARE_INSTALL_BASE)/ebin
 
 
 ifndef VM_TEST_NAME
