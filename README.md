@@ -1,4 +1,4 @@
-![Erlang CI](https://github.com/Olivier-Boudeville/Ceylan-Oceanic/workflows/Erlang%20CI/badge.svg?event=push)
+[![Erlang CI](https://github.com/Olivier-Boudeville/Ceylan-Oceanic/actions/workflows/erlang-ci.yml/badge.svg)](https://github.com/Olivier-Boudeville/Ceylan-Oceanic/actions/workflows/erlang-ci.yml)
 
 # Ceylan-Oceanic
 
