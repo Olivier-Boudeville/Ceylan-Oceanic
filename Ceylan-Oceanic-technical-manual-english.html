@@ -1,1 +1,189 @@
-Hello Ceylan-Oceanic!
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<title>Welcome to the Ceylan-Oceanic documentation</title>
+<meta content="Oceanic, Enocean, home automation, Erlang" name="keywords" />
+<link rel="stylesheet" href="pygments-default.css" type="text/css" />
+<link rel="stylesheet" href="oceanic.css" type="text/css" />
+<link href="oceanic-icon.png" rel="icon">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<div class="document" id="ceylan-oceanic-enocean-facilities-in-erlang">
+<h1 class="title">Ceylan-Oceanic: Enocean facilities in Erlang</h1>
+
+<span class="target" id="top"></span><p><span class="raw-html"><a name="oceanic_top"></a></span></p>
+<p><span class="raw-html"><div class="banner"><p><em>Oceanic documentation</em> <a href="http://oceanic.esperide.org">browse latest</a> <a href="https://olivier-boudeville.github.io/Ceylan-Oceanic/index.html">browse mirror</a> <a href="Ceylan-Oceanic-technical-manual-english.pdf">get PDF</a> <a href="#oceanic_top">go to top</a> <a href="#oceanic_toc">go to toc</a> <a href="#oceanic_bottom">go to bottom</a> <a href="api-doc/index.html">browse API</a> <a href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">go to project</a> <a href="mailto:about(dash)oceanic(at)esperide(dot)com?subject=[Ceylan-Oceanic]%20Remark">email us</a></p></div></span></p>
+<p><span class="raw-html"><center><img src="oceanic-title.png" id="responsive-image-small"></img></span>
+</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Organisation:</th><td class="field-body">Copyright (C) 2022-2022 Olivier Boudeville</td>
+</tr>
+<tr class="field"><th class="field-name">Contact:</th><td class="field-body">about (dash) oceanic (at) esperide (dot) com</td>
+</tr>
+<tr class="field"><th class="field-name">Creation date:</th><td class="field-body">Wednesday, September 7, 2022</td>
+</tr>
+<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Wednesday, September 7, 2022</td>
+</tr>
+<tr class="field"><th class="field-name">Version:</th><td class="field-body">0.0.1</td>
+</tr>
+<tr class="field"><th class="field-name">Status:</th><td class="field-body">In development</td>
+</tr>
+<tr class="field"><th class="field-name">Dedication:</th><td class="field-body">Users and maintainers of the <tt class="docutils literal"><span class="pre">Ceylan-Oceanic</span></tt> library.</td>
+</tr>
+<tr class="field"><th class="field-name">Abstract:</th><td class="field-body">The role of the <tt class="docutils literal"><span class="pre">Ceylan-Oceanic</span></tt> library is to provide Erlang-based facilities for the support of the Enocean building automation system.</td>
+</tr>
+</tbody>
+</table>
+<p><span class="raw-html"></center></span></p>
+<p>The latest version of this documentation is to be found at the <a class="reference external" href="http://oceanic.esperide.org">official Ceylan-Oceanic website</a> (<tt class="docutils literal"><span class="pre">http://oceanic.esperide.org</span></tt>).</p>
+<p><span class="raw-html">This Ceylan-Oceanic documentation is also available in the PDF format (see <a href="Ceylan-Oceanic-technical-manual-english.pdf">Ceylan-Oceanic-technical-manual-english.pdf</a>), and mirrored <a href="http://olivier-boudeville.github.io/Ceylan-Oceanic/">here</a>.</span></p>
+<p></p>
+<p></p>
+<p><span class="raw-html"><a name="oceanic_toc"></a></span></p>
+<div class="contents topic" id="topic-1">
+<span id="table-of-contents"></span><p class="topic-title"><strong>Table of Contents</strong></p>
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="toc-entry-1">Overview</a></li>
+<li><a class="reference internal" href="#testing-ceylan-oceanic-in-two-steps" id="toc-entry-2">Testing Ceylan-Oceanic in Two Steps</a></li>
+<li><a class="reference internal" href="#hardware-prerequisites" id="toc-entry-3">Hardware Prerequisites</a></li>
+<li><a class="reference internal" href="#operating-system-support" id="toc-entry-4">Operating System Support</a></li>
+<li><a class="reference internal" href="#software-prerequisites" id="toc-entry-5">Software Prerequisites</a></li>
+<li><a class="reference internal" href="#testing" id="toc-entry-6">Testing</a></li>
+<li><a class="reference internal" href="#support" id="toc-entry-7">Support</a></li>
+<li><a class="reference internal" href="#related-projects" id="toc-entry-8">Related Projects</a></li>
+<li><a class="reference internal" href="#please-react" id="toc-entry-9">Please React!</a></li>
+<li><a class="reference internal" href="#ending-word" id="toc-entry-10">Ending Word</a></li>
+</ul>
+</div>
+<p></p>
+<div class="section" id="overview">
+<h1><a class="toc-backref" href="#toc-entry-1">Overview</a></h1>
+<p>The Ceylan-Oceanic library provides <a class="reference external" href="http://erlang.org">Erlang</a>-based facilities for the support of the <a class="reference external" href="https://en.wikipedia.org/wiki/EnOcean">Enocean</a> building automation system.</p>
+<p>Ceylan-Oceanic is a rather autonomous part of the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan">Ceylan</a> project, and relies on <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Myriad">Myriad</a>. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.</p>
+<p>The project repository is located <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">here</a>.</p>
+<p>At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.</p>
+</div>
+<div class="section" id="testing-ceylan-oceanic-in-two-steps">
+<h1><a class="toc-backref" href="#toc-entry-2">Testing Ceylan-Oceanic in Two Steps</a></h1>
+<p>Now, let's discuss these subjects a bit more in-depth.</p>
+</div>
+<div class="section" id="hardware-prerequisites">
+<h1><a class="toc-backref" href="#toc-entry-3">Hardware Prerequisites</a></h1>
+<p>In terms of Enocean devices, one needs typically:</p>
+<ul class="simple">
+<li>any kind of emitter/sensor, for example a rocker button like <a class="reference external" href="https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902">these ones</a></li>
+<li>a receiver, typically a USB gateway</li>
+</ul>
+<p>Popular USB dongles, which often relies on the TCM 310 chip, include the <a class="reference external" href="https://www.enocean.com/en/product/usb-300-500u-400j/">USB300</a> one (around 37 Euros in France) or the USB310 one (around 50 Euros in France) that we prefer as it features a <a class="reference external" href="https://en.wikipedia.org/wiki/SMA_connector">SMA connector</a> allowing to connect an external antenna in order to boost emission/reception ranges.</p>
+<p>We will rely here on such a configuration.</p>
+</div>
+<div class="section" id="operating-system-support">
+<h1><a class="toc-backref" href="#toc-entry-4">Operating System Support</a></h1>
+<p>Once the USB dongle is connected (here on an Arch Linux box), <tt class="docutils literal">lsusb</tt> tells us that it is detected as:</p>
+<pre class="code literal-block">
+Bus 003 Device 009: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
+</pre>
+<p>We will interact with this USB gateway as if it was a serial port.</p>
+<p>Rather than having it designated by an obscure, potentially changing name (like <tt class="docutils literal">/dev/ttyUSB0</tt>, <tt class="docutils literal">/dev/ttyUSB1</tt>, etc.), we prefer assigning it a fixed, well-chosen path, like <tt class="docutils literal">/dev/ttyUSBEnOcean</tt>.</p>
+<p>For that one may define a suitable udev rule, typically stored in <tt class="docutils literal"><span class="pre">/etc/udev/rules.d/99-enocean.rules</span></tt>, whose content can simply be:</p>
+<pre class="code literal-block">
+SUBSYSTEM==&quot;tty&quot;, ATTRS{idVendor}==&quot;0403&quot;, ATTRS{idProduct}==&quot;6001&quot;, SYMLINK+=&quot;ttyUSBEnOcean&quot;
+</pre>
+<p>One may run <tt class="docutils literal">udevadm control <span class="pre">--reload-rules</span></tt> to ensure it is taken into account.</p>
+<p>Then inserting said dongle should generate log entries that <tt class="docutils literal">journalctl <span class="pre">-xe</span></tt> can show, like (timestamps and hostname edited):</p>
+<pre class="code literal-block">
+kernel: usb 3-11: new full-speed USB device number 9 using xhci_hcd
+kernel: usb 3-11: New USB device found, idVendor=0403, idProduct=6001, bcdDevice= 6.00
+kernel: usb 3-11: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+kernel: usb 3-11: Product: FT232R USB UART
+kernel: usb 3-11: Manufacturer: FTDI
+kernel: usb 3-11: SerialNumber: A600AVJD
+mtp-probe[74533]: checking bus 3, device 9: &quot;/sys/devices/pci0000:00/0000:00:14.0/usb3/3-11&quot;
+kernel: ftdi_sio 3-11:1.0: FTDI USB Serial Device converter detected
+kernel: usb 3-11: Detected FT232RL
+kernel: usb 3-11: FTDI USB Serial Device converter now attached to ttyUSB0
+mtp-probe[74533]: bus: 3, device: 9 was not an MTP device
+mtp-probe[74548]: checking bus 3, device 9: &quot;/sys/devices/pci0000:00/0000:00:14.0/usb3/3-11&quot;
+mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
+</pre>
+</div>
+<div class="section" id="software-prerequisites">
+<h1><a class="toc-backref" href="#toc-entry-5">Software Prerequisites</a></h1>
+<p>Ceylan-Oceanic relies on general-purpose services offered by <a class="reference external" href="http://myriad.esperide.org">Ceylan-Myriad</a> (implying of course <a class="reference external" href="https://myriad.esperide.org/#software-prerequisites">Erlang itself</a>), and on an Erlang driver for serial communication.</p>
+<p id="erlang-serial">We chose <a class="reference external" href="https://github.com/tonyg/erlang-serial">erlang-serial</a> for that, and we prefer installing it in user space that way:</p>
+<pre class="code literal-block">
+$ mkdir ~/Software &amp;&amp; cd ~/Software
+$ git clone https://github.com/tonyg/erlang-serial.git
+$ cd erlang-serial
+$ make &amp;&amp; DESTDIR=. make install
+</pre>
+<p>Then using erlang-serial will be just a matter of adding it to the code path.</p>
+<p>To test it:</p>
+<pre class="code bash literal-block">
+$ erl -pa <span class="nv">$HOME</span>/Software/erlang-serial/erlang/lib/serial-1.1/ebin
+Erlang/OTP <span class="m">25</span> <span class="o">[</span>erts-13.0<span class="o">]</span> <span class="o">[</span>source<span class="o">]</span> <span class="o">[</span><span class="m">64</span>-bit<span class="o">]</span> <span class="o">[</span>smp:8:8<span class="o">]</span> <span class="o">[</span>ds:8:8:10<span class="o">]</span> <span class="o">[</span>async-threads:1<span class="o">]</span> <span class="o">[</span>jit:ns<span class="o">]</span>
+
+Eshell V13.0  <span class="o">(</span>abort with ^G<span class="o">)</span>
+<span class="m">1</span>&gt; serial:start<span class="o">()</span>.
+&lt;<span class="m">0</span>.82.0&gt;
+</pre>
+<p>Perfect!</p>
+<p>One may update the <em>Erlang-serial section</em> in our <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc">GNUmakevars.inc</a> to take into account any other convention.</p>
+<p>Run, from the root of Oceanic, <tt class="docutils literal">make <span class="pre">info-serial</span></tt> to check that <tt class="docutils literal">ERLANG_SERIAL_BASE</tt> points indeed to a directory containing serial's <tt class="docutils literal">ebin</tt> directory.</p>
+</div>
+<div class="section" id="testing">
+<h1><a class="toc-backref" href="#toc-entry-6">Testing</a></h1>
+<p>It is as simple as executing, from the root of the Ceylan-Oceanic clone:</p>
+<pre class="code bash literal-block">
+<span class="c1"># Ensure that Ceylan-Oceanic is built:
+</span>$ make all
+
+$ <span class="nb">cd</span> <span class="nb">test</span>
+$ make oceanic_run
+
+       Running unitary <span class="nb">test</span> oceanic_run <span class="o">(</span>third form<span class="o">)</span> from oceanic_test
+
+--&gt; Testing module oceanic_test.
+
+Starting the Enocean <span class="nb">test</span> based on the gateway TTY <span class="s1">'/dev/ttyUSBEnOcean'</span>.
+<span class="o">[</span>debug<span class="o">]</span> Using TTY <span class="s1">'/dev/ttyUSBEnOcean'</span> to connect to Enocean gateway, corresponding to serial server &lt;<span class="m">0</span>.84.0&gt;.
+<span class="o">[</span>debug<span class="o">]</span> Stopping serial server &lt;<span class="m">0</span>.84.0&gt;.
+
+--&gt; Successful end of test.
+
+<span class="o">(</span><span class="nb">test</span> finished, interpreter halted<span class="o">)</span>
+<span class="o">(</span><span class="nb">command</span> success reported<span class="o">)</span>
+</pre>
+<p></p>
+</div>
+<div class="section" id="support">
+<h1><a class="toc-backref" href="#toc-entry-7">Support</a></h1>
+<p>Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">project interface</a> (typically <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues">issues</a>) or directly at the email address mentioned at the beginning of this longer document.</p>
+</div>
+<div class="section" id="related-projects">
+<h1><a class="toc-backref" href="#toc-entry-8">Related Projects</a></h1>
+<ul class="simple">
+<li>the <a class="reference external" href="https://github.com/kipe/enocean">Python EnOcean</a> library</li>
+</ul>
+</div>
+<div class="section" id="please-react">
+<h1><a class="toc-backref" href="#toc-entry-9">Please React!</a></h1>
+<p>If you have information more detailed or more recent than those presented in this document, if you noticed errors, neglects or points insufficiently discussed, drop us a line! (for that, follow the <a class="reference internal" href="#support">Support</a> guidelines).</p>
+</div>
+<div class="section" id="ending-word">
+<h1><a class="toc-backref" href="#toc-entry-10">Ending Word</a></h1>
+<p>Have fun with Ceylan-Oceanic!</p>
+<p><span class="raw-html"><center><img src="oceanic-title.png" id="responsive-image-small"></img></center></span>
+</p>
+<p><span class="raw-html"><a name="oceanic_bottom"></a></span></p>
+</div>
+</div>
+</body>
+</html>
