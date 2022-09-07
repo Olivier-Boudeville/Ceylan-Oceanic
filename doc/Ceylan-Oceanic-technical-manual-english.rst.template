@@ -1,0 +1,252 @@
+.. _Top:
+
+
+.. title:: Welcome to the Ceylan-Oceanic documentation
+
+.. comment stylesheet specified through GNUmakefile
+
+
+============================================
+Ceylan-Oceanic: Enocean facilities in Erlang
+============================================
+
+
+.. role:: raw-html(raw)
+   :format: html
+
+.. role:: raw-latex(raw)
+   :format: latex
+
+
+:raw-html:`<a name="oceanic_top"></a>`
+
+:raw-html:`<div class="banner"><p><em>Oceanic documentation</em> <a href="http://oceanic.esperide.org">browse latest</a> <a href="https://olivier-boudeville.github.io/Ceylan-Oceanic/index.html">browse mirror</a> <a href="Ceylan-Oceanic-technical-manual-english.pdf">get PDF</a> <a href="#oceanic_top">go to top</a> <a href="#oceanic_toc">go to toc</a> <a href="#oceanic_bottom">go to bottom</a> <a href="api-doc/index.html">browse API</a> <a href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">go to project</a> <a href="mailto:about(dash)oceanic(at)esperide(dot)com?subject=[Ceylan-Oceanic]%20Remark">email us</a></p></div>`
+
+
+
+:raw-html:`<center><img src="oceanic-title.png" id="responsive-image-small"></img>`
+:raw-latex:`\begin{center} \includegraphics[scale=0.28]{oceanic-title.png} \end{center}`
+
+
+:Organisation: Copyright (C) 2022-GENERATION_YEAR_TAG Olivier Boudeville
+:Contact: about (dash) oceanic (at) esperide (dot) com
+:Creation date: Wednesday, September 7, 2022
+:Lastly updated: GENERATION_DATE_TAG
+:Version: PROJECT_VERSION_TAG
+:Status: In development
+:Dedication: Users and maintainers of the ``Ceylan-Oceanic`` library.
+:Abstract:
+
+	The role of the ``Ceylan-Oceanic`` library is to provide Erlang-based facilities for the support of the Enocean building automation system.
+
+
+.. meta::
+   :keywords: Oceanic, Enocean, home automation, Erlang
+
+:raw-html:`</center>`
+
+
+The latest version of this documentation is to be found at the `official Ceylan-Oceanic website <http://oceanic.esperide.org>`_ (``http://oceanic.esperide.org``).
+
+:raw-html:`This Ceylan-Oceanic documentation is also available in the PDF format (see <a href="Ceylan-Oceanic-technical-manual-english.pdf">Ceylan-Oceanic-technical-manual-english.pdf</a>), and mirrored <a href="http://olivier-boudeville.github.io/Ceylan-Oceanic/">here</a>.`
+
+:raw-latex:`This documentation is also mirrored \href{https://olivier-boudeville.github.io/Ceylan-Oceanic/}{here}.`
+
+
+
+
+:raw-latex:`\pagebreak`
+
+
+:raw-html:`<a name="oceanic_toc"></a>`
+
+.. _`table of contents`:
+
+
+.. contents:: **Table of Contents**
+  :depth: 3
+
+
+
+
+:raw-latex:`\pagebreak`
+
+
+Overview
+========
+
+The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system.
+
+
+Ceylan-Oceanic is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project, and relies on `Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
+
+The project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
+
+At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.
+
+.. comment Seasoned Oceanic users may directly bookmark this always useful `cheat sheet`_.
+
+
+
+Testing Ceylan-Oceanic in Two Steps
+===================================
+
+
+
+Now, let's discuss these subjects a bit more in-depth.
+
+
+
+Hardware Prerequisites
+======================
+
+In terms of Enocean devices, one needs typically:
+
+- any kind of emitter/sensor, for example a rocker button like `these ones <https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902>`_
+- a receiver, typically a USB gateway
+
+Popular USB dongles, which often relies on the TCM 310 chip, include the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France) or the USB310 one (around 50 Euros in France) that we prefer as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_ allowing to connect an external antenna in order to boost emission/reception ranges.
+
+We will rely here on such a configuration.
+
+
+
+Operating System Support
+========================
+
+Once the USB dongle is connected (here on an Arch Linux box), ``lsusb`` tells us that it is detected as:
+
+.. code::
+
+ Bus 003 Device 009: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
+
+We will interact with this USB gateway as if it was a serial port.
+
+Rather than having it designated by an obscure, potentially changing name (like ``/dev/ttyUSB0``, ``/dev/ttyUSB1``, etc.), we prefer assigning it a fixed, well-chosen path, like ``/dev/ttyUSBEnOcean``.
+
+For that one may define a suitable udev rule, typically stored in ``/etc/udev/rules.d/99-enocean.rules``, whose content can simply be:
+
+.. code::
+
+ SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean"
+
+One may run ``udevadm control --reload-rules`` to ensure it is taken into account.
+
+Then inserting said dongle should generate log entries that ``journalctl -xe`` can show, like (timestamps and hostname edited):
+
+.. code::
+
+ kernel: usb 3-11: new full-speed USB device number 9 using xhci_hcd
+ kernel: usb 3-11: New USB device found, idVendor=0403, idProduct=6001, bcdDevice= 6.00
+ kernel: usb 3-11: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+ kernel: usb 3-11: Product: FT232R USB UART
+ kernel: usb 3-11: Manufacturer: FTDI
+ kernel: usb 3-11: SerialNumber: A600AVJD
+ mtp-probe[74533]: checking bus 3, device 9: "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-11"
+ kernel: ftdi_sio 3-11:1.0: FTDI USB Serial Device converter detected
+ kernel: usb 3-11: Detected FT232RL
+ kernel: usb 3-11: FTDI USB Serial Device converter now attached to ttyUSB0
+ mtp-probe[74533]: bus: 3, device: 9 was not an MTP device
+ mtp-probe[74548]: checking bus 3, device 9: "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-11"
+ mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
+
+
+Software Prerequisites
+======================
+
+Ceylan-Oceanic relies on general-purpose services offered by `Ceylan-Myriad <http://myriad.esperide.org>`_ (implying of course `Erlang itself <https://myriad.esperide.org/#software-prerequisites>`_), and on an Erlang driver for serial communication.
+
+.. _`erlang serial`:
+
+We chose `erlang-serial <https://github.com/tonyg/erlang-serial>`_ for that, and we prefer installing it in user space that way:
+
+.. code::
+
+ $ mkdir ~/Software && cd ~/Software
+ $ git clone https://github.com/tonyg/erlang-serial.git
+ $ cd erlang-serial
+ $ make && DESTDIR=. make install
+
+Then using erlang-serial will be just a matter of adding it to the code path.
+
+To test it:
+
+.. code:: bash
+
+ $ erl -pa $HOME/Software/erlang-serial/erlang/lib/serial-1.1/ebin
+ Erlang/OTP 25 [erts-13.0] [source] [64-bit] [smp:8:8] [ds:8:8:10] [async-threads:1] [jit:ns]
+
+ Eshell V13.0  (abort with ^G)
+ 1> serial:start().
+ <0.82.0>
+
+
+Perfect!
+
+One may update the *Erlang-serial section* in our `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ to take into account any other convention.
+
+Run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing serial's ``ebin`` directory.
+
+
+Testing
+=======
+
+It is as simple as executing, from the root of the Ceylan-Oceanic clone:
+
+.. code:: bash
+
+ # Ensure that Ceylan-Oceanic is built:
+ $ make all
+
+ $ cd test
+ $ make oceanic_run
+
+		Running unitary test oceanic_run (third form) from oceanic_test
+
+ --> Testing module oceanic_test.
+
+ Starting the Enocean test based on the gateway TTY '/dev/ttyUSBEnOcean'.
+ [debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server <0.84.0>.
+ [debug] Stopping serial server <0.84.0>.
+
+ --> Successful end of test.
+
+ (test finished, interpreter halted)
+ (command success reported)
+
+
+:raw-latex:`\pagebreak`
+
+
+Support
+=======
+
+Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the `project interface <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_ (typically `issues <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues>`_) or directly at the email address mentioned at the beginning of this longer document.
+
+
+
+Related Projects
+================
+
+- the `Python EnOcean <https://github.com/kipe/enocean>`_ library
+
+.. Refer to ~/Projects/Esperide-HomeAutomation/EnOcean/python-binding-testing/enocean
+.. Test with: cd examples && ./enocean_example.py
+
+
+Please React!
+=============
+
+If you have information more detailed or more recent than those presented in this document, if you noticed errors, neglects or points insufficiently discussed, drop us a line! (for that, follow the Support_ guidelines).
+
+
+
+Ending Word
+===========
+
+Have fun with Ceylan-Oceanic!
+
+:raw-html:`<center><img src="oceanic-title.png" id="responsive-image-small"></img></center>`
+:raw-latex:`\begin{figure}[h] \centering \includegraphics[scale=0.15]{oceanic-title.png} \end{figure}`
+
+:raw-html:`<a name="oceanic_bottom"></a>`
