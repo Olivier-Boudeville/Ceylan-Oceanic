@@ -8,7 +8,7 @@
 
 @doc <h3>Overview</h3>
 
-<p>`Ceylan-Oceanic' gatehrs Erlang-based facilities for the support of the Enocean building automation system. It is a free software lightweight library implemented in <a href="http://erlang.org" target="_blank">Erlang</a>.
+<p>`Ceylan-Oceanic' gathers Erlang-based facilities for the support of the <a href="https://en.wikipedia.org/wiki/EnOcean" target="_blank">Enocean</a> building automation system. It is a free software lightweight library implemented in <a href="http://erlang.org" target="_blank">Erlang</a>.
 </p>
 
 <p>This website presents the documentation of the API (<em>Application Programming Interface</em>) of Ceylan-Oceanic version PROJECT_VERSION (as of GENERATION_DATE).
