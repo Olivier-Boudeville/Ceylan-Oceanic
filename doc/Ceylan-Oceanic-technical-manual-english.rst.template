@@ -110,7 +110,6 @@ Popular USB dongles, which often relies on the TCM 310 chip, include the `USB300
 We will rely here on such a configuration.
 
 
-
 Operating System Support
 ========================
 
@@ -120,6 +119,8 @@ Once the USB dongle is connected (here on an Arch Linux box), ``lsusb`` tells us
 
  Bus 003 Device 009: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
 
+(which applies both to USB300 and USB310)
+
 We will interact with this USB gateway as if it was a serial port.
 
 Rather than having it designated by an obscure, potentially changing name (like ``/dev/ttyUSB0``, ``/dev/ttyUSB1``, etc.), we prefer assigning it a fixed, well-chosen path, like ``/dev/ttyUSBEnOcean``.
@@ -128,9 +129,13 @@ For that one may define a suitable udev rule, typically stored in ``/etc/udev/ru
 
 .. code::
 
- SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean"
+ SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", MODE=="0666"
 
-One may run ``udevadm control --reload-rules`` to ensure it is taken into account.
+
+Following option could be added as well, to set the group of this TTY: ``GROUP="dialout"`` ou ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example).
+
+
+One may run ``sudo udevadm control --reload-rules && sudo udevadm trigger`` to ensure it is taken into account.
 
 Then inserting said dongle should generate log entries that ``journalctl -xe`` can show, like (timestamps and hostname edited):
 
@@ -160,7 +165,7 @@ Ceylan-Oceanic relies on general-purpose services offered by `Ceylan-Myriad <htt
 
 We chose `erlang-serial <https://github.com/tonyg/erlang-serial>`_ for that, and we prefer installing it in user space that way:
 
-.. code::
+.. code:: bash
 
  $ mkdir ~/Software && cd ~/Software
  $ git clone https://github.com/tonyg/erlang-serial.git
@@ -191,7 +196,33 @@ Run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIA
 Testing
 =======
 
-It is as simple as executing, from the root of the Ceylan-Oceanic clone:
+
+Basic, Direct Testing
+---------------------
+
+It is as simple as executing from the command-line:
+
+.. code:: bash
+
+ $ od -x < /dev/ttyUSBEnOcean
+ 0000000 0055 0707 7a01 10f6 2e00 96e1 0130 ffff
+ 0000020 ffff 0039 554b 0700 0107 f67a 0000 e12e
+
+``stty`` can be also used for that.
+
+Incoming data can also be recorded and "replayed" (but this will not activate an Enocean receiver):
+
+.. code:: bash
+
+ $ cat  < /dev/ttyUSBEnOcean > my_record.bin
+ $ cat my_record.bin > /dev/ttyUSBEnOcean
+
+
+
+Oceanic Testing
+---------------
+
+From the root of the Ceylan-Oceanic clone, supposing Myriad and erlang-serial are already available and built:
 
 .. code:: bash
 
@@ -218,6 +249,14 @@ It is as simple as executing, from the root of the Ceylan-Oceanic clone:
 :raw-latex:`\pagebreak`
 
 
+Enocean Documentation
+=====================
+
+- [ETS]: `Enocean Technical Specifications <https://www.enocean-alliance.org/specifications/>`_
+- [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_
+
+
+
 Support
 =======
 
@@ -228,10 +267,17 @@ Bugs, questions, remarks, patches, requests for enhancements, etc. are to be rep
 Related Projects
 ================
 
+They may be used as sources of inspiration:
+
 - the `Python EnOcean <https://github.com/kipe/enocean>`_ library
 
 .. Refer to ~/Projects/Esperide-HomeAutomation/EnOcean/python-binding-testing/enocean
 .. Test with: cd examples && ./enocean_example.py
+
+- the (Java) `OpenEnocean openHAB binding <https://github.com/fruggy83/openocean>`_
+
+- a first `Rust implementation <https://github.com/Cutii/enocean>`_
+
 
 
 Please React!
