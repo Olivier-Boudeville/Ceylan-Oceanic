@@ -216,12 +216,11 @@ MYRIAD_PARSE_TRANSFORMS_PZ_OPT = -pz $(MYRIAD_OTP_BEAM_DIR_FROM_USUAL) \
 # We rely on Myriad as well:
 #
 # (erlang-serial not rebar-compliant and anyway meaningless for continuous
-# integration, hence no $(ERLANG_SERIAL_REBAR_INSTALL_BASE)/ebin in BEAM_DIRS):
+# integration, hence no $(ERLANG_SERIAL_BEAM_DIR) in BEAM_DIRS):
 #
 BEAM_DIRS += $(OCEANIC_BEAM_DIRS)
 
-ABS_BEAM_DIRS += $(ERLANG_SERIAL_SOFTWARE_INSTALL_BASE)/ebin
-
+ABS_BEAM_DIRS += $(ERLANG_SERIAL_BEAM_DIR)
 
 ifndef VM_TEST_NAME
 	VM_NAME := oceanic_debug
