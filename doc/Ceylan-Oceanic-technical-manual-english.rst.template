@@ -214,7 +214,7 @@ Incoming data can also be recorded and "replayed" (but this will not activate an
 
 .. code:: bash
 
- $ cat  < /dev/ttyUSBEnOcean > my_record.bin
+ $ cat < /dev/ttyUSBEnOcean > my_record.bin
  $ cat my_record.bin > /dev/ttyUSBEnOcean
 
 

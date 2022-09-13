@@ -46,7 +46,24 @@ actual_test( TtyPath ) ->
 
 	SerialPid = oceanic:start( TtyPath ),
 
+listen(),
+
 	oceanic:stop( SerialPid ).
+
+
+% Listens endlessly.
+listen() ->
+
+	%R = oceanic:read_next_telegram(),
+	T = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
+		%<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
+
+	test_facilities:display( "Test received: ~p.",
+							 [ T ] ),
+
+	oceanic:decode_telegram( T ).
+
+		% listen().
 
 
 

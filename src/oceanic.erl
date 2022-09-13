@@ -32,8 +32,10 @@
 
 -export([ get_default_tty_path/0, has_tty/0, has_tty/1,
 		  start/0, start/1, stop/1,
-		  read_next_telegram/0, read_next_telegram_before/1,
-		  compute_crc/1 ]).
+		  read_next_telegram/0, read_next_telegram_before/1 ] ).
+
+% Temp:
+-export([ decode_telegram/1 ]).
 
 
 % Below:
@@ -71,7 +73,9 @@
 % A telegram (or datagram, packet) is a unitary message received from an Enocean
 % gateway.
 %
-% Ex: <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>.
+% Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>.'
+	   <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
+	   <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
 
 
 -type rorg() :: uint8().
@@ -132,9 +136,16 @@
 			   decode_result/0 ]).
 
 
+
 % Implementation notes:
 
 
+% Local types:
+
+-type content() :: binary().
+
+-type esp3_header() :: binary().
+% 32-bit.
 
 
 % Transmission speed, in bits per second:
@@ -317,6 +328,8 @@ start( TtyPath ) ->
 
 	end,
 
+	CHECK oceanic_constants module
+
 	% Symmetrical speed (in bits per second):
 	SerialPid = serial:start( [ { open, TtyPath }, { speed, ?esp3_speed }]),
 
@@ -328,7 +341,7 @@ start( TtyPath ) ->
 
 
 % @doc Waits (potentially forever) for the next telegram, and returns it.
--spec read_next_telegram() -> telegram().
+-spec read_next_telegram() -> content().
 read_next_telegram() ->
 
   receive
@@ -340,7 +353,7 @@ read_next_telegram() ->
 			trace_bridge:debug_fmt( "Received a telegram of ~B bytes: ~w.",
 									[ size( Telegram ), Telegram ] ) ),
 
-		Telegram
+		decode_telegram( Telegram )
 
 	end.
 
@@ -348,7 +361,7 @@ read_next_telegram() ->
 % @doc Waits for the next telegram, and returns it, unless the specified
 % time-out is reached, in which case the 'undefined' atom is returned.
 %
--spec read_next_telegram_before( time_out() ) -> maybe( telegram() ).
+-spec read_next_telegram_before( time_out() ) -> maybe( content() ).
 read_next_telegram_before( TimeOut ) ->
 
   receive
@@ -362,7 +375,7 @@ read_next_telegram_before( TimeOut ) ->
 				[ size( Telegram ), time_utils:time_out_to_string( TimeOut ),
 				  Telegram ] ) ),
 
-		Telegram
+		decode_telegram( Telegram )
 
 	after TimeOut ->
 
@@ -370,6 +383,150 @@ read_next_telegram_before( TimeOut ) ->
 
 	end.
 
+
+
+% @doc Decodes the specified telegram.
+-spec decode_telegram( telegram() ) -> maybe( binary() ).
+decode_telegram( Telegram ) ->
+
+	trace_bridge:debug_fmt( "Decoding '~p' (of size ~B bytes)",
+							[ Telegram, size( Telegram ) ] ),
+
+	% First 6 bytes are the serial synchronisation:
+	% - byte #1: Packet start (0x55)
+	% - bytes #2-5 (32 bits): Header, containing:
+	%   * byte #2-3 (16 bits): byte count of DATA to interpret
+	%   * byte #4: byte count of OPTIONAL_DATA to interpret
+	%   * byte #5: packet type
+	% - byte #6: CRC of header
+
+	case scan_for_packet_start( Telegram ) of
+
+		no_content ->
+			trace_bridge:debug( "(no start byte found)" ),
+			undefined;
+
+		Content ->
+			trace_bridge:debug_fmt( "Content found: '~p' (of size ~B bytes)",
+									[ Content, size( Content ) ] ),
+
+			case Content of
+
+				<<Header:4/binary, HeaderCRC, Rest/binary>> ->
+					examine_header( Header, HeaderCRC, Rest );
+
+				_ ->
+					trace_bridge:debug( "(no header to decode)" ),
+					undefined
+
+			end
+
+	end.
+
+
+
+% Extracts the content from the start byte, which is 0x55 (i.e. 85).
+%
+% At least most of the time, there are no leading bytes.
+%
+% Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
+%
+scan_for_packet_start( _ContentBytes= <<>> ) ->
+	no_content;
+
+scan_for_packet_start( _ContentBytes= <<85, T/binary>> ) ->
+	T;
+
+scan_for_packet_start( _ContentBytes= <<_OtherByte, T/binary>> ) ->
+	scan_for_packet_start( T ).
+
+
+
+-spec examine_header( esp3_header(), crc(), binary() ) -> maybe( term() ).
+examine_header( Header= <<DataLen:16, OptDataLen, PacketTypeNum>>, HeaderCRC,
+				Rest ) ->
+
+	trace_bridge:debug_fmt( "~B bytes of data, ~B of optional data, "
+		"packet type ~B, header CRC ~B",
+		[ DataLen, OptDataLen, PacketTypeNum, HeaderCRC ] ),
+
+	case compute_crc( Header ) of
+
+		HeaderCRC ->
+			trace_bridge:debug( "Header CRC validated." ),
+			case get_packet_type( PacketTypeNum ) of
+
+				undefined ->
+					trace_bridge:debug_fmt( "Unknown packet type (~B), "
+						"dropping content.", [ PacketTypeNum ] ),
+					undefined;
+
+				PacketType ->
+					trace_bridge:debug_fmt( "Detectect packet type: ~ts.",
+											[ PacketType ] ),
+
+					examine_full_data( Rest, DataLen, OptDataLen, PacketType )
+
+			end;
+
+		OtherHeaderCRC ->
+			trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
+				"dropping content.", [ OtherHeaderCRC ] ),
+			undefined
+
+	end.
+
+
+
+-spec examine_full_data( binary(), count(), count(), packet_type() ) ->
+		  maybe( term() ).
+examine_full_data( <<FullData/binary, FullDataCRC>>, DataLen, OptDataLen,
+				   PacketType ) ->
+
+	case compute_crc( FullData ) of
+
+		FullDataCRC ->
+			trace_bridge:debug( "Full-data CRC validated." ),
+
+			DataBitLen = 8*DataLen,
+			OptBitLen = 8*OptDataLen,
+
+			case FullData of
+
+				<<Data:DataBitLen/binary, OptData:OptBitLen/binary>> ->
+					trace_bridge:debug( "Obtained all data." );
+
+				UnexpectedData ->
+					trace_bridge:debug( "Unable to split data segments, "
+										"dropping content." )
+
+			end;
+
+		OtherDataCRC ->
+			trace_bridge:debug_fmt( "Obtained other full-data CRC (~B), "
+				"dropping content.", [ OtherDataCRC ] ),
+			undefined
+
+	end.
+
+
+
+-spec get_packet_type( integer() ) -> maybe( packet_type() ).
+get_packet_type( ?reserved_type ) ->reserved_type
+get_packet_type( ?radio_erp1_type ) ->radio_erp1_type
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( ? ) ->
+get_packet_type( Unknown ) ->
+	trace_utils:error_fmt( "Unknown packet type: ~B.", [ Unknown ] ),
+	undefined.
 
 
 % @doc Stops the Enocean support managed by the specified serial server.
@@ -382,8 +539,8 @@ stop( SerialPid ) ->
 	SerialPid ! stop.
 
 
-% @doc Returns the CRC code corresponding to the specified packet.
--spec compute_crc( packet() ) -> crc().
+% @doc Returns the CRC code corresponding to the specified binary.
+-spec compute_crc( binary() ) -> crc().
 compute_crc( Bin ) ->
 	compute_crc( Bin, get_crc_array(), _Checksum=0 ).
 
@@ -392,7 +549,7 @@ compute_crc( Bin ) ->
 compute_crc( _Bin= <<>>, _CRCArray, Checksum ) ->
 	Checksum;
 
-compute_crc( _Bin= <<HByte,T/binary>>, CRCArray, Checksum ) ->
+compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
 	Index = ( Checksum band 16#ff ) bxor ( HByte band 16#ff ),
 	NewChecksum = element( Index + 1, CRCArray ),
 	compute_crc( T, CRCArray, NewChecksum ).
