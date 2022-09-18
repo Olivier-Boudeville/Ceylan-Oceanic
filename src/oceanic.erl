@@ -34,6 +34,8 @@
 		  start/0, start/1, stop/1,
 		  read_next_telegram/0, read_next_telegram_before/1 ] ).
 
+-export([ generate_support_modules/0 ]).
+
 % Temp:
 -export([ decode_telegram/1 ]).
 
@@ -41,7 +43,9 @@
 % Below:
 %
 % - "[ESP3]" refers to the "Enocean Serial Protocol (ESP3) Specification" (see
-% EnOceanSerialProtocol3.pdf, available from https://www.enocean.com/esp)
+% EnOceanSerialProtocol3.pdf, available from https://www.enocean.com/esp,
+% typically resolving in
+% https://www.enocean.com/wp-content/uploads/Knowledge-Base/EnOceanSerialProtocol3.pdf)
 %
 % - "[EEP]" refers to the "EnOcean Equipment Profiles" (see
 % EnOcean-Equipment-Profiles-3-1-1.pdf, avalaible from
@@ -74,8 +78,8 @@
 % gateway.
 %
 % Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>.'
-	   <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
-	   <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
+%	   <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
+%	   <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
 
 
 -type rorg() :: uint8().
@@ -138,6 +142,18 @@
 
 
 % Implementation notes:
+%
+% Consider reading first
+% https://www.erlang.org/doc/programming_examples/bit_syntax.html#segments and
+% https://www.erlang.org/doc/reference_manual/expressions.html#bit_syntax to be
+% sufficiently familiar with segments and the Value:Size/TypeSpecifierList
+% notation, where:
+%
+%  - if no suffix is specified, the default type is (unsigned big-endian)
+%  integer, and a single one (unit: 1)
+%
+%  - for a binary (hence using the /binary suffix), the default addressed
+%  element is a byte (unit: 8, type: bit)
 
 
 % Local types:
@@ -206,7 +222,6 @@
 
 
 
-
 % The EnOcean Radio Protocol (ERP) covers the first three layers of the OSI
 % model: Physical, Data Link and Network.
 %
@@ -232,6 +247,8 @@
 
 % Shorthands:
 
+%-type count() :: basic_utils:count().
+
 -type file_path() :: file_utils:file_path().
 -type entry_type() :: file_utils:entry_type().
 
@@ -239,8 +256,9 @@
 
 -type time_out() :: time_utils:time_out().
 
-%-type bijective_table( F, S ) :: bijective_table:bijective_table( F, S ).
+-type topic_spec() :: const_bijective_topics:topic_spec().
 
+%-type bijective_table( F, S ) :: bijective_table:bijective_table( F, S ).
 
 
 % @doc Returns the path to the default allocated TTY to the USB Enocean gateway.
@@ -328,7 +346,7 @@ start( TtyPath ) ->
 
 	end,
 
-	CHECK oceanic_constants module
+	%CHECK oceanic_constants module
 
 	% Symmetrical speed (in bits per second):
 	SerialPid = serial:start( [ { open, TtyPath }, { speed, ?esp3_speed }]),
@@ -443,8 +461,8 @@ scan_for_packet_start( _ContentBytes= <<_OtherByte, T/binary>> ) ->
 
 
 -spec examine_header( esp3_header(), crc(), binary() ) -> maybe( term() ).
-examine_header( Header= <<DataLen:16, OptDataLen, PacketTypeNum>>, HeaderCRC,
-				Rest ) ->
+examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
+				HeaderCRC, Rest ) ->
 
 	trace_bridge:debug_fmt( "~B bytes of data, ~B of optional data, "
 		"packet type ~B, header CRC ~B",
@@ -462,10 +480,26 @@ examine_header( Header= <<DataLen:16, OptDataLen, PacketTypeNum>>, HeaderCRC,
 					undefined;
 
 				PacketType ->
-					trace_bridge:debug_fmt( "Detectect packet type: ~ts.",
+					trace_bridge:debug_fmt( "Detected packet type: ~ts.",
 											[ PacketType ] ),
 
-					examine_full_data( Rest, DataLen, OptDataLen, PacketType )
+					% +1 for CRC size:
+					ExpectedRestSize = DataLen + OptDataLen + 1,
+
+					ExpectedRestSize =:= size( Rest ) orelse
+						throw( { non_matching_packet_rest_size, size( Rest ),
+								 ExpectedRestSize } ),
+
+					<<Data:DataLen, OptData:OptDataLen, CRC:1>> = Rest,
+
+					% Would not be accepted, as only the last can be :
+					<<FullData, CRC:1>> = Rest,
+					FullLen = DataLen+OptDataLen,
+
+					<<FullData:FullLen, CRC:1>> = Rest,
+
+					examine_full_data( FullData, CRC, Data, OptData,
+									   PacketType )
 
 			end;
 
@@ -478,33 +512,21 @@ examine_header( Header= <<DataLen:16, OptDataLen, PacketTypeNum>>, HeaderCRC,
 
 
 
--spec examine_full_data( binary(), count(), count(), packet_type() ) ->
-		  maybe( term() ).
-examine_full_data( <<FullData/binary, FullDataCRC>>, DataLen, OptDataLen,
-				   PacketType ) ->
+-spec examine_full_data( binary(), crc(), binary(), binary(), packet_type() ) ->
+											maybe( term() ).
+examine_full_data( FullData, ExpectedFullDataCRC, _Data, _OptData, _PacketType ) ->
 
 	case compute_crc( FullData ) of
 
-		FullDataCRC ->
+		ExpectedFullDataCRC ->
 			trace_bridge:debug( "Full-data CRC validated." ),
+			% temp:
+			undefined;
 
-			DataBitLen = 8*DataLen,
-			OptBitLen = 8*OptDataLen,
-
-			case FullData of
-
-				<<Data:DataBitLen/binary, OptData:OptBitLen/binary>> ->
-					trace_bridge:debug( "Obtained all data." );
-
-				UnexpectedData ->
-					trace_bridge:debug( "Unable to split data segments, "
-										"dropping content." )
-
-			end;
-
-		OtherDataCRC ->
-			trace_bridge:debug_fmt( "Obtained other full-data CRC (~B), "
-				"dropping content.", [ OtherDataCRC ] ),
+		OtherCRC ->
+			trace_bridge:debug_fmt( "Obtained other full-data CRC "
+				"(~B, instead of ~B), dropping content.",
+				[ OtherCRC, ExpectedFullDataCRC ] ),
 			undefined
 
 	end.
@@ -512,18 +534,8 @@ examine_full_data( <<FullData/binary, FullDataCRC>>, DataLen, OptDataLen,
 
 
 -spec get_packet_type( integer() ) -> maybe( packet_type() ).
-get_packet_type( ?reserved_type ) ->reserved_type
-get_packet_type( ?radio_erp1_type ) ->radio_erp1_type
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
-get_packet_type( ? ) ->
+get_packet_type( ?reserved_type ) ->reserved_type;
+get_packet_type( ?radio_erp1_type ) ->radio_erp1_type;
 get_packet_type( Unknown ) ->
 	trace_utils:error_fmt( "Unknown packet type: ~B.", [ Unknown ] ),
 	undefined.
@@ -593,3 +605,52 @@ get_crc_array() ->
 	  16#98, 16#9f, 16#8a, 16#8d, 16#84, 16#83, 16#de, 16#d9, 16#d0,
 	  16#d7, 16#c2, 16#c5, 16#cc, 16#cb, 16#e6, 16#e1, 16#e8, 16#ef,
 	  16#fa, 16#fd, 16#f4, 16#f3 }.
+
+
+
+
+% Section for the build-time generation of support modules.
+
+
+% @doc To be called by the 'oceanic_generated.beam' automatic make target in
+% order to generate, here, a (single) module to share the Oceanic constants.
+%
+-spec generate_support_modules() -> no_return().
+generate_support_modules() ->
+
+	TargetModName = oceanic_generated,
+
+	trace_utils:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
+
+	TopicSpecs = [ get_packet_type_topic_spec() ],
+
+	ModFilename =
+		const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
+
+	trace_utils:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
+
+	erlang:halt().
+
+
+
+% @doc Returns the specification for the the 'packet_type' topic.
+-spec get_packet_type_topic_spec() -> topic_spec().
+get_packet_type_topic_spec() ->
+	% We use our recommended order (first set for internal, second one for
+	% third-party):
+	%
+	Entries = [
+		{ reserved_type,           ?reserved_type },
+		{ radio_erp1_type,         ?radio_erp1_type },
+		{ response_type,           ?response_type },
+		{ radio_sub_tel_type,      ?radio_sub_tel_type },
+		{ event_type,              ?event_type },
+		{ common_command_type,     ?common_command_type },
+		{ smart_ack_command_type,  ?smart_ack_command_type },
+		{ remote_man_command_type, ?remote_man_command_type },
+		{ radio_message_type,      ?radio_message_type },
+		{ radio_erp2_type,         ?radio_erp2_type },
+		{ radio_802_15_4_type,     ?radio_802_15_4_type},
+		{ command_2_4_type,        ?command_2_4_type } ],
+
+	{ packet_type, Entries }.

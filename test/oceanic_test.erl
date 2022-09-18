@@ -26,7 +26,7 @@
 % Creation date: Wednesday, September 7, 2022
 
 
-% @doc Testing of Ceylan-Oceanic.
+% @doc Testing of <b>Ceylan-Oceanic</b> elements.
 %
 % The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
 % prerequisites shall be already available.

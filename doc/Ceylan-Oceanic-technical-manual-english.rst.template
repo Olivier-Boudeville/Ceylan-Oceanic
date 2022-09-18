@@ -91,8 +91,6 @@ At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.
 Testing Ceylan-Oceanic in Two Steps
 ===================================
 
-
-
 Now, let's discuss these subjects a bit more in-depth.
 
 
@@ -108,6 +106,7 @@ In terms of Enocean devices, one needs typically:
 Popular USB dongles, which often relies on the TCM 310 chip, include the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France) or the USB310 one (around 50 Euros in France) that we prefer as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_ allowing to connect an external antenna in order to boost emission/reception ranges.
 
 We will rely here on such a configuration.
+
 
 
 Operating System Support
@@ -156,6 +155,7 @@ Then inserting said dongle should generate log entries that ``journalctl -xe`` c
  mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
 
 
+
 Software Prerequisites
 ======================
 
@@ -174,7 +174,7 @@ We chose `erlang-serial <https://github.com/tonyg/erlang-serial>`_ for that, and
 
 Then using erlang-serial will be just a matter of adding it to the code path.
 
-To test it:
+To test it (whether or not any dongle is connected):
 
 .. code:: bash
 
