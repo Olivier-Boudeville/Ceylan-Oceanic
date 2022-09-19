@@ -2,9 +2,12 @@ OCEANIC_TOP = ..
 
 .PHONY: all real-clean
 
+# As this module must be generated to share Oceanic constants:
+EXTRA_BEAM_FILES = oceanic_generated.beam
 
-# As shall be the default rule, and as a module must be generated for constants:
-all: oceanic_generated.beam
+
+# As shall be the default rule:
+all:
 
 
 real-clean:
