@@ -36,7 +36,7 @@
 
 -export([ generate_support_modules/0 ]).
 
-% Temp:
+% Mostly exported for testing:
 -export([ decode_telegram/1 ]).
 
 
@@ -66,20 +66,20 @@
 % modules.
 %
 % There are two Enocean serial protocols: ESP2 and ESP3.
-% OCeanic focuses primarily on newer, richer, ESP3.
+% Oceanic focuses primarily on newer, richer, ESP3.
 %
-% The physical interface between a host and a EnOcean RF module (UART) is a
+% The physical interface between a host and an EnOcean RF module (UART) is a
 % 3-wire connection (Rx, Tx, GND / software handshake / full-duplex), modelled
-% on RS-232 serial interface.
+% on RS-232 serial interfaces.
 
 
 -type telegram() :: binary().
 % A telegram (or datagram, packet) is a unitary message received from an Enocean
 % gateway.
 %
-% Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>.'
-%	   <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
-%	   <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
+% Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>.',
+% `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
+% `<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>'.
 
 
 -type rorg() :: uint8().
@@ -89,7 +89,7 @@
 % Describes the basic functionality of the data content.
 
 -type type() :: uint8().
-% Describes the type of device in its individual characteristics
+% Describes the type of device in its individual characteristics.
 
 
 -type eep() :: { rorg(), func(), type() }.
@@ -99,14 +99,14 @@
 
 -type eep_id() :: atom().
 % The identifier of an EnOcean Equipment Profile, corresponding to
-% (R-ORG)-(FUNC)-(TYPE), e.g. 'F6-02-01'.
+% (R-ORG)-(FUNC)-(TYPE) atom-based triplet, e.g. 'F6-02-01'.
 
 
 -type packet() :: binary().
-% A ESP-based data unit.
+% An ESP-based data unit.
 
 -type crc() :: byte().
-% The CRC code corresponding to a packer.
+% The CRC code corresponding to a packet.
 
 
 -type esp3_packet() :: binary().
@@ -121,6 +121,11 @@
 % The type of a (typically ESP3) packet.
 %
 % Refer to [ESP3] p.12.
+%
+% After a radio_erp1, radio_sub_tel or remote_man_command packet, a response
+% packet is expected.
+%
+% See also the 'packet_type' topic in the oceanic_generated module.
 
 
 % Would be overkill:
@@ -143,17 +148,25 @@
 
 % Implementation notes:
 %
-% Consider reading first
+% Oceanic relies on the 'oceanic_generated' module, which is automatically
+% generated (as a result, no oceanic_generated.erl file ever exists) from the
+% generate_support_modules/0 function at the bottom of the current file (see
+% also the local 'all' make target).
+%
+% Regarding packet parsing, consider reading first
 % https://www.erlang.org/doc/programming_examples/bit_syntax.html#segments and
 % https://www.erlang.org/doc/reference_manual/expressions.html#bit_syntax to be
 % sufficiently familiar with segments and the Value:Size/TypeSpecifierList
 % notation, where:
 %
 %  - if no suffix is specified, the default type is (unsigned big-endian)
-%  integer, and a single one (unit: 1)
+%  integer, and a single one (unit: 1, hence bit-addressed)
 %
 %  - for a binary (hence using the /binary suffix), the default addressed
-%  element is a byte (unit: 8, type: bit)
+%  element is a byte (unit: 8, type: bit, hence byte-addressed)
+
+% Depends on Ceylan-Myriad and Serial; refer to http://oceanic.esperide.org.
+
 
 
 % Local types:
@@ -167,6 +180,11 @@
 % Transmission speed, in bits per second:
 -define( esp2_speed, 9600 ).
 -define( esp3_speed, 57600 ).
+
+
+% The next defines could not have been specified, knowing that they are now
+% directly referenced thanks to const, bijective, topic-based tables exposed by
+% a generated module (refer to the end of this file.
 
 
 % For packet types, as defined in [ESP3]:
@@ -220,28 +238,21 @@
 
 
 
-
+% Protocol notes:
 
 % The EnOcean Radio Protocol (ERP) covers the first three layers of the OSI
 % model: Physical, Data Link and Network.
 %
 % The CRC (Cyclic Redundancy Check) or polynomial code checksum of a
 % sub-telegram can be computed.
-
+%
 % EURID (EnOcean Unique Radio Identifier) is a unique and non-changeable
-% identification number assigned every EnOcean transmitter during its production
-% process.
-
-
-
-
-
+% identification number assigned to every EnOcean transmitter during its
+% production process.
+%
 % By default, 8 bits of data, no parity, 1 stop bit.
 % Optional repeater mode.
 % Some modules support multiple channels.
-
-
-% Depends on Ceylan-Myriad and Serial; refer to http://oceanic.esperide.org)
 
 
 
@@ -258,12 +269,13 @@
 
 -type topic_spec() :: const_bijective_topics:topic_spec().
 
-%-type bijective_table( F, S ) :: bijective_table:bijective_table( F, S ).
 
-
-% @doc Returns the path to the default allocated TTY to the USB Enocean gateway.
+% @doc Returns the path to the default TTY allocated to the USB Enocean gateway,
+% according to our conventions.
+%
 -spec get_default_tty_path() -> file_path().
 get_default_tty_path() ->
+	% Better than, say, "/dev/ttyUSB0":
 	"/dev/ttyUSBEnOcean".
 
 
@@ -305,7 +317,7 @@ has_tty( TtyPath ) ->
 
 
 
-% @doc Starts the Enocean support, based on the default conventions regarding
+% @doc Starts the Enocean support, based on our default conventions regarding
 % the TTY allocated to the USB Enocean gateway.
 %
 % Throws an exception if no relevant TTY can be used.
@@ -332,12 +344,11 @@ start( TtyPath ) ->
 		{ false, non_existing } ->
 			trace_bridge:error_fmt( "The specified TTY, '~ts', "
 				"does not exist. Is the device for the Enocean gateway "
-				"plugged in and named accordingly?", [ TtyPath ] ),
+				"plugged in, and named accordingly?", [ TtyPath ] ),
 			throw( { non_existing_tty, TtyPath } );
 
 
 		{ false, { not_device, OtherType } } ->
-
 			trace_bridge:error_fmt( "The specified TTY for the "
 				"Enocean gateway, '~ts', is not a device but a ~ts.",
 				[ TtyPath, OtherType ] ),
@@ -345,8 +356,6 @@ start( TtyPath ) ->
 			throw( { not_a_device, TtyPath, OtherType } )
 
 	end,
-
-	%CHECK oceanic_constants module
 
 	% Symmetrical speed (in bits per second):
 	SerialPid = serial:start( [ { open, TtyPath }, { speed, ?esp3_speed }]),
@@ -356,6 +365,7 @@ start( TtyPath ) ->
 			" corresponding to serial server ~w.", [ TtyPath, SerialPid ] ) ),
 
 	SerialPid.
+
 
 
 % @doc Waits (potentially forever) for the next telegram, and returns it.
@@ -371,9 +381,11 @@ read_next_telegram() ->
 			trace_bridge:debug_fmt( "Received a telegram of ~B bytes: ~w.",
 									[ size( Telegram ), Telegram ] ) ),
 
+		% Apparently they are never trncated/overlapping:
 		decode_telegram( Telegram )
 
 	end.
+
 
 
 % @doc Waits for the next telegram, and returns it, unless the specified
@@ -410,12 +422,12 @@ decode_telegram( Telegram ) ->
 	trace_bridge:debug_fmt( "Decoding '~p' (of size ~B bytes)",
 							[ Telegram, size( Telegram ) ] ),
 
-	% First 6 bytes are the serial synchronisation:
+	% First 6 bytes correspond to the serial synchronisation:
 	% - byte #1: Packet start (0x55)
 	% - bytes #2-5 (32 bits): Header, containing:
 	%   * byte #2-3 (16 bits): byte count of DATA to interpret
-	%   * byte #4: byte count of OPTIONAL_DATA to interpret
-	%   * byte #5: packet type
+	%   * byte #4: (8 bits) byte count of OPTIONAL_DATA to interpret
+	%   * byte #5: (8 bits) packet type
 	% - byte #6: CRC of header
 
 	case scan_for_packet_start( Telegram ) of
@@ -425,11 +437,12 @@ decode_telegram( Telegram ) ->
 			undefined;
 
 		Content ->
-			trace_bridge:debug_fmt( "Content found: '~p' (of size ~B bytes)",
-									[ Content, size( Content ) ] ),
+			trace_bridge:debug_fmt( "Actual content found: '~p' "
+				"(of size ~B bytes)", [ Content, size( Content ) ] ),
 
 			case Content of
 
+				% First 32 bits:
 				<<Header:4/binary, HeaderCRC, Rest/binary>> ->
 					examine_header( Header, HeaderCRC, Rest );
 
@@ -443,7 +456,8 @@ decode_telegram( Telegram ) ->
 
 
 
-% Extracts the content from the start byte, which is 0x55 (i.e. 85).
+% @doc Extracts the content, starting from the start byte, which is 0x55
+% (i.e. 85).
 %
 % At least most of the time, there are no leading bytes.
 %
@@ -455,11 +469,13 @@ scan_for_packet_start( _ContentBytes= <<>> ) ->
 scan_for_packet_start( _ContentBytes= <<85, T/binary>> ) ->
 	T;
 
+% Skip all bytes before first start byte:
 scan_for_packet_start( _ContentBytes= <<_OtherByte, T/binary>> ) ->
 	scan_for_packet_start( T ).
 
 
 
+% @doc Checks the telegram header and decodes it.
 -spec examine_header( esp3_header(), crc(), binary() ) -> maybe( term() ).
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 				HeaderCRC, Rest ) ->
@@ -483,22 +499,39 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 					trace_bridge:debug_fmt( "Detected packet type: ~ts.",
 											[ PacketType ] ),
 
-					% +1 for CRC size:
+					% +1 for its CRC size:
 					ExpectedRestSize = DataLen + OptDataLen + 1,
 
-					ExpectedRestSize =:= size( Rest ) orelse
-						throw( { non_matching_packet_rest_size, size( Rest ),
+					ActualRestSize = size( Rest ),
+
+					ExpectedRestSize =:=  ActualRestSize orelse
+						throw( { non_matching_packet_rest_size, ActualRestSize,
 								 ExpectedRestSize } ),
 
-					<<Data:DataLen, OptData:OptDataLen, CRC:1>> = Rest,
+					% Were in terms of bytes, whereas we have to specify a byte
+					% count:
+					%
+					BitDataLen = 8 * DataLen,
+					BitOptDataLen = 8 * OptDataLen,
 
-					% Would not be accepted, as only the last can be :
-					<<FullData, CRC:1>> = Rest,
-					FullLen = DataLen+OptDataLen,
+					% Implied: CRC of one byte.
+					<<Data:BitDataLen, OptData:BitOptDataLen, FullDataCRC>> =
+						Rest,
 
-					<<FullData:FullLen, CRC:1>> = Rest,
+					% We want FullData, but it could not be implicitly defined,
+					% as only the last segment can be of unspecified size:
+					%
+					%<<FullData, FullDataCRC:8>> = Rest,
 
-					examine_full_data( FullData, CRC, Data, OptData,
+					% So:
+					FullLen = DataLen + OptDataLen,
+
+					% Still implied: CRC of one byte; binary, hence length in
+					% bytes:
+					%
+					<<FullData:FullLen/binary, _FullDataCRC>> = Rest,
+
+					examine_full_data( FullData, FullDataCRC, Data, OptData,
 									   PacketType )
 
 			end;
@@ -514,14 +547,13 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 -spec examine_full_data( binary(), crc(), binary(), binary(), packet_type() ) ->
 											maybe( term() ).
-examine_full_data( FullData, ExpectedFullDataCRC, _Data, _OptData, _PacketType ) ->
+examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType ) ->
 
 	case compute_crc( FullData ) of
 
 		ExpectedFullDataCRC ->
 			trace_bridge:debug( "Full-data CRC validated." ),
-			% temp:
-			undefined;
+			decode_packet( PacketType, Data, OptData );
 
 		OtherCRC ->
 			trace_bridge:debug_fmt( "Obtained other full-data CRC "
@@ -533,12 +565,33 @@ examine_full_data( FullData, ExpectedFullDataCRC, _Data, _OptData, _PacketType )
 
 
 
--spec get_packet_type( integer() ) -> maybe( packet_type() ).
-get_packet_type( ?reserved_type ) ->reserved_type;
-get_packet_type( ?radio_erp1_type ) ->radio_erp1_type;
-get_packet_type( Unknown ) ->
-	trace_utils:error_fmt( "Unknown packet type: ~B.", [ Unknown ] ),
+% @doc Decodes the specified packet, based on specified data elements.
+-spec decode_packet( packet_type(), binary(), binary() ) -> maybe( content() ).
+decode_packet( _PacketType=radio_erp1_type, Data, _OptData ) ->
+
+	<<RorgNum:8, _Rest/binary>> = Data,
+
+	trace_utils:debug_fmt( "Decoding an ERP1 radio packet of R-ORG ~ts...",
+						   [ text_utils:integer_to_hexastring( RorgNum ) ] ),
+
+
+	Rorg = oceanic_generated:get_first_for_rorg( RorgNum ),
+
+	trace_utils:debug_fmt( "R-Org: ~ts.", [ Rorg ] );
+
+
+decode_packet( PacketType, _Data, _OptData ) ->
+	trace_utils:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
+							 [ PacketType ] ),
 	undefined.
+
+
+
+% @doc Returns our identifier, for the specified packet type.
+-spec get_packet_type( integer() ) -> maybe( packet_type() ).
+get_packet_type( PacketTypeNum ) ->
+	% Topic defined by the module that Oceanic generates:
+	oceanic_generated:get_first_for_packet_type( PacketTypeNum ).
 
 
 % @doc Stops the Enocean support managed by the specified serial server.
@@ -620,25 +673,32 @@ generate_support_modules() ->
 
 	TargetModName = oceanic_generated,
 
-	trace_utils:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
+	%trace_utils:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
 
-	TopicSpecs = [ get_packet_type_topic_spec() ],
+	TopicSpecs = [ get_packet_type_topic_spec(), get_return_code_topic_spec(),
+				   get_event_code_topic_spec(), get_rorg_topic_spec() ],
 
-	ModFilename =
+	_ModFilename =
 		const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
 
-	trace_utils:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
+	%trace_utils:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
 
 	erlang:halt().
 
 
 
+% Defines are used below as they were already specified, otherwise of course
+% they would not.
+
+
 % @doc Returns the specification for the the 'packet_type' topic.
 -spec get_packet_type_topic_spec() -> topic_spec().
 get_packet_type_topic_spec() ->
+
 	% We use our recommended order (first set for internal, second one for
-	% third-party):
-	%
+	% third-party).
+
+	% For packet types, as defined in [ESP3]:
 	Entries = [
 		{ reserved_type,           ?reserved_type },
 		{ radio_erp1_type,         ?radio_erp1_type },
@@ -654,3 +714,56 @@ get_packet_type_topic_spec() ->
 		{ command_2_4_type,        ?command_2_4_type } ],
 
 	{ packet_type, Entries }.
+
+
+
+% @doc Returns the specification for the the 'return_code' topic.
+-spec get_return_code_topic_spec() -> topic_spec().
+get_return_code_topic_spec() ->
+
+	Entries = [
+		{ ok_return,              ?ok_return  },
+		{ error_return,           ?error_return },
+		{ not_supported_return,   ?not_supported_return },
+		{ wrong_parameter_return, ?wrong_parameter_return },
+		{ operation_denied,       ?operation_denied  } ],
+
+	{ return_code, Entries }.
+
+
+
+% @doc Returns the specification for the the 'event_code' topic.
+-spec get_event_code_topic_spec() -> topic_spec().
+get_event_code_topic_spec() ->
+
+	Entries = [
+		{ sa_reclaim_failed,       ?sa_reclaim_failed  },
+		{ sa_confirm_learn,        ?sa_confirm_learn },
+		{ sa_learn_ack,            ?sa_learn_ack },
+		{ co_ready,                ?co_ready },
+		{ co_event_secure_devices, ?co_event_secure_devices } ],
+
+	{ event_code, Entries }.
+
+
+% @doc Returns the specification for the the 'rorg' topic.
+-spec get_rorg_topic_spec() -> topic_spec().
+get_rorg_topic_spec() ->
+
+	Entries = [
+		{ rorg_undefined,  ?rorg_undefined },
+		{ rorg_rps,        ?rorg_rps },
+		{ rorg_bs1,        ?rorg_bs1 },
+		{ rorg_bs4,        ?rorg_bs4 },
+		{ rorg_vld,        ?rorg_vld },
+		{ rorg_msc,        ?rorg_msc },
+		{ rorg_adt,        ?rorg_adt },
+		{ rorg_sm_lrn_req, ?rorg_sm_lrn_req },
+		{ rorg_sm_lrn_ans, ?rorg_sm_lrn_ans },
+		{ rorg_rec,        ?rorg_rec },
+		{ rorg_ex,         ?rorg_ex },
+		{ rorg_sec,        ?rorg_sec },
+		{ rorg_sec_encaps, ?rorg_sec_encaps },
+		{ rorg_ute,        ?rorg_ute } ],
+
+	{ rorg, Entries }.

@@ -23,48 +23,14 @@
 % <http://www.mozilla.org/MPL/>.
 %
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
-% Creation date: Wednesday, September 7, 2022
+% Creation date: Monday, September 19, 2022.
 
 
-% @doc Testing of <b>Ceylan-Oceanic</b> elements.
-%
-% The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
-% prerequisites shall be already available.
-%
--module(oceanic_test).
+% @doc Testing of the Ceylan-Oceanic <b>decoding of (pre-recorded) telegrams/b>.
+-module(oceanic_decoding_test).
 
 
 -export([ run/0 ]).
-
-
-% Triggered if a suitable environment is believed to be available.
--spec actual_test( file_utils:file_path() ) -> void().
-actual_test( TtyPath ) ->
-
-	test_facilities:display( "Starting the Enocean test based on the "
-							 "gateway TTY '~ts'.", [ TtyPath ] ),
-
-	SerialPid = oceanic:start( TtyPath ),
-
-listen(),
-
-	oceanic:stop( SerialPid ).
-
-
-% Listens endlessly.
-listen() ->
-
-	%R = oceanic:read_next_telegram(),
-	T = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
-		%<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
-
-	test_facilities:display( "Test received: ~p.",
-							 [ T ] ),
-
-	oceanic:decode_telegram( T ).
-
-		% listen().
-
 
 
 -spec run() -> no_return().
@@ -72,19 +38,18 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
-	% Actually this is the default one:
-	TtyPath = "/dev/ttyUSBEnOcean",
+	Telegrams = [
+		<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
+		<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>,
+		<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>> ],
 
-	case oceanic:has_tty( TtyPath ) of
+	test_facilities:display(
+		"Starting the Enocean test based on ~B pre-recorded telegrams.",
+		[ length( Telegrams ) ] ),
 
-		true ->
-			actual_test( TtyPath );
-
-		% For example in continuous integration:
-		{ false, Reason } ->
-			test_facilities:display( "Warning: no suitable TTY environment "
-				"found (cause: ~p), no test done.", [ Reason ] )
-
-	end,
+	[ begin
+		test_facilities:display( "~nDecoding test telegram '~w'...", [ T ] ),
+		oceanic:decode_telegram( T )
+	  end || T <- Telegrams ],
 
 	test_facilities:stop().
