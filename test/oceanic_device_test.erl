@@ -23,7 +23,7 @@
 % <http://www.mozilla.org/MPL/>.
 %
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
-% Creation date: Wednesday, September 7, 2022
+% Creation date: Wednesday, September 7, 2022.
 
 
 % @doc Testing of the Ceylan-Oceanic <b>reading from actual devices</b>.
@@ -37,33 +37,58 @@
 -export([ run/0 ]).
 
 
+% Shorthand:
+
+-type device_path() :: file_utils:device_path().
+-type file_path() :: file_utils:file_path().
+
+
 % Triggered if a suitable environment is believed to be available.
--spec actual_test( file_utils:file_path() ) -> void().
-actual_test( TtyPath ) ->
+-spec actual_test( device_path(), maybe( file_path() ) ) -> void().
+actual_test( TtyPath, MaybeRecordFilePath ) ->
 
 	test_facilities:display( "Starting the Enocean test based on the "
 							 "gateway TTY '~ts'.", [ TtyPath ] ),
 
 	SerialPid = oceanic:start( TtyPath ),
 
-	listen(),
+	MaybeFile = case MaybeRecordFilePath of
+
+		undefined ->
+			undefined;
+
+		RecordFilePath ->
+			test_facilities:display( "Received telegrams will be written "
+									 "to '~ts'.", [ RecordFilePath ] ),
+
+			file_utils:open( RecordFilePath, _Opts=[ append ] )
+
+	end,
+
+	listen( MaybeFile ),
+
+	% Record file never closed.
 
 	oceanic:stop( SerialPid ).
 
 
-% Listens endlessly.
-listen() ->
 
-	%R = oceanic:read_next_telegram(),
-	T = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
-		%<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>
+% @doc Listens endlessly.
+listen( MaybeFile ) ->
 
-	test_facilities:display( "Test received: ~p.",
-							 [ T ] ),
+	test_facilities:display( "Test waiting for next telegram "
+		"(hit CTRL-C to stop)..." ),
 
-	oceanic:decode_telegram( T ).
+	T = oceanic:read_next_telegram(),
 
-		% listen().
+	test_facilities:display( "Test received telegram: ~p.", [ T ] ),
+
+	MaybeFile =:= undefined
+		orelse file_utils:write_ustring( MaybeFile, "~p.~n", [ T ] ),
+
+	%oceanic:decode_telegram( T ),
+
+	listen( MaybeFile ).
 
 
 
@@ -78,7 +103,16 @@ run() ->
 	case oceanic:has_tty( TtyPath ) of
 
 		true ->
-			actual_test( TtyPath );
+			case executable_utils:is_batch() of
+
+				true ->
+					test_facilities:display( "(not running the device "
+						"listening test, being in batch mode)" );
+
+				false ->
+					actual_test( TtyPath, "enocean-test-recording.etf" )
+
+			end;
 
 		% For example in continuous integration:
 		{ false, Reason } ->

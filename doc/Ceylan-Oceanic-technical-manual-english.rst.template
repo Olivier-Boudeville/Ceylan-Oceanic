@@ -77,7 +77,6 @@ Overview
 
 The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system.
 
-
 Ceylan-Oceanic is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project, and relies on `Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
 
 The project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
@@ -252,8 +251,12 @@ From the root of the Ceylan-Oceanic clone, supposing Myriad and erlang-serial ar
 Enocean Documentation
 =====================
 
-- [ETS]: `Enocean Technical Specifications <https://www.enocean-alliance.org/specifications/>`_
-- [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_
+- [ETS]: `Enocean Technical Specifications <https://www.enocean-alliance.org/specifications/>`_, notably for:
+
+  - [EEP-gen]: `EnOcean Equipment Profiles <https://www.enocean-alliance.org/eep/>`_ (e.g. version 3.1.4, 36 pages), a short, general view onto the structure of the various telegram types that are available (e.g. the RPS one)
+  - [EEP-spec]: `EEP Specification <https://www.enocean-alliance.org/wp-content/uploads/2017/05/EnOcean_Equipment_Profiles_EEP_v2.6.7_public.pdf>`_ (e.g. version 2.6.7, 270 pages), for a detailed specification of the various equipment profiles (e.g. ``F6-01-*`` being for *Switch Buttons*)
+
+- [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_ (e.g. version 1.51, 116 pages), lower-level in the network stack; less interesting here)
 
 
 
@@ -269,7 +272,7 @@ Related Projects
 
 They may be used as sources of inspiration:
 
-- the `Python EnOcean <https://github.com/kipe/enocean>`_ library
+- [PY-EN] the rather complete `Python EnOcean <https://github.com/kipe/enocean>`_ library, including for its `EEP (XML) information <https://github.com/kipe/enocean/blob/master/enocean/protocol/EEP.xml>`_
 
 .. Refer to ~/Projects/Esperide-HomeAutomation/EnOcean/python-binding-testing/enocean
 .. Test with: cd examples && ./enocean_example.py
