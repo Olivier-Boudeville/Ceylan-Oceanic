@@ -33,7 +33,7 @@
 % Base API:
 -export([ get_default_tty_path/0, has_tty/0, has_tty/1,
 		  start/0, start/1, stop/1,
-		  read_next_telegram/0, read_next_telegram_before/1,
+		  read_next_telegram/0,
 		  eurid_to_string/1 ] ).
 
 
@@ -41,7 +41,7 @@
 -export([ generate_support_modules/0 ]).
 
 % Mostly exported for testing:
--export([ decode_telegram/1 ]).
+-export([ try_decode_chunk/1 ]).
 
 
 
@@ -66,9 +66,12 @@
 % on RS-232 serial interfaces.
 
 
+-type telegram_chunk() :: binary().
+% A telegram chunk is a partial telegram, possin.
+
 -type telegram() :: binary().
-% A telegram is a raw (non-decoded) unitary radio (ERP-level) message received
-% from an Enocean gateway.
+% A telegram is a raw (non-decoded), full, unitary radio (ERP-level) message
+% received from an Enocean gateway.
 %
 % Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
 % `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
@@ -136,10 +139,29 @@
 % See also the 'packet_type' topic in the oceanic_generated module.
 
 
--type payload() :: binary().
+%-type payload() :: binary().
 % The payload of a (typically ESP3) packet, sometimes designated as 'Data'.
 
--type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
+%-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
+
+
+% For device event records:
+-include("oceanic.hrl").
+
+
+-type switch_button_event() :: #switch_button_event{}.
+% Event sent by EEP F6-01: Switch Buttons (with no rockers).
+%
+% Refer to [EEP-spec] for further details.
+
+-type rocker_switch_event() :: #rocker_switch_event{}.
+-type position_switch_event() :: #position_switch_event{}.
+
+
+-type device_event() :: switch_button_event()
+					  | rocker_switch_event()
+					  | position_switch_event().
+% Any event notified by an EnOcean device.
 
 
 -export_type([ serial_server_pid/0, tty_detection_outcome/0,
@@ -147,7 +169,8 @@
 			   rorg/0, func/0, type/0, eep/0, eep_id/0,
 			   ptm_switch_module_type/0, eurid/0,
 			   packet/0, esp3_packet/0, crc/0, packet_type/0,
-			   payload/0, decode_result/0 ]).
+			   %payload/0, decode_result/0,
+			   device_event/0 ]).
 
 
 
@@ -174,15 +197,24 @@
 %
 % Telegrams may arrive corrupted or truncated. For example, <<85,0,7,7>> may be
 % received, then <<1,122,213,9,5,5,51,236,0,1,255,255,255,255,45,0,173>>,
-% whereas the actual telegram is actually the concatenation of the two.
+% whereas the actual telegram is actually the concatenation of the two.  We do
+% not want to lose/ignore, as if some are transient (e.g. sensor readings),
+% others are one-off and may matter quite a lot (e.g. opening detection).
 
 
 % Local types:
 
--type content() :: binary().
+%-type content() :: binary().
 
--type esp3_header() :: binary().
+-type esp3_header() :: <<_:32>>.
 % 32-bit.
+
+
+-type decoding_outcome() ::
+	{ 'incomplete' | 'invalid' | 'unsupported',
+	  NextChunk :: telegram_chunk() }
+  | { 'decoded', device_event(), NextChunk :: telegram_chunk() }.
+% The outcomes of an attempt of decoding a telegram chunk.
 
 
 % Transmission speed, in bits per second:
@@ -310,7 +342,7 @@
 
 -type uint8() :: type_utils:uint8().
 
--type time_out() :: time_utils:time_out().
+%-type time_out() :: time_utils:time_out().
 
 -type topic_spec() :: const_bijective_topics:topic_spec().
 
@@ -413,61 +445,101 @@ start( TtyPath ) ->
 
 
 
-% @doc Waits (potentially forever) for the next telegram, and returns it.
--spec read_next_telegram() -> telegram().
+% @doc Waits (potentially forever) for the next ESP3 packet, decodes and
+% returns it, together with any additional chunk.
+%
+-spec read_next_telegram() -> { device_event(), telegram_chunk() }.
 read_next_telegram() ->
 
-  receive
-
-	% Receives data from the serial port, sent to the creator PID:
-	{ data, Telegram } ->
-
-		cond_utils:if_defined( oceanic_debug_tty,
-			trace_bridge:debug_fmt( "Received a telegram of ~B bytes: ~w.",
-									[ size( Telegram ), Telegram ] ) ),
-
-		Telegram
-
-	end.
+	% We cannot just return pieces of data, as actual telegrams are often
+	% received fragmented, and, probably, sometimes corrupted; we have to ass.
+	%
+	read_next_telegram( _ToSkipLen=0, _AccChunk= <<>> ).
 
 
 
-% @doc Waits for the next telegram, and returns it, unless the specified
-% time-out is reached, in which case the 'undefined' atom is returned.
+% There may be:
+% - remaining content from past, unsupported packet types that is still to be
+% skipped (hence ToSkipLen; better than only searching for start bytes)
+% - any already-received beginning of the current telegram to be taken into
+% account (hence AccChunk)
 %
--spec read_next_telegram_before( time_out() ) -> maybe( telegram() ).
-read_next_telegram_before( TimeOut ) ->
+% (helper)
+%
+-spec read_next_telegram( count(), telegram_chunk() ) ->
+		  { device_event(), telegram_chunk() }.
+read_next_telegram( ToSkipLen, AccChunk ) ->
 
-  receive
+	receive
 
-	% Receives data from the serial port, sent to the creator PID:
-	{ data, Telegram } ->
+		% Receives data from the serial port, sent to the creator PID:
+		{ data, TelegramChunk } ->
 
-		cond_utils:if_defined( oceanic_debug_tty,
-			trace_bridge:debug_fmt( "Received a telegram of ~B bytes before "
-				"~ts: ~w.",
-				[ size( Telegram ), time_utils:time_out_to_string( TimeOut ),
-				  Telegram ] ) ),
+			ChunkSize = size( TelegramChunk ),
 
-		Telegram
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug_fmt( "Received a piece of telegram "
+					"of ~B bytes: ~w (whereas there are ~B bytes to skip).",
+					[ size( TelegramChunk ), TelegramChunk, ToSkipLen ] ) ),
 
-	after TimeOut ->
+			case ToSkipLen - ChunkSize of
 
-		undefined
+				% Not reaching a new packet, dropping this full chunk:
+				StillToSkip when StillToSkip >= 0 ->
+					read_next_telegram( StillToSkip, _EmptyAcc= <<>> );
+
+				% Next packet already started in-chunk:
+				_ ->
+					<<_Skipped:ToSkipLen, NewChunk/binary>> = TelegramChunk,
+
+					% Having a prior non-empty AccChunk would be surprising:
+					%ActualChunk = <<AccChunk/binary, NewChunk/binary>>,
+
+					% Check:
+					AccChunk = <<>>,
+
+					NewToSkipLen = 0,
+
+					case try_decode_chunk( NewChunk ) of
+
+						% Prefix kept, to try next:
+						{ incomplete, NextChunk } ->
+							read_next_telegram( NewToSkipLen, NextChunk );
+
+						% Prefix dropped:
+						{ invalid, NextChunk } ->
+							read_next_telegram( NewToSkipLen, NextChunk );
+
+						% Packet type not supported by Oceanic (yet):
+						{ unsupported, NextChunk } ->
+							read_next_telegram( NewToSkipLen, NextChunk );
+
+						% Possibly with some fragmentation:
+						{ decoded, Event, NextChunk } ->
+							{ Event, NextChunk }
+
+				end
+
+		end
 
 	end.
 
 
 
-% @doc Decodes the specified telegram.
--spec decode_telegram( telegram() ) -> maybe( binary() ).
-decode_telegram( Telegram ) ->
+% @doc Tries to decode the specified telegram chunk, and returns the outcome.
+%
+% Incomplete chunks may be completed by next receivings (hence are kept,from
+% their first start byte included), whereas invalid ones are dropped (until any
+% start byte found).
+%
+-spec try_decode_chunk( telegram_chunk() ) -> decoding_outcome().
+try_decode_chunk( TelegramChunk ) ->
 
 	% An additional source of inspiration can be [PY-EN], in
 	% enocean/protocol/packet.py, the parse_msg/1 method.
 
-	trace_bridge:debug_fmt( "Decoding '~p' (of size ~B bytes)",
-							[ Telegram, size( Telegram ) ] ),
+	trace_bridge:debug_fmt( "Trying to decode '~p' (of size ~B bytes)",
+							[ TelegramChunk, size( TelegramChunk ) ] ),
 
 	% First 6 bytes correspond to the serial synchronisation:
 	% - byte #1: Packet start (0x55)
@@ -477,26 +549,31 @@ decode_telegram( Telegram ) ->
 	%   * byte #5: (8 bits) packet type
 	% - byte #6: CRC of header
 
-	case scan_for_packet_start( Telegram ) of
+	case scan_for_packet_start( TelegramChunk ) of
 
-		no_content ->
-			trace_bridge:debug( "(no start byte found)" ),
-			undefined;
+		{ no_content, DroppedCount } ->
+			trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
+				"so dropping its ~B bytes)", [ DroppedCount ] ),
+			{ invalid, <<>> };
 
-		{ Content, DroppedCount } ->
-			trace_bridge:debug_fmt( "Actual content found: '~p' "
-				"(of size ~B bytes: ~B byte(s) dropped).",
-				[ Content, size( Content ), DroppedCount ] ),
 
-			case Content of
+		{ NewTelegramChunk, DroppedCount } ->
+
+			trace_bridge:debug_fmt( "Start byte found, examining now chunk "
+				"'~p' (of size ~B bytes; after dropping ~B byte(s):  ).",
+				[ NewTelegramChunk, size( NewTelegramChunk ), DroppedCount ] ),
+
+			case NewTelegramChunk of
 
 				% First 32 bits:
 				<<Header:4/binary, HeaderCRC, Rest/binary>> ->
-					examine_header( Header, HeaderCRC, Rest );
+					examine_header( Header, HeaderCRC, Rest, NewTelegramChunk );
 
+				% So less than 5 bytes (yet), cannot be complete:
 				_ ->
 					trace_bridge:debug( "(no header to decode)" ),
-					undefined
+					% Waiting to concatenate any additional receiving:
+					{ incomplete, NewTelegramChunk }
 
 			end
 
@@ -504,48 +581,71 @@ decode_telegram( Telegram ) ->
 
 
 
-% @doc Extracts the content, starting from the start byte, which is 0x55
-% (i.e. 85).
+% @doc Extracts the content from the specified telegram chunk, starting from the
+% start byte, which is 0x55 (i.e. 85).
 %
-% At least most of the time, there are no leading bytes to be dropped.
+% Generally there are no leading bytes to be dropped.
 %
 % Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
 %
-scan_for_packet_start( ContentBytes ) ->
-	scan_for_packet_start( ContentBytes, _DropCount=0 ).
+-spec scan_for_packet_start( telegram_chunk() ) ->
+				{ telegram_chunk() | 'no_content', DropCount :: count() }.
+scan_for_packet_start( TelegramChunk ) ->
+	scan_for_packet_start( TelegramChunk, _DropCount=0 ).
 
 
 % (helper)
-scan_for_packet_start( _ContentBytes= <<>>, _DropCount ) ->
-	no_content;
+scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
+	{ no_content, DropCount };
 
-scan_for_packet_start( _ContentBytes= <<85, T/binary>>, DropCount ) ->
-	{ T, DropCount };
+scan_for_packet_start( Chunk= <<85, _T/binary>>, DropCount ) ->
+	% We include the start byte:
+	{ Chunk, DropCount };
 
 % Skip all bytes before first start byte:
-scan_for_packet_start( _ContentBytes= <<_OtherByte, T/binary>>, DropCount ) ->
+scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
 	scan_for_packet_start( T, DropCount+1 ).
 
 
 
 % @doc Checks the telegram header and decodes it.
--spec examine_header( esp3_header(), crc(), binary() ) -> maybe( term() ).
+-spec examine_header( esp3_header(), crc(), telegram_chunk(),
+					  telegram_chunk() ) -> decoding_outcome().
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
-				HeaderCRC, Rest ) ->
+				HeaderCRC, Rest, FullTelegramChunk ) ->
 
-	trace_bridge:debug_fmt( "~B bytes of data, ~B of optional data, "
-		"packet type ~B, header CRC ~B",
-		[ DataLen, OptDataLen, PacketTypeNum, HeaderCRC ] ),
+	trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
+		"then ~B of optional data; checking first header CRC ~B.",
+		[ PacketTypeNum, DataLen, OptDataLen, HeaderCRC ] ),
 
 	case compute_crc( Header ) of
 
 		HeaderCRC ->
-			trace_bridge:debug( "Header CRC validated." ),
+			trace_bridge:debug_fmt( "Header CRC validated.", [ HeaderCRC ] ),
+
 			case get_packet_type( PacketTypeNum ) of
 
 				undefined ->
-					trace_bridge:debug_fmt( "Unknown packet type (~B), "
-						"dropping content.", [ PacketTypeNum ] ),
+
+					SkipLen = DataLen + OptDataLen + _ForFullDataCRC=1,
+
+					trace_bridge:warning_fmt( "Unknown packet type (~B), "
+						"dropping corresponding content "
+						"(hence ~B bytes to be skipped).",
+						[ PacketTypeNum, SkipLen ] ),
+
+					% Not wanting to drop also the content of any next telegram:
+					case Rest of
+
+						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
+							{ unsupported, NextChunk};
+
+						% Here we have to skip more than this chunk:
+						COINCED
+
+
+
+
 					undefined;
 
 				PacketType ->
@@ -557,43 +657,50 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 					ActualRestSize = size( Rest ),
 
-					ExpectedRestSize =:=  ActualRestSize orelse
-						throw( { non_matching_packet_rest_size, ActualRestSize,
-								 ExpectedRestSize } ),
+					%ExpectedRestSize =:= ActualRestSize orelse
+					%%	throw( { non_matching_packet_rest_size, ActualRestSize,
+					%%			 ExpectedRestSize } ),
 
-					% Implied: CRC of one byte.
-					<<Data:DataLen/binary, OptData:OptDataLen/binary,
-					  FullDataCRC>> = Rest,
+					case ExpectedRestSize > ActualRestSize of
 
-					% We want FullData, but it could not be implicitly defined,
-					% as only the last segment can be of unspecified size:
-					%
-					%<<FullData, FullDataCRC:8>> = Rest,
+						% Not having received enough yet (will be parsed again
+						% once at least partially completed next):
+						%
+						true ->
+							{ incomplete, FullTelegramChunk };
 
-					% So:
-					FullLen = DataLen + OptDataLen,
+						% We have at least enough:
+						false ->
+							<<Data:DataLen/binary, OptData:OptDataLen/binary,
+							  FullDataCRC:8, AnyNextChunk/binary>> = Rest,
 
-					% Still implied: CRC of one byte; binary, hence length
-					% (size) in bytes:
-					%
-					<<FullData:FullLen/binary, _FullDataCRC>> = Rest,
+							% This CRC corresponds to the whole FullData, we
+							% extract it (again) rather than concatenating
+							% <<Data/binary, OptData/binary>>:
 
-					examine_full_data( FullData, FullDataCRC, Data, OptData,
-									   PacketType )
+							FullLen = DataLen + OptDataLen,
+
+							<<FullData:FullLen/binary, _>> = Rest,
+
+							examine_full_data( FullData, FullDataCRC, Data,
+								OptData, PacketType, AnyNextChunk )
+
+					end
 
 			end;
 
 		OtherHeaderCRC ->
 			trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
-				"dropping content.", [ OtherHeaderCRC ] ),
-			undefined
+				"dropping chunk.", [ OtherHeaderCRC ] ),
+
+			{ invalid, <<>> }
 
 	end.
 
 
 
 -spec examine_full_data( binary(), crc(), binary(), binary(), packet_type() ) ->
-											maybe( term() ).
+											decoding_outcome().
 examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType ) ->
 
 	case compute_crc( FullData ) of
@@ -907,3 +1014,13 @@ get_rorg_description_topic_spec() ->
 		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
 
 	{ rorg_description, Entries }.
+
+
+
+% @doc Returns a textual description of the specified device event.
+-spec device_event_to_string( device_event() ) -> ustring().
+device_event_to_string( #switch_button_event{ status=pressed } ) ->
+	"switch button pressed";
+
+device_event_to_string( #switch_button_event{ status=released } ) ->
+	"switch button released".

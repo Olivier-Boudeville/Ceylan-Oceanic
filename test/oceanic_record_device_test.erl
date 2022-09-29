@@ -26,15 +26,21 @@
 % Creation date: Wednesday, September 7, 2022.
 
 
-% @doc Testing of the Ceylan-Oceanic <b>reading from actual devices</b>.
+% @doc Testing of the Ceylan-Oceanic <b>reading from actual devices and
+% recording the corresponding telegrams in file</b>.
 %
 % The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
 % prerequisites shall be already available.
 %
--module(oceanic_device_test).
+% See oceanic_decode_recorded_test.erl for the decoding of the file recorded by
+% this test.
+%
+-module(oceanic_record_device_test).
 
 
--export([ run/0 ]).
+% For oceanic_decode_recorded_test:
+-export([ run/0, get_record_file_path/0 ]).
+
 
 
 % Shorthand:
@@ -83,8 +89,9 @@ listen( MaybeFile ) ->
 
 	test_facilities:display( "Test received telegram: ~p.", [ T ] ),
 
-	MaybeFile =:= undefined
-		orelse file_utils:write_ustring( MaybeFile, "~p.~n", [ T ] ),
+	MaybeFile =:= undefined orelse
+		file_utils:write_ustring( MaybeFile,
+			"{ \"~ts\", ~w }.~n", [ time_utils:get_textual_timestamp(), T ] ),
 
 	%oceanic:decode_telegram( T ),
 
@@ -110,7 +117,7 @@ run() ->
 						"listening test, being in batch mode)" );
 
 				false ->
-					actual_test( TtyPath, "enocean-test-recording.etf" )
+					actual_test( TtyPath, get_record_file_path()  )
 
 			end;
 
@@ -122,3 +129,10 @@ run() ->
 	end,
 
 	test_facilities:stop().
+
+
+
+% @doc Returns the path to the file used for recording.
+-spec get_record_file_path() -> file_path().
+get_record_file_path() ->
+	"enocean-test-recording.etf".
