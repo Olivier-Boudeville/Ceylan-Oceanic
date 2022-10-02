@@ -45,11 +45,12 @@
 -type file_path() :: file_utils:file_path().
 
 
+
 % @doc Decodes the telegrams in the specified ETF file.
 -spec decode_file( file_path() ) -> void().
 decode_file( RecordPath ) ->
 
-	% { timestamp(), telegram() } pairs:
+	% Reading { timestamp(), telegram() } pairs:
 	Pairs = file_utils:read_etf_file( RecordPath ),
 
 	Telegrams = [ T || { _Timestamp, T } <- Pairs ],
@@ -59,13 +60,47 @@ decode_file( RecordPath ) ->
 	% Sorted by decreasing number of occurrences:
 	Decs = lists:reverse( lists:keysort( _Index=2, Dups ) ),
 
-	test_facilities:display( " Record file '~ts' read, "
+	test_facilities:display( "Record file '~ts' read, "
 		"found ~B telegrams, ~B of them having been recorded more than once: "
 		"~ts",
 		[ RecordPath, length( Telegrams ), length( Dups ),
 		  text_utils:strings_to_enumerated_string( [ text_utils:format(
 			"telegram ~w recorded ~B times", [ T, C ] )
-				|| { T, C } <- Decs ] ) ] ).
+				|| { T, C } <- Decs ] ) ] ),
+
+	test_facilities:display( "Decoding this telegram stream now." ),
+
+	DecodedEvents = decode_all( Telegrams, _FirstNextChunk= <<>>,
+								_AccEvents=[] ),
+
+	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
+		[ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
+			[ oceanic:device_event_to_string( E ) || E <- DecodedEvents ] ) ] ).
+
+
+
+
+% @doc Decodes in turn all specified telegrams, relying on the specified
+% decoding context.
+%
+% First priority is to integrate any next chunk, otherwise to switch to the next
+% recorded telegram:
+%
+decode_all( Telegrams, AccChunk, AccEvents ) when AccChunk =/= <<>> ->
+	{ NewEvent, AnyNextChunk } =
+		oceanic:read_next_event( _ToSkipLen=0, AccChunk ),
+	decode_all( Telegrams, AnyNextChunk, [ NewEvent | AccEvents ] );
+
+% From here AccChunk is <<>>:
+decode_all( _Telegrams=[], _AccChunk, AccEvents ) ->
+	lists:reverse( AccEvents );
+
+decode_all( _Telegrams=[ Tl | T ], _AccChunk, AccEvents ) ->
+
+	{ NewEvent, AnyNextChunk } =
+		oceanic:read_next_event( _ToSkipLen=0, Tl ),
+
+	decode_all( T, AnyNextChunk, [ NewEvent | AccEvents ] ).
 
 
 

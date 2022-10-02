@@ -33,7 +33,7 @@
 % Base API:
 -export([ get_default_tty_path/0, has_tty/0, has_tty/1,
 		  start/0, start/1, stop/1,
-		  read_next_telegram/0,
+		  read_next_event/0,
 		  eurid_to_string/1 ] ).
 
 
@@ -41,8 +41,10 @@
 -export([ generate_support_modules/0 ]).
 
 % Mostly exported for testing:
--export([ try_decode_chunk/1 ]).
+-export([ try_decode_chunk/1, read_next_event/2 ]).
 
+% Silencing:
+-export([ device_event_to_string/1 ]).
 
 
 -type serial_server_pid() :: pid().
@@ -145,6 +147,17 @@
 %-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
 
 
+-type read_outcome() ::
+		{ ReadEvent :: device_event(), AnyNextChunk :: telegram_chunk() }.
+% Outcome of a (blocking) request of telegram reading.
+%
+% Exactly one event will be read (any remainding chunk returned), possibly
+% waiting for it indefinitely.
+%
+% No content can remain to be skipped here, as by design we ended when having
+% read a new event, returning any next chunk as it is.
+
+
 % For device event records:
 -include("oceanic.hrl").
 
@@ -211,10 +224,10 @@
 
 
 -type decoding_outcome() ::
-	{ 'incomplete' | 'invalid' | 'unsupported',
-	  NextChunk :: telegram_chunk() }
+	{ 'not_reached' | 'incomplete' | 'invalid' | 'unsupported',
+	  ToSkipLen :: count(), NextChunk :: telegram_chunk() }
   | { 'decoded', device_event(), NextChunk :: telegram_chunk() }.
-% The outcomes of an attempt of decoding a telegram chunk.
+% The outcomes of an attempt of integrating / decoding a telegram chunk.
 
 
 % Transmission speed, in bits per second:
@@ -335,6 +348,8 @@
 
 % Shorthands:
 
+-type count() :: basic_utils:count().
+
 -type file_path() :: file_utils:file_path().
 -type entry_type() :: file_utils:entry_type().
 
@@ -445,101 +460,119 @@ start( TtyPath ) ->
 
 
 
-% @doc Waits (potentially forever) for the next ESP3 packet, decodes and
-% returns it, together with any additional chunk.
+% @doc Returns the next event whose chunks could be received, aggregated and
+% decoded successfully.
 %
--spec read_next_telegram() -> { device_event(), telegram_chunk() }.
-read_next_telegram() ->
+% This is thus a blocking function, at the level of the overall events (hence
+% not just waiting only for the next chunk): waits (potentially forever) for the
+% next data chunk of an ESP3 packet to be received, aggregated to any previous
+% ones and possibly be decoded in an event and returned, together with any next
+% chunk already read.
+%
+-spec read_next_event() -> read_outcome().
+read_next_event() ->
 
-	% We cannot just return pieces of data, as actual telegrams are often
-	% received fragmented, and, probably, sometimes corrupted; we have to ass.
+	% We cannot just return raw data elements, as actual telegrams are often
+	% received fragmented, and, probably, sometimes corrupted; at each receiving
+	% we try to assemble those chunks and decode them correctly into one event,
+	% not to lose any chunk.
 	%
-	read_next_telegram( _ToSkipLen=0, _AccChunk= <<>> ).
+	read_next_event( _ToSkipLen=0, _AccChunk= <<>> ).
 
 
 
+% @doc Reads and processes the next telegram chunk in the context of the
+% synchronous reading of a telecgram, waiting indefinitely.
+%
 % There may be:
 % - remaining content from past, unsupported packet types that is still to be
-% skipped (hence ToSkipLen; better than only searching for start bytes)
+% skipped (hence ToSkipLen; finer than only searching for start bytes)
 % - any already-received beginning of the current telegram to be taken into
-% account (hence AccChunk)
+% account (hence AccChunk - which never includes the starting byte)
 %
 % (helper)
 %
--spec read_next_telegram( count(), telegram_chunk() ) ->
-		  { device_event(), telegram_chunk() }.
-read_next_telegram( ToSkipLen, AccChunk ) ->
+-spec read_next_event( count(), telegram_chunk() ) -> read_outcome().
+read_next_event( ToSkipLen, AccChunk ) ->
 
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Waiting for a telegram chunk, whereas having "
+			"~B bytes to skip, and having accumulated ~w.",
+			[ ToSkipLen, AccChunk ] ) ),
+
+	% Only blocking w.r.t. chunk (not event-level):
 	receive
 
 		% Receives data from the serial port, sent to the creator PID:
-		{ data, TelegramChunk } ->
-
-			ChunkSize = size( TelegramChunk ),
+		{ data, NewChunk } ->
 
 			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Received a piece of telegram "
+				trace_bridge:debug_fmt( "Received a telegram chunk "
 					"of ~B bytes: ~w (whereas there are ~B bytes to skip).",
-					[ size( TelegramChunk ), TelegramChunk, ToSkipLen ] ) ),
+					[ size( NewChunk), NewChunk, ToSkipLen ] ) ),
 
-			case ToSkipLen - ChunkSize of
+			case try_integrate_chunk( ToSkipLen, AccChunk, NewChunk ) of
 
-				% Not reaching a new packet, dropping this full chunk:
-				StillToSkip when StillToSkip >= 0 ->
-					read_next_telegram( StillToSkip, _EmptyAcc= <<>> );
+				{ decoded, Event, AnyNextChunk } ->
+					{ Event, AnyNextChunk };
 
-				% Next packet already started in-chunk:
-				_ ->
-					<<_Skipped:ToSkipLen, NewChunk/binary>> = TelegramChunk,
+				{ _Unsuccessful, NewToSkipLen, NewAccChunk } ->
+					% when Unsuccessful =:= not_reached
+					%   orelse Unsuccessful =:= incomplete
+					%   orelse Unsuccessful =:= invalid
+					%   orelse Unsuccessful =:= unsupported ->
+					read_next_event( NewToSkipLen, NewAccChunk )
 
-					% Having a prior non-empty AccChunk would be surprising:
-					%ActualChunk = <<AccChunk/binary, NewChunk/binary>>,
-
-					% Check:
-					AccChunk = <<>>,
-
-					NewToSkipLen = 0,
-
-					case try_decode_chunk( NewChunk ) of
-
-						% Prefix kept, to try next:
-						{ incomplete, NextChunk } ->
-							read_next_telegram( NewToSkipLen, NextChunk );
-
-						% Prefix dropped:
-						{ invalid, NextChunk } ->
-							read_next_telegram( NewToSkipLen, NextChunk );
-
-						% Packet type not supported by Oceanic (yet):
-						{ unsupported, NextChunk } ->
-							read_next_telegram( NewToSkipLen, NextChunk );
-
-						% Possibly with some fragmentation:
-						{ decoded, Event, NextChunk } ->
-							{ Event, NextChunk }
-
-				end
-
-		end
+			end
 
 	end.
 
 
 
-% @doc Tries to decode the specified telegram chunk, and returns the outcome.
+% @doc Tries to integrate a new telegram chunk.
+-spec try_integrate_chunk( count(), telegram_chunk(), telegram_chunk()) ->
+												decoding_outcome().
+try_integrate_chunk( ToSkipLen, AccChunk, NewChunk ) ->
+
+	% We can be skipping, or be aggregating a current packet, or both:
+	cond_utils:assert( oceanic_check_decoding,
+					   ToSkipLen =/= 0 orelse AccChunk =/= <<>> ),
+
+	ChunkSize = size( NewChunk ),
+
+	case ToSkipLen - ChunkSize of
+
+		% Not having reached a new packet yet:
+		StillToSkip when StillToSkip >= 0 ->
+			{ not_reached, StillToSkip, _EmptyAcc= <<>> };
+
+		% ChunkSize > ToSkipLen, so next packet already started in this
+		% new chunk:
+		%
+		_ ->
+			<<_Skipped:ToSkipLen/binary, NewChunk/binary>> = NewChunk,
+			try_decode_chunk( NewChunk )
+
+	end.
+
+
+
+% @doc Tries to decode the specified telegram chunk (any needed skipping having
+% already taken place), and returns the outcome.
 %
-% Incomplete chunks may be completed by next receivings (hence are kept,from
-% their first start byte included), whereas invalid ones are dropped (until any
-% start byte found).
+% Incomplete chunks may be completed later, by next receivings (hence are kept,
+% from their first start byte included), whereas invalid ones are dropped (until
+% any start byte found).
 %
 -spec try_decode_chunk( telegram_chunk() ) -> decoding_outcome().
 try_decode_chunk( TelegramChunk ) ->
 
-	% An additional source of inspiration can be [PY-EN], in
-	% enocean/protocol/packet.py, the parse_msg/1 method.
+	% (an additional source of inspiration can be [PY-EN], in
+	% enocean/protocol/packet.py, the parse_msg/1 method)
 
-	trace_bridge:debug_fmt( "Trying to decode '~p' (of size ~B bytes)",
-							[ TelegramChunk, size( TelegramChunk ) ] ),
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Trying to decode '~p' (of size ~B bytes)",
+								[ TelegramChunk, size( TelegramChunk ) ] ) ),
 
 	% First 6 bytes correspond to the serial synchronisation:
 	% - byte #1: Packet start (0x55)
@@ -552,17 +585,23 @@ try_decode_chunk( TelegramChunk ) ->
 	case scan_for_packet_start( TelegramChunk ) of
 
 		{ no_content, DroppedCount } ->
-			trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
-				"so dropping its ~B bytes)", [ DroppedCount ] ),
-			{ invalid, <<>> };
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
+					"so dropping its ~B bytes)", [ DroppedCount ] ) ),
+			{ invalid, _StillToSkipLen=0, <<>> };
 
 
 		{ NewTelegramChunk, DroppedCount } ->
 
-			trace_bridge:debug_fmt( "Start byte found, examining now chunk "
-				"'~p' (of size ~B bytes; after dropping ~B byte(s):  ).",
-				[ NewTelegramChunk, size( NewTelegramChunk ), DroppedCount ] ),
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug_fmt( "Start byte found, examining now chunk "
+					"'~p' (of size ~B bytes; after dropping ~B byte(s):  ).",
+					[ NewTelegramChunk, size( NewTelegramChunk ),
+					  DroppedCount ] ) ),
 
+			% This new chunk corresponds to a telegram that is invalid, or
+			% unsupported, or (currently) truncated, or valid (hence decoded):
+			%
 			case NewTelegramChunk of
 
 				% First 32 bits:
@@ -571,9 +610,11 @@ try_decode_chunk( TelegramChunk ) ->
 
 				% So less than 5 bytes (yet), cannot be complete:
 				_ ->
-					trace_bridge:debug( "(no header to decode)" ),
+					cond_utils:if_defined( oceanic_debug_decoding,
+						trace_bridge:debug( "(no header to decode)" ) ),
+
 					% Waiting to concatenate any additional receiving:
-					{ incomplete, NewTelegramChunk }
+					{ incomplete, _ToSkipLen=0, NewTelegramChunk }
 
 			end
 
@@ -581,8 +622,8 @@ try_decode_chunk( TelegramChunk ) ->
 
 
 
-% @doc Extracts the content from the specified telegram chunk, starting from the
-% start byte, which is 0x55 (i.e. 85).
+% @doc Extracts the content from the specified telegram chunk, returning a chunk
+% that is beginning just after any start byte (which is 0x55, i.e. 85).
 %
 % Generally there are no leading bytes to be dropped.
 %
@@ -598,9 +639,11 @@ scan_for_packet_start( TelegramChunk ) ->
 scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
 	{ no_content, DropCount };
 
-scan_for_packet_start( Chunk= <<85, _T/binary>>, DropCount ) ->
-	% We include the start byte:
-	{ Chunk, DropCount };
+scan_for_packet_start( _hunk= <<85, T/binary>>, DropCount ) ->
+	% No need to keep/include the start byte: repeated decoding attempts may
+	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
+	%
+	{ T, DropCount };
 
 % Skip all bytes before first start byte:
 scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
@@ -614,20 +657,27 @@ scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 				HeaderCRC, Rest, FullTelegramChunk ) ->
 
-	trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
-		"then ~B of optional data; checking first header CRC ~B.",
-		[ PacketTypeNum, DataLen, OptDataLen, HeaderCRC ] ),
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
+			"then ~B of optional data; checking first header CRC.",
+			[ PacketTypeNum, DataLen, OptDataLen ] ) ),
 
 	case compute_crc( Header ) of
 
 		HeaderCRC ->
-			trace_bridge:debug_fmt( "Header CRC validated.", [ HeaderCRC ] ),
+
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug_fmt( "Header CRC validated (~B).",
+										[ HeaderCRC ] ) ),
+
+			% +1 for its CRC size:
+			ExpectedRestSize = DataLen + OptDataLen + 1,
 
 			case get_packet_type( PacketTypeNum ) of
 
 				undefined ->
 
-					SkipLen = DataLen + OptDataLen + _ForFullDataCRC=1,
+					SkipLen = ExpectedRestSize,
 
 					trace_bridge:warning_fmt( "Unknown packet type (~B), "
 						"dropping corresponding content "
@@ -638,36 +688,34 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 					case Rest of
 
 						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
-							{ unsupported, NextChunk};
+							% We already skipped what was needed:
+							{ unsupported, _SkipLen=0, NextChunk };
 
-						% Here we have to skip more than this chunk:
-						COINCED
+						% Rest too short here; so we have to skip more than this
+						% chunk:
+						%
+						_ ->
+							StillToSkip = SkipLen - size( Rest ),
+							{ not_reached, StillToSkip, _AccChunk= <<>> }
 
+					end;
 
-
-
-					undefined;
 
 				PacketType ->
-					trace_bridge:debug_fmt( "Detected packet type: ~ts.",
-											[ PacketType ] ),
 
-					% +1 for its CRC size:
-					ExpectedRestSize = DataLen + OptDataLen + 1,
+					cond_utils:if_defined( oceanic_debug_decoding,
+						trace_bridge:debug_fmt( "Detected packet type: ~ts.",
+												[ PacketType ] ) ),
 
 					ActualRestSize = size( Rest ),
 
-					%ExpectedRestSize =:= ActualRestSize orelse
-					%%	throw( { non_matching_packet_rest_size, ActualRestSize,
-					%%			 ExpectedRestSize } ),
-
-					case ExpectedRestSize > ActualRestSize of
+					case ActualRestSize < ExpectedRestSize of
 
 						% Not having received enough yet (will be parsed again
 						% once at least partially completed next):
 						%
 						true ->
-							{ incomplete, FullTelegramChunk };
+							{ incomplete, _SkipLen=0, FullTelegramChunk };
 
 						% We have at least enough:
 						false ->
@@ -683,73 +731,97 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 							<<FullData:FullLen/binary, _>> = Rest,
 
 							examine_full_data( FullData, FullDataCRC, Data,
-								OptData, PacketType, AnyNextChunk )
+								OptData, PacketType, FullTelegramChunk,
+								AnyNextChunk )
 
 					end
 
 			end;
 
 		OtherHeaderCRC ->
-			trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
-				"dropping chunk.", [ OtherHeaderCRC ] ),
 
-			{ invalid, <<>> }
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
+					"dropping this telegram candidate.", [ OtherHeaderCRC ] ) ),
+
+			% Rather than discarding this chunk as a whole, tries to scavange
+			% (very conservatively) any trailing element by reintroducing a
+			% potentially valid new chunk - knowing that the past start byte has
+			% already been chopped:
+			%
+			try_decode_chunk( FullTelegramChunk )
 
 	end.
 
 
 
--spec examine_full_data( binary(), crc(), binary(), binary(), packet_type() ) ->
-											decoding_outcome().
-examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType ) ->
+% @doc Further checks and decodes a telegram now that its type is known.
+-spec examine_full_data( telegram_chunk(), crc(), telegram_chunk(),
+	telegram_chunk(), packet_type(), telegram_chunk(), telegram_chunk() ) ->
+								decoding_outcome().
+examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
+				   FullTelegramChunk, AnyNextChunk ) ->
 
 	case compute_crc( FullData ) of
 
 		ExpectedFullDataCRC ->
-			trace_bridge:debug( "Full-data CRC validated." ),
-			decode_packet( PacketType, Data, OptData );
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug( "Full-data CRC validated (~B).",
+									[ ExpectedFullDataCRC ] ) ),
+			decode_packet( PacketType, Data, OptData, AnyNextChunk );
 
 		OtherCRC ->
-			trace_bridge:debug_fmt( "Obtained other full-data CRC "
-				"(~B, instead of ~B), dropping content.",
-				[ OtherCRC, ExpectedFullDataCRC ] ),
-			undefined
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug_fmt( "Obtained unexpected full-data CRC "
+					"(~B, instead of ~B), dropping candidate telegram.",
+					[ OtherCRC, ExpectedFullDataCRC ] ) ),
+
+			% Not expecting being fooled by data accidentally looking like a
+			% legit CRC'ed header, so supposing this is just a valid telegram
+			% that ended up to be corrupted, yet for extra safety we will
+			% restart the decoding at the very first (yet still progressing -
+			% not wanting to recurse infinitely) step:
+			%
+			scan_for_packet_start( FullTelegramChunk )
 
 	end.
 
 
 
-% @doc Decodes the specified packet, based on specified data elements.
--spec decode_packet( packet_type(), binary(), binary() ) -> maybe( content() ).
-decode_packet( _PacketType=radio_erp1_type, Data, OptData ) ->
-
-	<<RorgNum:8, DataRest/binary>> = Data,
+% @doc Decodes the specified packet, based on the specified data elements.
+-spec decode_packet( packet_type(), telegram_chunk(), telegram_chunk(),
+					 telegram_chunk() ) -> decoding_outcome().
+decode_packet( _PacketType=radio_erp1_type,
+			   _Data= <<RorgNum:8, DataRest/binary>>, OptData, AnyNextChunk ) ->
 
 	Rorg = oceanic_generated:get_first_for_rorg( RorgNum ),
 
-	trace_utils:debug_fmt( "Decoding an ERP1 radio packet of R-ORG ~ts, "
-		"hence ~ts, i.e. '~ts'...",
-		[ text_utils:integer_to_hexastring( RorgNum ), Rorg,
-		  oceanic_generated:get_second_for_rorg_description( Rorg ) ] ),
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding an ERP1 radio packet of R-ORG ~ts, "
+			"hence ~ts, i.e. '~ts'...",
+			[ text_utils:integer_to_hexastring( RorgNum ), Rorg,
+			  oceanic_generated:get_second_for_rorg_description( Rorg ) ] ) ),
 
 	case Rorg of
 
 		rorg_rps ->
-			decode_rps_packet( DataRest, OptData );
+			decode_rps_packet( DataRest, OptData, AnyNextChunk );
 
 		_ ->
-			trace_utils:warning_fmt( "Decoding of ERP1 radio packets "
-				"of R-ORG ~ts (i.e. '~ts') not implemented, "
-				"packet is thus dropped.",
-				[ text_utils:integer_to_hexastring( RorgNum ),
-				  oceanic_generated:get_second_for_rorg_description( Rorg ) ] )
+			trace_bridge:warning_fmt( "Decoding of ERP1 radio packets "
+				"of R-ORG ~ts, hence ~ts (i.e. '~ts') not implemented, "
+				"the corresponding packet is thus dropped.",
+				[ text_utils:integer_to_hexastring( RorgNum ), Rorg,
+				  oceanic_generated:get_second_for_rorg_description( Rorg ) ] ),
+
+			{ unsupported, _ToSkipLen=0, AnyNextChunk }
 
 	end;
 
-decode_packet( PacketType, _Data, _OptData ) ->
-	trace_utils:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
+decode_packet( PacketType, _Data, _OptData, AnyNextChunk ) ->
+	trace_bridge:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
 							 [ PacketType ] ),
-	undefined.
+	{ unsupported, _ToSkipLen=0, AnyNextChunk }.
 
 
 
@@ -758,10 +830,12 @@ decode_packet( PacketType, _Data, _OptData ) ->
 % Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18.
 %
 % DB0 is the 1-byte user data, SenderId :: eurid() is 4, Status is 1:
+-spec decode_rps_packet( telegram_chunk(), telegram_chunk(),
+						 telegram_chunk() ) -> decoding_outcome().
 decode_rps_packet( _DataRest= <<DB0:1/binary, SenderEurid:4/binary,
 								%Status:1/binary>>,
 								T21:2, NU:2, RC:4 >>,
-				   OptData ) ->
+				   OptData, AnyNextChunk ) ->
 
 	PTMSwitchModuleType = T21 + 1,
 
@@ -778,16 +852,25 @@ decode_rps_packet( _DataRest= <<DB0:1/binary, SenderEurid:4/binary,
 	% NU expected to be 0 (Normal-message) of 1 (unassigned-message), yet found
 	% to be 2 or 3.
 
-	trace_utils:debug_fmt( "Decoding a R-ORG RPS packet, with DB0=~w, "
-		"SenderId=~ts, T21=~w (PTM switch module ~ts), NU=~w, "
-		"Repeater count=~w and OptData=~w.",
-		[ DB0, eurid_to_string( SenderEurid ), T21, PTMSwitchModuleTypeStr,
-		  NU, RC, OptData ] ),
-	ok;
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, with DB0=~w, "
+			"SenderId=~ts, T21=~w (PTM switch module ~ts), NU=~w, "
+			"Repeater count=~w and OptData=~w.",
+			[ DB0, eurid_to_string( SenderEurid ), T21, PTMSwitchModuleTypeStr,
+			  NU, RC, OptData ] ) ),
 
-decode_rps_packet( OtherDataRest, _OptData ) ->
-	trace_utils:warning_fmt( "Unmatching R-ORG RPS packet whose data "
-		"beyond R-ORG is ~w.", [ OtherDataRest ] ).
+	Event = #switch_button_event{},
+
+	{ decoded, Event, AnyNextChunk };
+
+decode_rps_packet( OtherDataRest, OptData, AnyNextChunk ) ->
+
+	trace_bridge:warning_fmt( "Non-matching R-ORG RPS packet whose data "
+		"beyond R-ORG is ~w (and optional data is ~w); dropping this packet.",
+		[ OtherDataRest, OptData ] ),
+
+	{ unsupported, _ToSkipLen=0, AnyNextChunk }.
+
 
 
 % @doc Returns the Oceanic identifier corresponding to the specified packet
@@ -892,7 +975,7 @@ generate_support_modules() ->
 
 	TargetModName = oceanic_generated,
 
-	%trace_utils:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
+	%trace_bridge:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
 
 	TopicSpecs = [ get_packet_type_topic_spec(), get_return_code_topic_spec(),
 				   get_event_code_topic_spec(), get_rorg_topic_spec(),
@@ -901,7 +984,7 @@ generate_support_modules() ->
 	_ModFilename =
 		const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
 
-	%trace_utils:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
+	%trace_bridge:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
 
 	erlang:halt().
 
@@ -1023,4 +1106,7 @@ device_event_to_string( #switch_button_event{ status=pressed } ) ->
 	"switch button pressed";
 
 device_event_to_string( #switch_button_event{ status=released } ) ->
-	"switch button released".
+	"switch button released";
+
+device_event_to_string( OtherEvent ) ->
+	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).

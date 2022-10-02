@@ -54,15 +54,20 @@ endif
 
 # Topics covered by flags:
 #  - tty: for the management of the TTY allocated to the USB Enocean gateway
-
+#  - decoding: for the decoding of Enocean telegrams
+#  - encoding: for the encoding of Enocean telegrams
 # Defining debug flags (at least the most verbose are by default commented-out):
 ifeq ($(ENABLE_DEBUG),true)
 	OCEANIC_DEBUG_FLAGS += -Doceanic_debug_tty
+	OCEANIC_DEBUG_FLAGS += -Doceanic_debug_decoding
+	OCEANIC_DEBUG_FLAGS += -Doceanic_debug_encoding
 endif
 
 # Defining check flags:
 ifeq ($(EXECUTION_TARGET),development)
-	#OCEANIC_CHECK_FLAGS += -Doceanic_check_
+	OCEANIC_CHECK_FLAGS += -Doceanic_check_tty
+	OCEANIC_CHECK_FLAGS += -Doceanic_check_decoding
+	OCEANIC_CHECK_FLAGS += -Doceanic_check_encoding
 endif
 
 
