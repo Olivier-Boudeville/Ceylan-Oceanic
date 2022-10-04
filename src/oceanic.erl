@@ -41,7 +41,7 @@
 -export([ generate_support_modules/0 ]).
 
 % Mostly exported for testing:
--export([ try_decode_chunk/1, read_next_event/2 ]).
+-export([ try_integrate_chunk/3, read_next_event/2 ]).
 
 % Silencing:
 -export([ device_event_to_string/1 ]).
@@ -75,7 +75,7 @@
 % A telegram is a raw (non-decoded), full, unitary radio (ERP-level) message
 % received from an Enocean gateway.
 %
-% Ex: `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
+% E.g. `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
 % `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
 % `<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>'.
 
@@ -532,11 +532,22 @@ read_next_event( ToSkipLen, AccChunk ) ->
 % @doc Tries to integrate a new telegram chunk.
 -spec try_integrate_chunk( count(), telegram_chunk(), telegram_chunk()) ->
 												decoding_outcome().
+% Special-casing "no skip" is clearer; guard needed to ensure we indeed already
+% chopped a start byte:
+%
+try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk )
+									when AccChunk =/= <<>> ->
+
+	% May happen (at least initially):
+	%cond_utils:assert( oceanic_check_decoding, AccChunk =/= <<>> ),
+
+	% Start byte was already chopped from AccChunk:
+	scan_past_start( <<AccChunk/binary, NewChunk/binary>> );
+
+
 try_integrate_chunk( ToSkipLen, AccChunk, NewChunk ) ->
 
-	% We can be skipping, or be aggregating a current packet, or both:
-	cond_utils:assert( oceanic_check_decoding,
-					   ToSkipLen =/= 0 orelse AccChunk =/= <<>> ),
+	cond_utils:assert( oceanic_check_decoding, AccChunk =:= <<>> ),
 
 	ChunkSize = size( NewChunk ),
 
@@ -550,8 +561,8 @@ try_integrate_chunk( ToSkipLen, AccChunk, NewChunk ) ->
 		% new chunk:
 		%
 		_ ->
-			<<_Skipped:ToSkipLen/binary, NewChunk/binary>> = NewChunk,
-			try_decode_chunk( NewChunk )
+			<<_Skipped:ToSkipLen/binary, TargetChunk/binary>> = NewChunk,
+			try_decode_chunk( TargetChunk )
 
 	end.
 
@@ -571,7 +582,7 @@ try_decode_chunk( TelegramChunk ) ->
 	% enocean/protocol/packet.py, the parse_msg/1 method)
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Trying to decode '~p' (of size ~B bytes)",
+		trace_bridge:debug_fmt( "Trying to decode '~w' (of size ~B bytes)",
 								[ TelegramChunk, size( TelegramChunk ) ] ) ),
 
 	% First 6 bytes correspond to the serial synchronisation:
@@ -594,31 +605,45 @@ try_decode_chunk( TelegramChunk ) ->
 		{ NewTelegramChunk, DroppedCount } ->
 
 			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Start byte found, examining now chunk "
-					"'~p' (of size ~B bytes; after dropping ~B byte(s):  ).",
+				trace_bridge:debug_fmt( "Start byte found, retaining now chunk "
+					"'~p' (of size ~B bytes; after dropping ~B byte(s)).",
 					[ NewTelegramChunk, size( NewTelegramChunk ),
 					  DroppedCount ] ) ),
 
-			% This new chunk corresponds to a telegram that is invalid, or
-			% unsupported, or (currently) truncated, or valid (hence decoded):
-			%
-			case NewTelegramChunk of
-
-				% First 32 bits:
-				<<Header:4/binary, HeaderCRC, Rest/binary>> ->
-					examine_header( Header, HeaderCRC, Rest, NewTelegramChunk );
-
-				% So less than 5 bytes (yet), cannot be complete:
-				_ ->
-					cond_utils:if_defined( oceanic_debug_decoding,
-						trace_bridge:debug( "(no header to decode)" ) ),
-
-					% Waiting to concatenate any additional receiving:
-					{ incomplete, _ToSkipLen=0, NewTelegramChunk }
-
-			end
+			scan_past_start( NewTelegramChunk )
 
 	end.
+
+
+
+% @doc Scans the specified chunk, knowing that it used to begin with a start
+% byte (which has already been chopped).
+%
+scan_past_start( NewTelegramChunk ) ->
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Examining now chunk '~p' (of size ~B bytes).",
+			[ NewTelegramChunk, size( NewTelegramChunk ) ] ) ),
+
+	% This new chunk corresponds to a telegram that is invalid, or unsupported,
+	% or (currently) truncated, or valid (hence decoded):
+	%
+	case NewTelegramChunk of
+
+		% First 32 bits:
+		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
+			examine_header( Header, HeaderCRC, Rest, NewTelegramChunk );
+
+			% So less than 5 bytes (yet), cannot be complete:
+			_ ->
+				cond_utils:if_defined( oceanic_debug_decoding,
+					trace_bridge:debug( "(no complete header to decode)" ) ),
+
+				% Waiting to concatenate any additional receiving:
+			{ incomplete, _ToSkipLen=0, NewTelegramChunk }
+
+	end.
+
 
 
 
@@ -639,7 +664,7 @@ scan_for_packet_start( TelegramChunk ) ->
 scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
 	{ no_content, DropCount };
 
-scan_for_packet_start( _hunk= <<85, T/binary>>, DropCount ) ->
+scan_for_packet_start( _Chunk= <<85, T/binary>>, DropCount ) ->
 	% No need to keep/include the start byte: repeated decoding attempts may
 	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
 	%
@@ -766,8 +791,8 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 
 		ExpectedFullDataCRC ->
 			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug( "Full-data CRC validated (~B).",
-									[ ExpectedFullDataCRC ] ) ),
+				trace_bridge:debug_fmt( "Full-data CRC validated (~B).",
+										[ ExpectedFullDataCRC ] ) ),
 			decode_packet( PacketType, Data, OptData, AnyNextChunk );
 
 		OtherCRC ->
