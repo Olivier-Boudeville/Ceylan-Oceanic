@@ -70,7 +70,7 @@ decode_file( RecordPath ) ->
 
 	test_facilities:display( "Decoding this telegram stream now." ),
 
-	DecodedEvents = decode_all( Telegrams, _FirstNextChunk= <<>>,
+	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0, _FirstNextChunk= <<>>,
 								_AccEvents=[] ),
 
 	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
@@ -82,25 +82,34 @@ decode_file( RecordPath ) ->
 
 % @doc Decodes in turn all specified telegrams, relying on the specified
 % decoding context.
-%
-% First priority is to integrate any next chunk, otherwise to switch to the next
-% recorded telegram:
-%
-decode_all( Telegrams, AccChunk, AccEvents ) when AccChunk =/= <<>> ->
-	{ NewEvent, AnyNextChunk } =
-		oceanic:read_next_event( _ToSkipLen=0, AccChunk ),
-	decode_all( Telegrams, AnyNextChunk, [ NewEvent | AccEvents ] );
+decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents ) ->
 
-% From here AccChunk is <<>>:
-decode_all( _Telegrams=[], _AccChunk, AccEvents ) ->
+	ToSkipLen =:= 0 orelse test_facilities:display(
+		"(test finished whereas still having ~B bytes to skip.",
+		[ ToSkipLen ] ),
+
+	AccChunk =:= <<>> orelse test_facilities:display(
+		"(test finished whereas still having following chunk: ~w)",
+		[ AccChunk ] ),
+
 	lists:reverse( AccEvents );
 
-decode_all( _Telegrams=[ Tl | T ], _AccChunk, AccEvents ) ->
 
-	{ NewEvent, AnyNextChunk } =
-		oceanic:read_next_event( _ToSkipLen=0, Tl ),
+decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents ) ->
 
-	decode_all( T, AnyNextChunk, [ NewEvent | AccEvents ] ).
+	test_facilities:display( "~nTest examining telegram ~w now:", [ Tl ] ),
+
+	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl ) of
+
+		{ decoded, Event, AnyNextChunk } ->
+			test_facilities:display( "(test decoded event ~p)", [ Event ] ),
+			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ] );
+
+		{ Unsuccessful, NewToSkipLen, NewAccChunk } ->
+			test_facilities:display( "(chunk outcome: ~p)", [ Unsuccessful ] ),
+			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents )
+
+	end.
 
 
 
