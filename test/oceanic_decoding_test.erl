@@ -38,6 +38,8 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
+	% Not useful here: OceanicServerPid = oceanic:start(),
+
 	Telegrams = [
 		<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
 		<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>,
@@ -48,8 +50,16 @@ run() ->
 		[ length( Telegrams ) ] ),
 
 	[ begin
+
 		test_facilities:display( "~nDecoding test telegram '~w'...", [ T ] ),
-		oceanic:decode_telegram( T )
+
+		{ decoded, Event, _NextChunk= <<>> } = oceanic:test_decode( T ),
+
+		test_facilities:display( "Decoded: ~ts",
+								 [ oceanic:device_event_to_string( Event ) ] )
+
 	  end || T <- Telegrams ],
+
+	% Not useful here: oceanic:start( OceanicServerPid ),
 
 	test_facilities:stop().

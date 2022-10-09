@@ -32,8 +32,9 @@
 % The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
 % prerequisites shall be already available.
 %
-% See oceanic_decode_recorded_test.erl for the decoding of the file recorded by
-% this test.
+% When running this test, ensure that at least a few Enocean telegrams are
+% received, so that they can be stored; see the oceanic_decode_recorded_test
+% module for the decoding of the file recorded by the current test.
 %
 -module(oceanic_record_device_test).
 
@@ -43,20 +44,24 @@
 
 
 
-% Shorthand:
+% Shorthands:
 
 -type device_path() :: file_utils:device_path().
 -type file_path() :: file_utils:file_path().
 
 
-% Triggered if a suitable environment is believed to be available.
+
+% Triggered iff a suitable environment is believed to be available.
 -spec actual_test( device_path(), maybe( file_path() ) ) -> void().
 actual_test( TtyPath, MaybeRecordFilePath ) ->
 
 	test_facilities:display( "Starting the Enocean test based on the "
 							 "gateway TTY '~ts'.", [ TtyPath ] ),
 
-	SerialPid = oceanic:start( TtyPath ),
+	% We hijack the Oceanic logic by interacting directly from this test process
+	% with the serial server:
+	%
+	_SerialPid = oceanic:secure_tty( TtyPath ),
 
 	MaybeFile = case MaybeRecordFilePath of
 
@@ -71,31 +76,42 @@ actual_test( TtyPath, MaybeRecordFilePath ) ->
 
 	end,
 
-	listen( MaybeFile ),
+	% Never returns:
+	listen( MaybeFile ).
 
 	% Record file never closed.
 
-	oceanic:stop( SerialPid ).
+	% No specific call to oceanic:stop/*.
 
 
 
 % @doc Listens endlessly.
 listen( MaybeFile ) ->
 
-	test_facilities:display( "Test waiting for next telegram "
-		"(hit CTRL-C to stop)..." ),
+	test_facilities:display( "Test waiting for the next telegram to be received"
+		" (hit CTRL-C to stop)..." ),
 
-	T = oceanic:read_next_telegram(),
+	receive
 
-	test_facilities:display( "Test received telegram: ~p.", [ T ] ),
+		% Receives data from the serial port:
+		{ data, NewChunk } ->
+			test_facilities:display( "Test received telegram chunk: ~p.",
+									 [ NewChunk ] ),
 
-	MaybeFile =:= undefined orelse
-		file_utils:write_ustring( MaybeFile,
-			"{ \"~ts\", ~w }.~n", [ time_utils:get_textual_timestamp(), T ] ),
+			MaybeFile =:= undefined orelse
+				file_utils:write_ustring( MaybeFile, "{ \"~ts\", ~w }.~n",
+					[ time_utils:get_textual_timestamp(), NewChunk ] ),
 
-	%oceanic:decode_telegram( T ),
+			listen( MaybeFile )
 
-	listen( MaybeFile ).
+	end.
+
+
+
+% @doc Returns the path to the file used for recording.
+-spec get_record_file_path() -> file_path().
+get_record_file_path() ->
+	"enocean-test-recording.etf".
 
 
 
@@ -104,8 +120,7 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
-	% Actually this is the default one:
-	TtyPath = "/dev/ttyUSBEnOcean",
+	TtyPath = oceanic:get_default_tty_path(),
 
 	case oceanic:has_tty( TtyPath ) of
 
@@ -114,7 +129,7 @@ run() ->
 
 				true ->
 					test_facilities:display( "(not running the device "
-						"listening test, being in batch mode)" );
+						"recording test, being in batch mode)" );
 
 				false ->
 					actual_test( TtyPath, get_record_file_path()  )
@@ -124,15 +139,9 @@ run() ->
 		% For example in continuous integration:
 		{ false, Reason } ->
 			test_facilities:display( "Warning: no suitable TTY environment "
-				"found (cause: ~p), no test done.", [ Reason ] )
+				"found (cause: ~p; searched for device '~ts'), no test done.",
+				[ Reason, TtyPath ] )
 
 	end,
 
 	test_facilities:stop().
-
-
-
-% @doc Returns the path to the file used for recording.
--spec get_record_file_path() -> file_path().
-get_record_file_path() ->
-	"enocean-test-recording.etf".

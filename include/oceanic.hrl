@@ -27,6 +27,20 @@
 
 
 
+% Information regarding an Enocean device.
+-record( enocean_device, {
+
+	% The EnOcean Unique Radio Identifier of this device:
+	eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) for that device:
+	name :: maybe( text_utils:bin_string() ),
+
+	% The EEP (if any is defined and registered) of this device:
+	eep :: maybe( oceanic:eep_id() ) } ).
+
+
+
 % Definition of device events.
 
 
@@ -51,3 +65,19 @@
 -record( position_switch_event, {
 
 } ).
+
+
+
+% Event sent by EEP D5-00-01: Single Input Contact.
+%
+% D5-00 correspondst to Contacts and Switches.
+
+% Refer to [EEP-spec] for further details.
+%
+-record( single_input_contact_event, {
+
+	% Tells whether the learn button has been pressed:
+	learn_activated :: boolean(),
+
+	% Tells whether the contact is open or closed:
+	contact :: oceanic:contact_status() } ).

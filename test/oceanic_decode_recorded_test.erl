@@ -29,10 +29,12 @@
 % @doc Testing of the Ceylan-Oceanic <b>decoding from in-file recorded
 % datagrams</b>.
 %
-% The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
-% prerequisites shall be already available.
+% No specific need here for the various hardware (Enocean USB dongle) and
+% software (Myriad, Erlang-serial) Oceanic prerequisites.
 %
-% Reads a file typically produced by the oceanic_record_device_test module.
+% Reads a file typically produced by the oceanic_record_device_test module. Run
+% it first with 'make oceanic_record_device_run' and ensure that at least a few
+% Enocean telegrams are received and stored, before trying to decode them here.
 %
 -module(oceanic_decode_recorded_test).
 
@@ -46,11 +48,11 @@
 
 
 
-% @doc Decodes the telegrams in the specified ETF file.
+% @doc Decodes the (timestamped) telegrams stored in the specified ETF file.
 -spec decode_file( file_path() ) -> void().
 decode_file( RecordPath ) ->
 
-	% Reading { timestamp(), telegram() } pairs:
+	% Reading {timestamp(), telegram()} pairs:
 	Pairs = file_utils:read_etf_file( RecordPath ),
 
 	Telegrams = [ T || { _Timestamp, T } <- Pairs ],
@@ -71,7 +73,7 @@ decode_file( RecordPath ) ->
 	test_facilities:display( "Decoding this telegram stream now." ),
 
 	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0, _FirstNextChunk= <<>>,
-								_AccEvents=[] ),
+								_AccEvents=[], oceanic:get_test_state() ),
 
 	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
 		[ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
@@ -82,7 +84,7 @@ decode_file( RecordPath ) ->
 
 % @doc Decodes in turn all specified telegrams, relying on the specified
 % decoding context.
-decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents ) ->
+decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, _State ) ->
 
 	ToSkipLen =:= 0 orelse test_facilities:display(
 		"(test finished whereas still having ~B bytes to skip.",
@@ -95,19 +97,23 @@ decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents ) ->
 	lists:reverse( AccEvents );
 
 
-decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents ) ->
+decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents, State ) ->
 
 	test_facilities:display( "~nTest examining telegram ~w now:", [ Tl ] ),
 
-	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl ) of
+	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl, State ) of
 
 		{ decoded, Event, AnyNextChunk } ->
-			test_facilities:display( "(test decoded event ~p)", [ Event ] ),
-			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ] );
+
+			test_facilities:display( "Test decoded following event: ~ts.",
+				[ oceanic:device_event_to_string( Event ) ] ),
+
+			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ],
+						State );
 
 		{ Unsuccessful, NewToSkipLen, NewAccChunk } ->
 			test_facilities:display( "(chunk outcome: ~p)", [ Unsuccessful ] ),
-			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents )
+			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents, State )
 
 	end.
 
