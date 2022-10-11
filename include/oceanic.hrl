@@ -34,14 +34,41 @@
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) for that device:
-	name :: maybe( text_utils:bin_string() ),
+	name :: maybe( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of this device:
-	eep :: maybe( oceanic:eep_id() ) } ).
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp (if any) at which this device was first seen:
+	first_seen = undefined :: maybe( time_utils:timestamp() ),
+
+	% The timestamp (if any) at which this device was last seen:
+	last_seen = undefined :: maybe( time_utils:timestamp() ),
+
+	% The number of full telegrams successfully decoded for this device:
+	telegram_count = 0 :: basic_utils:count(),
+
+	% The number of decoding failures for this device:
+	error_count = 0 :: basic_utils:count() } ).
 
 
 
 % Definition of device events.
+
+
+% All of them start with the same four fields:
+%
+% - the EnOcean Unique Radio Identifier of the emitting device:
+%           eurid :: oceanic:eurid()
+%
+% - the user-specified name (if any) for the emitting device:
+%           name :: maybe( text_utils:bin_string() )
+%
+% - the EEP (if any is defined and registered) of the emitting device:
+%           eep :: maybe( oceanic:eep_id() )
+%
+% - the timestamp at which this event was triggered:
+%           timestamp :: time_utils:timestamp()
 
 
 % Event sent by EEP F6-01: Switch Buttons (with no rockers).
@@ -50,13 +77,36 @@
 %
 -record( switch_button_event, {
 
-	status :: 'pressed' | 'released'
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	eurid :: oceanic:eurid(),
 
-} ).
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( text_utils:bin_string() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The status of this switch button:
+	status :: 'pressed' | 'released' } ).
 
 
 
 -record( rocker_switch_event, {
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( text_utils:bin_string() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp()
 
 } ).
 
@@ -64,17 +114,41 @@
 
 -record( position_switch_event, {
 
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( text_utils:bin_string() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp()
+
 } ).
 
 
 
 % Event sent by EEP D5-00-01: Single Input Contact.
 %
-% D5-00 correspondst to Contacts and Switches.
+% D5-00 corresponds to Contacts and Switches.
 
 % Refer to [EEP-spec] for further details.
 %
 -record( single_input_contact_event, {
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( text_utils:bin_string() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
 
 	% Tells whether the learn button has been pressed:
 	learn_activated :: boolean(),

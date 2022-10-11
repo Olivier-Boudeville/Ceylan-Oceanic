@@ -132,7 +132,7 @@ run() ->
 						"recording test, being in batch mode)" );
 
 				false ->
-					actual_test( TtyPath, get_record_file_path()  )
+					actual_test( TtyPath, get_record_file_path() )
 
 			end;
 

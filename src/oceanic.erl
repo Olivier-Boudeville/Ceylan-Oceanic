@@ -55,7 +55,8 @@
 		  try_integrate_chunk/4 ]).
 
 % Silencing:
--export([ state_to_string/1, device_table_to_string/1, device_to_string/1,
+-export([ record_device_failure/2,
+		  state_to_string/1, device_table_to_string/1, device_to_string/1,
 		  device_event_to_string/1 ]).
 
 
@@ -81,7 +82,7 @@
 
 
 -type enocean_device() :: #enocean_device{}.
-% Information regarding an Enocean device.
+% Information regarding an Enocean device, as known by the Oceanic server.
 
 
 -type device_table() :: table( eurid(), enocean_device() ).
@@ -158,6 +159,9 @@
 % EURID (EnOcean Unique Radio Identifier) is a unique and non-changeable
 % identification number (as a 32-bit value) assigned to every EnOcean
 % transmitter during its production process.
+%
+% The EURID corresponds to the hexadecimal identifier typically labelled at the
+% back of devices (e.g. "ID: B50533EC").
 
 
 -type packet() :: binary().
@@ -275,9 +279,12 @@
 
 
 -type decoding_outcome() ::
+
 	{ 'not_reached' | 'incomplete' | 'invalid' | 'unsupported',
-	  ToSkipLen :: count(), NextChunk :: telegram_chunk() }
-  | { 'decoded', device_event(), NextChunk :: telegram_chunk() }.
+	  ToSkipLen :: count(), NextChunk :: telegram_chunk(), oceanic_state() }
+
+  | { 'decoded', device_event(), NextChunk :: telegram_chunk(),
+	  oceanic_state() }.
 % The outcomes of an attempt of integrating / decoding a telegram chunk.
 
 
@@ -449,6 +456,8 @@
 -type bin_string() :: text_utils:bin_string().
 
 -type uint8() :: type_utils:uint8().
+
+-type timestamp() :: time_utils:timestamp().
 
 -type registration_name() :: naming_utils:registration_name().
 
@@ -704,10 +713,12 @@ load_configuration( ConfFilePath ) ->
 			Eurid = text_utils:hexastring_to_integer(
 				text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ),
 
+			EepBinStr = text_utils:ensure_binary( EepStr ),
+
 			DeviceRec = #enocean_device{
 				eurid=Eurid,
 				name=text_utils:ensure_binary( NameStr ),
-				eep=oceanic_generated:get_first_for_eep( EepStr ) },
+				eep=oceanic_generated:get_first_for_eep_strings( EepBinStr ) },
 			{ Eurid, DeviceRec }
 
 		end || { NameStr, EuridStr, EepStr } <- DeviceEntries ] ).
@@ -742,8 +753,12 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 			case try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) of
 
-				{ decoded, Event, AnyNextChunk } ->
-					case State#oceanic_state.event_listener_pid of
+				{ decoded, Event, AnyNextChunk, NewState } ->
+
+					trace_bridge:debug_fmt( "Decoded following event: ~ts.",
+						[ oceanic:device_event_to_string( Event ) ] ),
+
+					case NewState#oceanic_state.event_listener_pid of
 
 						undefined ->
 							ok;
@@ -752,15 +767,15 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 							ListenerPid ! { onEnoceanEvent, [ Event, self() ] }
 
 					end,
-					oceanic_loop( _SkipLen=0, AnyNextChunk, State );
+					oceanic_loop( _SkipLen=0, AnyNextChunk, NewState );
 
 
-				{ _Unsuccessful, NewToSkipLen, NewAccChunk } ->
+				{ _Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
 					% when Unsuccessful =:= not_reached
 					%   orelse Unsuccessful =:= incomplete
 					%   orelse Unsuccessful =:= invalid
 					%   orelse Unsuccessful =:= unsupported ->
-					oceanic_loop( NewToSkipLen, NewAccChunk, State )
+					oceanic_loop( NewToSkipLen, NewAccChunk, NewState )
 
 			end;
 
@@ -825,7 +840,7 @@ try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) ->
 
 		% Not having reached a new packet yet:
 		StillToSkip when StillToSkip >= 0 ->
-			{ not_reached, StillToSkip, _EmptyAcc= <<>> };
+			{ not_reached, StillToSkip, _EmptyAcc= <<>>, State };
 
 		% ChunkSize > ToSkipLen, so next packet already started in this
 		% new chunk:
@@ -870,7 +885,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
 					"so dropping its ~B bytes)", [ DroppedCount ] ) ),
-			{ invalid, _StillToSkipLen=0, <<>> };
+			{ invalid, _StillToSkipLen=0, <<>>, State };
 
 
 		{ NewTelegramChunk, DroppedCount } ->
@@ -890,7 +905,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 % @doc Scans the specified chunk, knowing that it used to begin with a start
 % byte (which has already been chopped).
 %
-scan_past_start( NewTelegramChunk, MaybeConfig ) ->
+scan_past_start( NewTelegramChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Examining now chunk '~p' (of size ~B bytes).",
@@ -903,8 +918,7 @@ scan_past_start( NewTelegramChunk, MaybeConfig ) ->
 
 		% First 32 bits:
 		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
-			examine_header( Header, HeaderCRC, Rest, NewTelegramChunk,
-							MaybeConfig );
+			examine_header( Header, HeaderCRC, Rest, NewTelegramChunk, State );
 
 			% So less than 5 bytes (yet), cannot be complete:
 			_ ->
@@ -912,7 +926,7 @@ scan_past_start( NewTelegramChunk, MaybeConfig ) ->
 					trace_bridge:debug( "(no complete header to decode)" ) ),
 
 				% Waiting to concatenate any additional receiving:
-			{ incomplete, _ToSkipLen=0, NewTelegramChunk }
+			{ incomplete, _ToSkipLen=0, NewTelegramChunk, State }
 
 	end.
 
@@ -986,14 +1000,15 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
 							% We already skipped what was needed:
-							{ unsupported, _SkipLen=0, NextChunk };
+							{ unsupported, _SkipLen=0, NextChunk, State };
 
 						% Rest too short here; so we have to skip more than this
 						% chunk:
 						%
 						_ ->
 							StillToSkip = SkipLen - size( Rest ),
-							{ not_reached, StillToSkip, _AccChunk= <<>> }
+							{ not_reached, StillToSkip, _AccChunk= <<>>,
+							  State }
 
 					end;
 
@@ -1012,7 +1027,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 						% once at least partially completed next):
 						%
 						true ->
-							{ incomplete, _SkipLen=0, FullTelegramChunk };
+							{ incomplete, _SkipLen=0, FullTelegramChunk,
+							  State };
 
 						% We have at least enough:
 						false ->
@@ -1115,14 +1131,20 @@ decode_packet( _PacketType=radio_erp1_type,
 				[ text_utils:integer_to_hexastring( RorgNum ), Rorg,
 				  oceanic_generated:get_second_for_rorg_description( Rorg ) ] ),
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk }
+			% Not even an EURID to track.
+
+			{ unsupported, _ToSkipLen=0, AnyNextChunk, State }
 
 	end;
 
-decode_packet( PacketType, _Data, _OptData, AnyNextChunk, _State ) ->
+decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
+
 	trace_bridge:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
 							 [ PacketType ] ),
-	{ unsupported, _ToSkipLen=0, AnyNextChunk }.
+
+	% Not even an EURID to track.
+
+	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
 
 
 
@@ -1157,22 +1179,25 @@ decode_rps_packet( _DataRest= <<DB0:8, SenderEurid:32,
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, with DB0=~w, "
-			"SenderId=~ts, T21=~w (PTM switch module ~ts), NU=~w, "
+			"sender is '~ts', T21=~w (PTM switch module ~ts), NU=~w, "
 			"Repeater count=~w and OptData=~w.",
 			[ DB0, eurid_to_bin_string( SenderEurid, State ), T21,
 			  PTMSwitchModuleTypeStr, NU, RC, OptData ] ) ),
 
 	Event = #switch_button_event{},
 
-	{ decoded, Event, AnyNextChunk };
+	{ decoded, Event, AnyNextChunk, State };
 
-decode_rps_packet( OtherDataRest, OptData, AnyNextChunk, _State ) ->
+
+decode_rps_packet( OtherDataRest, OptData, AnyNextChunk, State ) ->
+
+	% Not even an EURID to track.
 
 	trace_bridge:warning_fmt( "Non-matching R-ORG RPS packet whose data "
 		"beyond R-ORG is ~w (and optional data is ~w); dropping this packet.",
 		[ OtherDataRest, OptData ] ),
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk }.
+	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
 
 
 
@@ -1184,7 +1209,7 @@ decode_rps_packet( OtherDataRest, OptData, AnyNextChunk, _State ) ->
 -spec decode_1bs_packet( telegram_chunk(), telegram_chunk(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
-				   AnyNextChunk, State ) ->
+		AnyNextChunk, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% 0xd5 is 213.
 
@@ -1216,19 +1241,149 @@ decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	end,
 
+	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+		record_device_success( SenderEurid, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
 			"with DataRest=~w (size: ~B bytes; DB_0=~w, "
-			"so learn activated is ~ts, and contact is ~ts), SenderId=~ts, "
-			"Status=~w) and OptData=~w (size : ~B bytes).",
+			"so learn activated is ~ts, and contact is ~ts), sender is '~ts', "
+			"status is ~w) and OptData=~w (size : ~B bytes).",
 			[ DataRest, size( DataRest ), DB_0, LearnActivated, ContactStatus,
 			  eurid_to_bin_string( SenderEurid, State ), Status, OptData,
 			  size( OptData ) ] ) ),
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk }.
+
+	Event = #single_input_contact_event{ eurid=SenderEurid,
+										 name=MaybeDeviceName,
+										 eep=MaybeEepId,
+										 timestamp=Now,
+										 learn_activated=LearnActivated,
+										 contact=ContactStatus },
+
+	{ decoded, Event, AnyNextChunk, NewState }.
+
+
+
 
 	% 0xa5 is 165.
 
+
+% @doc Records that a telegram could be successfully decoded for the specified
+% device, registering it if it was not already.
+%
+-spec record_device_success( eurid(), device_table() ) ->
+	{ device_table(), timestamp(), maybe( device_name() ), maybe( eep_id() ) }.
+record_device_success( Eurid, DeviceTable ) ->
+
+	Now = time_utils:get_timestamp(),
+
+	case table:lookup_entry( Eurid, DeviceTable ) of
+
+		key_not_found ->
+			trace_bridge:info_fmt( "Discovering Enocean device ~ts.",
+								   [ eurid_to_bin_string( Eurid ) ] ),
+
+			NewDevice = #enocean_device{ eurid=Eurid,
+										 name=undefined,
+										 eep=undefined,
+										 first_seen=Now,
+										 last_seen=Now,
+										 telegram_count=1,
+										 error_count=0 },
+
+			% Necessarily new:
+			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
+
+			{ NewDeviceTable, Now, undefined, undefined };
+
+
+		{ value, Device=#enocean_device{ name=MaybeDeviceName,
+										 eep=MaybeEepId,
+										 first_seen=MaybeFirstSeen,
+										 telegram_count=TeleCount } } ->
+
+			NewFirstSeen = case MaybeFirstSeen of
+
+				undefined ->
+					Now;
+
+				FirstSeen ->
+					FirstSeen
+
+			end,
+
+			UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+												   last_seen=Now,
+												   telegram_count=TeleCount+1 },
+
+			NewDeviceTable =
+				table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
+
+			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId }
+
+	end.
+
+
+
+% @doc Records that a telegram could not be successfully decoded for the
+% specified device, registering it if it was not already.
+%
+% Note that many failures do not even allow identifying the emitting device.
+%
+-spec record_device_failure( eurid(), device_table() ) ->
+	{ device_table(), timestamp(), maybe( device_name() ), maybe( eep_id() ) }.
+record_device_failure( Eurid, DeviceTable ) ->
+
+	Now = time_utils:get_timestamp(),
+
+	case table:lookup_entry( Eurid, DeviceTable ) of
+
+		key_not_found ->
+			trace_bridge:info_fmt( "Discovering Enocean device ~ts.",
+								   [ eurid_to_bin_string( Eurid ) ] ),
+
+			NewDevice = #enocean_device{ eurid=Eurid,
+										 name=undefined,
+										 eep=undefined,
+										 first_seen=Now,
+										 last_seen=Now,
+										 telegram_count=0,
+										 error_count=1 },
+
+			% Necessarily new:
+			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
+
+			{ NewDeviceTable, Now, undefined, undefined };
+
+
+		{ value, Device=#enocean_device{ name=MaybeDeviceName,
+										 eep=MaybeEepId,
+										 first_seen=MaybeFirstSeen,
+										 error_count=ErrCount } } ->
+
+			NewFirstSeen = case MaybeFirstSeen of
+
+				undefined ->
+					Now;
+
+				FirstSeen ->
+					FirstSeen
+
+			end,
+
+			UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+												   last_seen=Now,
+												   error_count=ErrCount+1 },
+
+			NewDeviceTable =
+				table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
+
+			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId }
+
+	end.
 
 
 
@@ -1280,11 +1435,7 @@ eurid_to_bin_string( Eurid ) ->
 
 
 % @doc Returns a (binary) textual description of the specified EURID, possibly
-% translated to a user-friendly device name is a configuration is specified that
-% references it.
-%
-% The EURID corresponds to the hexadecimal identifier typically labelled at the
-% back of devices (e.g. "ID: B50533EC").
+% translated to a user-friendly device name if any is known for that device.
 %
 -spec eurid_to_bin_string( eurid(), oceanic_state() ) -> bin_string().
 eurid_to_bin_string( Eurid, #oceanic_state{ device_table=DeviceTable } ) ->
@@ -1335,6 +1486,61 @@ device_event_to_string( #switch_button_event{ status=pressed } ) ->
 
 device_event_to_string( #switch_button_event{ status=released } ) ->
 	"switch button released";
+
+device_event_to_string( #single_input_contact_event{
+		eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEep,
+		timestamp=Timestamp,
+		learn_activated=LearnActivated,
+		contact=ContactStatus } ) ->
+
+	DescStr = case MaybeName of
+
+		undefined ->
+			text_utils:format( "of EURID ~ts",
+							   [ eurid_to_bin_string( Eurid ) ] );
+
+		Name ->
+			text_utils:format( "named '~ts' (whose EURID is ~ts)",
+							   [ Name, eurid_to_bin_string( Eurid ) ] )
+
+	end,
+
+	ChangeStr = case ContactStatus of
+
+		open ->
+			"opened";
+
+		closed ->
+			"closed"
+
+	end,
+
+	LearnStr = case LearnActivated of
+
+		true ->
+			", whereas its learn button was pressed";
+
+		false ->
+			" (whereas its learn button was not pressed)"
+
+	end,
+
+	EepStr = case MaybeEep of
+
+		undefined ->
+			"its EEP is not known (supposing D5-00-01)";
+
+		EepId ->
+			text_utils:format( "its EEP is ~ts (~ts)", [ EepId,
+				oceanic_generated:get_second_for_eep_strings( EepId ) ] )
+
+	end,
+
+	text_utils:format( "contact device ~ts has been ~ts at ~ts~ts; ~ts",
+		[ DescStr, ChangeStr, time_utils:timestamp_to_string( Timestamp ),
+		  LearnStr, EepStr ] );
 
 device_event_to_string( OtherEvent ) ->
 	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
@@ -1393,7 +1599,11 @@ device_table_to_string( DeviceTable ) ->
 -spec device_to_string( enocean_device() ) -> ustring().
 device_to_string( #enocean_device{ eurid=Eurid,
 								   name=MaybeName,
-								   eep=MaybeEepId } ) ->
+								   eep=MaybeEepId,
+								   first_seen=MaybeFirstTimestamp,
+								   last_seen=MaybeLastTimestamp,
+								   telegram_count=TeleCount,
+								   error_count=ErrCount } ) ->
 
 	NameStr = case MaybeName of
 
@@ -1425,7 +1635,57 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 	end,
 
-	text_utils:format( "~ts respecting ~ts", [ NameStr, EepDescStr ] ).
+	SeenStr = case MaybeFirstTimestamp of
+
+		undefined ->
+			"never seen by this server";
+
+		FirstTimestamp ->
+			case MaybeLastTimestamp of
+
+				FirstTimestamp ->
+					text_utils:format( "seen only once by this server, on ~ts",
+						[ text_utils:timestamp_to_string( FirstTimestamp ) ] );
+
+				LastTimestamp ->
+					text_utils:format( "seen firstly by this server on ~ts, "
+						"and lastly on ~ts",
+						[ text_utils:timestamp_to_string( FirstTimestamp ),
+						  text_utils:timestamp_to_string( LastTimestamp ) ] )
+
+			end
+
+	end,
+
+	TeleStr = case TeleCount of
+
+		0 ->
+			"none of its telegrams could be decoded";
+
+		1 ->
+			"a single of its telegrams could be decoded";
+
+		_ ->
+			text_utils:format( "~B of its telegrams could be decoded",
+							   [ TeleCount ] )
+
+	end,
+
+	ErrStr = case ErrCount of
+
+		0 ->
+			"no telegram decoding failed";
+
+		1 ->
+			"a single telegram decoding failed";
+
+		_ ->
+			text_utils:format( "~B decodings failed", [ ErrCount ] )
+
+	end,
+
+	text_utils:format( "~ts respecting ~ts; it has been ~ts; ~ts and ~ts",
+					   [ NameStr, EepDescStr, SeenStr, TeleStr, ErrStr ] ).
 
 
 
