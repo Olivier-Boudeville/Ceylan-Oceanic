@@ -103,17 +103,17 @@ decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents, State ) ->
 
 	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl, State ) of
 
-		{ decoded, Event, AnyNextChunk } ->
+		{ decoded, Event, AnyNextChunk, NewState } ->
 
 			test_facilities:display( "Test decoded following event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),
 
 			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ],
-						State );
+						NewState );
 
-		{ Unsuccessful, NewToSkipLen, NewAccChunk } ->
+		{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
 			test_facilities:display( "(chunk outcome: ~p)", [ Unsuccessful ] ),
-			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents, State )
+			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents, NewState )
 
 	end.
 

@@ -32,6 +32,8 @@
 % The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
 % prerequisites shall be already available.
 %
+% This test mostly does not depend on Oceanic, it just focuses on raw recording.
+
 % When running this test, ensure that at least a few Enocean telegrams are
 % received, so that they can be stored; see the oceanic_decode_recorded_test
 % module for the decoding of the file recorded by the current test.

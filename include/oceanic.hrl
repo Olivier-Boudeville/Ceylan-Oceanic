@@ -62,7 +62,7 @@
 %           eurid :: oceanic:eurid()
 %
 % - the user-specified name (if any) for the emitting device:
-%           name :: maybe( text_utils:bin_string() )
+%           name :: maybe( oceanic:device_name() )
 %
 % - the EEP (if any is defined and registered) of the emitting device:
 %           eep :: maybe( oceanic:eep_id() )
@@ -71,17 +71,17 @@
 %           timestamp :: time_utils:timestamp()
 
 
-% Event sent by EEP F6-01: Switch Buttons (with no rockers).
+% Event sent by EEP F6-01-01: "Switch Buttons (with no rockers)".
 %
-% Refer to [EEP-spec] for further details.
+% Refer to [EEP-spec] p.15 for further details.
 %
--record( switch_button_event, {
+-record( push_button_event, {
 
 	% The EnOcean Unique Radio Identifier of the emitting device:
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( text_utils:bin_string() ),
+	name :: maybe( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: maybe( oceanic:eep_id() ),
@@ -90,7 +90,7 @@
 	timestamp :: time_utils:timestamp(),
 
 	% The status of this switch button:
-	status :: 'pressed' | 'released' } ).
+	status :: oceanic:button_transition() } ).
 
 
 
@@ -100,7 +100,7 @@
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( text_utils:bin_string() ),
+	name :: maybe( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: maybe( oceanic:eep_id() ),
@@ -118,7 +118,7 @@
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( text_utils:bin_string() ),
+	name :: maybe( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: maybe( oceanic:eep_id() ),
@@ -142,7 +142,7 @@
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( text_utils:bin_string() ),
+	name :: maybe( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: maybe( oceanic:eep_id() ),
