@@ -35,6 +35,55 @@
 -export([ run/0 ]).
 
 
+% Shorthands:
+
+-type count() :: basic_utils:count().
+
+-type telegram() :: oceanic:telegram().
+
+-type device_table() :: oceanic:device_table().
+
+
+
+% @doc Attempts to decode the specified telegrams in turn.
+-spec decode_telegrams( [ telegram() ], device_table(), count() ) -> count().
+decode_telegrams( _Telegrams=[], _DeviceTable, Count ) ->
+	Count;
+
+decode_telegrams( _Telegrams=[ Tele | T ], DeviceTable, Count ) ->
+
+	test_facilities:display( "~nWhereas this current test device table "
+		"references ~ts decoding test telegram '~w':",
+		[ oceanic:device_table_to_string( DeviceTable ), Tele ] ),
+
+	% To have different timestamps, otherwise all pseudo-devices will be
+	% considered to be seen only once:
+	%
+	timer:sleep( _Ms=1000 ),
+
+	case oceanic:test_decode( Tele, DeviceTable ) of
+
+		{ decoded, Event, _NextChunk= <<>>, NewState } ->
+
+			test_facilities:display( "Decoded event: ~ts",
+				[ oceanic:device_event_to_string( Event ) ] ),
+
+			decode_telegrams( T, oceanic:get_device_table( NewState ),
+							  Count+1 );
+
+
+		{ FailedOutcome, SkipLen, NextChunk, NewState } ->
+
+			test_facilities:display( "Decoding failed: ~ts "
+				"(while skip length: ~B and next chunk: ~w).",
+				[ FailedOutcome, SkipLen, NextChunk ] ),
+
+			decode_telegrams( T, oceanic:get_device_table( NewState ), Count )
+
+	end.
+
+
+
 -spec run() -> no_return().
 run() ->
 
@@ -45,7 +94,7 @@ run() ->
 	% Yet for the decoding of at least some types of packets, we need the EEP to
 	% be configured from the corresponding emitting devices, so:
 	%
-	DeviceTable = oceanic:load_configuration(),
+	InitialDeviceTable = oceanic:load_configuration(),
 
 	% Samples of a few hardcoded telegrams:
 	% (here we gathered only full telegrams, not truncated ones)
@@ -58,7 +107,7 @@ run() ->
 	% ERP1 radio packet of R-ORG d5, hence rorg_1bs (i.e. '1BS (1-byte
 	% Communication)'):
 	%
-	TD5 = <<0,7,7,1,122,213,9,1,149,159,98,0,1,255,255,255,255,70,0,67>>,
+	TD5 = <<85,0,7,7,1,122,213,9,5,5,51,236,0,1,255,255,255,255,46,0,146>>,
 
 	% R-ORG f6, hence rorg_rps, i.e. 'RPS (Repeated Switch Communication)':
 	TF6 = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,83,0,194>>,
@@ -67,35 +116,24 @@ run() ->
 	T2 = <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>,
 	T3 = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>,
 
-	basic_utils:ignore_unused( [ TA5, TD5, TF6, T1, T2, T3 ] ),
+	% Not even a start byte here:
+	TInvalid = <<0,7,7,1,122,213,9,1,149,159,98,0,1,255,255,255,255,70,0,67>>,
+
+	basic_utils:ignore_unused( [ TA5, TD5, TF6, T1, T2, T3, TInvalid ] ),
 
 	% Useful for the debugging of the support of new telegram types:
-	Telegrams = [ TF6 ],
+	Telegrams = [ TA5 ],
 	%Telegrams = [ TA5, TD5, TF6, T1, T2, T3 ],
 
 	test_facilities:display(
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",
 		[ length( Telegrams ) ] ),
 
-	[ begin
+	Count = decode_telegrams( Telegrams, InitialDeviceTable, _Count=0 ),
 
-		test_facilities:display( "~nDecoding test telegram '~w' now:", [ T ] ),
+	test_facilities:display( "Successfully decoded ~B telegram(s).",
+							 [ Count ] ),
 
-		case oceanic:test_decode( T, DeviceTable ) of
-
-			{ decoded, Event, _NextChunk= <<>>, _DroppedState } ->
-				test_facilities:display( "Decoded: ~ts",
-					[ oceanic:device_event_to_string( Event ) ] );
-
-			{ FailedOutcome, SkipLen, NextChunk, _DroppedState } ->
-				test_facilities:display( "Decoding failed: ~ts "
-					"(while skip length: ~B and next chunk: ~w).",
-					[ FailedOutcome, SkipLen, NextChunk ] )
-
-		end
-
-	  end || T <- Telegrams ],
-
-	% Not useful here: oceanic:start( OceanicServerPid ),
+	% Not useful here: oceanic:stop( OceanicServerPid ),
 
 	test_facilities:stop().

@@ -46,6 +46,8 @@
 		  eurid_to_string/1, eurid_to_bin_string/1, eurid_to_bin_string/2,
 		  get_best_naming/2,
 
+		  get_device_table/1,
+
 		  string_to_eep/1] ).
 
 
@@ -108,9 +110,6 @@
 % on RS-232 serial interfaces.
 
 
--type telegram_chunk() :: binary().
-% A telegram chunk is a partial telegram, possibly a full ESP3 packet.
-
 -type telegram() :: binary().
 % A telegram is a raw (non-decoded), full, unitary radio (ERP-level) message
 % (ESP3 packet) received from an Enocean gateway.
@@ -118,6 +117,60 @@
 % E.g. `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
 % `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
 % `<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>'.
+
+
+-type telegram_chunk() :: binary().
+% A telegram chunk is a partial telegram, possibly a full ESP3 packet.
+
+
+-type telegram_data() :: telegram_chunk().
+% The part of a telegram with the base, normalised, stable data, possibly
+% complemented with optional data.
+
+
+-type telegram_data_tail() :: telegram_chunk().
+% A base, normalised, stable data of a telegram once its initial R-ORG byte has
+% already been chopped.
+
+
+-type telegram_opt_data() :: telegram_chunk().
+% The part of a telegram with the optional data that may complement/extend the
+% base data.
+%
+% See also optional_data/0.
+
+
+-type decoded_optional_data() :: { subtelegram_count(), eurid(), maybe( dbm() ),
+								   maybe( security_level() ) }.
+% The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
+% telegrams.
+%
+% See also telegram_opt_data/0.
+
+
+-type subtelegram_count() :: count().
+% A number of subtelegrams.
+
+
+-type dbm() :: integer().
+% The best RSSI value, expressed in decibels (dB) with reference to one
+% milliwatt (mW), of all received subtelegrams.
+%
+% Here a negative value, like -6 dBm.
+%
+% Of course only applies when receiving telegrams (not sending).
+
+
+-type security_level() :: 'not_processed'
+						| 'obsolete' % A deprecated security concept
+						| 'decrypted'
+						| 'authenticated'
+						| 'decrypted_and_authenticated'.
+% The level of security of a received telegram.
+%
+% Only applies when receiving telegrams (when sending, security is selected by
+% link table entries).
+
 
 
 % Since EEP 3.0:
@@ -142,7 +195,10 @@
 				| 'thermo_hygro_mid'
 				| 'thermo_hygro_high'
 				| 'push_button'
+				| 'double_rocker_switch'
 				| 'single_input_contact'
+				| 'single_channel_module'
+				| 'double_channel_module'
 				| atom().
 % The (atom) identifier of an EnOcean Equipment Profile, corresponding to
 % (R-ORG)-(FUNC)-(TYPE) triplet.
@@ -155,6 +211,21 @@
 
 -type eep_string() :: ustring().
 % An EEP defined as a string (e.g. "D5-00-01").
+
+
+-type enum() :: integer().
+% An enumeration specified in the protocol.
+
+
+-type button_designator() ::
+		'button_ai'  % Switch light on / Dim light down / Move blind closed
+	  | 'button_ao'  % Switch light off / Dim light up / Move blind open
+	  | 'button_bi'  % Switch light on / Dim light down / Move blind closed
+	  | 'button_bo'. % Switch light off / Dim light up / Move blind open
+% Designates a button corresponding to a A or B channel.
+%
+% In application style 1, the O position is the top/up one, while the I position
+% is the bottom/down one.
 
 
 -type button_transition() :: 'pressed' | 'released'.
@@ -204,6 +275,10 @@
 %
 % Our EURIDs are defined and stored in uppercase, as they are generally written
 % on devices.
+%
+% A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
+% denotes a broadcast transmission (as opposed to an Addressed Transmission,
+% ADT).
 
 
 -type packet() :: binary().
@@ -218,7 +293,8 @@
 -type esp3_packet() :: binary().
 % An ESP3 data unit, consisting of Header, Data and Optional Data.
 %
-% The semantics of the optional data is defined by the packet type.
+% The semantics of the optional data is defined by the packet type, it can be
+% used to extend an existing ESP3 packet.
 
 
 -type packet_type() :: 'reserved' | 'radio_erp1' | 'response'
@@ -255,15 +331,24 @@
 
 
 -type push_button_event() :: #push_button_event{}.
-% Event sent by EEP F6-01 ("Switch Buttons (with no rockers)").
+% Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
 %
 % Refer to [EEP-spec] p.15 for further details.
+
+
+-type double_rocker_switch_event() :: #double_rocker_switch_event{}.
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1").
+%
+% Refer to [EEP-spec] p.15 for further details.
+
 
 -type rocker_switch_event() :: #rocker_switch_event{}.
 -type position_switch_event() :: #position_switch_event{}.
 
 
 -type device_event() :: push_button_event()
+					  | double_rocker_switch_event()
 					  | rocker_switch_event()
 					  | position_switch_event().
 % Any event notified by an EnOcean device.
@@ -273,9 +358,13 @@
 			   device_name/0, enocean_device/0,
 			   device_table/0,
 			   tty_detection_outcome/0, serial_protocol/0,
-			   telegram_chunk/0, telegram/0,
+
+			   telegram/0, telegram_chunk/0,
+			   telegram_data/0, telegram_data_tail/0,
+			   telegram_opt_data/0, decoded_optional_data/0,
+			   subtelegram_count/0, dbm/0, security_level/0,
 			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
-			   button_transition/0, contact_status/0,
+			   button_designator/0, button_transition/0, contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
 			   decoding_outcome/0,
 
@@ -336,6 +425,12 @@
 % Transmission speed, in bits per second:
 -define( esp2_speed, 9600 ).
 -define( esp3_speed, 57600 ).
+
+
+% Denotes a broadcast transmission (as opposed to an Addressed Transmission,
+% ADT):
+%
+-define( eurid_broadcast, 16#ffffffff ). % That is 4294967295
 
 
 % The next defines could not have been specified, knowing that they are now
@@ -461,6 +556,9 @@
 % - for 4BS: 3 variations exist, some allowing to exchange EEPs
 %
 % See [EEP-gen] starting from p.18 for more details.
+
+% At least most of the time, OptData is ignored.
+
 
 
 % Definition of the overall state of an Oceanic server.
@@ -1130,8 +1228,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 
 % @doc Further checks and decodes a telegram now that its type is known.
--spec examine_full_data( telegram_chunk(), crc(), telegram_chunk(),
-	telegram_chunk(), packet_type(), telegram_chunk(), telegram_chunk(),
+-spec examine_full_data( telegram_chunk(), crc(), telegram_data(),
+	telegram_opt_data(), packet_type(), telegram_chunk(), telegram_chunk(),
 	oceanic_state() ) -> decoding_outcome().
 examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 				   FullTelegramChunk, AnyNextChunk, State ) ->
@@ -1163,10 +1261,10 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 
 
 % @doc Decodes the specified packet, based on the specified data elements.
--spec decode_packet( packet_type(), telegram_chunk(), telegram_chunk(),
+-spec decode_packet( packet_type(), telegram_data(), telegram_opt_data(),
 					 telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_packet( _PacketType=radio_erp1_type,
-			   _Data= <<RorgNum:8, DataRest/binary>>, OptData, AnyNextChunk,
+			   _Data= <<RorgNum:8, DataTail/binary>>, OptData, AnyNextChunk,
 			   State ) ->
 
 	Rorg = oceanic_generated:get_first_for_rorg( RorgNum ),
@@ -1180,13 +1278,13 @@ decode_packet( _PacketType=radio_erp1_type,
 	case Rorg of
 
 		rorg_rps ->
-			decode_rps_packet( DataRest, OptData, AnyNextChunk, State );
+			decode_rps_packet( DataTail, OptData, AnyNextChunk, State );
 
 		rorg_1bs ->
-			decode_1bs_packet( DataRest, OptData, AnyNextChunk, State );
+			decode_1bs_packet( DataTail, OptData, AnyNextChunk, State );
 
 		rorg_4bs->
-			decode_4bs_packet( DataRest, OptData, AnyNextChunk, State );
+			decode_4bs_packet( DataTail, OptData, AnyNextChunk, State );
 
 		_ ->
 			trace_bridge:warning_fmt( "The decoding of ERP1 radio packets "
@@ -1236,21 +1334,24 @@ decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
 % See decode_1bs_packet/3 for more information.
 %
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
--spec decode_rps_packet( telegram_chunk(), telegram_chunk(),
+-spec decode_rps_packet( telegram_data_tail(), telegram_opt_data(),
 		telegram_chunk(), oceanic_state() ) -> decoding_outcome().
-decode_rps_packet( _DataRest= <<DB_0:8, SenderEurid:32, Status:1/binary>>,
-				   OptData, AnyNextChunk,
+decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
+				   Status:1/binary>>, OptData, AnyNextChunk,
 				   State=#oceanic_state{ device_table=DeviceTable } ) ->
 
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
 	case table:lookup_entry( SenderEurid, DeviceTable ) of
 
+		% Device first time seen:
 		key_not_found ->
 
 			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
-			% Device first time seen:
-			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
+			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
 				"for ~ts: device not configured, no EEP known for it.",
 				[ eurid_to_string( SenderEurid ) ] ),
 
@@ -1279,13 +1380,17 @@ decode_rps_packet( _DataRest= <<DB_0:8, SenderEurid:32, Status:1/binary>>,
 			decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status,
 				OptData, AnyNextChunk, Device, State );
 
+		{ value, Device=#enocean_device{ eep=double_rocker_switch } } ->
+			decode_rps_double_rocker_switch_packet( DB_0, SenderEurid, Status,
+				OptData, AnyNextChunk, Device, State );
+
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
 			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
-			trace_bridge:debug_fmt( "Unable to decode a RPS packet "
+			trace_bridge:debug_fmt( "Unable to decode a RPS (F6) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
 				[ get_best_naming( MaybeDeviceName, SenderEurid ),
 				  UnsupportedEepId,
@@ -1310,13 +1415,13 @@ decode_rps_packet( _DataRest= <<DB_0:8, SenderEurid:32, Status:1/binary>>,
 % [EEP-spec] p.15.
 %
 -spec decode_rps_single_input_contact_packet( telegram_chunk(), eurid(),
-		telegram_chunk(), telegram_chunk(), telegram_chunk(),
+		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status, OptData,
-		AnyNextChunk, Device,
+decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
+		Status, OptData, AnyNextChunk, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	ButtonTransition = case ( DB_0 band ?b4 == 0 ) of
+	ButtonTransition = case ( DB_0AsInt band ?b4 == 0 ) of
 
 		true ->
 			pressed;
@@ -1330,7 +1435,7 @@ decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status, OptData,
 
 	% All other bits than b4 shall be 0:
 	cond_utils:assert( oceanic_check_decoding,
-					   ( DB_0 band ( bnot ?b4 ) == 0 ) ),
+					   ( DB_0AsInt band ( bnot ?b4 ) == 0 ) ),
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
@@ -1339,26 +1444,163 @@ decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status, OptData,
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, with DB_0=~w, "
-			"sender is ~ts, PTM switch module is ~ts, message type is ~ts, "
-			"~ts and OptData=~w.",
-			[ DB_0, get_best_naming( MaybeDeviceName, SenderEurid ),
-			  ptm_module_to_string( PTMSwitchModuleType ),
-			  nu_message_type_to_string( NuType ),
-			  repeater_count_to_string( RepCount ), OptData ] ) ),
+	MaybeDecodedOptData = decode_optional_data( OptData ),
 
-	Event = #push_button_event{ eurid=SenderEurid,
+	cond_utils:if_defined( oceanic_debug_decoding,
+			trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, "
+				"with DB_0=~w; sender is ~ts, PTM switch module is ~ts, "
+				"message type is ~ts, ~ts~ts.",
+				[ DB_0, get_best_naming( MaybeDeviceName, SenderEurid ),
+				  ptm_module_to_string( PTMSwitchModuleType ),
+				  nu_message_type_to_string( NuType ),
+				  repeater_count_to_string( RepCount ),
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #push_button_event{ source_eurid=SenderEurid,
 								name=MaybeDeviceName,
 								eep=MaybeEepId,
 								timestamp=Now,
-								status=ButtonTransition },
+								subtelegram_count=MaybeTelCount,
+								destination_eurid=MaybeDestEurid,
+								dbm=MaybeDBm,
+								security_level=MaybeSecLvl,
+								transition=ButtonTransition },
 
 	{ decoded, Event, AnyNextChunk, NewState }.
 
 
 
-% @doc Decodes the RPS status byte, common to all RPS telegrams.
+% @doc Decodes a rorg_rps F6-02-01, "Light and Blind Control -
+% Application Style 1" packet.
+%
+% It contains 2 actions.
+%
+% Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+% [EEP-spec] p.15.
+%
+-spec decode_rps_double_rocker_switch_packet( telegram_chunk(), eurid(),
+		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
+		enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_rps_double_rocker_switch_packet( DB_0, SenderEurid,
+		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
+		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
+		AnyNextChunk, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% Check that T21 = NU = 1; NU=0 could be supported as well:
+	case T21 =:= 1 andalso NU =:= 1 of
+
+		true ->
+			<<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
+
+			FirstButtonDesignator = get_button_designator( R1Enum ),
+
+			ButtonTransition = get_button_transition( EB ),
+
+			SecondButtonDesignator = get_button_designator( R2Enum ),
+
+			IsSecondActionValid = case SA of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+
+			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+				record_known_device_success( Device, DeviceTable ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			MaybeDecodedOptData = decode_optional_data( OptData ),
+
+			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+			Event = #double_rocker_switch_event{
+						source_eurid=SenderEurid,
+						name=MaybeDeviceName,
+						eep=MaybeEepId,
+						timestamp=Now,
+						subtelegram_count=MaybeTelCount,
+						destination_eurid=MaybeDestEurid,
+						dbm=MaybeDBm,
+						security_level=MaybeSecLvl,
+						first_action_button=FirstButtonDesignator,
+						energy_bow=ButtonTransition,
+						second_action_button=SecondButtonDesignator,
+						second_action_valid=IsSecondActionValid },
+
+			{ decoded, Event, AnyNextChunk, NewState };
+
+
+		% Probably N=0 here:
+		false ->
+
+			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
+				"for ~ts and EEP F6-02-01, as T21=~B and NU=~B.",
+				[ eurid_to_string( SenderEurid ), T21, NU ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+
+	end.
+
+
+
+% @doc Returns the button designated by the specified enumeration.
+-spec get_button_designator( enum() ) -> button_designator().
+get_button_designator( _Enum=0 ) ->
+	button_ai; % Button A, bottom
+
+get_button_designator( _Enum=1 ) ->
+	button_ao; % Button A, top
+
+get_button_designator( _Enum=2 ) ->
+	button_bi; % Button B, bottom
+
+get_button_designator( _Enum=3 ) ->
+	button_bo. % Button B, top
+
+
+
+% @doc Returns a textual description of the designated button.
+-spec button_designator_to_string( button_designator() ) -> ustring().
+button_designator_to_string( button_ai ) ->
+	"bottom A button";
+
+button_designator_to_string( button_ao ) ->
+	"top A button";
+
+button_designator_to_string( button_bi ) ->
+	"bottom B button";
+
+button_designator_to_string( button_bo ) ->
+	"top B button".
+
+
+
+% @doc Returns the button transition corresponding to the specified energy bow.
+-spec get_button_transition( enum() ) -> button_transition().
+get_button_transition( _EnergyBow=0 ) ->
+	released;
+
+get_button_transition( _EnergyBow=1 ) ->
+	pressed.
+
+
+
+% @doc Decodes the RPS status byte, common to many RPS telegrams.
 %
 % Refer to [EEP-spec] p.11 for further details.
 %
@@ -1409,6 +1651,7 @@ ptm_module_to_string( _ModType=ptm2xx ) ->
 	"PTM2xx".
 
 
+
 % @doc Returns a textual description of the specified "Nu" Message type, as
 % defined in RPS packets.
 %
@@ -1432,9 +1675,9 @@ nu_message_type_to_string( _Nu=unknown_type_3 ) ->
 % Discussed in [EEP-spec] p.11.
 %
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
--spec decode_1bs_packet( telegram_chunk(), telegram_chunk(),
+-spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
-decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
+decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 		AnyNextChunk, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% 0xd5 is 213.
@@ -1445,7 +1688,7 @@ decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 	%  3. Sender ID (4 bytes)
 	%  4. Status (1 byte)
 	%
-	% DataRest is to contain fields 2, 3 and 4, and thus should be 6 bytes,
+	% DataTail is to contain fields 2, 3 and 4, and thus should be 6 bytes,
 	% e.g. <<9,5,5,51,236,0>>.
 	%
 	% As for OptData, an example could be <<1,255,255,255,255,45,0>>.
@@ -1472,21 +1715,32 @@ decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
-			"with DataRest=~w (size: ~B bytes; DB_0=~w, "
+			"with DataTail=~w (size: ~B bytes; DB_0=~w, "
 			"so learn activated is ~ts, and contact is ~ts), sender is ~ts, "
-			"status is ~w) and OptData=~w (size : ~B bytes).",
-			[ DataRest, size( DataRest ), DB_0, LearnActivated, ContactStatus,
-			  get_best_naming( MaybeDeviceName, SenderEurid ), Status, OptData,
-			  size( OptData ) ] ) ),
+			"status is ~w~ts.",
+			[ DataTail, size( DataTail ), DB_0, LearnActivated, ContactStatus,
+			  get_best_naming( MaybeDeviceName, SenderEurid ), Status,
+			  maybe_optional_data_to_string( MaybeDecodedOptData,
+											 OptData ) ] ) ),
 
-	Event = #single_input_contact_event{ eurid=SenderEurid,
-										 name=MaybeDeviceName,
-										 eep=MaybeEepId,
-										 timestamp=Now,
-										 learn_activated=LearnActivated,
-										 contact=ContactStatus },
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #single_input_contact_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		learn_activated=LearnActivated,
+		contact=ContactStatus },
 
 	{ decoded, Event, AnyNextChunk, NewState }.
 
@@ -1494,67 +1748,164 @@ decode_1bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 % @doc Decodes a rorg_4bs (A5) packet.
 %
-% Discussed in [EEP-spec] p.10.
+% Discussed in [EEP-spec] p.12.
 %
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
--spec decode_4bs_packet( telegram_chunk(), telegram_chunk(),
+-spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
-decode_4bs_packet( DataRest= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
+decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
+		SenderEurid:32, _StatusFirstHalf:4, RC:4>>, OptData,
 		AnyNextChunk, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% 0xa5 is 165.
 
-	% Apparently, at least in EEP 2.1, RPS/1BS packets are made of:
-	%  1. RORG (1 byte)
-	%  2. Data: DB0 (1 byte)
-	%  3. Sender ID (4 bytes)
-	%  4. Status (1 byte)
-	%
-	% DataRest is to contain fields 2, 3 and 4, and thus should be 6 bytes,
-	% e.g. <<9,5,5,51,236,0>>.
-	%
-	% As for OptData, an example could be <<1,255,255,255,255,45,0>>.
-
-	% For DB_0 for example, 8 bits:
-	%  * bit name:   B7 - B6 - B5 - B4 - B3 - B2 - B1 - B0
-	%  * bit offset:  0 -  1 -  2 -  3 -  4 -  5 -  6 -  7
-
-	% DB_0.3 i.e. B3:
-	LearnActivated = ( DB_0 band ?b3 == 0 ),
-
-	ContactStatus = case DB_0 band ?b0 == 0 of
-
-		true ->
-			open;
-
-		false ->
-			closed
-
-	end,
-
-	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
-		record_device_success( SenderEurid, DeviceTable ),
-
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
-			"with DataRest=~w (size: ~B bytes; DB_0=~w, "
-			"so learn activated is ~ts, and contact is ~ts), sender is ~ts, "
-			"status is ~w) and OptData=~w (size : ~B bytes).",
-			[ DataRest, size( DataRest ), DB_0, LearnActivated, ContactStatus,
-			  get_best_naming( MaybeDeviceName, SenderEurid ), Status, OptData,
-			  size( OptData ) ] ) ),
+		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS packet, "
+			"with DataTail=~w (size: ~B bytes; "
+			"DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), sender is ~ts, ~ts",
+			[ DataTail, size( DataTail ), DB_3, DB_2, DB_1, DB_0,
+			  eurid_to_string( SenderEurid ), RC,
+			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			] ) ),
+
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
+	case table:lookup_entry( SenderEurid, DeviceTable ) of
+
+		key_not_found ->
+
+			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device first time seen:
+			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
+				"for ~ts: device not configured, no EEP known for it.",
+				[ eurid_to_string( SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
 
 
-	Event = #single_input_contact_event{ eurid=SenderEurid,
-										 name=MaybeDeviceName,
-										 eep=MaybeEepId,
-										 timestamp=Now,
-										 learn_activated=LearnActivated,
-										 contact=ContactStatus },
+		% Knowing the actual EEP is needed in order to decode:
+		{ value, _Device=#enocean_device{ eep=undefined } } ->
 
-	{ decoded, Event, AnyNextChunk, NewState }.
+			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5) packet "
+				"for ~ts: no EEP known for it.",
+				[ get_best_naming( MaybeDeviceName, SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+
+
+		{ value, Device=#enocean_device{ eep=thermo_hygro_low } } ->
+			decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
+				SenderEurid, OptData, AnyNextChunk, Device, State );
+
+
+		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5F6) packet "
+				"for ~ts: EEP ~ts (~ts) not supported.",
+				[ get_best_naming( MaybeDeviceName, SenderEurid ),
+				  UnsupportedEepId,
+				  oceanic_generated:get_second_for_eep_strings(
+					UnsupportedEepId ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+
+   end.
+
+
+
+decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
+		SenderEurid, OptData, AnyNextChunk, Device, State ) ->
+
+	basic_utils:ignore_unused( [ DB_3, DB_2, DB_1, DB_0,
+		SenderEurid, OptData, AnyNextChunk, Device, State ] ),
+
+	fixme.
+
+
+
+% @doc Decodes the specified optional data.
+%
+% Refer to [ESP3] p.18 for its description.
+%
+% The CRC for the overall full data (base+optional) is expected to have been
+% checked beforehand.
+%
+-spec decode_optional_data( telegram_opt_data() ) ->
+										maybe( decoded_optional_data() ).
+decode_optional_data( _OptData= <<SubTelNum:8, DestinationEurid:32, DBm:8,
+								  SecurityLevel:8>> ) ->
+	{ SubTelNum, DestinationEurid, decode_maybe_dbm( DBm ),
+	  decode_maybe_security_level( SecurityLevel ) };
+
+decode_optional_data( Other ) ->
+	trace_bridge:warning_fmt( "Unable to decode following optional data "
+		"(of size ~B bytes): ~p.", [ size( Other ), Other ] ),
+	undefined.
+
+
+
+% @doc Decodes specified byte as a dBm measurement.
+-spec decode_maybe_dbm( uint8() ) -> maybe( dbm() ).
+decode_maybe_dbm( 16#ff ) ->
+	% Should be a sending:
+	undefined;
+
+decode_maybe_dbm( V ) ->
+	-V.
+
+
+% @doc Decodes specified byte as a security level.
+-spec decode_maybe_security_level( uint8() ) -> maybe( security_level() ).
+decode_maybe_security_level( 0 ) ->
+	not_processed;
+
+decode_maybe_security_level( 1 ) ->
+	obsolete;
+
+decode_maybe_security_level( 2 ) ->
+	decrypted;
+
+decode_maybe_security_level( 3 ) ->
+	authenticated;
+
+decode_maybe_security_level( 4 ) ->
+	decrypted_and_authenticated;
+
+decode_maybe_security_level( Other ) ->
+	trace_bridge:warning_fmt( "Invalid telegram security level: ~B",
+							  [ Other ] ),
+	undefined.
+
+
+
+% @doc Helper to resolve correctly elements of optional data.
+-spec resolve_maybe_decoded_data( maybe( decoded_optional_data() ) ) ->
+		{ maybe( subtelegram_count() ), maybe( eurid() ), maybe( dbm() ),
+		  maybe( security_level() ) }.
+resolve_maybe_decoded_data( _MaybeDecodedOptData=undefined ) ->
+	{ undefined, undefined, undefined, undefined };
+
+resolve_maybe_decoded_data( DecodedOptData ) ->
+	DecodedOptData.
 
 
 
@@ -1718,7 +2069,7 @@ stop( SrvPid ) ->
 % @doc Returns the Oceanic identifier corresponding to the specified packet
 % type.
 %
--spec get_packet_type( integer() ) -> maybe( packet_type() ).
+-spec get_packet_type( enum() ) -> maybe( packet_type() ).
 get_packet_type( PacketTypeNum ) ->
 	% Topic defined by the module that Oceanic generates:
 	oceanic_generated:get_first_for_packet_type( PacketTypeNum ).
@@ -1740,6 +2091,9 @@ get_server_pid() ->
 
 % @doc Returns a raw, (plain) textual description of the specified EURID.
 -spec eurid_to_string( eurid() ) -> ustring().
+eurid_to_string( _Eurid=?eurid_broadcast ) ->
+	"the address for broadcast transmission";
+
 eurid_to_string( Eurid ) ->
 
 	% We want to return for example a correct "002ee196", not an
@@ -1766,6 +2120,9 @@ eurid_to_bin_string( Eurid ) ->
 % translated to a user-friendly device name if any is known for that device.
 %
 -spec eurid_to_bin_string( eurid(), oceanic_state() ) -> bin_string().
+eurid_to_bin_string( Eurid=?eurid_broadcast, _OceanicState ) ->
+	eurid_to_bin_string( Eurid );
+
 eurid_to_bin_string( Eurid, #oceanic_state{ device_table=DeviceTable } ) ->
 
 	case table:get_value_with_default( Eurid, _Def=undefined, DeviceTable ) of
@@ -1827,8 +2184,73 @@ string_to_eep( Str ) ->
 
 
 
+% @doc Returns a textual description of the specified decoded optional data.
+-spec optional_data_to_string( decoded_optional_data() ) -> ustring().
+optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
+									MaybeSecurityLevel } ) ->
+
+	DBmstr = case MaybeDBm of
+
+		undefined ->
+			"";
+
+		DBm ->
+			text_utils:format( ", best RSSI value being -~BdBm", [ DBm ] )
+
+	end,
+
+	SecStr = case MaybeSecurityLevel of
+
+		undefined ->
+			"";
+
+		SecLevel ->
+			text_utils:format( "; security level: ~ts",
+							   [ security_level_to_string( SecLevel ) ] )
+
+	end,
+
+	% Send: 3 / receive: 0
+	text_utils:format( ", with ~B subtelegrams, targeted to ~ts~ts~ts",
+		[ SubTelNum, eurid_to_string( SubTelNum ),
+		eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
+
+
+
+% @doc Returns a textual description of the specified decoded maybe-optional
+% data, otherwise from the corresponding raw data.
+%
+-spec maybe_optional_data_to_string( maybe( decoded_optional_data() ),
+									 telegram_opt_data() ) -> ustring().
+maybe_optional_data_to_string( _MaybeDecodedOptData=undefined, OptData ) ->
+	text_utils:format( ", with optional data of ~B bytes that could not "
+		"be decoded: ~w", [ size( OptData ), OptData ] );
+
+maybe_optional_data_to_string( DecodedOptData, _OptData ) ->
+	optional_data_to_string( DecodedOptData ).
+
+
+
+% @doc Returns a textual description of the specified security level.
+-spec security_level_to_string( security_level() ) -> ustring().
+security_level_to_string( not_processed ) ->
+	"telegram not processed";
+security_level_to_string( obsolete ) ->
+	"obsolete";
+
+security_level_to_string( decrypted ) ->
+	"decrypted";
+
+security_level_to_string( authenticated ) ->
+	"authenticated";
+
+security_level_to_string( decrypted_and_authenticated ) ->
+	"decrypted and authenticated".
+
+
+
 % @doc Returns a textual description of the specified repeater count.
--spec repeater_count_to_string( integer() ) -> ustring().
+-spec repeater_count_to_string( count() ) -> ustring().
 repeater_count_to_string( _RC=0 ) ->
 	"with no repeating done";
 
@@ -1841,24 +2263,54 @@ repeater_count_to_string( RC ) ->
 
 
 % @doc Returns a textual description of the specified device event.
+% FIXME ADD LACKING FIELDS
 -spec device_event_to_string( device_event() ) -> ustring().
 device_event_to_string( #push_button_event{
-		eurid=Eurid,
+		source_eurid=Eurid,
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
-		status=ButtonStatus } ) ->
+		transition=ButtonTransition } ) ->
 
 	text_utils:format( "push-button device ~ts has been ~ts at ~ts~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
-		  get_button_transition_description( ButtonStatus ),
+		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
 
 
+device_event_to_string( #double_rocker_switch_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		first_action_button=FirstButtonDesignator,
+		energy_bow=ButtonTransition,
+		second_action_button=SecondButtonDesignator,
+		second_action_valid=IsValid } ) ->
+
+	SecondStr = case IsValid of
+
+		true ->
+			text_utils:format( " and its ~ts",
+				[ button_designator_to_string( SecondButtonDesignator ) ] );
+
+		false ->
+			""
+
+	end,
+
+	text_utils:format( "double-rocker device ~ts has its ~ts~ts ~ts at ~ts; "
+		"~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  button_designator_to_string( FirstButtonDesignator ), SecondStr,
+		  get_button_transition_description( ButtonTransition ),
+		  time_utils:timestamp_to_string( Timestamp ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
 
 device_event_to_string( #single_input_contact_event{
-		eurid=Eurid,
+		source_eurid=Eurid,
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
@@ -1884,7 +2336,7 @@ get_name_description( _MaybeName=undefined, Eurid ) ->
 	text_utils:format( "of EURID ~ts", [ eurid_to_string( Eurid ) ] );
 
 get_name_description( Name, Eurid ) ->
-	text_utils:format( "named '~ts' (whose EURID is ~ts)",
+	text_utils:format( "'~ts' (whose EURID is ~ts)",
 					   [ Name, eurid_to_string( Eurid ) ] ).
 
 
@@ -1919,6 +2371,7 @@ get_learn_description( _LearnActivated=false ) ->
 
 
 
+
 % @doc Returns a textual description of the specified EEP (if any).
 -spec get_eep_description( maybe( eep_id() ) ) -> ustring().
 get_eep_description( _MaybeEepId=undefined ) ->
@@ -1939,6 +2392,15 @@ get_eep_description( _MaybeEepId=undefined, DefaultDesc ) ->
 
 get_eep_description( EepId, _DefaultDesc ) ->
 	get_eep_description( EepId ).
+
+
+
+% @doc Returns the device table of the specified Oceanic state; only useful for
+% tests.
+%
+-spec get_device_table( oceanic_state() ) -> device_table().
+get_device_table( #oceanic_state{ device_table=DevTable } ) ->
+	DevTable.
 
 
 
@@ -2007,7 +2469,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 							   [ eurid_to_bin_string( Eurid ) ] );
 
 		Name ->
-			text_utils:format( "device named '~ts' (EURID: ~ts)",
+			text_utils:format( "device '~ts' (EURID: ~ts)",
 							   [ Name, eurid_to_bin_string( Eurid ) ] )
 
 	end,
@@ -2030,57 +2492,71 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 	end,
 
-	SeenStr = case MaybeFirstTimestamp of
+	{ SeenStr, TeleStr, ErrStr } = case MaybeFirstTimestamp of
 
 		undefined ->
-			"never seen by this server";
+			{ "never seen by this server", "", "" };
 
 		FirstTimestamp ->
-			case MaybeLastTimestamp of
+			SeenCountStr = case MaybeLastTimestamp of
 
 				FirstTimestamp ->
-					text_utils:format( "seen only once by this server, on ~ts",
-						[ text_utils:timestamp_to_string( FirstTimestamp ) ] );
+					text_utils:format( "seen only once by this server, "
+						"on ~ts; ",
+						[ time_utils:timestamp_to_string( FirstTimestamp ) ] );
 
 				LastTimestamp ->
 					text_utils:format( "seen firstly by this server on ~ts, "
-						"and lastly on ~ts",
-						[ text_utils:timestamp_to_string( FirstTimestamp ),
-						  text_utils:timestamp_to_string( LastTimestamp ) ] )
+						"and lastly on ~ts; ",
+						[ time_utils:timestamp_to_string( FirstTimestamp ),
+						  time_utils:timestamp_to_string( LastTimestamp ) ] )
 
-			end
+			end,
 
-	end,
+			TeleCountStr = case TeleCount of
 
-	TeleStr = case TeleCount of
+				0 ->
+					"none of its telegrams could be decoded";
 
-		0 ->
-			"none of its telegrams could be decoded";
+				1 ->
+					"a single of its telegrams could be decoded";
 
-		1 ->
-			"a single of its telegrams could be decoded";
+				_ ->
+					text_utils:format( "~B of its telegrams could be decoded",
+									   [ TeleCount ] )
 
-		_ ->
-			text_utils:format( "~B of its telegrams could be decoded",
-							   [ TeleCount ] )
+			end,
 
-	end,
+			ErrCountStr = case ErrCount of
 
-	ErrStr = case ErrCount of
+				0 ->
+					% At least usually, no decoding attempted, no possible
+					% decoding error:
+					%
+					case TeleCount of
 
-		0 ->
-			"no telegram decoding failed";
+						0 ->
+							"";
 
-		1 ->
-			"a single telegram decoding failed";
+						_ ->
+							" and no telegram decoding failed"
+					end;
 
-		_ ->
-			text_utils:format( "~B decodings failed", [ ErrCount ] )
+				1 ->
+					" and a single telegram decoding failed";
 
-	end,
+				_ ->
+					text_utils:format( " and ~B decodings failed",
+									   [ ErrCount ] )
 
-	text_utils:format( "~ts respecting ~ts; it has been ~ts; ~ts and ~ts",
-					   [ NameStr, EepDescStr, SeenStr, TeleStr, ErrStr ] ).
+			end,
+
+			{ SeenCountStr, TeleCountStr, ErrCountStr }
+
+		end,
+
+		text_utils:format( "~ts applying ~ts; it has been ~ts~ts~ts",
+				[ NameStr, EepDescStr, SeenStr, TeleStr, ErrStr ] ).
 
 
 
@@ -2104,7 +2580,7 @@ compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
 
 
 % @doc Returns the array used to code/decode CRC.
--spec get_crc_array() -> tuple().
+-spec get_crc_array() -> type_utils:tuple( type_utils:uint8() ).
 get_crc_array() ->
 
 	% From https://gist.github.com/hypebeast/3833758:
