@@ -249,6 +249,11 @@
 % A number of repetitions, typically in a RPS packet.
 
 
+-type temperature_range() :: 'low'   % 0°C to +40°C (A5-04-01)
+						   | 'high'. % -20°C to +60°C (A5-04-02)
+% The range of a temperature sensor.
+
+
 -type decoding_outcome() ::
 
 	{ 'not_reached'   % End of packet still ahead
@@ -319,7 +324,7 @@
 
 
 %-type read_outcome() ::
-%		{ ReadEvent :: device_event(), AnyNextChunk :: telegram_chunk() }.
+%    { ReadEvent :: device_event(), AnyNextChunk :: telegram_chunk() }.
 % Outcome of a (blocking) request of telegram reading.
 %
 % Exactly one event will be read (any remainding chunk returned), possibly
@@ -330,10 +335,33 @@
 
 
 
+% Event types still ordered by increasing EEP:
+
+
+-type thermo_hygro_event() :: #thermo_hygro_event{}.
+% Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any
+% range).
+%
+% Refer to [EEP-spec] p.35 for further details.
+
+
+
+-type single_input_contact_event() :: #single_input_contact_event{}.
+% Event sent by EEP D5-00-01: Single Input Contact.
+%
+% D5-00 corresponds to Contacts and Switches.
+%
+% Refer to [EEP-spec] p.27 for further details.
+
+
+
 -type push_button_event() :: #push_button_event{}.
 % Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
 %
 % Refer to [EEP-spec] p.15 for further details.
+
+
+%-type rocker_switch_event() :: #rocker_switch_event{}.
 
 
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
@@ -343,14 +371,14 @@
 % Refer to [EEP-spec] p.15 for further details.
 
 
--type rocker_switch_event() :: #rocker_switch_event{}.
--type position_switch_event() :: #position_switch_event{}.
+%-type position_switch_event() :: #position_switch_event{}.
 
 
--type device_event() :: push_button_event()
-					  | double_rocker_switch_event()
-					  | rocker_switch_event()
-					  | position_switch_event().
+
+-type device_event() :: thermo_hygro_event()
+					  | single_input_contact_event()
+					  | push_button_event()
+					  | double_rocker_switch_event().
 % Any event notified by an EnOcean device.
 
 
@@ -366,13 +394,15 @@
 			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
 			   button_designator/0, button_transition/0, contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
+			   temperature_range/0,
 			   decoding_outcome/0,
 
 			   eurid/0,
 			   packet/0, crc/0, esp3_packet/0, packet_type/0,
 
-			   push_button_event/0, rocker_switch_event/0,
-			   position_switch_event/0,
+			   thermo_hygro_event/0, single_input_contact_event/0,
+			   push_button_event/0, double_rocker_switch_event/0,
+
 			   device_event/0 ]).
 
 
@@ -557,8 +587,6 @@
 %
 % See [EEP-gen] starting from p.18 for more details.
 
-% At least most of the time, OptData is ignored.
-
 
 
 % Definition of the overall state of an Oceanic server.
@@ -587,7 +615,6 @@
 
 -type any_file_path() :: file_utils:any_file_path().
 -type device_path() :: file_utils:device_path().
-
 -type entry_type() :: file_utils:entry_type().
 
 -type ustring() :: text_utils:ustring().
@@ -598,7 +625,11 @@
 
 -type timestamp() :: time_utils:timestamp().
 
+-type percent() :: math_utils:percent().
+
 -type registration_name() :: naming_utils:registration_name().
+
+-type celsius() :: unit_utils:celsius().
 
 
 %-type time_out() :: time_utils:time_out().
@@ -1304,7 +1335,7 @@ decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
 	trace_bridge:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
 							  [ PacketType ] ),
 
-	% Not even an EURID to track.
+	% Not even an EURID to track, no real need to go further.
 
 	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
 
@@ -1348,6 +1379,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 		% Device first time seen:
 		key_not_found ->
 
+			% Not trying to decode optional data then.
+
 			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
@@ -1362,6 +1395,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 		% Knowing the actual EEP is needed in order to decode:
 		{ value, _Device=#enocean_device{ eep=undefined } } ->
+
+			% Not trying to decode optional data then.
 
 			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
@@ -1385,6 +1420,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 				OptData, AnyNextChunk, Device, State );
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			% Not trying to decode optional data then.
 
 			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
@@ -1421,7 +1458,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 		Status, OptData, AnyNextChunk, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	ButtonTransition = case ( DB_0AsInt band ?b4 == 0 ) of
+	ButtonTransition = case DB_0AsInt band ?b4 =:= 0 of
 
 		true ->
 			pressed;
@@ -1435,7 +1472,8 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	% All other bits than b4 shall be 0:
 	cond_utils:assert( oceanic_check_decoding,
-					   ( DB_0AsInt band ( bnot ?b4 ) == 0 ) ),
+					   % Superfluous parentheses:
+					   DB_0AsInt band ( bnot ?b4 ) =:= 0 ),
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
@@ -1447,15 +1485,15 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-			trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, "
-				"with DB_0=~w; sender is ~ts, PTM switch module is ~ts, "
-				"message type is ~ts, ~ts~ts.",
-				[ DB_0, get_best_naming( MaybeDeviceName, SenderEurid ),
-				  ptm_module_to_string( PTMSwitchModuleType ),
-				  nu_message_type_to_string( NuType ),
-				  repeater_count_to_string( RepCount ),
-				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-				] ) ),
+		trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, "
+			"with DB_0=~w; sender is ~ts, PTM switch module is ~ts, "
+			"message type is ~ts, ~ts~ts.",
+			[ DB_0, get_best_naming( MaybeDeviceName, SenderEurid ),
+			  ptm_module_to_string( PTMSwitchModuleType ),
+			  nu_message_type_to_string( NuType ),
+			  repeater_count_to_string( RepCount ),
+			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -1672,7 +1710,7 @@ nu_message_type_to_string( _Nu=unknown_type_3 ) ->
 
 % @doc Decodes a rorg_1bs (D5) packet.
 %
-% Discussed in [EEP-spec] p.11.
+% Discussed in [EEP-spec] p.27.
 %
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 -spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
@@ -1698,9 +1736,9 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 	%  * bit offset:  0 -  1 -  2 -  3 -  4 -  5 -  6 -  7
 
 	% DB_0.3 i.e. B3:
-	LearnActivated = ( DB_0 band ?b3 == 0 ),
+	LearnActivated = DB_0 band ?b3 =:= 0,
 
-	ContactStatus = case DB_0 band ?b0 == 0 of
+	ContactStatus = case DB_0 band ?b0 =:= 0 of
 
 		true ->
 			open;
@@ -1719,10 +1757,10 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
-			"with DataTail=~w (size: ~B bytes; DB_0=~w, "
-			"so learn activated is ~ts, and contact is ~ts), sender is ~ts, "
-			"status is ~w~ts.",
-			[ DataTail, size( DataTail ), DB_0, LearnActivated, ContactStatus,
+			"with DataTail=~w (size: ~B bytes; DB_0=~w, ~ts;"
+			"contact is ~ts), sender is ~ts, status is ~w~ts.",
+			[ DataTail, size( DataTail ), DB_0,
+			  learn_to_string( LearnActivated ), ContactStatus,
 			  get_best_naming( MaybeDeviceName, SenderEurid ), Status,
 			  maybe_optional_data_to_string( MaybeDecodedOptData,
 											 OptData ) ] ) ),
@@ -1764,9 +1802,9 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS packet, "
 			"with DataTail=~w (size: ~B bytes; "
-			"DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), sender is ~ts, ~ts",
+			"DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), sender is ~ts, ~ts~ts",
 			[ DataTail, size( DataTail ), DB_3, DB_2, DB_1, DB_0,
-			  eurid_to_string( SenderEurid ), RC,
+			  eurid_to_string( SenderEurid ), repeater_count_to_string( RC ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 			] ) ),
 
@@ -1832,13 +1870,108 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 
 
-decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
-		SenderEurid, OptData, AnyNextChunk, Device, State ) ->
+% @doc Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
+% "Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100%
+% (01).
+%
+% Refer to [EEP-spec] p.35.
+%
+-spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
+		eurid(), telegram_opt_data(), telegram_chunk(), enocean_device(),
+		oceanic_state() ) -> decoding_outcome().
+decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
+		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, AnyNextChunk,
+		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	basic_utils:ignore_unused( [ DB_3, DB_2, DB_1, DB_0,
-		SenderEurid, OptData, AnyNextChunk, Device, State ] ),
+	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110101 =:= 0 ),
 
-	fixme.
+	RelativeHumidity = round( ScaledHumidity / 250.0 * 100 ),
+
+	MaybeTemperature = case DB_0 band ?b1 =:= 0 of
+
+		true ->
+			undefined;
+
+		false ->
+			round( ScaledTemperature / 250.0 * 40 )
+
+	end,
+
+	LearnActivated = DB_0 band ?b3 =:= 0,
+
+	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		begin
+
+			TempStr = case MaybeTemperature of
+
+				undefined ->
+					"(no temperature available)";
+
+				Temp ->
+					text_utils:format( "and a ~ts",
+									   [ temperature_to_string( Temp ) ] )
+
+			end,
+
+			trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermo_hygro_low "
+				"packet, reporting a ~ts ~ts; ~ts; sender is ~ts, "
+				"~ts.",
+				[ relative_humidity_to_string( RelativeHumidity ), TempStr,
+				  learn_to_string( LearnActivated ),
+				  get_best_naming( MaybeDeviceName, SenderEurid ),
+				  maybe_optional_data_to_string( MaybeDecodedOptData,
+												 OptData ) ] )
+		end ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #thermo_hygro_event{ source_eurid=SenderEurid,
+								 name=MaybeDeviceName,
+								 eep=MaybeEepId,
+								 timestamp=Now,
+								 subtelegram_count=MaybeTelCount,
+								 destination_eurid=MaybeDestEurid,
+								 dbm=MaybeDBm,
+								 security_level=MaybeSecLvl,
+								 relative_humidity=RelativeHumidity,
+								 temperature=MaybeTemperature,
+
+								 % As "A5-04-01":
+								 temperature_range=low,
+
+								 learn_activated=LearnActivated },
+
+	{ decoded, Event, AnyNextChunk, NewState }.
+
+
+% @doc Returns a textual description of the specified temperature.
+-spec temperature_to_string( celsius() ) -> ustring().
+temperature_to_string( Temp ) ->
+	text_utils:format( "~B °C", [ Temp ] ).
+
+
+% @doc Returns a textual description of the specified relative humidity.
+-spec relative_humidity_to_string( percent() ) -> ustring().
+relative_humidity_to_string( HPerCent ) ->
+	text_utils:format( "relative humidity of ~B%", [ HPerCent ] ).
+
+
+
+% @doc Returns a textual description of the specified learning status.
+-spec learn_to_string( boolean() ) -> ustring().
+learn_to_string( _LearnActivated=true ) ->
+	", with device learning activated";
+
+learn_to_string( _LearnActivated=false ) ->
+	" (no device learning activated)".
 
 
 
@@ -2183,11 +2316,18 @@ string_to_eep( Str ) ->
 	end.
 
 
-
-% @doc Returns a textual description of the specified decoded optional data.
 -spec optional_data_to_string( decoded_optional_data() ) -> ustring().
 optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 									MaybeSecurityLevel } ) ->
+	optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
+							 MaybeSecurityLevel ).
+
+
+% @doc Returns a textual description of the specified decoded optional data.
+-spec optional_data_to_string( subtelegram_count(), eurid(), maybe( dbm() ),
+							   maybe( security_level() ) ) -> ustring().
+optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
+						 MaybeSecurityLevel ) ->
 
 	DBmstr = case MaybeDBm of
 
@@ -2195,7 +2335,7 @@ optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 			"";
 
 		DBm ->
-			text_utils:format( ", best RSSI value being -~BdBm", [ DBm ] )
+			text_utils:format( ", best RSSI value being ~BdBm", [ DBm ] )
 
 	end,
 
@@ -2210,10 +2350,22 @@ optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 
 	end,
 
-	% Send: 3 / receive: 0
-	text_utils:format( ", with ~B subtelegrams, targeted to ~ts~ts~ts",
-		[ SubTelNum, eurid_to_string( SubTelNum ),
-		eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
+	% "Send: 3 / receive: 0", yet often seen as 1:
+	SubTelStr = case SubTelNum of
+
+		0 ->
+			"no subtelegram";
+
+		1 ->
+			"a single subtelegram";
+
+		_ ->
+			text_utils:format( "~B subtelegrams", [ SubTelNum ] )
+
+	end,
+
+	text_utils:format( ", with ~ts, targeted to ~ts~ts~ts",
+		[ SubTelStr, eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
 
 
 
@@ -2263,20 +2415,87 @@ repeater_count_to_string( RC ) ->
 
 
 % @doc Returns a textual description of the specified device event.
-% FIXME ADD LACKING FIELDS
 -spec device_event_to_string( device_event() ) -> ustring().
+device_event_to_string( #thermo_hygro_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		relative_humidity=RelativeHumidity,
+		temperature=MaybeTemperature,
+		temperature_range=TempRange,
+		learn_activated=LearnActivated } ) ->
+
+	TempStr = case MaybeTemperature of
+
+		undefined ->
+			"(no temperature available)";
+
+		Temp ->
+			text_utils:format( "and a ~ts (sensitivity range: ~ts)",
+				[ temperature_to_string( Temp ), TempRange ] )
+
+	end,
+
+	text_utils:format( "thermo-hygro sensor device ~ts reports at ~ts "
+		"~ts; ~ts; ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  time_utils:timestamp_to_string( Timestamp ),
+		  relative_humidity_to_string( RelativeHumidity ), TempStr,
+
+		  learn_to_string( LearnActivated ),
+
+		  % Multiple A5-04-01-like candidates:
+		  get_eep_description( MaybeEepId ),
+
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ) ] );
+
+
+device_event_to_string( #single_input_contact_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		learn_activated=LearnActivated,
+		contact=ContactStatus } ) ->
+
+	text_utils:format( "single-contact device ~ts has been ~ts at ~ts~ts; ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  get_contact_status_description( ContactStatus ),
+		  time_utils:timestamp_to_string( Timestamp ),
+		  learn_to_string( LearnActivated ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ),
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ) ] );
+
+
 device_event_to_string( #push_button_event{
 		source_eurid=Eurid,
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
 		transition=ButtonTransition } ) ->
-
-	text_utils:format( "push-button device ~ts has been ~ts at ~ts~ts; ~ts",
+	text_utils:format(
+		"push-button device ~ts has been ~ts at ~ts~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ),
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ) ] );
 
 
 device_event_to_string( #double_rocker_switch_event{
@@ -2284,6 +2503,10 @@ device_event_to_string( #double_rocker_switch_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
 		first_action_button=FirstButtonDesignator,
 		energy_bow=ButtonTransition,
 		second_action_button=SecondButtonDesignator,
@@ -2306,23 +2529,10 @@ device_event_to_string( #double_rocker_switch_event{
 		  button_designator_to_string( FirstButtonDesignator ), SecondStr,
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ),
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ) ] );
 
-
-device_event_to_string( #single_input_contact_event{
-		source_eurid=Eurid,
-		name=MaybeName,
-		eep=MaybeEepId,
-		timestamp=Timestamp,
-		learn_activated=LearnActivated,
-		contact=ContactStatus } ) ->
-
-	text_utils:format( "single-contact device ~ts has been ~ts at ~ts~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
-		  get_contact_status_description( ContactStatus ),
-		  time_utils:timestamp_to_string( Timestamp ),
-		  get_learn_description( LearnActivated ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
 
 device_event_to_string( OtherEvent ) ->
 	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
@@ -2358,18 +2568,6 @@ get_contact_status_description( _ContactStatus=open ) ->
 
 get_contact_status_description( _ContactStatus=closed ) ->
 	"closed".
-
-
-
-% @doc Returns a textual description of the specified learn activation status.
--spec get_learn_description( boolean() ) -> ustring().
-get_learn_description( _LearnActivated=true ) ->
-	", whereas its learn button was pressed";
-
-get_learn_description( _LearnActivated=false ) ->
-	" (whereas its learn button was not pressed)".
-
-
 
 
 % @doc Returns a textual description of the specified EEP (if any).
@@ -2573,6 +2771,7 @@ compute_crc( _Bin= <<>>, _CRCArray, Checksum ) ->
 	Checksum;
 
 compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
+	% Superfluous parentheses:
 	Index = ( Checksum band 16#ff ) bxor ( HByte band 16#ff ),
 	NewChecksum = element( Index + 1, CRCArray ),
 	compute_crc( T, CRCArray, NewChecksum ).

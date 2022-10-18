@@ -53,7 +53,7 @@
 
 
 
-% Definition of device events.
+% Definition of device events, preferably ordered by increasing EEP.
 
 
 % All of them start with the same first four fields:
@@ -87,6 +87,107 @@
 %
 % - the level of security (if any) of the received telegram:
 %           security_level :: maybe( oceanic:security_level() )
+
+
+
+% Event sent by EEP A5-04-*: "Temperature and Humidity Sensor"
+%
+% Refer to [EEP-spec] p.35 for further details.
+%
+-record( thermo_hygro_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: maybe( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: maybe( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: maybe( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	% The percentage of relative humidity reported:
+	relative_humidity :: math_utils:percent(),
+
+	temperature :: maybe( unit_utils:celsius() ),
+
+	% The range of the temperature sensor:
+	temperature_range :: temperature_range(),
+
+	% Tells whether the learn button has been pressed:
+	learn_activated :: boolean() } ).
+
+
+
+% Event sent by EEP D5-00-01: Single Input Contact.
+%
+% D5-00 corresponds to Contacts and Switches.
+%
+% Refer to [EEP-spec] p.27 for further details.
+%
+-record( single_input_contact_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: maybe( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: maybe( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: maybe( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	% Tells whether the learn button has been pressed:
+	learn_activated :: boolean(),
+
+	% Tells whether the contact is open or closed:
+	contact :: oceanic:contact_status() } ).
 
 
 
@@ -131,6 +232,7 @@
 
 	% Whether this switch button is pressed or released:
 	transition :: oceanic:button_transition() } ).
+
 
 
 
@@ -192,131 +294,3 @@
 
 	% Whether there is a second action reported:
 	second_action_valid :: boolean() } ).
-
-
-
--record( rocker_switch_event, {
-
-	% Section common to all events:
-
-	% The EnOcean Unique Radio Identifier of the emitting device:
-	source_eurid :: oceanic:eurid(),
-
-	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
-
-	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
-
-	% The timestamp at which this event was triggered:
-	timestamp :: time_utils:timestamp(),
-
-	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
-
-	% The EURID of the target of this transmission (addressed or broadcast), if
-	% any:
-	%
-	destination_eurid :: maybe( oceanic:eurid() ),
-
-	% The best RSSI value (if any), expressed in decibels (dB) with reference to
-	% one milliwatt (mW), of all received subtelegrams:
-	%
-	dbm :: maybe( oceanic:dbm() ),
-
-	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() )
-
-	% Section specific to these events:
-
-
-} ).
-
-
-
--record( position_switch_event, {
-
-	% Section common to all events:
-
-	% The EnOcean Unique Radio Identifier of the emitting device:
-	source_eurid :: oceanic:eurid(),
-
-	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
-
-	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
-
-	% The timestamp at which this event was triggered:
-	timestamp :: time_utils:timestamp(),
-
-	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
-
-	% The EURID of the target of this transmission (addressed or broadcast), if
-	% any:
-	%
-	destination_eurid :: maybe( oceanic:eurid() ),
-
-	% The best RSSI value (if any), expressed in decibels (dB) with reference to
-	% one milliwatt (mW), of all received subtelegrams:
-	%
-	dbm :: maybe( oceanic:dbm() ),
-
-	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() )
- 
-
-	% Section specific to these events:
-
-
-} ).
-
-
-
-% Event sent by EEP D5-00-01: Single Input Contact.
-%
-% D5-00 corresponds to Contacts and Switches.
-
-% Refer to [EEP-spec] for further details.
-%
--record( single_input_contact_event, {
-
-	% Section common to all events:
-
-	% The EnOcean Unique Radio Identifier of the emitting device:
-	source_eurid :: oceanic:eurid(),
-
-	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
-
-	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
-
-	% The timestamp at which this event was triggered:
-	timestamp :: time_utils:timestamp(),
-
-	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
-
-	% The EURID of the target of this transmission (addressed or broadcast), if
-	% any:
-	%
-	destination_eurid :: maybe( oceanic:eurid() ),
-
-	% The best RSSI value (if any), expressed in decibels (dB) with reference to
-	% one milliwatt (mW), of all received subtelegrams:
-	%
-	dbm :: maybe( oceanic:dbm() ),
-
-	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
-
-
-	% Section specific to these events:
-
-	% Tells whether the learn button has been pressed:
-	learn_activated :: boolean(),
-
-	% Tells whether the contact is open or closed:
-	contact :: oceanic:contact_status() } ).
