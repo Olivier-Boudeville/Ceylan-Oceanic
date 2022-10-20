@@ -294,3 +294,54 @@
 
 	% Whether there is a second action reported:
 	second_action_valid :: boolean() } ).
+
+
+
+% Event sent in the context of EEP F6-02-01: "Light and Blind Control -
+% Application Style 1".
+%
+% This event whether or not there are 3 or 4 buttons that are either pressed or
+% released.
+%
+% Refer to [EEP-spec] p.16 for further details.
+%
+-record( double_rocker_multipress_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: maybe( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: maybe( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: maybe( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	% Specifies (very roughly) the number of buttons involved:
+	button_counting :: maybe( oceanic:button_counting() ),
+
+	% Whether the buttons referenced by the counting are pressed or released:
+	energy_bow :: oceanic:button_transition() } ).

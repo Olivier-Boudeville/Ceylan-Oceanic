@@ -84,7 +84,7 @@ decode_file( RecordPath ) ->
 
 % @doc Decodes in turn all specified telegrams, relying on the specified
 % decoding context.
-decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, _State ) ->
+decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, State ) ->
 
 	ToSkipLen =:= 0 orelse test_facilities:display(
 		"(test finished whereas still having ~B bytes to skip.",
@@ -93,6 +93,9 @@ decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, _State ) ->
 	AccChunk =:= <<>> orelse test_facilities:display(
 		"(test finished whereas still having following chunk: ~w)",
 		[ AccChunk ] ),
+
+	test_facilities:display( "~nFinal state: ~ts~n",
+							 [ oceanic:state_to_string( State ) ] ),
 
 	lists:reverse( AccEvents );
 

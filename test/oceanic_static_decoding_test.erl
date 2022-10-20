@@ -99,31 +99,54 @@ run() ->
 	% Samples of a few hardcoded telegrams:
 	% (here we gathered only full telegrams, not truncated ones)
 
-	% ERP1 radio packets of R-ORG a5, hence rorg_4bs (i.e. '4BS (4-byte
-	% Communication)'):
+	% R-ORG 4BS thermo_hygro_low device (whose EURID is 01a96926) reports a
+	% relative humidity of 58% and a temperature of 20°C (sensitivity range:
+	% low), with no device learning activated, based on with a single
+	% subtelegram, targeted to the address for broadcast transmission, best RSSI
+	% value being -58dBm; security level: telegram not processed; its EEP is
+	% thermo_hygro_low (A5-04-01):
 	%
 	TA5 = <<85,0,10,7,1,235,165,0,146,124,10,1,169,105,38,0,1,255,255,255,255,58,0,213>>,
 
-	% ERP1 radio packet of R-ORG d5, hence rorg_1bs (i.e. '1BS (1-byte
-	% Communication)'):
+	% R-ORG 1BS single-contact device (whose EURID is 050533ec) has been closed,
+	% with no device learning activated, based on with a single subtelegram,
+	% targeted to the address for broadcast transmission, best RSSI value being
+	% -46dBm; security level: telegram not processed; its EEP is
+	% single_input_contact (D5-00-01):
 	%
 	TD5 = <<85,0,7,7,1,122,213,9,5,5,51,236,0,1,255,255,255,255,46,0,146>>,
 
-	% R-ORG f6, hence rorg_rps, i.e. 'RPS (Repeated Switch Communication)':
-	TF6 = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,83,0,194>>,
+	% double-rocker device (whose EURID is 002ee196) has its top A button
+	% pressed, based on with a single subtelegram, targeted to the address for
+	% broadcast transmission, best RSSI value being -83dBm; security level:
+	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
+	%
+	TF6A = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,83,0,194>>,
 
-	T1 = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
-	T2 = <<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>,
-	T3 = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>,
+	% double-rocker device (whose EURID is 002ee196) has its top A button
+	% pressed, based on with a single subtelegram, targeted to the address for
+	% broadcast transmission, best RSSI value being -57dBm; security level:
+	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
+	%
+	% (different RSSI)
+	%
+	TF6B = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
 
 	% Not even a start byte here:
 	TInvalid = <<0,7,7,1,122,213,9,1,149,159,98,0,1,255,255,255,255,70,0,67>>,
 
-	basic_utils:ignore_unused( [ TA5, TD5, TF6, T1, T2, T3, TInvalid ] ),
+	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid ],
+
+	% To select any subset of them next:
+	basic_utils:ignore_unused( AllTelegrams ),
 
 	% Useful for the debugging of the support of new telegram types:
-	Telegrams = [ TA5 ],
-	%Telegrams = [ TA5, TD5, TF6, T1, T2, T3 ],
+	%Telegrams = [ TA5 ],
+	%Telegrams = [ TD5 ],
+	%Telegrams = [ TF6A ],
+	%Telegrams = [ TF6B ],
+	%Telegrams = [ TInvalid ],
+	Telegrams = AllTelegrams,
 
 	test_facilities:display(
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",

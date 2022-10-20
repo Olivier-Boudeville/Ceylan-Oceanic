@@ -55,7 +55,7 @@
 -export([ generate_support_modules/0 ]).
 
 % Exported only for testing:
--export([ get_test_state/1, test_decode/2, secure_tty/1,
+-export([ get_test_state/0, get_test_state/1, test_decode/2, secure_tty/1,
 		  try_integrate_chunk/4 ]).
 
 % Silencing:
@@ -196,6 +196,7 @@
 				| 'thermo_hygro_high'
 				| 'push_button'
 				| 'double_rocker_switch'
+				| 'double_rocker_multipress'
 				| 'single_input_contact'
 				| 'single_channel_module'
 				| 'double_channel_module'
@@ -230,6 +231,10 @@
 
 -type button_transition() :: 'pressed' | 'released'.
 % Tells whether a button has been pressed (and held) or released.
+
+
+-type button_counting() :: 'none' | 'three_or_four'.
+% A "number" of buttons, typically involved in a multipress event.
 
 
 -type contact_status() :: 'open' | 'closed'.
@@ -317,8 +322,11 @@
 % See also the 'packet_type' topic in the oceanic_generated module.
 
 
-%-type payload() :: binary().
-% The payload of a (typically ESP3) packet, sometimes designated as 'Data'.
+-type payload() :: binary().
+% The payload of a (typically ESP3) packet, a sequence f bytes sometimes
+% designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to
+% the "optional data" one) found after the R-ORG one.
+
 
 %-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
 
@@ -366,9 +374,17 @@
 
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1").
+% Application Style 1"), for T21=1 and NU=1.
 %
-% Refer to [EEP-spec] p.15 for further details.
+% Refer to [EEP-spec] p.16 for further details.
+
+
+-type double_rocker_multipress_event() :: #double_rocker_multipress_event{}.
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1"), for T21=1 and NU=0.
+%
+% Refer to [EEP-spec] p.16 for further details.
+
 
 
 %-type position_switch_event() :: #position_switch_event{}.
@@ -378,7 +394,8 @@
 -type device_event() :: thermo_hygro_event()
 					  | single_input_contact_event()
 					  | push_button_event()
-					  | double_rocker_switch_event().
+					  | double_rocker_switch_event()
+					  | double_rocker_multipress_event().
 % Any event notified by an EnOcean device.
 
 
@@ -390,18 +407,24 @@
 			   telegram/0, telegram_chunk/0,
 			   telegram_data/0, telegram_data_tail/0,
 			   telegram_opt_data/0, decoded_optional_data/0,
+
 			   subtelegram_count/0, dbm/0, security_level/0,
+
 			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
-			   button_designator/0, button_transition/0, contact_status/0,
+
+			   button_designator/0, button_transition/0, button_counting/0,
+
+			   contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
 			   temperature_range/0,
 			   decoding_outcome/0,
 
 			   eurid/0,
-			   packet/0, crc/0, esp3_packet/0, packet_type/0,
+			   packet/0, crc/0, esp3_packet/0, packet_type/0, payload/0,
 
 			   thermo_hygro_event/0, single_input_contact_event/0,
-			   push_button_event/0, double_rocker_switch_event/0,
+			   push_button_event/0,
+			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
 			   device_event/0 ]).
 
@@ -838,25 +861,30 @@ oceanic_start( TtyPath, MaybeEventListenerPid ) ->
 
 
 % @doc Loads Oceanic configuration information from the default Ceylan
-% preferences file, if any.
+% preferences file, if any, otherwise returns an empty device table.
 %
 % See the 'preferences' module.
 %
--spec load_configuration() -> device_table().
+-spec load_configuration() -> maybe( device_table() ).
 load_configuration() ->
 	case preferences:is_preferences_default_file_available() of
 
 		{ true, PrefPath } ->
+
 			DeviceTable = load_configuration( PrefPath ),
+
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "Initial device table referencing ~ts",
 					[ device_table_to_string( DeviceTable ) ] ) ),
+
 			DeviceTable;
 
 		{ false, PrefPath } ->
+
 			trace_bridge:info_fmt( "No preferences file ('~ts') found.",
 								   [ PrefPath ] ),
-			undefined
+
+			table:new()
 
 	end.
 
@@ -991,6 +1019,18 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 test_decode( Chunk, DeviceTable ) ->
 	try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>, Chunk,
 						 get_test_state( DeviceTable ) ).
+
+
+
+% @doc Returns a pseudo-state, only useful for some tests.
+-spec get_test_state() -> oceanic_state().
+get_test_state() ->
+
+	InitialDeviceTable = load_configuration(),
+
+	#oceanic_state{ serial_server_pid=self(), % for correct typing
+					device_table=InitialDeviceTable,
+					event_listener_pid=undefined }.
 
 
 
@@ -1416,7 +1456,7 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 				OptData, AnyNextChunk, Device, State );
 
 		{ value, Device=#enocean_device{ eep=double_rocker_switch } } ->
-			decode_rps_double_rocker_switch_packet( DB_0, SenderEurid, Status,
+			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
 				OptData, AnyNextChunk, Device, State );
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
@@ -1513,26 +1553,26 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 
 % @doc Decodes a rorg_rps F6-02-01, "Light and Blind Control -
-% Application Style 1" packet.
+% Application Style 1" packet (switch or multipress).
 %
 % It contains 2 actions.
 %
 % Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 % [EEP-spec] p.15.
 %
--spec decode_rps_double_rocker_switch_packet( telegram_chunk(), eurid(),
+-spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_rps_double_rocker_switch_packet( DB_0, SenderEurid,
+decode_rps_double_rocker_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
 		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
 		AnyNextChunk, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	% Check that T21 = NU = 1; NU=0 could be supported as well:
-	case T21 =:= 1 andalso NU =:= 1 of
+	case { T21, NU } of
 
-		true ->
+		{ _T21=1, _NU=1 } ->
+
 			<<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
 
 			FirstButtonDesignator = get_button_designator( R1Enum ),
@@ -1562,25 +1602,72 @@ decode_rps_double_rocker_switch_packet( DB_0, SenderEurid,
 				resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
 			Event = #double_rocker_switch_event{
-						source_eurid=SenderEurid,
-						name=MaybeDeviceName,
-						eep=MaybeEepId,
-						timestamp=Now,
-						subtelegram_count=MaybeTelCount,
-						destination_eurid=MaybeDestEurid,
-						dbm=MaybeDBm,
-						security_level=MaybeSecLvl,
-						first_action_button=FirstButtonDesignator,
-						energy_bow=ButtonTransition,
-						second_action_button=SecondButtonDesignator,
-						second_action_valid=IsSecondActionValid },
+				source_eurid=SenderEurid,
+				name=MaybeDeviceName,
+				eep=MaybeEepId,
+				timestamp=Now,
+				subtelegram_count=MaybeTelCount,
+				destination_eurid=MaybeDestEurid,
+				dbm=MaybeDBm,
+				security_level=MaybeSecLvl,
+				first_action_button=FirstButtonDesignator,
+				energy_bow=ButtonTransition,
+				second_action_button=SecondButtonDesignator,
+				second_action_valid=IsSecondActionValid },
 
 			{ decoded, Event, AnyNextChunk, NewState };
 
 
-		% Probably N=0 here:
-		false ->
+		{ _T21=1, _NU=0 } ->
 
+			% The 4 last bits shall be 0:
+			cond_utils:assert( oceanic_check_decoding,
+							   DB_0AsInt band 2#00001111 =:= 0 ),
+
+			<<R1:3, EB:1, _:4>> = DB_0,
+
+			MaybeButtonCounting = case R1 of
+
+				0 ->
+					none;
+
+				3 ->
+					three_or_four;
+
+				% Abnormal:
+				_ ->
+					undefined
+
+			end,
+
+			ButtonTransition = get_button_transition( EB ),
+
+			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+				record_known_device_success( Device, DeviceTable ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			MaybeDecodedOptData = decode_optional_data( OptData ),
+
+			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+			Event = #double_rocker_multipress_event{
+				source_eurid=SenderEurid,
+				name=MaybeDeviceName,
+				eep=MaybeEepId,
+				timestamp=Now,
+				subtelegram_count=MaybeTelCount,
+				destination_eurid=MaybeDestEurid,
+				dbm=MaybeDBm,
+				security_level=MaybeSecLvl,
+				button_counting=MaybeButtonCounting,
+				energy_bow=ButtonTransition },
+
+			{ decoded, Event, AnyNextChunk, NewState };
+
+
+		_Other ->
 			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
@@ -1757,11 +1844,11 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
-			"with DataTail=~w (size: ~B bytes; DB_0=~w, ~ts;"
-			"contact is ~ts), sender is ~ts, status is ~w~ts.",
-			[ DataTail, size( DataTail ), DB_0,
-			  learn_to_string( LearnActivated ), ContactStatus,
-			  get_best_naming( MaybeDeviceName, SenderEurid ), Status,
+			"with a payload of ~B bytes (with DB_0=~w~ts; "
+			"contact is ~ts), sender is ~ts, status is ~w, ~ts.",
+			[ size( DataTail ), DB_0, learn_to_string( LearnActivated ),
+			  ContactStatus, get_best_naming( MaybeDeviceName, SenderEurid ),
+			  Status,
 			  maybe_optional_data_to_string( MaybeDecodedOptData,
 											 OptData ) ] ) ),
 
@@ -1801,9 +1888,10 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS packet, "
-			"with DataTail=~w (size: ~B bytes; "
-			"DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), sender is ~ts, ~ts~ts",
-			[ DataTail, size( DataTail ), DB_3, DB_2, DB_1, DB_0,
+			"with a payload of ~B bytes "
+			"(with DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), "
+			"sender is ~ts, ~ts~ts",
+			[ size( DataTail ), DB_3, DB_2, DB_1, DB_0,
 			  eurid_to_string( SenderEurid ), repeater_count_to_string( RC ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 			] ) ),
@@ -1921,7 +2009,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 			end,
 
 			trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermo_hygro_low "
-				"packet, reporting a ~ts ~ts; ~ts; sender is ~ts, "
+				"packet, reporting a ~ts ~ts~ts; sender is ~ts, "
 				"~ts.",
 				[ relative_humidity_to_string( RelativeHumidity ), TempStr,
 				  learn_to_string( LearnActivated ),
@@ -1955,7 +2043,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 % @doc Returns a textual description of the specified temperature.
 -spec temperature_to_string( celsius() ) -> ustring().
 temperature_to_string( Temp ) ->
-	text_utils:format( "~B °C", [ Temp ] ).
+	text_utils:format( "temperature of ~B°C", [ Temp ] ).
 
 
 % @doc Returns a textual description of the specified relative humidity.
@@ -1968,10 +2056,10 @@ relative_humidity_to_string( HPerCent ) ->
 % @doc Returns a textual description of the specified learning status.
 -spec learn_to_string( boolean() ) -> ustring().
 learn_to_string( _LearnActivated=true ) ->
-	", with device learning activated";
+	" whereas device learning is activated";
 
 learn_to_string( _LearnActivated=false ) ->
-	" (no device learning activated)".
+	", with no device learning activated".
 
 
 
@@ -2335,7 +2423,7 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 			"";
 
 		DBm ->
-			text_utils:format( ", best RSSI value being ~BdBm", [ DBm ] )
+			text_utils:format( ", best RSSI value being ~B dBm", [ DBm ] )
 
 	end,
 
@@ -2364,7 +2452,7 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 
 	end,
 
-	text_utils:format( ", with ~ts, targeted to ~ts~ts~ts",
+	text_utils:format( "with ~ts, targeted to ~ts~ts~ts",
 		[ SubTelStr, eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
 
 
@@ -2442,18 +2530,18 @@ device_event_to_string( #thermo_hygro_event{
 	end,
 
 	text_utils:format( "thermo-hygro sensor device ~ts reports at ~ts "
-		"~ts; ~ts; ~ts",
+		"a ~ts ~ts~ts, based on ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
 
 		  learn_to_string( LearnActivated ),
 
-		  % Multiple A5-04-01-like candidates:
-		  get_eep_description( MaybeEepId ),
-
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
-								   MaybeSecLvl ) ] );
+								   MaybeSecLvl ),
+
+		  % Multiple A5-04-01-like candidates:
+		  get_eep_description( MaybeEepId ) ] );
 
 
 device_event_to_string( #single_input_contact_event{
@@ -2468,14 +2556,15 @@ device_event_to_string( #single_input_contact_event{
 		learn_activated=LearnActivated,
 		contact=ContactStatus } ) ->
 
-	text_utils:format( "single-contact device ~ts has been ~ts at ~ts~ts; ~ts",
+	text_utils:format( "single-contact device ~ts has been ~ts at ~ts~ts, "
+		"based on ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  learn_to_string( LearnActivated ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
-								   MaybeSecLvl ) ] );
+								   MaybeSecLvl ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
 
 
 device_event_to_string( #push_button_event{
@@ -2523,15 +2612,48 @@ device_event_to_string( #double_rocker_switch_event{
 
 	end,
 
-	text_utils:format( "double-rocker device ~ts has its ~ts~ts ~ts at ~ts; "
-		"~ts",
+	text_utils:format( "double-rocker device ~ts has its ~ts~ts ~ts at ~ts, "
+		"based on ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  button_designator_to_string( FirstButtonDesignator ), SecondStr,
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
-								   MaybeSecLvl ) ] );
+								   MaybeSecLvl ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+device_event_to_string( #double_rocker_multipress_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		button_counting=MaybeButtonCounting,
+		energy_bow=ButtonTransition } ) ->
+
+	TransStr = case MaybeButtonCounting of
+
+		undefined ->
+			"an unknown number of buttons (abnormal)";
+
+		none ->
+			"no button";
+
+		three_or_four ->
+			"3 or 4 buttons"
+
+	end ++ " " ++ get_button_transition_description( ButtonTransition ),
+
+	text_utils:format( "double-rocker device ~ts has ~ts simultaneously "
+		"at ~ts, based on ~ts; ~ts",
+		[ get_name_description( MaybeName, Eurid ), TransStr,
+		  time_utils:timestamp_to_string( Timestamp ),
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 
 device_event_to_string( OtherEvent ) ->
