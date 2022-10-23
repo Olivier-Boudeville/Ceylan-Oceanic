@@ -135,7 +135,7 @@
 	temperature :: maybe( unit_utils:celsius() ),
 
 	% The range of the temperature sensor:
-	temperature_range :: temperature_range(),
+	temperature_range :: oceanic:temperature_range(),
 
 	% Tells whether the learn button has been pressed:
 	learn_activated :: boolean() } ).

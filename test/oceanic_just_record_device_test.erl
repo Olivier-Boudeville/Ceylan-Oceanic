@@ -32,13 +32,14 @@
 % The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
 % prerequisites shall be already available.
 %
-% This test mostly does not depend on Oceanic, it just focuses on raw recording.
-
+% This test mostly does not depend on Oceanic, it just focuses on raw recording,
+% and performs no actual decoding.
+%
 % When running this test, ensure that at least a few Enocean telegrams are
 % received, so that they can be stored; see the oceanic_decode_recorded_test
 % module for the decoding of the file recorded by the current test.
 %
--module(oceanic_record_device_test).
+-module(oceanic_just_record_device_test).
 
 
 % For oceanic_decode_recorded_test:
@@ -57,7 +58,7 @@
 -spec actual_test( device_path(), maybe( file_path() ) ) -> void().
 actual_test( TtyPath, MaybeRecordFilePath ) ->
 
-	test_facilities:display( "Starting the Enocean test based on the "
+	test_facilities:display( "Starting the Enocean recording test based on the "
 							 "gateway TTY '~ts'.", [ TtyPath ] ),
 
 	% We hijack the Oceanic logic by interacting directly from this test process

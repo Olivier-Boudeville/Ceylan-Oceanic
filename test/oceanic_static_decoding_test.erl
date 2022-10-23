@@ -94,7 +94,9 @@ run() ->
 	% Yet for the decoding of at least some types of packets, we need the EEP to
 	% be configured from the corresponding emitting devices, so:
 	%
-	InitialDeviceTable = oceanic:load_configuration(),
+	InitialOcState = oceanic:load_configuration(),
+
+	InitialDeviceTable = oceanic:get_device_table( InitialOcState ),
 
 	% Samples of a few hardcoded telegrams:
 	% (here we gathered only full telegrams, not truncated ones)
@@ -116,14 +118,14 @@ run() ->
 	%
 	TD5 = <<85,0,7,7,1,122,213,9,5,5,51,236,0,1,255,255,255,255,46,0,146>>,
 
-	% double-rocker device (whose EURID is 002ee196) has its top A button
+	% Double-rocker device (whose EURID is 002ee196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
 	% broadcast transmission, best RSSI value being -83dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
 	%
 	TF6A = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,83,0,194>>,
 
-	% double-rocker device (whose EURID is 002ee196) has its top A button
+	% Double-rocker device (whose EURID is 002ee196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
 	% broadcast transmission, best RSSI value being -57dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
@@ -144,9 +146,9 @@ run() ->
 	%Telegrams = [ TA5 ],
 	%Telegrams = [ TD5 ],
 	%Telegrams = [ TF6A ],
-	%Telegrams = [ TF6B ],
+	Telegrams = [ TF6B ],
 	%Telegrams = [ TInvalid ],
-	Telegrams = AllTelegrams,
+	%Telegrams = AllTelegrams,
 
 	test_facilities:display(
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",

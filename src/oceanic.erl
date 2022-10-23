@@ -41,9 +41,15 @@
 		  get_server_registration_name/0, get_server_pid/0,
 		  load_configuration/0, load_configuration/1,
 
+		  send/2,
+
+		  encode_double_rocker_switch_telegram/4, decode_telegram/2,
+
 		  stop/0, stop/1,
 
 		  eurid_to_string/1, eurid_to_bin_string/1, eurid_to_bin_string/2,
+		  string_to_eurid/1, get_broadcast_eurid/0,
+
 		  get_best_naming/2,
 
 		  get_device_table/1,
@@ -55,8 +61,8 @@
 -export([ generate_support_modules/0 ]).
 
 % Exported only for testing:
--export([ get_test_state/0, get_test_state/1, test_decode/2, secure_tty/1,
-		  try_integrate_chunk/4 ]).
+-export([ get_test_state/0, get_test_state/1,
+		  test_decode/2, secure_tty/1, try_integrate_chunk/4 ]).
 
 % Silencing:
 -export([ record_device_failure/2,
@@ -80,6 +86,17 @@
 -type device_name() :: bin_string().
 % A user-defined device name, a lot more convenient than a EURID.
 
+-type device_plain_name() :: ustring().
+% A user-defined device name, a lot more convenient than a EURID.
+
+-type device_any_name() :: any_string().
+% A user-defined device name, a lot more convenient than a EURID.
+
+
+-type device_designator() :: eurid() | device_any_name().
+% An element designating a device, either thanks to an EURID (as an integer), or
+% thanks to a user-defined name (as any kind of string).
+
 
 % For the device-related records:
 -include("oceanic.hrl").
@@ -91,6 +108,16 @@
 
 -type device_table() :: table( eurid(), enocean_device() ).
 % A table recording information regarding Enocean devices.
+
+
+-type device_config() ::
+
+	{ UserDefinedName :: ustring(), EURID :: ustring(), EEP :: ustring() }
+
+  | { UserDefinedName :: ustring(), EURID :: ustring(), EEP :: ustring(),
+	  Comment :: ustring() }.
+% An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
+% describe a given device.
 
 
 -type tty_detection_outcome() ::
@@ -195,8 +222,11 @@
 				| 'thermo_hygro_mid'
 				| 'thermo_hygro_high'
 				| 'push_button'
+
+				  % They include the simple rocker ones:
 				| 'double_rocker_switch'
 				| 'double_rocker_multipress'
+
 				| 'single_input_contact'
 				| 'single_channel_module'
 				| 'double_channel_module'
@@ -258,21 +288,27 @@
 						   | 'high'. % -20°C to +60°C (A5-04-02)
 % The range of a temperature sensor.
 
-
--type decoding_outcome() ::
-
-	{ 'not_reached'   % End of packet still ahead
+-type decoding_error() ::
+	  'not_reached'   % End of packet still ahead
 	| 'incomplete'    % Truncated packet
 	| 'invalid'       % Corrupted packet
 	| 'unsupported'   % Type of packet (currently) unsupported by Oceanic
-	| 'unconfigured', % Device not configure (typically EEP not known)
-	  ToSkipLen :: count(), NextChunk :: telegram_chunk(), oceanic_state() }
+	| 'unconfigured'. % Device not configure (typically EEP not known)
+% The various kinds of errors that may happen when decoding.
+
+
+-type decoding_outcome() ::
+
+	{ decoding_error(), ToSkipLen :: count(), NextChunk :: telegram_chunk(),
+	  oceanic_state() }
 
   | { 'decoded', device_event(), NextChunk :: telegram_chunk(),
 	  oceanic_state() }.
 % The outcome of an attempt of integrating / decoding a telegram chunk.
 
 
+-type decoding_result() :: decoding_error() | device_event().
+% The result of a decoding request.
 
 
 -type eurid() :: type_utils:uint32(). % Previously <<_:32>>
@@ -374,7 +410,7 @@
 
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1 and NU=1.
+% Application Style 1"), for T21=1.
 %
 % Refer to [EEP-spec] p.16 for further details.
 
@@ -400,8 +436,11 @@
 
 
 -export_type([ oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
-			   device_name/0, enocean_device/0,
-			   device_table/0,
+
+			   device_name/0, device_plain_name/0, device_any_name/0,
+			   device_designator/0,
+
+			   enocean_device/0, device_table/0, device_config/0,
 			   tty_detection_outcome/0, serial_protocol/0,
 
 			   telegram/0, telegram_chunk/0,
@@ -477,13 +516,27 @@
 
 % Transmission speed, in bits per second:
 -define( esp2_speed, 9600 ).
+
+% Matters, otherwise faulty content received:
 -define( esp3_speed, 57600 ).
+
+
+% Default EURID of the pseudo-device emitter (if any) of any telegram to be sent
+% by Oceanic:
+%
+% (never gets old hexadecimal pun)
+%
+-define( default_emitter_eurid, "DEADBEEF" ).
 
 
 % Denotes a broadcast transmission (as opposed to an Addressed Transmission,
 % ADT):
 %
 -define( eurid_broadcast, 16#ffffffff ). % That is 4294967295
+
+
+% Each telegram must start with:
+-define( sync_byte, 85 ).
 
 
 % The next defines could not have been specified, knowing that they are now
@@ -620,8 +673,16 @@
 	%
 	serial_server_pid :: serial_server_pid(),
 
+	% To identify the pseudo-device emitter of any telegram to be sent by
+	% Oceanic:
+	%
+	emitter_eurid :: eurid(),
+
 	% A table recording all information regarding the known Enocean devices:
 	device_table :: device_table(),
+
+	% The number of telegrams count:
+	send_count = 0 :: count(),
 
 	% The PID of any process listening for Enocean events:
 	event_listener_pid :: maybe( event_listener_pid() ) } ).
@@ -828,8 +889,14 @@ secure_tty( TtyPath ) ->
 
 	end,
 
-	% Linked process; symmetrical speed (in bits per second):
-	SerialPid = serial:start( [ { open, TtyPath }, { speed, ?esp3_speed } ] ),
+	% Symmetrical speed here (in bits per second):
+	Speed = ?esp3_speed,
+
+	% No parity (no {parity_even} / {parity_odd}).
+
+	% Linked process;
+	SerialPid = serial:start( [ { open, TtyPath },
+								{ speed, _In=Speed, _Out=Speed } ] ),
 
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt( "Using TTY '~ts' to connect to Enocean gateway,"
@@ -847,11 +914,10 @@ oceanic_start( TtyPath, MaybeEventListenerPid ) ->
 
 	SerialPid = secure_tty( TtyPath ),
 
-	DeviceTable = load_configuration(),
+	LoadedState = load_configuration(),
 
-	InitialState = #oceanic_state{
+	InitialState = LoadedState#oceanic_state{
 		serial_server_pid=SerialPid,
-		device_table=DeviceTable,
 		event_listener_pid=MaybeEventListenerPid },
 
 	naming_utils:register_as( ?oceanic_server_reg_name, _RegScope=local_only ),
@@ -865,26 +931,27 @@ oceanic_start( TtyPath, MaybeEventListenerPid ) ->
 %
 % See the 'preferences' module.
 %
--spec load_configuration() -> maybe( device_table() ).
+-spec load_configuration() -> oceanic_state().
 load_configuration() ->
 	case preferences:is_preferences_default_file_available() of
 
 		{ true, PrefPath } ->
 
-			DeviceTable = load_configuration( PrefPath ),
+			LoadedState = load_configuration( PrefPath ),
 
 			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Initial device table referencing ~ts",
-					[ device_table_to_string( DeviceTable ) ] ) ),
+				trace_bridge:debug_fmt( "Initial state: ~ts",
+					[ state_to_string( LoadedState ) ] ) ),
 
-			DeviceTable;
+			LoadedState;
 
 		{ false, PrefPath } ->
 
 			trace_bridge:info_fmt( "No preferences file ('~ts') found.",
 								   [ PrefPath ] ),
 
-			table:new()
+			#oceanic_state{ emitter_eurid=?default_emitter_eurid,
+							device_table=table:new() }
 
 	end.
 
@@ -892,10 +959,15 @@ load_configuration() ->
 
 % @doc Loads Oceanic configuration information from the specified ETF file.
 %
-% It is expected to contain up to one entry whose key is the
-% 'oceanic_config' atom.
+% It is expected to contain up to one of the following entries whose (atom) key
+% is:
 %
--spec load_configuration( any_file_path() ) -> device_table().
+% - oceanic_emitter: to specify the pseudo-device emitting any telegram to be
+% sent by Oceanic
+
+% - oceanic_config: to declare the known devices
+%
+-spec load_configuration( any_file_path() ) -> oceanic_state().
 load_configuration( ConfFilePath ) ->
 
 	file_utils:is_existing_file_or_link( ConfFilePath )
@@ -903,42 +975,183 @@ load_configuration( ConfFilePath ) ->
 
 	Pairs = file_utils:read_etf_file( ConfFilePath ),
 
-	DeviceEntries = list_table:get_value_with_default( _K=oceanic_devices,
-													   _Def=[], _Table=Pairs ),
+	EmitterEuridStr = list_table:get_value_with_default( _K=oceanic_emitter,
+		_DefEmit=?default_emitter_eurid, _Table=Pairs ),
+
+	EmitterEurid = text_utils:hexastring_to_integer( EmitterEuridStr ),
+
+	DeviceEntries = list_table:get_value_with_default( oceanic_devices,
+													   _DefDevs=[], Pairs ),
 
 	% Device table indexed by device eurid(), which is duplicated in the record
 	% values for convenience:
 	%
-	table:new( [
+	LoadedDeviceTable = declare_devices( DeviceEntries, table:new() ),
+
+	#oceanic_state{ emitter_eurid=EmitterEurid,
+					device_table=LoadedDeviceTable }.
+
+
+
+% @doc Adds the specified devices in the specified device table.
+-spec declare_devices( [ device_config() ], device_table() ) -> device_table().
+declare_devices( _DeviceCfgs=[], DeviceTable ) ->
+	DeviceTable;
+
+declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
+				 DeviceTable ) ->
+
+	Eurid = text_utils:hexastring_to_integer(
+		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ),
+
+	EepBinStr = text_utils:ensure_binary( EepStr ),
+
+	EepId = case oceanic_generated:get_maybe_first_for_eep_strings(
+						EepBinStr ) of
+
+		undefined ->
+			trace_bridge:warning_fmt( "The EEP of the configured "
+				"device '~ts' (EURID: ~ts), i.e. '~ts', is not known "
+				"of Oceanic and will be ignored.",
+				[ NameStr, EuridStr, EepBinStr ] ),
+			undefined;
+
+		KnownEepId ->
+			KnownEepId
+
+	end,
+
+	DeviceRec = #enocean_device{
+		eurid=Eurid,
+		name=text_utils:ensure_binary( NameStr ),
+		eep=EepId },
+
+	NewDeviceTable = table:add_new_entry( Eurid, DeviceRec, DeviceTable ),
+
+	declare_devices( T, NewDeviceTable );
+
+% Dropping comment (useful only for the user configuration):
+declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr, CommentStr } | T ],
+				 DeviceTable ) when is_list( CommentStr ) ->
+	declare_devices( [ { NameStr, EuridStr, EepStr } | T ], DeviceTable );
+
+
+declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
+	throw( { invalid_device_config, Other } ).
+
+
+
+% @doc Sends the specified telegram, through the specified Oceanic server.
+-spec send( telegram(), oceanic_server_pid() ) -> void().
+send( Telegram, OcSrvPid ) ->
+	OcSrvPid ! { send_oceanic, Telegram }.
+
+
+
+% @doc Encodes a double-rocker switch telegram, from the specified device to the
+% specified one, reporting the specified transition for the specified button.
+%
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1"), for T21=1.
+%
+% See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+%
+-spec encode_double_rocker_switch_telegram( eurid(), eurid(),
+		button_designator(), button_transition() ) -> telegram().
+encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
+									  ButtonDesignator, ButtonTransition ) ->
+
+	% No EEP to be determined from double_rocker_switch (implicit in packet).
+
+	% Best understood backwards, from the end of this function.
+
+	% Radio, hence 1 here:
+	PacketTypeNum = oceanic_generated:get_second_for_packet_type(
+								_PacketType=radio_erp1_type ),
+	PacketTypeNum = 1,
+
+	% F6 here:
+	RorgNum = oceanic_generated:get_second_for_rorg( _Rorg=rorg_rps ),
+	RorgNum = 16#f6,
+
+	R1Enum = get_designated_button_enum( ButtonDesignator ),
+
+	EB = get_button_transition_enum( ButtonTransition ),
+
+	IsSecondActionValid = false,
+
+	% Not relevant here:
+	R2Enum = R1Enum,
+
+	SA = case IsSecondActionValid of
+
+		true ->
+			1;
+
+		false ->
+			0
+
+	end,
+
+	DB_0 = <<R1Enum:3, EB:1, R2Enum:3, SA:1>>,
+
+	T21 = 1,
+	NU = 1,
+
+	Status = <<0:2, T21:1, NU:1, 0:4>>,
+
+	Data = <<RorgNum:8, DB_0:1/binary, SourceEurid:32, Status:1/binary>>,
+
+	% We are sending here:
+	SubTelNum = 3,
+	DBm = 16#ff,
+	SecurityLevel = 0,
+
+	OptData = <<SubTelNum:8, TargetEurid:32, DBm:8, SecurityLevel:8>>,
+
+	FullData = <<Data/binary, OptData/binary>>,
+	FullDataCRC = compute_crc( FullData ),
+
+	DataLen = size( Data ),
+	OptDataLen = size( OptData ),
+
+	Header = <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
+
+	HeaderCRC = compute_crc( Header ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
+			<<DB_0AsInt>> = DB_0,
+			<<StatusAsInt>> = Status,
+			PadWidth = 8,
+			trace_bridge:debug_fmt(
+				"Generated packet: type=~B, RORG=~ts, DB_0=~ts, "
+				"data size=~B, optional data size=~B, status=~ts.",
+				[ PacketTypeNum, text_utils:integer_to_hexastring( RorgNum ),
+				  text_utils:integer_to_bits( DB_0AsInt, PadWidth ),
+				  DataLen, OptDataLen,
+				  text_utils:integer_to_bits( StatusAsInt, PadWidth ) ] )
+		end ),
 
-			Eurid = text_utils:hexastring_to_integer(
-				text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ),
+	% This is an ESP3 packet:
+	<<?sync_byte, Header/binary, HeaderCRC:8, FullData/binary, FullDataCRC:8>>.
 
-			EepBinStr = text_utils:ensure_binary( EepStr ),
 
-			EepId = case oceanic_generated:get_maybe_first_for_eep_strings(
-							EepBinStr ) of
 
-				undefined ->
-					trace_bridge:warning_fmt( "The EEP of the configured "
-						"device '~ts' (EURID: ~ts), i.e. '~ts', is not known "
-						"of Oceanic and will be ignored.",
-						[ NameStr, EuridStr, EepBinStr ] ),
-					undefined;
+% @doc Returns, if possible, the specified telegram once decoded as an event,
+% using the specified Oceanic server for that.
+%
+% Mostly useful for testing purpose.
+%
+-spec decode_telegram( telegram(), oceanic_server_pid() ) -> decoding_result().
+decode_telegram( Telegram, OcSrvPid ) ->
+	OcSrvPid ! { decode_oceanic, Telegram, self() },
+	receive
 
-				KnownEepId ->
-					KnownEepId
+		{ decoding_result, R } ->
+			R
 
-			end,
-
-			DeviceRec = #enocean_device{
-				eurid=Eurid,
-				name=text_utils:ensure_binary( NameStr ),
-				eep=EepId },
-			{ Eurid, DeviceRec }
-
-		end || { NameStr, EuridStr, EepStr } <- DeviceEntries ] ).
+	end.
 
 
 
@@ -973,7 +1186,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 				{ decoded, Event, AnyNextChunk, NewState } ->
 
 					trace_bridge:debug_fmt( "Decoded following event: ~ts.",
-						[ oceanic:device_event_to_string( Event ) ] ),
+						[ device_event_to_string( Event ) ] ),
 
 					case NewState#oceanic_state.event_listener_pid of
 
@@ -997,13 +1210,58 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 			end;
 
+
+		{ send_oceanic, Telegram } ->
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug_fmt( "Sending to serial server telegram ~w.",
+										[ Telegram ] ) ),
+
+			SerialPid = State#oceanic_state.serial_server_pid,
+			SerialPid ! { send, Telegram },
+
+			NewSendCount = State#oceanic_state.send_count + 1,
+
+			NewState = State#oceanic_state{ send_count=NewSendCount },
+
+			oceanic_loop( ToSkipLen, AccChunk, NewState );
+
+
+		% Mostly useful for testing purpose:
+		{ decode_oceanic, Telegram, SenderPid } ->
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug_fmt( "Requested to decode telegram ~w.",
+										[ Telegram ] ) ),
+
+			% Not interfering with received bits (curret state used for that,
+			% but will not be affected):
+			%
+			Res = case try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
+											Telegram, State ) of
+
+				{ decoded, DeviceEvent, _NewNextChunk, _NewState } ->
+					DeviceEvent;
+
+				{ DecError, _NewToSkipLen, _NewNextChunk, _NewState } ->
+					 DecError
+
+			end,
+
+			SenderPid ! { decoding_result, Res },
+
+			% Strictly unaffected:
+			oceanic_loop( ToSkipLen, AccChunk, State );
+
+
 		terminate ->
 
 			SerialPid = State#oceanic_state.serial_server_pid,
 
 			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Stopping serial server ~w.",
-										[ SerialPid ] ) ),
+				trace_bridge:debug_fmt( "Stopping serial server ~w, "
+					"while in following state: ~ts",
+					[ SerialPid, state_to_string( State ) ] ) ),
 
 			SerialPid ! stop,
 
@@ -1022,25 +1280,33 @@ test_decode( Chunk, DeviceTable ) ->
 
 
 
-% @doc Returns a pseudo-state, only useful for some tests.
+% @doc Returns a pseudo-state; only useful for some tests.
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
 
-	InitialDeviceTable = load_configuration(),
+	LoadState = load_configuration(),
 
-	#oceanic_state{ serial_server_pid=self(), % for correct typing
-					device_table=InitialDeviceTable,
-					event_listener_pid=undefined }.
-
+	LoadState#oceanic_state{ serial_server_pid=self(), % for correct typing
+							 event_listener_pid=undefined }.
 
 
-% @doc Returns a pseudo-state, only useful for some tests.
+
+% @doc Returns a pseudo-state; only useful for some tests.
 -spec get_test_state( device_table() ) -> oceanic_state().
 get_test_state( DeviceTable ) ->
 	% Normally there is a real serial server:
 	#oceanic_state{ serial_server_pid=self(), % for correct typing
 					device_table=DeviceTable,
 					event_listener_pid=undefined }.
+
+
+
+% @doc Returns the device state in the specified state; only useful for some
+% tests.
+%
+-spec get_device_table( oceanic_state() ) -> device_table().
+get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
+	DeviceTable.
 
 
 
@@ -1102,7 +1368,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 								[ TelegramChunk, size( TelegramChunk ) ] ) ),
 
 	% First 6 bytes correspond to the serial synchronisation:
-	% - byte #1: Packet start (0x55)
+	% - byte #1: Packet start (?sync_byte, 0x55)
 	% - bytes #2-5 (32 bits): Header, containing:
 	%   * byte #2-3 (16 bits): byte count of DATA to interpret
 	%   * byte #4: (8 bits) byte count of OPTIONAL_DATA to interpret
@@ -1180,7 +1446,7 @@ scan_for_packet_start( TelegramChunk ) ->
 scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
 	{ no_content, DropCount };
 
-scan_for_packet_start( _Chunk= <<85, T/binary>>, DropCount ) ->
+scan_for_packet_start( _Chunk= <<?sync_byte, T/binary>>, DropCount ) ->
 	% No need to keep/include the start byte: repeated decoding attempts may
 	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
 	%
@@ -1392,8 +1658,12 @@ decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
 % - F6-01 corresponds to simple "Switch Buttons" (with no rocker, hence with
 % punctual press/release events), described here as "push buttons"
 %
+% - F6-02: Rocker Switch, 2 Rocker: each rocker (A or B) has a top and a bottom
+% button; pressing one sends a double_rocker_switch_event() telling that a given
+% button (possibly both) is/are being pressed, and releasing it/them sends a
+% double_rocker_multipress_event() telling "no button released simultaneously"
+%
 % Support to be added:
-% - F6-02: Rocker Switch, 2 Rocker
 % - F6-03: Rocker Switch, 4 Rocker
 % - F6-04: Position Switch, Home and Office Application
 % - F6-05: Detectors
@@ -1682,6 +1952,7 @@ decode_rps_double_rocker_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 	end.
 
 
+% Could be a bijective topic as well:
 
 % @doc Returns the button designated by the specified enumeration.
 -spec get_button_designator( enum() ) -> button_designator().
@@ -1696,6 +1967,21 @@ get_button_designator( _Enum=2 ) ->
 
 get_button_designator( _Enum=3 ) ->
 	button_bo. % Button B, top
+
+
+% @doc Returns the enumeration of the designated button.
+-spec get_designated_button_enum( button_designator() ) -> enum().
+get_designated_button_enum( _Des=button_ai ) ->
+	0; % Button A, bottom
+
+get_designated_button_enum( _Des=button_ao ) ->
+	1; % Button A, top
+
+get_designated_button_enum( _Des=button_bi ) ->
+	2; % Button B, bottom
+
+get_designated_button_enum( _Des=button_bo ) ->
+	3. % Button B, top
 
 
 
@@ -1715,6 +2001,9 @@ button_designator_to_string( button_bo ) ->
 
 
 
+% Could be a bijective topic as well:
+
+
 % @doc Returns the button transition corresponding to the specified energy bow.
 -spec get_button_transition( enum() ) -> button_transition().
 get_button_transition( _EnergyBow=0 ) ->
@@ -1722,6 +2011,15 @@ get_button_transition( _EnergyBow=0 ) ->
 
 get_button_transition( _EnergyBow=1 ) ->
 	pressed.
+
+
+% @doc Returns the enumeration of the specified button transition.
+-spec get_button_transition_enum( button_transition() ) -> enum().
+get_button_transition_enum( released ) ->
+	_EnergyBow=0;
+
+get_button_transition_enum( pressed ) ->
+	_EnergyBow=1.
 
 
 
@@ -2328,6 +2626,21 @@ eurid_to_string( Eurid ) ->
 	text_utils:flatten( PaddedStr ).
 
 
+% @doc Returns the actual EURID corresponding to the specified (plain) EURID
+% string.
+%
+% Ex: 3072406 = oceanic:string_to_eurid("002ee196")
+%
+-spec string_to_eurid( ustring() ) -> eurid().
+string_to_eurid( EuridStr ) ->
+	text_utils:hexastring_to_integer( EuridStr ).
+
+
+% @doc Returns the broadcast EURID, suitable to target all devices in range.
+-spec get_broadcast_eurid() -> eurid().
+get_broadcast_eurid() ->
+	?eurid_broadcast.
+
 
 % @doc Returns a raw, direct (binary) textual description of the specified
 % EURID.
@@ -2530,7 +2843,7 @@ device_event_to_string( #thermo_hygro_event{
 	end,
 
 	text_utils:format( "thermo-hygro sensor device ~ts reports at ~ts "
-		"a ~ts ~ts~ts, based on ~ts; ~ts",
+		"a ~ts ~ts~ts, declared ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
@@ -2557,7 +2870,7 @@ device_event_to_string( #single_input_contact_event{
 		contact=ContactStatus } ) ->
 
 	text_utils:format( "single-contact device ~ts has been ~ts at ~ts~ts, "
-		"based on ~ts; ~ts",
+		"declared ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  time_utils:timestamp_to_string( Timestamp ),
@@ -2613,7 +2926,7 @@ device_event_to_string( #double_rocker_switch_event{
 	end,
 
 	text_utils:format( "double-rocker device ~ts has its ~ts~ts ~ts at ~ts, "
-		"based on ~ts; ~ts",
+		"declared ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  button_designator_to_string( FirstButtonDesignator ), SecondStr,
 		  get_button_transition_description( ButtonTransition ),
@@ -2648,7 +2961,7 @@ device_event_to_string( #double_rocker_multipress_event{
 	end ++ " " ++ get_button_transition_description( ButtonTransition ),
 
 	text_utils:format( "double-rocker device ~ts has ~ts simultaneously "
-		"at ~ts, based on ~ts; ~ts",
+		"at ~ts, declared ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ), TransStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
@@ -2715,22 +3028,15 @@ get_eep_description( EepId, _DefaultDesc ) ->
 
 
 
-% @doc Returns the device table of the specified Oceanic state; only useful for
-% tests.
-%
--spec get_device_table( oceanic_state() ) -> device_table().
-get_device_table( #oceanic_state{ device_table=DevTable } ) ->
-	DevTable.
-
-
-
 % @doc Returns a textual description of the specified state of the Oceanic
 % server.
 %
 -spec state_to_string( oceanic_state() ) -> ustring().
 state_to_string( #oceanic_state{
 		serial_server_pid=SerialServerPid,
+		emitter_eurid=EmitterEurid,
 		device_table=DeviceTable,
+		send_count=SendCount,
 		event_listener_pid=MaybeListenerPid } ) ->
 
 	ListenStr = case MaybeListenerPid of
@@ -2744,9 +3050,23 @@ state_to_string( #oceanic_state{
 
 	end,
 
-	text_utils:format( "Oceanic server using serial server ~w, ~ts, "
-		"and knowing ~ts",
-		[ SerialServerPid, ListenStr, device_table_to_string( DeviceTable ) ] ).
+	SendStr = case SendCount of
+
+		0 ->
+			"not having sent any telegram";
+
+		1 ->
+			"having sent a single telegram";
+
+		_ ->
+			text_utils:format( "having sent ~B telegrams", [ SendCount ] )
+
+	end,
+
+	text_utils:format( "Oceanic server using serial server ~w, "
+		"using emitter EURID ~ts, ~ts, ~ts, and knowing ~ts",
+		[ SerialServerPid, eurid_to_string( EmitterEurid ), ListenStr,
+		  SendStr, device_table_to_string( DeviceTable ) ] ).
 
 
 
@@ -2876,7 +3196,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 		end,
 
 		text_utils:format( "~ts applying ~ts; it has been ~ts~ts~ts",
-				[ NameStr, EepDescStr, SeenStr, TeleStr, ErrStr ] ).
+						   [ NameStr, EepDescStr, SeenStr, TeleStr, ErrStr ] ).
 
 
 
@@ -3026,6 +3346,7 @@ get_event_code_topic_spec() ->
 	{ event_code, Entries }.
 
 
+
 % @doc Returns the specification for the the 'rorg' topic.
 -spec get_rorg_topic_spec() -> topic_spec().
 get_rorg_topic_spec() ->
@@ -3113,9 +3434,7 @@ get_eep_topic_specs() ->
 
 		% In-wall modules:
 		{ single_channel_module, "D2-01-0E" },
-		{ double_channel_module, "D2-01-12" }
-
-				 ],
+		{ double_channel_module, "D2-01-12" } ],
 
 	AsTripletsEntries = [ { EepId, string_to_eep( EepStr ) }
 								|| { EepId, EepStr } <- RawEntries ],

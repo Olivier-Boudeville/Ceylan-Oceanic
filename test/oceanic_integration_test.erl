@@ -51,7 +51,10 @@ actual_test( TtyPath ) ->
 
 	OcSrvPid = oceanic:start_link( TtyPath ),
 
-	wait_for_test_events( _Count=5, OcSrvPid ),
+	%wait_for_test_events( _Count=5, OcSrvPid ),
+
+	% Infinite listening:
+	wait_for_test_events( _Count=-1, OcSrvPid ),
 
 	oceanic:stop( OcSrvPid ).
 
@@ -61,6 +64,9 @@ actual_test( TtyPath ) ->
 %
 % The PID of the Oceanic server is just for test purpose.
 %
+wait_for_test_events( _Count=0, _OcSrvPid ) ->
+	test_facilities:display( "(all intended events received)" );
+
 wait_for_test_events( Count, OcSrvPid ) ->
 
 	test_facilities:display( "~n(test still waiting for ~B Enocean events)",

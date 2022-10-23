@@ -56,6 +56,7 @@ endif
 #  - tty: for the management of the TTY allocated to the USB Enocean gateway
 #  - decoding: for the decoding of Enocean telegrams
 #  - encoding: for the encoding of Enocean telegrams
+#
 # Defining debug flags (at least the most verbose are by default commented-out):
 ifeq ($(ENABLE_DEBUG),true)
 	OCEANIC_DEBUG_FLAGS += -Doceanic_debug_tty

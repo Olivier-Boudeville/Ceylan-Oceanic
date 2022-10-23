@@ -127,7 +127,8 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
-	RecordPath = oceanic_record_device_test:get_record_file_path(),
+	%RecordPath = oceanic_record_device_test:get_record_file_path(),
+	RecordPath = "my-other-test-recording.etf",
 
 	case file_utils:is_existing_file_or_link( RecordPath ) of
 
