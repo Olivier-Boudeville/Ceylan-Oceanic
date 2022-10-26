@@ -54,7 +54,7 @@
 
 		  get_device_table/1,
 
-		  string_to_eep/1] ).
+		  string_to_eep/1 ] ).
 
 
 % API for module generation:
@@ -138,8 +138,9 @@
 
 
 -type telegram() :: binary().
-% A telegram is a raw (non-decoded), full, unitary radio (ERP-level) message
-% (ESP3 packet) received from an Enocean gateway.
+% A telegram is a raw (non-decoded) series of bytes that have been received or
+% are to be sent. Ideally a telegram would correspond to a full, unitary radio
+% ESP3 packet typically received from an Enocean gateway.
 %
 % E.g. `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
 % `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
@@ -151,8 +152,9 @@
 
 
 -type telegram_data() :: telegram_chunk().
-% The part of a telegram with the base, normalised, stable data, possibly
-% complemented with optional data.
+% The part of a telegram with the base, normalised, stable data (corresponding
+% to the actual payload of an ESP3 packet, which can be for example an ERP1
+% radio packet), possibly complemented with optional data.
 
 
 -type telegram_data_tail() :: telegram_chunk().
@@ -203,7 +205,8 @@
 % Since EEP 3.0:
 
 -type rorg() :: uint8().
-% Radio ORG (organization number); describes the ERP radio telegram type, as an
+% Radio ORG (organization number / Radio-telegram types grouped
+% ORGanizationally); describes the ERP radio telegram type, as an
 % identifier. Equivalent of "Choice".
 
 -type func() :: uint8().
@@ -334,6 +337,9 @@
 -type crc() :: byte().
 % The CRC (Cyclic Redundancy Check) or polynomial code checksum of a
 % sub-telegram/packet can be computed.
+%
+% Remainder on 8 bits of the modulo 2 division of the G(x) = x^8 + x^2 + x^1 +
+% x^0 polynom.
 
 
 -type esp3_packet() :: binary().
@@ -359,9 +365,12 @@
 
 
 -type payload() :: binary().
-% The payload of a (typically ESP3) packet, a sequence f bytes sometimes
+% The payload of a (typically ESP3) packet, a sequence of bytes sometimes
 % designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to
 % the "optional data" one) found after the R-ORG one.
+%
+% Such a payload corresponds to a packet of a given type (e.g. an ERP1 radio
+% packet, encapsulated in an ESP3 packet).
 
 
 %-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
@@ -539,62 +548,6 @@
 -define( sync_byte, 85 ).
 
 
-% The next defines could not have been specified, knowing that they are now
-% directly referenced thanks to const, bijective, topic-based tables exposed by
-% a generated module (refer to the end of this file.
-
-
-% For packet types, as defined in [ESP3]:
--define( reserved_type,           16#00 ).
--define( radio_erp1_type,         16#01 ).
--define( response_type,           16#02 ).
--define( radio_sub_tel_type,      16#03 ).
--define( event_type,              16#04 ).
--define( common_command_type,     16#05 ).
--define( smart_ack_command_type,  16#06 ).
--define( remote_man_command_type, 16#07 ).
-% Not existing: 16#08.
--define( radio_message_type,      16#09 ).
--define( radio_erp2_type,         16#0A ).
--define( radio_802_15_4_type,     16#10 ).
--define( command_2_4_type,        16#11 ).
-
-
-% For return codes, as defined in [ESP3]:
--define( ok_return,              16#00 ).
--define( error_return,           16#01 ).
--define( not_supported_return,   16#02 ).
--define( wrong_parameter_return, 16#03 ).
--define( operation_denied,       16#04 ).
-
-
-% For event codes, as defined in [ESP3]:
-% Not existing: 16#00
--define( sa_reclaim_failed,       16#01 ).
--define( sa_confirm_learn,        16#02 ).
--define( sa_learn_ack,            16#03 ).
--define( co_ready,                16#04 ).
--define( co_event_secure_devices, 16#05 ).
-
-
-% For the RORG field of an ERP radio telegram type, as defined in [EEP]:
--define( rorg_undefined,  16#00 ).
--define( rorg_rps,        16#F6 ).
--define( rorg_1bs,        16#D5 ).
--define( rorg_4bs,        16#A5 ).
--define( rorg_vld,        16#D2 ).
--define( rorg_msc,        16#D1 ).
--define( rorg_adt,        16#A6 ).
--define( rorg_sm_lrn_req, 16#C6 ).
--define( rorg_sm_lrn_ans, 16#C7 ).
--define( rorg_rec,        16#A7 ).
--define( rorg_ex,         16#C5 ).
--define( rorg_sec,        16#30 ).
--define( rorg_sec_encaps, 16#31 ).
--define( rorg_man,        16#34 ).
--define( rorg_signal,     16#D0 ).
--define( rorg_ute,        16#D4 ).
-
 
 % For DB_0 for example, 8 bits:
 %  * bit name:   B7 - B6 - B5 - B4 - B3 - B2 - B1 - B0
@@ -622,7 +575,10 @@
 % Optional repeater mode.
 % Some modules support multiple channels.
 
-% ESP means *EnOcean Serial Protocol*; discusses packets.
+% ESP means *EnOcean Serial Protocol*; discusses packets. 1 start bit (always at
+% 0), 8 bits of data (from LSB to MSB), no parity bit, 1 stop bit (always at
+% 1). Taking into account the esp3_speed define, this corresponds in terms of
+% configuration serial settings to "57600 8N1".
 
 % EEP means *EnOcean Equipment Profiles*; discusses devices.
 
@@ -715,12 +671,6 @@
 
 -type celsius() :: unit_utils:celsius().
 
-
-%-type time_out() :: time_utils:time_out().
-
--type topic_spec() :: const_bijective_topics:topic_spec().
-
-%-type bijective_table( F, S ) :: bijective_table:bijective_table( F, S ).
 
 
 % For myriad_spawn*:
@@ -1048,11 +998,21 @@ send( Telegram, OcSrvPid ) ->
 
 
 
+% Section for encoding, in ESP3 packets.
+
+
+% Subsection for the encoding of the packets of the ERP1 radio type.
+
+
+% Finer section for the RPS telegrams, which include only the F6-* EEPs.
+
+
 % @doc Encodes a double-rocker switch telegram, from the specified device to the
 % specified one, reporting the specified transition for the specified button.
 %
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1.
+% Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
+% radio packet encapsulated into an ESP3 one.
 %
 % See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 %
@@ -1135,6 +1095,14 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 
 	% This is an ESP3 packet:
 	<<?sync_byte, Header/binary, HeaderCRC:8, FullData/binary, FullDataCRC:8>>.
+
+
+
+% Subsection for the encoding of packets of the Common Command type.
+
+
+% Finer section for the RPS telegrams, which include only the F6-* EEPs.
+
 
 
 
@@ -1310,7 +1278,9 @@ get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
 
 
 
-% @doc Tries to integrate a new telegram chunk.
+% @doc Tries to integrate a new telegram chunk, that is to decode an ESP3 packet
+% from the specified chunk.
+%
 -spec try_integrate_chunk( count(), telegram_chunk(), telegram_chunk(),
 						   oceanic_state() ) -> decoding_outcome().
 % Special-casing "no skip" is clearer; guard needed to ensure we indeed already
@@ -1503,8 +1473,7 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 						%
 						_ ->
 							StillToSkip = SkipLen - size( Rest ),
-							{ not_reached, StillToSkip, _AccChunk= <<>>,
-							  State }
+							{ not_reached, StillToSkip, _AccChunk= <<>>, State }
 
 					end;
 
@@ -1598,6 +1567,9 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 
 
 % @doc Decodes the specified packet, based on the specified data elements.
+%
+% Data corresponds to the actual packet payload of the specified type.
+%
 -spec decode_packet( packet_type(), telegram_data(), telegram_opt_data(),
 					 telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_packet( _PacketType=radio_erp1_type,
@@ -2093,7 +2065,7 @@ nu_message_type_to_string( _Nu=unknown_type_3 ) ->
 
 
 
-% @doc Decodes a rorg_1bs (D5) packet.
+% @doc Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
 %
 % Discussed in [EEP-spec] p.27.
 %
@@ -2169,7 +2141,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 
 
-% @doc Decodes a rorg_4bs (A5) packet.
+% @doc Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
 %
 % Discussed in [EEP-spec] p.12.
 %
@@ -3274,9 +3246,11 @@ generate_support_modules() ->
 
 	%trace_bridge:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
 
-	TopicSpecs = [ get_packet_type_topic_spec(), get_return_code_topic_spec(),
-		get_event_code_topic_spec(), get_rorg_topic_spec(),
-		get_rorg_description_topic_spec() ] ++ get_eep_topic_specs(),
+	TopicSpecs = [ oceanic_constants:F()
+		|| F <- [ get_packet_type_topic_spec, get_return_code_topic_spec,
+				  get_event_code_topic_spec, get_rorg_topic_spec,
+				  get_rorg_description_topic_spec ] ]
+		++ oceanic_constants:get_eep_topic_specs(),
 
 	_ModFilename =
 		const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
@@ -3284,166 +3258,3 @@ generate_support_modules() ->
 	%trace_bridge:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
 
 	erlang:halt().
-
-
-
-% Defines are used below as they were already specified, otherwise of course
-% they would not.
-
-
-% @doc Returns the specification for the the 'packet_type' topic.
--spec get_packet_type_topic_spec() -> topic_spec().
-get_packet_type_topic_spec() ->
-
-	% We use our recommended order (first set for internal, second one for
-	% third-party).
-
-	% For packet types, as defined in [ESP3]:
-	Entries = [
-		{ reserved_type,           ?reserved_type },
-		{ radio_erp1_type,         ?radio_erp1_type },
-		{ response_type,           ?response_type },
-		{ radio_sub_tel_type,      ?radio_sub_tel_type },
-		{ event_type,              ?event_type },
-		{ common_command_type,     ?common_command_type },
-		{ smart_ack_command_type,  ?smart_ack_command_type },
-		{ remote_man_command_type, ?remote_man_command_type },
-		{ radio_message_type,      ?radio_message_type },
-		{ radio_erp2_type,         ?radio_erp2_type },
-		{ radio_802_15_4_type,     ?radio_802_15_4_type},
-		{ command_2_4_type,        ?command_2_4_type } ],
-
-	{ packet_type, Entries }.
-
-
-
-% @doc Returns the specification for the the 'return_code' topic.
--spec get_return_code_topic_spec() -> topic_spec().
-get_return_code_topic_spec() ->
-
-	Entries = [
-		{ ok_return,              ?ok_return  },
-		{ error_return,           ?error_return },
-		{ not_supported_return,   ?not_supported_return },
-		{ wrong_parameter_return, ?wrong_parameter_return },
-		{ operation_denied,       ?operation_denied  } ],
-
-	{ return_code, Entries }.
-
-
-
-% @doc Returns the specification for the the 'event_code' topic.
--spec get_event_code_topic_spec() -> topic_spec().
-get_event_code_topic_spec() ->
-
-	Entries = [
-		{ sa_reclaim_failed,       ?sa_reclaim_failed  },
-		{ sa_confirm_learn,        ?sa_confirm_learn },
-		{ sa_learn_ack,            ?sa_learn_ack },
-		{ co_ready,                ?co_ready },
-		{ co_event_secure_devices, ?co_event_secure_devices } ],
-
-	{ event_code, Entries }.
-
-
-
-% @doc Returns the specification for the the 'rorg' topic.
--spec get_rorg_topic_spec() -> topic_spec().
-get_rorg_topic_spec() ->
-
-	Entries = [
-		{ rorg_undefined,  ?rorg_undefined },
-		{ rorg_rps,        ?rorg_rps },
-		{ rorg_1bs,        ?rorg_1bs },
-		{ rorg_4bs,        ?rorg_4bs },
-		{ rorg_vld,        ?rorg_vld },
-		{ rorg_msc,        ?rorg_msc },
-		{ rorg_adt,        ?rorg_adt },
-		{ rorg_sm_lrn_req, ?rorg_sm_lrn_req },
-		{ rorg_sm_lrn_ans, ?rorg_sm_lrn_ans },
-		{ rorg_rec,        ?rorg_rec },
-		{ rorg_ex,         ?rorg_ex },
-		{ rorg_sec,        ?rorg_sec },
-		{ rorg_sec_encaps, ?rorg_sec_encaps },
-		{ rorg_ute,        ?rorg_ute } ],
-
-	{ rorg, Entries }.
-
-
-
-% @doc Returns the specification for the 'rorg_description' topic.
--spec get_rorg_description_topic_spec() -> topic_spec().
-get_rorg_description_topic_spec() ->
-
-	Entries = [
-		{ rorg_undefined,  <<"(undefined RORG)">> },
-		{ rorg_rps,        <<"RPS (Repeated Switch Communication)">> },
-		{ rorg_1bs,        <<"1BS (1-byte Communication)">> },
-		{ rorg_4bs,        <<"4BS (4-byte Communication)">> },
-		{ rorg_vld,        <<"VLD 'Variable Length Data)">> },
-		{ rorg_msc,        <<"MSC (Manufacturer-Specific Communication)">> },
-		{ rorg_adt,        <<"ADT (Addressing Destination Telegram)">> },
-		{ rorg_sm_lrn_req, <<"SM_LRN_REQ (SMART ACK Learn Request)">> },
-		{ rorg_sm_lrn_ans, <<"SM_LRN_ANS (SMART ACK Learn Answer)">> },
-		{ rorg_rec,        <<"SM_REC (SMART ACK Reclaim)">> },
-		{ rorg_ex,         <<"SYS_EX (Remote Management)">> },
-		{ rorg_sec,        <<"SEC (Secure telegram)">> },
-		{ rorg_sec_encaps,
-			<<"SEC_ENCAPS (Secure telegram with RORG encapsulation)">> },
-		{ rorg_man,        <<"SEC_MAN (Maintenance Security message)">> },
-		{ rorg_signal,     <<"SIGNAL (Signal telegram)">> },
-		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
-
-	{ rorg_description, Entries }.
-
-
-
-% @doc Returns the specification for the 'eep' topics.
--spec get_eep_topic_specs() -> [ topic_spec() ].
-get_eep_topic_specs() ->
-
-	% We want to be able to associate one of our EEP identifiers
-	% (e.g. 'single_input_contact') to either an internal triplet (e.g. {16#D5,
-	% 16#00, 16#01}) or its counterpart string (e.g. "D5-00-01").
-
-	% {eep_id, eep_string()} pairs:
-	RawEntries = [
-
-		% Temperature and humidity sensors:
-
-		% Lower-range, 0°C to +40°C and 0% to 100%:
-		{ thermo_hygro_low, "A5-04-01" },
-
-		% Mid-range, -20°C to +60°C and 0% to 100%
-		{ thermo_hygro_mid, "A5-04-02" },
-
-		% Higher-range, -20°C to +60°C 10bit-measurement and 0% to 100%:
-		{ thermo_hygro_high, "A5-04-03" },
-
-
-		% Buttons:
-
-		% Single button:
-		{ push_button, "F6-01-01" },
-
-		% Two rockers:
-		{ double_rocker_switch, "F6-02-01" },
-
-		% Contacts:
-		{ single_input_contact, "D5-00-01" },
-
-		% In-wall modules:
-		{ single_channel_module, "D2-01-0E" },
-		{ double_channel_module, "D2-01-12" } ],
-
-	AsTripletsEntries = [ { EepId, string_to_eep( EepStr ) }
-								|| { EepId, EepStr } <- RawEntries ],
-
-	AsStringsEntries = [ { EepId, text_utils:string_to_binary( EepStr ) }
-								|| { EepId, EepStr } <- RawEntries ],
-
-	% As a user-specified EEP might not be found:
-	ElementLookup = 'maybe',
-
-	[ { eep_triplets, AsTripletsEntries, ElementLookup },
-	  { eep_strings, AsStringsEntries, ElementLookup } ].

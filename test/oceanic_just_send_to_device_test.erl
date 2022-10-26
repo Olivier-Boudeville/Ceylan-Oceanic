@@ -117,7 +117,10 @@ actual_test( TtyPath ) ->
 	% We hijack the Oceanic logic by interacting directly from this test process
 	% with the serial server:
 	%
+	%TestTtyPath = "/dev/pts/10",
+
 	SerialPid = oceanic:secure_tty( TtyPath ),
+	%{ ok, FD } = serctl:open( TtyPath ),
 
 	replay_telegrams( SerialPid ),
 
@@ -133,7 +136,7 @@ actual_test( TtyPath ) ->
 									   name= <<"Test Source Device">>,
 									   eep=EepId },
 
-	InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
+	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
 	TargetEurid = oceanic:get_broadcast_eurid(),
 	TargetEuridStr = "all (broadcast)",
@@ -147,21 +150,30 @@ actual_test( TtyPath ) ->
 		TargetEurid, button_ao, pressed ),
 
 
-	InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
+	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
 	% Trying to decode the telegram we just forged:
-	{ decoded, Event, _AnyNextChunk, _NewState } =
-		oceanic:try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
-									 PressTelegram, InitialTestState ),
+	%{ decoded, Event, _AnyNextChunk, _NewState } =
+	%	oceanic:try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
+	%								 PressTelegram, InitialTestState ),
 
-	test_facilities:display( "Forged telegram corresponding to: ~ts.",
-							 [ oceanic:device_event_to_string( Event ) ] ),
+	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
+	%						 [ oceanic:device_event_to_string( Event ) ] ),
 
 	test_facilities:display( "Sending as ~ts, to ~ts, following telegram "
 		"(size: ~B bytes) for double-rocker press:~n~p",
 		[ SourceEuridStr, TargetEuridStr, size( PressTelegram ),
 		  PressTelegram ] ),
 
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
+	SerialPid ! { send, PressTelegram },
 	SerialPid ! { send, PressTelegram },
 
 
