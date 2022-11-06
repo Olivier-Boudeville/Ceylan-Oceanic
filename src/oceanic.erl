@@ -26,8 +26,8 @@
 % Creation date: Wednesday, September 7, 2022.
 
 
-% @doc Main module of Ceylan-Oceanic, in order to drive Enocean communications
-% through an Oceanic server.
+% @doc Main module of Ceylan-Oceanic, in order to <b>drive Enocean
+% communications through an Oceanic server</b>.
 %
 -module(oceanic).
 
@@ -43,7 +43,11 @@
 
 		  send/2,
 
-		  encode_double_rocker_switch_telegram/4, decode_telegram/2,
+		  encode_double_rocker_switch_telegram/4,
+
+		  encode_read_version_request/0,
+
+		  decode_telegram/2,
 
 		  stop/0, stop/1,
 
@@ -65,7 +69,7 @@
 		  test_decode/2, secure_tty/1, try_integrate_chunk/4 ]).
 
 % Silencing:
--export([ record_device_failure/2,
+-export([ record_device_failure/2, encode_common_command/2,
 		  state_to_string/1, device_table_to_string/1, device_to_string/1,
 		  device_event_to_string/1 ]).
 
@@ -154,12 +158,12 @@
 -type telegram_data() :: telegram_chunk().
 % The part of a telegram with the base, normalised, stable data (corresponding
 % to the actual payload of an ESP3 packet, which can be for example an ERP1
-% radio packet), possibly complemented with optional data.
+% radio packet), possibly to be complemented with optional data.
 
 
 -type telegram_data_tail() :: telegram_chunk().
-% A base, normalised, stable data of a telegram once its initial R-ORG byte has
-% already been chopped.
+% A base, normalised, stable data of a telegram once its initial byte (typically
+% R-ORG or Return Code) has already been chopped.
 
 
 -type telegram_opt_data() :: telegram_chunk().
@@ -305,9 +309,13 @@
 	{ decoding_error(), ToSkipLen :: count(), NextChunk :: telegram_chunk(),
 	  oceanic_state() }
 
-  | { 'decoded', device_event(), NextChunk :: telegram_chunk(),
+  | { 'decoded', maybe( device_event() ), NextChunk :: telegram_chunk(),
 	  oceanic_state() }.
 % The outcome of an attempt of integrating / decoding a telegram chunk.
+%
+% A maybe-event is returned, as for example a common command response received
+% whereas no request was sent shall be discarded.
+
 
 
 -type decoding_result() :: decoding_error() | device_event().
@@ -387,6 +395,12 @@
 % read a new event, returning any next chunk as it is.
 
 
+-type enocean_version() :: { Main :: version_number(), Beta :: version_number(),
+					Alpha :: version_number(), Build :: version_number() }.
+% The version of an EnOcean application or API.
+%
+% This is a basic_utils:four_digit_version().
+
 
 % Event types still ordered by increasing EEP:
 
@@ -435,13 +449,38 @@
 %-type position_switch_event() :: #position_switch_event{}.
 
 
+-type read_version_response() :: #read_version_response{}.
+
 
 -type device_event() :: thermo_hygro_event()
 					  | single_input_contact_event()
 					  | push_button_event()
 					  | double_rocker_switch_event()
-					  | double_rocker_multipress_event().
+					  | double_rocker_multipress_event()
+					  | common_command_response().
 % Any event notified by an EnOcean device.
+
+
+-type common_command() :: atom().
+% Designates an ESP3 command, like co_wr_sleep or co_rd_repeater.
+%
+% Refer to oceanic_generated:get_common_command_topic_spec/0 for further
+% information.
+
+
+-type common_command_failure() :: 'error_return'
+								| 'not_supported_return'
+								| 'wrong_parameter_return'
+								| 'operation_denied'.
+% Generic causes of failure for a common command request.
+%
+% See also oceanic_constants:get_return_code_topic_spec/0.
+
+
+-type common_command_response() :: read_version_response()
+								 | common_command_failure().
+% Designates a response to a common command request.
+
 
 
 -export_type([ oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
@@ -469,12 +508,16 @@
 
 			   eurid/0,
 			   packet/0, crc/0, esp3_packet/0, packet_type/0, payload/0,
+			   enocean_version/0,
 
 			   thermo_hygro_event/0, single_input_contact_event/0,
 			   push_button_event/0,
 			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
-			   device_event/0 ]).
+			   device_event/0,
+
+			   common_command/0, common_command_failure/0,
+			   common_command_response/0 ]).
 
 
 
@@ -598,6 +641,9 @@
 % typically resolving in
 % https://www.enocean.com/wp-content/uploads/Knowledge-Base/EnOceanSerialProtocol3.pdf)
 %
+% - "[TCM]" refers to the "TCM 310 / TCM 310U Transceiver Gateway Module User
+% Manual" (https://www.enocean.com/en/product/tcm-310/?frequency=868)
+%
 % Regarding code: [PY-EN] designates Python EnOcean
 % (https://github.com/kipe/enocean).
 
@@ -611,7 +657,8 @@
 %
 % - for RPS: the controller must have been configured out of the band (typically
 % here in an Oceanic ETF configuration file), to know a priori, for each
-% device/Sender ID of interest what is its corresponding EEP
+% device/Sender ID of interest what is its corresponding EEP (as the full EEP
+% cannot be deduced solely from the packet)
 %
 % - for 1BS: a bit tells whether the telegram at hand is a teach-in one
 %
@@ -619,6 +666,56 @@
 %
 % See [EEP-gen] starting from p.18 for more details.
 
+
+% Common command section.
+
+% These exchanges take place locally, directly between the host (the computer at
+% hand) and its connected USB Enocean gateway, based on a TCM 310 chip.
+%
+% This corresponds to packet type 5; a host sends a ESP3 common command request
+% to an EnOcean module, answered with a response message.
+%
+% See the 'common_command' topic spec in the oceanic_constants/generated module,
+% and [TCM] p.9.
+%
+% Apparently the TCM 310 supports only the following commands (see [TCM] p.9):%
+%  - co_wr_sleep to enter energy saving mode (deep sleep mode)
+%  - co_wr_reset to reset the device
+%  - co_rd_version to read sw/hw versions, chip id etc.
+%  - co_rd_sys_log to read system log from device data base
+%  - co_wr_sys_log to reset system log from device data base
+%  - co_wr_bist to perform flash bist operation
+%  - co_wr_idbase to write id range base number
+%  - co_rd_idbase to read id range base number
+%  - co_wr_repeater to configure repeater functionality
+%  - co_rd_repeater to read repeater state
+%  - co_wr_filter_add to add filter to filter list or to selective repeating
+%  (up to 30 filters are supported)
+%  - co_wr_filter_del to delete filter from filter list or from selective
+%  repeating
+%  - co_wr_filter_del_all to delete all filter
+%  - co_wr_filter_enable to enable/disable supplied filters
+%  - co_rd_filter to read supplied filters
+%  - co_wr_wait_maturity to wait maturity time before returning radio telegrams
+%  - co_wr_mem for writing into memory
+%  - co_rd_mem for reading memory
+%  - co_rd_mem_address to get addresses of special areas
+%  - co_rd_dutycycle_limit to read information about current duty cycle
+%    limitations
+
+
+
+
+% Learning/teach-in section.
+
+% Frequently, a learn button on the receiver triggers the teach-in process; then
+% the Sender-ID of an arriving telegram is interpreted as an authorized
+% information source. To prevent unwanted devices from being learned, the input
+% sensitivity of the receiver is often reduced, and the device to be learned
+% should be placed close by the receiver. Some transmitters can also be
+% switched into the learn-mode via a remote management command. To avoid
+% inadvertent learning the RPS telegrams have to be triggered 3 times
+% within 2 seconds.
 
 
 % Definition of the overall state of an Oceanic server.
@@ -637,8 +734,19 @@
 	% A table recording all information regarding the known Enocean devices:
 	device_table :: device_table(),
 
-	% The number of telegrams count:
-	send_count = 0 :: count(),
+	% Any pending common command request, whose response is waited for (as
+	% response do not refer to their request; pipelining commands is thus not
+	% really possible):
+	%
+	waited_common_command = undefined :: maybe( common_command() ),
+
+	% The number of telegrams sent:
+	sent_count = 0 :: count(),
+
+	% The number of telegrams discarded, typically because they were out of
+	% context (e.g. a response being received whereas no request is pending):
+	%
+	discarded_count = 0 :: count(),
 
 	% The PID of any process listening for Enocean events:
 	event_listener_pid :: maybe( event_listener_pid() ) } ).
@@ -652,6 +760,7 @@
 % Shorthands:
 
 -type count() :: basic_utils:count().
+-type version_number() :: basic_utils:version_number().
 
 -type any_file_path() :: file_utils:any_file_path().
 -type device_path() :: file_utils:device_path().
@@ -971,10 +1080,9 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 
 	end,
 
-	DeviceRec = #enocean_device{
-		eurid=Eurid,
-		name=text_utils:ensure_binary( NameStr ),
-		eep=EepId },
+	DeviceRec = #enocean_device{ eurid=Eurid,
+								 name=text_utils:ensure_binary( NameStr ),
+								 eep=EepId },
 
 	NewDeviceTable = table:add_new_entry( Eurid, DeviceRec, DeviceTable ),
 
@@ -1025,10 +1133,7 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 
 	% Best understood backwards, from the end of this function.
 
-	% Radio, hence 1 here:
-	PacketTypeNum = oceanic_generated:get_second_for_packet_type(
-								_PacketType=radio_erp1_type ),
-	PacketTypeNum = 1,
+	RadioPacketType = radio_erp1_type,
 
 	% F6 here:
 	RorgNum = oceanic_generated:get_second_for_rorg( _Rorg=rorg_rps ),
@@ -1053,12 +1158,21 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 
 	end,
 
+	% No LRN (Learn) bit for RPS, which can only send data and has no special
+	% telegram modification to teach-in the device. Therefore, the teach-in
+	% procedure takes place manually on the actuator/controller through a normal
+	% data telegram. The EEP profile must be manually supplied to the controller
+	% per sender ID.
+	%
 	DB_0 = <<R1Enum:3, EB:1, R2Enum:3, SA:1>>,
 
 	T21 = 1,
 	NU = 1,
 
-	Status = <<0:2, T21:1, NU:1, 0:4>>,
+	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
+	RC = 1,
+
+	Status = <<0:2, T21:1, NU:1, RC:4>>,
 
 	Data = <<RorgNum:8, DB_0:1/binary, SourceEurid:32, Status:1/binary>>,
 
@@ -1069,32 +1183,88 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 
 	OptData = <<SubTelNum:8, TargetEurid:32, DBm:8, SecurityLevel:8>>,
 
-	FullData = <<Data/binary, OptData/binary>>,
-	FullDataCRC = compute_crc( FullData ),
-
-	DataLen = size( Data ),
-	OptDataLen = size( OptData ),
-
-	Header = <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
-
-	HeaderCRC = compute_crc( Header ),
-
 	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
 			<<DB_0AsInt>> = DB_0,
 			<<StatusAsInt>> = Status,
 			PadWidth = 8,
 			trace_bridge:debug_fmt(
-				"Generated packet: type=~B, RORG=~ts, DB_0=~ts, "
+				"Generated packet: type=~ts RORG=~ts, DB_0=~ts, "
 				"data size=~B, optional data size=~B, status=~ts.",
-				[ PacketTypeNum, text_utils:integer_to_hexastring( RorgNum ),
+				[ RadioPacketType, text_utils:integer_to_hexastring( RorgNum ),
 				  text_utils:integer_to_bits( DB_0AsInt, PadWidth ),
-				  DataLen, OptDataLen,
+				  size( Data ), size( OptData ),
 				  text_utils:integer_to_bits( StatusAsInt, PadWidth ) ] )
 		end ),
 
+	% Radio, hence 1 here:
+	encode_esp3_packet( RadioPacketType, Data, OptData ).
+
+
+
+% @doc Encodes a common command request of type 'CO_RD_VERSION'.
+%
+% See its actual specification is in [ESP3], p.36, and
+% the decode_response_tail/5 for WaitedCmd=co_rd_version.
+%
+-spec encode_read_version_request() -> telegram().
+encode_read_version_request() ->
+	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_version ),
+	Data = <<CmdNum:8>>,
+	encode_common_command( Data ).
+
+
+
+% @doc Encodes a common command request, based on the specified data (and with
+% no optional data defined).
+%
+% The actual specification of common commands starts at p.32 of [ESP3].
+%
+-spec encode_common_command( telegram_data() ) -> telegram().
+encode_common_command( Data ) ->
+	encode_esp3_packet( _PacketType=common_command, Data ).
+
+
+% @doc Encodes a common command, based on the specified data and optional data.
+%
+% The actual specification of common commands starts at p.32 of [ESP3].
+%
+-spec encode_common_command( telegram_data(), telegram_opt_data() ) ->
+												telegram().
+encode_common_command( Data, OptData ) ->
+	encode_esp3_packet( _PacketType=common_command, Data, OptData ).
+
+
+
+% @doc Encodes an ESP3 packet from its packet type and base data.
+-spec encode_esp3_packet( packet_type(), telegram_data() ) -> telegram().
+encode_esp3_packet( PacketType, Data ) ->
+	encode_esp3_packet( PacketType, Data, _OptData= <<>> ).
+
+
+
+% @doc Encodes an ESP3 packet from its packet type, base and optional data.
+-spec encode_esp3_packet( packet_type(), telegram_data(),
+						  telegram_opt_data() ) -> telegram().
+encode_esp3_packet( PacketType, Data, OptData ) ->
+
+	DataLen = size( Data ),
+
+	OptDataLen = size( OptData ),
+
+	% For example PacketType is radio_erp1_type:
+	PacketTypeNum = oceanic_generated:get_second_for_packet_type( PacketType ),
+
+	ESP3Header = <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
+
+	ESP3HeaderCRC = compute_crc( ESP3Header ),
+
+	FullData = <<Data/binary, OptData/binary>>,
+	FullDataCRC = compute_crc( FullData ),
+
 	% This is an ESP3 packet:
-	<<?sync_byte, Header/binary, HeaderCRC:8, FullData/binary, FullDataCRC:8>>.
+	<<?sync_byte, ESP3Header/binary, ESP3HeaderCRC:8, FullData/binary,
+	  FullDataCRC:8>>.
 
 
 
@@ -1188,9 +1358,9 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			SerialPid = State#oceanic_state.serial_server_pid,
 			SerialPid ! { send, Telegram },
 
-			NewSendCount = State#oceanic_state.send_count + 1,
+			NewSentCount = State#oceanic_state.sent_count + 1,
 
-			NewState = State#oceanic_state{ send_count=NewSendCount },
+			NewState = State#oceanic_state{ sent_count=NewSentCount },
 
 			oceanic_loop( ToSkipLen, AccChunk, NewState );
 
@@ -1429,8 +1599,8 @@ scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
 
 
 % @doc Checks the telegram header and decodes it.
--spec examine_header( esp3_header(), crc(), telegram_chunk(),
-					  telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+-spec examine_header( esp3_header(), crc(), telegram_chunk(), telegram_chunk(),
+					  oceanic_state() ) -> decoding_outcome().
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 				HeaderCRC, Rest, FullTelegramChunk, State ) ->
 
@@ -1607,6 +1777,54 @@ decode_packet( _PacketType=radio_erp1_type,
 			{ unsupported, _ToSkipLen=0, AnyNextChunk, State }
 
 	end;
+
+
+% Here a response is received whereas no request was sent:
+decode_packet( _PacketType=response_type, Data, OptData, AnyNextChunk,
+			   State=#oceanic_state{ waited_common_command=undefined,
+									 discarded_count=DiscCount } ) ->
+
+	trace_bridge:error_fmt( "Received a common command response "
+		"(data: ~w, optional data: ~w) whereas there is no pending request, "
+		"dropping it.", [ Data, OptData ] ),
+
+	{ decoded, _MaybeDeviceEvent=undefined, AnyNextChunk,
+	  State#oceanic_state{ discarded_count=DiscCount+1 } };
+
+
+decode_packet( _PacketType=response_type,
+			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData, AnyNextChunk,
+			   State=#oceanic_state{ waited_common_command=WaitedCmd } ) ->
+
+	% In all cases the pending request is over:
+	RespState = State#oceanic_state{ waited_common_command=undefined },
+
+	case oceanic_generated:get_maybe_first_for_return_code( ReturnCode ) of
+
+		undefined ->
+			trace_bridge:warning_fmt( "Unable to decode response whose return "
+				"code is invalid (~B), dropping packet and pending common "
+				"command (~ts).", [ ReturnCode, WaitedCmd ] ),
+			{ invalid, _ToSkipLen=0, AnyNextChunk, RespState };
+
+
+		ok_return ->
+			decode_response_tail( WaitedCmd, DataTail, OptData, AnyNextChunk,
+								  RespState );
+
+		% Not a decoding failure, but more a protocol-level one.
+		%
+		% Expected in [error_return, not_supported_return,
+		% wrong_parameter_return, operation_denied]:
+		%
+		FailureReturn ->
+			trace_bridge:error_fmt( "Received a failure response (~ts), "
+				"presumably to a pending '~ts' common command request.",
+				[ FailureReturn, WaitedCmd ] ),
+			{ decoded, FailureReturn, _NextChunk= <<>>, RespState }
+
+	end;
+
 
 decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
 
@@ -1923,6 +2141,62 @@ decode_rps_double_rocker_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	end.
 
+
+
+% @doc Actual decoding of responses to pending common commands.
+-spec decode_response_tail( common_command(), telegram_data_tail(),
+	telegram_opt_data(), telegram_chunk(), oceanic_state() ) ->
+			decoding_outcome().
+decode_response_tail( _WaitedCmd=co_rd_version,
+		_DataTail= <<AppVerMain:8, AppVerBeta:8, AppVerAlpha:8, AppVerBuild:8,
+					 ApiVerMain:8, ApiVerBeta:8, ApiVerAlpha:8, ApiVerBuild:8,
+					 % 128 = 16*8 bits:
+					 ChipId:32, ChipVer:32, AppDesc:128>>,
+		_OptData= <<>>, AnyNextChunk, State ) ->
+
+	Res = #read_version_response{
+		app_version={ AppVerMain, AppVerBeta, AppVerAlpha, AppVerBuild },
+		api_version={ ApiVerMain, ApiVerBeta, ApiVerAlpha, ApiVerBuild },
+		chip_id=ChipId,
+		chip_version=ChipVer,
+		app_description=text_utils:buffer_to_binstring( AppDesc ) },
+
+	{ decoded, Res, AnyNextChunk, State };
+
+
+decode_response_tail( _WaitedCmd=co_rd_version, DataTail, _OptData= <<>>,
+					  AnyNextChunk, State ) ->
+
+	trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
+		"common command with an invalid data tail (~w, of size ~B bytes).",
+		[ DataTail, size( DataTail ) ] ),
+
+	{ invalid, _ToSkipLen=0, AnyNextChunk, State };
+
+
+decode_response_tail( _WaitedCmd=co_rd_version, _DataTail, OptData,
+					  AnyNextChunk, State ) ->
+
+	trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
+		"common command with optional data (~w), which is abnormal.",
+		[ OptData ] ),
+
+	{ invalid, _ToSkipLen=0, AnyNextChunk, State };
+
+
+decode_response_tail( OtherWaitedCmd, _DataTail, _OptData, AnyNextChunk,
+					  State ) ->
+
+	trace_bridge:error_fmt( "Responses to '~ts' common commands are currently "
+		"unsupported (dropping response and waited request).",
+		[ OtherWaitedCmd ] ),
+
+	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
+
+
+
+
+% Section for decoding helpers.
 
 % Could be a bijective topic as well:
 
@@ -2907,6 +3181,7 @@ device_event_to_string( #double_rocker_switch_event{
 								   MaybeSecLvl ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
+
 device_event_to_string( #double_rocker_multipress_event{
 		source_eurid=Eurid,
 		name=MaybeName,
@@ -2939,6 +3214,21 @@ device_event_to_string( #double_rocker_multipress_event{
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+
+device_event_to_string( #read_version_response{
+		app_version=AppVersion,
+		api_version=ApiVersion,
+		chip_id=ChipId,
+		chip_version=ChipVersion,
+		app_description=BinAppDesc } ) ->
+
+	text_utils:format( "read application version ~ts, API version ~ts, "
+		"chip ID ~ts, chip version ~B and application description '~ts'",
+		[ text_utils:version_to_string( AppVersion ),
+		  text_utils:version_to_string( ApiVersion ),
+		  text_utils:integer_to_hexastring( ChipId ), ChipVersion,
+		  BinAppDesc ] );
 
 
 device_event_to_string( OtherEvent ) ->
@@ -3008,8 +3298,21 @@ state_to_string( #oceanic_state{
 		serial_server_pid=SerialServerPid,
 		emitter_eurid=EmitterEurid,
 		device_table=DeviceTable,
-		send_count=SendCount,
+		waited_common_command=MaybeWaitedCommand,
+		sent_count=SentCount,
+		discarded_count=DiscardedCount,
 		event_listener_pid=MaybeListenerPid } ) ->
+
+	WaitStr = case MaybeWaitedCommand of
+
+		undefined ->
+			"not having any common command pending";
+
+		WaitedCommand ->
+			text_utils:format( "waiting for a pending '~ts' common command",
+							   [ WaitedCommand ] )
+
+	end,
 
 	ListenStr = case MaybeListenerPid of
 
@@ -3022,7 +3325,7 @@ state_to_string( #oceanic_state{
 
 	end,
 
-	SendStr = case SendCount of
+	SentStr = case SentCount of
 
 		0 ->
 			"not having sent any telegram";
@@ -3031,14 +3334,28 @@ state_to_string( #oceanic_state{
 			"having sent a single telegram";
 
 		_ ->
-			text_utils:format( "having sent ~B telegrams", [ SendCount ] )
+			text_utils:format( "having sent ~B telegrams", [ SentCount ] )
+
+	end,
+
+	DiscStr = case DiscardedCount of
+
+		0 ->
+			"not having discarded any telegram";
+
+		1 ->
+			"having discarded a single telegram";
+
+		_ ->
+			text_utils:format( "having discarded ~B telegrams",
+							   [ DiscardedCount ] )
 
 	end,
 
 	text_utils:format( "Oceanic server using serial server ~w, "
-		"using emitter EURID ~ts, ~ts, ~ts, and knowing ~ts",
-		[ SerialServerPid, eurid_to_string( EmitterEurid ), ListenStr,
-		  SendStr, device_table_to_string( DeviceTable ) ] ).
+		"using emitter EURID ~ts, ~ts, ~ts, ~ts, ~ts, and knowing ~ts",
+		[ SerialServerPid, eurid_to_string( EmitterEurid ), WaitStr, ListenStr,
+		  SentStr, DiscStr, device_table_to_string( DeviceTable ) ] ).
 
 
 
