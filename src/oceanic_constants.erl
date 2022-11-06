@@ -101,7 +101,7 @@ get_return_code_topic_spec() ->
 get_event_code_topic_spec() ->
 
 	Entries = [
-        % Not existing: 16#00
+		% Not existing: 16#00
 		{ sa_reclaim_failed,       16#01 },
 		{ sa_confirm_learn,        16#02 },
 		{ sa_learn_ack,            16#03 },
@@ -165,6 +165,7 @@ get_rorg_description_topic_spec() ->
 		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
 
 	{ rorg_description, Entries }.
+
 
 
 % @doc Returns the specification for the 'common_command' topic.
@@ -275,7 +276,7 @@ get_common_command_topic_spec() ->
 											% transparent mode.
 		{ 63, co_rd_transparent_mode },     % Read the state of the transparent
 											% mode.
-		{ 64, co_wr_tx_only_mode },    % Control the state of the TX only mode.
+		{ 64, co_wr_tx_only_mode },   % Control the state of the TX only mode.
 		{ 65, co_rd_tx_only_mode }    % Read the state of the TX only mode.
 			  ],
 
