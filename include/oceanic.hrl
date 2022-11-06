@@ -345,3 +345,25 @@
 
 	% Whether the buttons referenced by the counting are pressed or released:
 	energy_bow :: oceanic:button_transition() } ).
+
+
+
+% Record for responses to common commands.
+
+
+% @doc Response to a successful 'read version' common command request.
+-record( read_version_response, {
+
+	app_version :: oceanic:enocean_version(),
+	% The version of the application.
+
+	api_version :: oceanic:enocean_version(),
+	% The version of the API.
+
+	chip_id :: type_utils:uint32(),
+	% Unique identifier for the gateway chip.
+
+	chip_version :: type_utils:uint32(),
+	% Reserved for internal use.
+
+	app_description :: text_utils:bin_string() } ).
