@@ -114,7 +114,7 @@ get_event_code_topic_spec() ->
 
 % @doc Returns the specification for the 'rorg' topic.
 %
-% For the RORG field of an ERP radio telegram type, as defined in [EEP] p14.
+% For the RORG field of an ERP radio telegram type, as defined in [EEP] p.14.
 %
 -spec get_rorg_topic_spec() -> topic_spec().
 get_rorg_topic_spec() ->

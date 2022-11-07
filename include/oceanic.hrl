@@ -39,6 +39,9 @@
 	% The EEP (if any is defined and registered) of this device:
 	eep :: maybe( oceanic:eep_id() ),
 
+	% Tells how this device was discovered:
+	discovered_as :: oceanic:discovery_origin(),
+
 	% The timestamp (if any) at which this device was first seen:
 	first_seen = undefined :: maybe( time_utils:timestamp() ),
 
@@ -348,10 +351,68 @@
 
 
 
+% Message (that can be seen as an event) corresponding to the receiving a R-ORG
+% telegram for an universal Teach-in/out request, EEP based (UTE), one way of
+% pairing devices.
+%
+% Refer to [EEP-gen] p.17 for further details.
+%
+-record( teach_request, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: maybe( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: maybe( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: maybe( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: maybe( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: maybe( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	comm_direction :: communication_direction(),
+
+	response_expected :: boolean(),
+
+	request_type :: maybe( teach_request_type() ),
+
+	channel_taught :: channel_taught(),
+
+	manufacturer_id :: manufacturer_id(),
+
+	% The 5 bytes of that teach request that may be used directly for its
+	% response:
+	%
+	echo_content :: binary() } ).
+
+
+
 % Record for responses to common commands.
 
 
-% @doc Response to a successful 'read version' common command request.
+% Response to a successful 'read version' common command request.
 -record( read_version_response, {
 
 	app_version :: oceanic:enocean_version(),
@@ -367,3 +428,16 @@
 	% Reserved for internal use.
 
 	app_description :: text_utils:bin_string() } ).
+
+
+
+% Response to a successful 'read logs' common command request.
+-record( read_logs_response, {
+
+	app_logs :: oceanic:log_entries(),
+	% Logs of the application.
+
+	api_logs :: oceanic:log_entries()
+	% Logs of the API.
+
+} ).

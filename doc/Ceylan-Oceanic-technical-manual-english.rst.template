@@ -107,7 +107,7 @@ Yet, for some reason (still unknown), currently our target device (a smart plug)
 
 This problem does not seem specific to Oceanic, insofar as recording directly from the command-line an accepted telegram from the USB gateway and sending it exactly as it was (replay) has no effect either on said device - whereas no anti-replay mechanism seems to be enforced here. Investigations are in progress.
 
-Oceanic can also execute a few common commands directly onto the gateway chip.
+Oceanic can also execute a few common commands directly onto the gateway chip, and perform teach-in operations.
 
 
 
