@@ -215,11 +215,10 @@
 
 -type teach_request_type() :: 'teach_in' | 'teach_out'.
 
--type teach_outcome() :: 'teach_refused'         % "General reason"
-					   | 'teach_in_accepted'     % Addition success
-					   | 'teach_out_accepted'    % Deletion success
-					   | 'teach_eep_unsupported' % EEP not supported
-						 .
+-type teach_outcome() :: 'teach_refused'          % "General reason"
+					   | 'teach_in_accepted'      % Addition success
+					   | 'teach_out_accepted'     % Deletion success
+					   | 'teach_eep_unsupported'. % EEP not supported
 
 
 -type channel_taught() :: uint8() | 'all'.
@@ -276,9 +275,9 @@
 
 
 -type discovery_origin() ::
-	'configured'  % Loaded from Oceanic's user-defined configuration
-  | 'listened'    % Listened from trafic
-  | 'teached'     % Through a teach-in mechanism
+	'configuration'  % Loaded from Oceanic's user-defined configuration
+  | 'listening'      % Passively listened from trafic
+  | 'teaching'.      % Through a teach-in mechanism
 % Tells how a device was discovered by Oceanic.
 
 
@@ -1140,7 +1139,7 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 	DeviceRec = #enocean_device{ eurid=Eurid,
 								 name=text_utils:ensure_binary( NameStr ),
 								 eep=EepId,
-								 discovered_as=configured },
+								 discovered_through=configuration },
 
 	NewDeviceTable = table:add_new_entry( Eurid, DeviceRec, DeviceTable ),
 
@@ -1154,6 +1153,64 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr, CommentStr } | T ],
 
 declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
 	throw( { invalid_device_config, Other } ).
+
+
+
+% @doc Declares the specifed taught-in device.
+-spec declare_device_from_teach_in( eurid(), eep(), device_table() ) ->
+												{ device_table(), timestamp() }.
+declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
+
+	MaybeEepId = resolve_eep( Eep ),
+
+	Now = time_utils:get_timestamp(),
+
+	NewDevice = case table:lookup_entry( Eurid, DeviceTable ) of
+
+		key_not_found ->
+			trace_bridge:info_fmt( "Discovering Enocean device ~ts through "
+				"teach-in.", [ eurid_to_string( Eurid ) ] ),
+
+			#enocean_device{ eurid=Eurid,
+							 name=undefined,
+							 eep=MaybeEepId,
+							 discovered_through=teaching,
+							 first_seen=Now,
+							 last_seen=Now,
+							 telegram_count=1,
+							 error_count=0 };
+
+		% From then, already discovered:
+		{ value, Device=#enocean_device{ eep=undefined,
+										 telegram_count=TelCount } } ->
+			Device#enocean_device{ eep=MaybeEepId,
+								   last_seen=Now,
+								   telegram_count=TelCount+1 };
+
+		{ value, Device=#enocean_device{ eep=KnownEepId,
+										 telegram_count=TelCount } } ->
+			NewEepId = case KnownEepId of
+
+				MaybeEepId ->
+					MaybeEepId;
+
+				_OtherEepId ->
+					trace_bridge:error_fmt( "For ~ts, received a teach-in "
+						"declaring that its EEP is ~ts, whereas it was known "
+						"as ~ts; ignoring the new EEP.",
+						[ device_to_string( Device ), MaybeEepId,
+						  KnownEepId ] ),
+					KnownEepId
+
+			end,
+
+			Device#enocean_device{ eep=NewEepId,
+								   last_seen=Now,
+								   telegram_count=TelCount+1 }
+
+	end,
+
+	{ table:add_entry( Eurid, NewDevice, DeviceTable ), NewDevice, Now }.
 
 
 
@@ -1191,7 +1248,8 @@ acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_out },
 %
 -spec acknowledge_teach_request( teach_request(), teach_outcome(),
 								 oceanic_server_pid() ) -> void().
-acknowledge_teach_request( #teach_request{ comm_direction=CommDirection,
+acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
+										   comm_direction=CommDirection,
 										   echo_content=EchoContent },
 						   TeachOutcome, OcSrvPid ) ->
 
@@ -1230,7 +1288,7 @@ acknowledge_teach_request( #teach_request{ comm_direction=CommDirection,
 	%
 	Data = <<FirstByte/binary, EchoContent/binary>>,
 
-	OptData = get_optional_data_for_sending( TargetEurid ),
+	OptData = get_optional_data_for_sending( RequesterEurid ),
 
 	Telegram = encode_esp3_packet( _RadioPacketType=rorg_vld, Data, OptData ),
 
@@ -1338,7 +1396,7 @@ get_optional_data_for_sending( TargetEurid ) ->
 	DBm = 16#ff,
 	SecurityLevel = 0,
 
-	_OptData =<<SubTelNum:8, TargetEurid:32, DBm:8, SecurityLevel:8>>.
+	_OptData= <<SubTelNum:8, TargetEurid:32, DBm:8, SecurityLevel:8>>.
 
 
 
@@ -2891,8 +2949,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 % This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
 % broadcasting (typically after one of its relevant buttons has been pressed) a
-% request that devices declare to this requester device (whose EURID is not
-% specified here).
+% request that devices declare to this requester device.
 %
 % Proceeding byte per byte is probably clearer:
 decode_ute_packet(
@@ -2903,7 +2960,7 @@ decode_ute_packet(
 					 Type:8,                                     % = DB_2
 					 Func:8,                                     % = DB_1
 					 RORG:8,                                     % = DB_0
-					 SenderEurid:32,
+					 InitiatorEurid:32,
 					 Status:8>>,
 		OptData, AnyNextChunk,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
@@ -2964,36 +3021,59 @@ decode_ute_packet(
 
 	<<ManufId>> = <<ManufIdMSB:3, ManufIdLSB:5>>,
 
-	SrcEEP = { RORG, Func, Type },
+	InitiatorEep = { RORG, Func, Type },
 
-	NewDeviceTable = declare_device( SenderEurid, SrcEEP, DeviceTable ),
+	{ NewDeviceTable, #enocean_device{ name=MaybeName,
+									   eep=MaybeEepId }, Now } =
+		declare_device_from_teach_in( InitiatorEurid, InitiatorEep,
+									  DeviceTable ),
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
-	% Probably broadcast:
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Decoding a Teach-In query UTE packet from ~ts,"
-			" whereas ~ts, for a ~ts communication, response expected: ~ts, "
-			"type: ~ts, channels to be taught: ~ts, manufacturer ID: ~ts, ~ts",
-			[ eurid_to_bin_string( SenderId, State ),
-			  get_eep_description( SrcEEP ), CommDirection, ResponseExpected,
-			  MaybeRequestType, ChannelTaught,
-			  text_utils:integer_to_hexastring( ManufId ),
-			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ) ),
+		begin
+			ChanStr = case ChannelTaught of
 
+				all ->
+					"all";
+
+				ChanCount ->
+					text_utils:format( "~B", [ ChanCount ] )
+
+			end,
+
+			trace_bridge:debug_fmt( "Decoding a Teach-In query UTE packet "
+				"from ~ts, whereas ~ts, for a ~ts communication, "
+				"response expected: ~ts, request type: ~ts "
+				"involving ~ts channels, manufacturer ID: ~ts, "
+				"PTM switch module is ~ts, message type is ~ts, ~ts~ts.",
+				[ eurid_to_bin_string( InitiatorEurid, State ),
+				  get_eep_description( InitiatorEep ), CommDirection,
+				  ResponseExpected, MaybeRequestType, ChanStr,
+				  text_utils:integer_to_hexastring( ManufId ),
+				  ptm_module_to_string( PTMSwitchModuleType ),
+				  nu_message_type_to_string( NuType ),
+				  repeater_count_to_string( RepCount ),
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+
+		end ),
 
 	<<_DB_6:8,ToEcho/binary>> = DataTail,
 
-	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	% Probably that destination is broadcast:
+	{ _MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-	Event = #teach_request{ source_eurid=SenderId,
-							name=,
-							eep=
-timestamp	destinationdbmsecurity_level
+	Event = #teach_request{ source_eurid=InitiatorEurid,
+							name=MaybeName,
+							eep=MaybeEepId,
+							timestamp=Now,
+							destination_eurid=MaybeDestEurid,
+							dbm=MaybeDBm,
+							security_level=MaybeSecLvl,
 							comm_direction=CommDirection,
 							response_expected=ResponseExpected,
 							request_type=MaybeRequestType,
@@ -3001,14 +3081,11 @@ timestamp	destinationdbmsecurity_level
 							manufacturer_id=ManufId,
 							echo_content=ToEcho },
 
-	{ decoded, Event, AnyNextChunk, State }.
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	{ decoded, Event, AnyNextChunk, NewState }.
 
 
-
-% @doc Declares the specified device.
-%
-% 
-	NewDeviceTable = declare_device( SenderEurid, SrcEEP, DeviceTable ),
 
 % @doc Returns a textual description of the specified temperature.
 -spec temperature_to_string( celsius() ) -> ustring().
@@ -3110,15 +3187,15 @@ record_device_success( Eurid, DeviceTable ) ->
 	case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device ~ts.",
-								   [ eurid_to_string( Eurid ) ] ),
+			trace_bridge:info_fmt( "Discovering Enocean device ~ts through "
+				"listening.", [ eurid_to_string( Eurid ) ] ),
 
 			Now = time_utils:get_timestamp(),
 
 			NewDevice = #enocean_device{ eurid=Eurid,
 										 name=undefined,
 										 eep=undefined,
-										 discovered_as=listened,
+										 discovered_through=listening,
 										 first_seen=Now,
 										 last_seen=Now,
 										 telegram_count=1,
@@ -3191,7 +3268,7 @@ record_device_failure( Eurid, DeviceTable ) ->
 			NewDevice = #enocean_device{ eurid=Eurid,
 										 name=undefined,
 										 eep=undefined,
-										 discovered_as=listened,
+										 discovered_through=listening,
 										 first_seen=Now,
 										 last_seen=Now,
 										 telegram_count=0,
@@ -3279,6 +3356,25 @@ get_server_registration_name() ->
 -spec get_server_pid() -> oceanic_server_pid().
 get_server_pid() ->
 	naming_utils:get_locally_registered_pid_for( ?oceanic_server_reg_name ).
+
+
+
+% @doc Resolves the specified EEP triplet into a proper EEP identifier (atom),
+% if possible.
+%
+-spec resolve_eep( eep() ) -> maybe( eep_id() ).
+resolve_eep( EepTriplet ) ->
+	case oceanic_generated:get_maybe_first_for_eep_triplets( EepTriplet ) of
+
+		undefined ->
+			trace_bridge:warning_fmt( "The EEP specified as ~w is not known "
+				"of Oceanic and will be ignored.", [ EepTriplet ] ),
+			undefined;
+
+		KnownEepId ->
+			KnownEepId
+
+	end.
 
 
 
@@ -3815,7 +3911,7 @@ device_table_to_string( DeviceTable ) ->
 device_to_string( #enocean_device{ eurid=Eurid,
 								   name=MaybeName,
 								   eep=MaybeEepId,
-								   discovered_as=DiscOrigin,
+								   discovered_through=DiscOrigin,
 								   first_seen=MaybeFirstTimestamp,
 								   last_seen=MaybeLastTimestamp,
 								   telegram_count=TeleCount,
@@ -3854,7 +3950,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 	{ SeenStr, DiscStr, TeleStr, ErrStr } = case MaybeFirstTimestamp of
 
 		undefined ->
-			{ "never seen by this server", "", "" };
+			{ "never seen by this server", "", "", "" };
 
 		FirstTimestamp ->
 			SeenCountStr = case MaybeLastTimestamp of
@@ -3872,15 +3968,15 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 			end,
 
-			DiscStr = "it was discovered through " ++ case DiscOrigin of
+			DiscovStr = "it was discovered through " ++ case DiscOrigin of
 
-				configured ->
+				configuration ->
 					"user-defined configuration";
 
-				listened ->
+				listening ->
 					"passive listening";
 
-				teached ->
+				teaching ->
 					"teach-in"
 
 			end,
@@ -3923,7 +4019,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 			end,
 
-			{ SeenCountStr, TeleCountStr, ErrCountStr }
+			{ SeenCountStr, DiscovStr, TeleCountStr, ErrCountStr }
 
 		end,
 

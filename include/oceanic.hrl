@@ -40,7 +40,7 @@
 	eep :: maybe( oceanic:eep_id() ),
 
 	% Tells how this device was discovered:
-	discovered_as :: oceanic:discovery_origin(),
+	discovered_through :: oceanic:discovery_origin(),
 
 	% The timestamp (if any) at which this device was first seen:
 	first_seen = undefined :: maybe( time_utils:timestamp() ),
