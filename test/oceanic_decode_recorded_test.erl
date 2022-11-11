@@ -73,17 +73,19 @@ decode_file( RecordPath ) ->
 	test_facilities:display( "Decoding this telegram stream now." ),
 
 	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0, _FirstNextChunk= <<>>,
-								_AccEvents=[], oceanic:get_test_state() ),
+								_AccMsgs=[], oceanic:get_test_state() ),
 
 	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
 		[ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
-			[ oceanic:device_event_to_string( E ) || E <- DecodedEvents ] ) ] ).
+			[ oceanic:device_event_to_string( E )
+				|| E <- DecodedEvents ] ) ] ).
 
 
 
 
 % @doc Decodes in turn all specified telegrams, relying on the specified
 % decoding context.
+%
 decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, State ) ->
 
 	ToSkipLen =:= 0 orelse test_facilities:display(

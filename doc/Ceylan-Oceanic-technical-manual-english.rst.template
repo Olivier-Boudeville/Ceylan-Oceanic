@@ -154,7 +154,11 @@ For that, one may define a suitable udev rule, typically stored in ``/etc/udev/r
  SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", MODE=="0666"
 
 
-Following option could be added as well, to set the group of this TTY: ``GROUP="dialout"`` ou ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example).
+Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example):
+
+.. code:: bash
+
+ $ sudo usermod -a -G dialout my_username
 
 
 One may run ``sudo udevadm control --reload-rules && sudo udevadm trigger`` to ensure that these changes are taken into account.
@@ -178,13 +182,13 @@ Then inserting said dongle should generate log entries that ``journalctl -xe`` c
  mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
 
 
-On insertion we have then::
+On insertion we have then:
 
 .. code:: bash
 
  $ ls -l /dev/ttyUSBEnOcean /dev/ttyUSB0
- FIXME
-
+   crw-rw-rw- 1 root uucp 188, /dev/ttyUSB0
+   lrwxrwxrwx 1 root root      /dev/ttyUSBEnOcean -> ttyUSB0
 
 
 
@@ -195,18 +199,21 @@ Ceylan-Oceanic relies on general-purpose services offered by `Ceylan-Myriad <htt
 
 .. _`erlang serial`:
 
-We chose `erlang-serial <https://github.com/tonyg/erlang-serial>`_ for that, and we prefer installing it in user space that way:
+We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville/erlang-serial>`_ for that, which we prefer installing in user space that way:
 
 .. code:: bash
 
  $ mkdir ~/Software && cd ~/Software
- $ git clone https://github.com/tonyg/erlang-serial.git
+ $ git clone https://github.com/Olivier-Boudeville/erlang-serial
  $ cd erlang-serial
  $ make && DESTDIR=. make install
 
+
+.. [#] A fork of the original `erlang-serial <https://github.com/tonyg/erlang-serial>`_, which had to be modified notably in terms of RTS/CTS flow control in order to be able to send data to the Enocean gateway.
+
 Then using erlang-serial will be just a matter of adding it to the code path.
 
-One may update the *Erlang-serial section* in Ocenanic's `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ to take into account any other convention.
+One may update the ``Erlang-serial section`` in Oceanic's `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ in order to take into account any other path convention.
 
 One may run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing serial's ``ebin`` directory.
 

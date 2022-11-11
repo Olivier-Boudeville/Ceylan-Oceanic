@@ -146,9 +146,9 @@ run() ->
 	%Telegrams = [ TA5 ],
 	%Telegrams = [ TD5 ],
 	%Telegrams = [ TF6A ],
-	Telegrams = [ TF6B ],
+	%Telegrams = [ TF6B ],
 	%Telegrams = [ TInvalid ],
-	%Telegrams = AllTelegrams,
+	Telegrams = AllTelegrams,
 
 	test_facilities:display(
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",
@@ -159,6 +159,8 @@ run() ->
 	test_facilities:display( "Successfully decoded ~B telegram(s).",
 							 [ Count ] ),
 
-	% Not useful here: oceanic:stop( OceanicServerPid ),
+	% Not relevant here: oceanic:stop( OceanicServerPid ),
+
+	% So no final state is displayed here.
 
 	test_facilities:stop().

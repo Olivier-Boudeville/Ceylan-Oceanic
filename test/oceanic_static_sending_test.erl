@@ -27,13 +27,15 @@
 
 
 % @doc Testing of the Ceylan-Oceanic <b>sending and encoding of statically
-% defined telegrams/b>.
+% defined telegrams</b>.
 %
 -module(oceanic_static_sending_test).
 
 
 -export([ run/0 ]).
 
+% Silencing:
+-export([ receive_event/0 ]).
 
 % For the enocean_device record:
 -include("oceanic.hrl").
@@ -48,10 +50,10 @@
 
 
 
-% @doc Receives a (single) message.
-receive_message() ->
+% @doc Receives a (single) event.
+receive_event() ->
 
-	test_facilities:display( "(waiting for any incoming message)" ),
+	test_facilities:display( "(waiting for any incoming event)" ),
 
 	receive
 
@@ -88,8 +90,8 @@ actual_test( TtyPath ) ->
 	%EepId = oceanic_generated:get_first_for_eep_strings( <<"F6-02-01">> ),
 
 	%SourceDeviceRec = #enocean_device{ eurid=SourceEurid,
-	%								   name= <<"Test Source Device">>,
-	%								   eep=EepId },
+	%                                   name= <<"Test Source Device">>,
+	%                                   eep=EepId },
 
 	%InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
@@ -119,11 +121,16 @@ actual_test( TtyPath ) ->
 
 	oceanic:send( PressTelegram, OcSrvPid ),
 
-	receive_message(),
+	%receive_event(),
 
+	oceanic:stop( OcSrvPid ),
+
+	% So that any final trace sent when stopping can be transmitted and seen (as
+	% stopping is an asynchronous operation):
+	%
 	timer:sleep( 1000 ),
 
-	oceanic:stop( OcSrvPid ).
+	test_facilities:display( "Stopped." ).
 
 
 

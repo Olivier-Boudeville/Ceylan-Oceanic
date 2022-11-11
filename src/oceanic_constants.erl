@@ -33,7 +33,7 @@
 
 
 
--export( [get_packet_type_topic_spec/0, get_return_code_topic_spec/0,
+-export([ get_packet_type_topic_spec/0, get_return_code_topic_spec/0,
 		  get_event_code_topic_spec/0, get_rorg_topic_spec/0,
 		  get_rorg_description_topic_spec/0, get_common_command_topic_spec/0,
 		  get_eep_topic_specs/0 ] ).

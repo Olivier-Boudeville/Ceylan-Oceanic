@@ -26,7 +26,6 @@
 % Creation date: Tuesday, September 27, 2022.
 
 
-
 % Information regarding an Enocean device.
 -record( enocean_device, {
 
@@ -392,15 +391,15 @@
 
 	% Section specific to these events:
 
-	comm_direction :: communication_direction(),
+	comm_direction :: oceanic:communication_direction(),
 
 	response_expected :: boolean(),
 
-	request_type :: maybe( teach_request_type() ),
+	request_type :: maybe( oceanic:teach_request_type() ),
 
-	channel_taught :: channel_taught(),
+	channel_taught :: oceanic:channel_taught(),
 
-	manufacturer_id :: manufacturer_id(),
+	manufacturer_id :: oceanic:manufacturer_id(),
 
 	% The 5 bytes of that teach request that may be used directly for its
 	% response:
@@ -409,17 +408,17 @@
 
 
 
-% Record for responses to common commands.
+% Record for responses to common commands (seen as events).
 
 
 % Response to a successful 'read version' common command request.
 -record( read_version_response, {
 
-	app_version :: oceanic:enocean_version(),
 	% The version of the application.
+	app_version :: oceanic:enocean_version(),
 
-	api_version :: oceanic:enocean_version(),
 	% The version of the API.
+	api_version :: oceanic:enocean_version(),
 
 	chip_id :: type_utils:uint32(),
 	% Unique identifier for the gateway chip.
@@ -434,10 +433,12 @@
 % Response to a successful 'read logs' common command request.
 -record( read_logs_response, {
 
-	app_logs :: oceanic:log_entries(),
-	% Logs of the application.
+	% This reverse order (like the read_version_response one) is preferred:
 
-	api_logs :: oceanic:log_entries()
-	% Logs of the API.
+	app_counters :: oceanic:log_counters(),
+	% Log counters of the application.
+
+	api_counters :: oceanic:log_counters()
+	% Logs counters for the API.
 
 } ).

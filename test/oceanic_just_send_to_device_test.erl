@@ -154,11 +154,11 @@ actual_test( TtyPath ) ->
 
 	% Trying to decode the telegram we just forged:
 	%{ decoded, Event, _AnyNextChunk, _NewState } =
-	%	oceanic:try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
-	%								 PressTelegram, InitialTestState ),
+	%   oceanic:try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
+	%                                PressTelegram, InitialTestState ),
 
 	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
-	%						 [ oceanic:device_event_to_string( Event ) ] ),
+	%                         [ oceanic:device_event_to_string( Event ) ] ),
 
 	test_facilities:display( "Sending as ~ts, to ~ts, following telegram "
 		"(size: ~B bytes) for double-rocker press:~n~p",

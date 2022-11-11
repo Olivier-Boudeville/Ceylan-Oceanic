@@ -69,13 +69,22 @@ wait_for_test_events( _Count=0, _OcSrvPid ) ->
 
 wait_for_test_events( Count, OcSrvPid ) ->
 
-	test_facilities:display( "~n(test still waiting for ~B Enocean events)",
-							 [ Count ] ),
+	case Count > 0 of
+
+		true ->
+			test_facilities:display(
+				"~n  (test still waiting for ~B Enocean events)", [ Count ] );
+
+		false ->
+			test_facilities:display( "~n  (test waiting indefinitely for "
+				"Enocean events; hit CTRL-C to stop)", [] )
+
+	end,
 
 	receive
 
 		{ onEnoceanEvent, [ Event, OcSrvPid ] } ->
-			test_facilities:display( "Received at ~ts event ~ts.",
+			test_facilities:display( "Received at ~ts following event: ~ts.",
 				[ time_utils:get_textual_timestamp(),
 				  oceanic:device_event_to_string( Event ) ] ),
 
