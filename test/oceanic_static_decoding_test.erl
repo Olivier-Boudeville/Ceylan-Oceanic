@@ -90,6 +90,13 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
+	test_facilities:display( "BEAMs in path: ~ts",
+		[ text_utils:atoms_to_string( code_utils:list_beams_in_path() ) ] ),
+
+	test_facilities:display( "In path? ~p; whereas ~ts",
+		[ code_utils:is_beam_in_path( oceanic_generated ),
+		  code_utils:get_code_path_as_string() ] ),
+
 	% Not useful here: OceanicServerPid = oceanic:start(),
 
 	% Yet for the decoding of at least some types of packets, we need the EEP to
