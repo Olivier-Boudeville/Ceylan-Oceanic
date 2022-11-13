@@ -75,9 +75,11 @@ The latest version of this documentation is to be found at the `official Ceylan-
 Overview
 ========
 
-The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting/very low-consumption and wireless (generally around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
+The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting / very low-consumption and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
 
-Besides Erlang, Ceylan-Oceanic relies only on `Ceykan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
+So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi, no IP connectivity either, hence no real risk of data leak.
+
+Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
 
 The project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
 
@@ -86,13 +88,14 @@ At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.
 .. comment Seasoned Oceanic users may directly bookmark this always useful `cheat sheet`_.
 
 
+
 Purpose
 =======
 
 The main motivation of Oceanic is to provide some basic home automation features, especially in terms of security, in order to be able to:
 
-- **intercept and decode telegrams** emitted by sensors, notably single-input contacts (to detect the opening/closing of doors or windows), temperature/humidity sensors or to detect electricity outages
-- **generate and emit telegrams** to control various electrical devices (e.g. lamps), typically for a presence simulator, to turn on an electric heater
+- **intercept and decode telegrams** emitted by sensors, notably single-input contacts (to detect the opening/closing of doors or windows), temperature / humidity sensors or to detect electricity outages, typically to implement one's own alarm center
+- **generate and emit telegrams** to control various electrical devices (e.g. lamps), typically to turn on an electric heater or to run one's own presence simulator
 
 
 
@@ -126,7 +129,7 @@ In terms of Enocean devices, one needs typically:
 - any kind of emitter/sensor, for example a single-input contact/rocker button like `these ones <https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902>`_
 - a receiver, typically a USB gateway, which includes a `UART <https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter>`_ for asynchronous serial communication with an integrated RF module
 
-Popular USB dongles, which often relies on the `TCM 310 chip <https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf>`_, include the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_, which allows an external antenna to be connected in order to boost emission/reception ranges.
+Popular USB dongles, which often rely on the `TCM 310 chip <https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf>`_, include the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_, which allows an external antenna to be connected in order to boost emission / reception ranges inexpensively.
 
 We will rely here on such a configuration.
 
@@ -135,7 +138,7 @@ We will rely here on such a configuration.
 Operating System Support
 ========================
 
-Once the USB dongle is connected (here on an Arch Linux box), ``lsusb`` tells us that it is detected as:
+Once the USB dongle is connected (here on an Arch Linux host), ``lsusb`` tells us that it is detected as:
 
 .. code::
 
@@ -154,11 +157,19 @@ For that, one may define a suitable udev rule, typically stored in ``/etc/udev/r
  SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", MODE=="0666"
 
 
-Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example):
+Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example).
+
+So one may prefer:
+
+.. code::
+
+ SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", GROUP="uucp", MODE=="0660"
+
+and:
 
 .. code:: bash
 
- $ sudo usermod -a -G dialout my_username
+ $ sudo usermod -a -G uucp my_username
 
 
 One may run ``sudo udevadm control --reload-rules && sudo udevadm trigger`` to ensure that these changes are taken into account.
@@ -182,13 +193,13 @@ Then inserting said dongle should generate log entries that ``journalctl -xe`` c
  mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
 
 
-On insertion we have then:
+On insertion we have then, with the former settings:
 
 .. code:: bash
 
  $ ls -l /dev/ttyUSBEnOcean /dev/ttyUSB0
-   crw-rw-rw- 1 root uucp 188, /dev/ttyUSB0
-   lrwxrwxrwx 1 root root      /dev/ttyUSBEnOcean -> ttyUSB0
+  crw-rw---- 1 root uucp 188, 0 Nov 13 10:24 /dev/ttyUSB0
+  lrwxrwxrwx 1 root root      7 Nov 13 10:24 /dev/ttyUSBEnOcean -> ttyUSB0
 
 
 
@@ -209,13 +220,13 @@ We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville
  $ make && DESTDIR=. make install
 
 
-.. [#] A fork of the original `erlang-serial <https://github.com/tonyg/erlang-serial>`_, which had to be modified notably in terms of RTS/CTS flow control in order to be able to send data to the Enocean gateway.
+.. [#] A fork of the original `erlang-serial <https://github.com/tonyg/erlang-serial>`_, which had to be modified notably in terms of disabled RTS/CTS flow control, in order to be able to properly send data to the Enocean gateway.
 
-Then using erlang-serial will be just a matter of adding it to the code path.
+Then using ``erlang-serial`` will be just a matter of adding it to one's code path.
 
 One may update the ``Erlang-serial section`` in Oceanic's `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ in order to take into account any other path convention.
 
-One may run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing serial's ``ebin`` directory.
+One may run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing erlang-serial's ``ebin`` directory.
 
 
 To test it (whether or not any dongle is connected):
@@ -234,12 +245,30 @@ Perfect!
 
 
 
-Testing
-=======
+.. Communication Conventions
+.. =========================
+
+.. ERP2 (whereas ERP1 is still used)
+.. The MSB is transmitted first (Big-Endian).
 
 
-Basic, Direct Testing
----------------------
+Testing Enocean
+===============
+
+Ensure that none of the next serial tools / terminals is left running, otherwise this may block your ability to send telegrams thanks to Oceanic.
+
+To check, one mat rely on:
+
+.. code:: bash
+
+ $ lsof /dev/ttyUSBEnOcean
+ COMMAND    PID      USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+ serial  214977 your_user   3u   CHR  188,0      0t0 1066 /dev/ttyUSB0
+
+
+
+Basic, Direct Command-line Testing
+----------------------------------
 
 It is as simple as executing from the command-line (thus without Oceanic or Erlang being involved):
 
@@ -253,7 +282,7 @@ It is as simple as executing from the command-line (thus without Oceanic or Erla
 
 ``hexdump`` can be also used to intercept telegrams. If needing to set the transmission speed beforehand, use ``stty -F /dev/ttyUSBEnOcean 57600``.
 
-Incoming data can also be recorded and "replayed" (yet this is not expected to activate an Enocean receiver):
+Incoming data can also be recorded and "replayed" (yet this is not expected to activate an Enocean receiver, see `Protocol Information`_):
 
 .. code:: bash
 
@@ -262,10 +291,21 @@ Incoming data can also be recorded and "replayed" (yet this is not expected to a
 
 
 
+With a Graphical Serial Terminal
+--------------------------------
+
+One may use `cutecom <https://cutecom.sourceforge.net/>`_ to directly test input/output telegrams.
+
+A priori neither RTS nor DTR shall be enabled, yet in our tests these had no impact.
+
+We recommend using the ``Hex`` input and output.
+
+
+
 Oceanic Testing
 ---------------
 
-From the root of the Ceylan-Oceanic clone, supposing Myriad and erlang-serial are already available and built:
+From the root of the Ceylan-Oceanic clone, supposing that Myriad and erlang-serial are already available and built:
 
 .. code:: bash
 
@@ -300,15 +340,31 @@ Enocean Documentation
   - [EEP-gen]: `EnOcean Equipment Profiles <https://www.enocean-alliance.org/eep/>`_ (e.g. version 3.1.4, 36 pages), a short, general view onto the structure of the various telegram types that are available (e.g. the RPS one)
   - [EEP-spec]: `EEP Specification <https://www.enocean-alliance.org/wp-content/uploads/2017/05/EnOcean_Equipment_Profiles_EEP_v2.6.7_public.pdf>`_ (e.g. version 2.6.7, 270 pages), for a detailed specification of the various equipment profiles (e.g. ``F6-01-*`` being for *Switch Buttons*)
 
-- [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_ (e.g. version 1.51, 116 pages), a point-to-point packet-based protocol that is lower-level in the network stack; of less interest here)
+- [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_ (e.g. version 1.51, 116 pages), a point-to-point packet-based protocol that is lower-level in the network stack; of lesser interest here)
 
+Note also that, despite the availability of ERP2 specifications, at least most devices rely on ERP1 ones.
+
+
+
+Protocol Information
+====================
+
+Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), it looked as if replaying Enocean telegrams would be pretty straightforward.
+
+However, in practice, if just intercepting a telegram and re-emitting it will be successfully acknowledged in terms of code returned by the target device, it will *not* trigger the intended effect (e.g. the smart plug will not switch on).
+
+Not only we actually receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving), but, more importantly, even if forging an apparently acceptable telegram (i.e. creating a correct one, mentioning the EURID of a legit emitter already paired to the receiving device, with proper send-related information), this will still not be sufficient.
+
+We interpret that as the devices relying on a lower-level protocol (possibly. ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); a bit like if one was spoofing IP addresses in forged packets whereas the device compares MAC addresses.
+
+As these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on "standard" USB gateways, explaning why Oceanic has to support a whole teach-in procedure.
 
 
 
 Support
 =======
 
-Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the `project interface <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_ (typically `issues <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues>`_) or directly at the email address mentioned at the beginning of this longer document.
+Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the `project interface <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_ (typically `issues <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues>`_) or directly at the email address mentioned at the beginning of this document.
 
 
 
