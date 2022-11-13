@@ -29,7 +29,7 @@
 </tr>
 <tr class="field"><th class="field-name">Creation date:</th><td class="field-body">Wednesday, September 7, 2022</td>
 </tr>
-<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Sunday, November 6, 2022</td>
+<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Sunday, November 13, 2022</td>
 </tr>
 <tr class="field"><th class="field-name">Version:</th><td class="field-body">0.0.1</td>
 </tr>
@@ -59,15 +59,17 @@
 <li><a class="reference internal" href="#software-prerequisites" id="toc-entry-7">Software Prerequisites</a></li>
 <li><a class="reference internal" href="#testing" id="toc-entry-8">Testing</a><ul>
 <li><a class="reference internal" href="#basic-direct-testing" id="toc-entry-9">Basic, Direct Testing</a></li>
-<li><a class="reference internal" href="#oceanic-testing" id="toc-entry-10">Oceanic Testing</a></li>
+<li><a class="reference internal" href="#with-a-graphical-serial-terminal" id="toc-entry-10">With a Graphical Serial Terminal</a></li>
+<li><a class="reference internal" href="#oceanic-testing" id="toc-entry-11">Oceanic Testing</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#enocean-documentation" id="toc-entry-11">Enocean Documentation</a></li>
-<li><a class="reference internal" href="#support" id="toc-entry-12">Support</a></li>
-<li><a class="reference internal" href="#additional-information" id="toc-entry-13">Additional Information</a></li>
-<li><a class="reference internal" href="#related-projects" id="toc-entry-14">Related Projects</a></li>
-<li><a class="reference internal" href="#please-react" id="toc-entry-15">Please React!</a></li>
-<li><a class="reference internal" href="#ending-word" id="toc-entry-16">Ending Word</a></li>
+<li><a class="reference internal" href="#enocean-documentation" id="toc-entry-12">Enocean Documentation</a></li>
+<li><a class="reference internal" href="#protocol-information" id="toc-entry-13">Protocol Information</a></li>
+<li><a class="reference internal" href="#support" id="toc-entry-14">Support</a></li>
+<li><a class="reference internal" href="#additional-information" id="toc-entry-15">Additional Information</a></li>
+<li><a class="reference internal" href="#related-projects" id="toc-entry-16">Related Projects</a></li>
+<li><a class="reference internal" href="#please-react" id="toc-entry-17">Please React!</a></li>
+<li><a class="reference internal" href="#ending-word" id="toc-entry-18">Ending Word</a></li>
 </ul>
 </div>
 <p></p>
@@ -92,7 +94,7 @@
 <p>Reciprocally, telegrams for the supported EEPs can also be encoded and sent.</p>
 <p>Yet, for some reason (still unknown), currently our target device (a smart plug) does not seem to accept them (no reaction).</p>
 <p>This problem does not seem specific to Oceanic, insofar as recording directly from the command-line an accepted telegram from the USB gateway and sending it exactly as it was (replay) has no effect either on said device - whereas no anti-replay mechanism seems to be enforced here. Investigations are in progress.</p>
-<p>Oceanic can also execute a few common commands directly onto the gateway chip.</p>
+<p>Oceanic can also execute a few common commands directly onto the gateway chip, and perform teach-in operations.</p>
 </div>
 <div class="section" id="testing-ceylan-oceanic-in-two-steps">
 <h1><a class="toc-backref" href="#toc-entry-4">Testing Ceylan-Oceanic in Two Steps</a></h1>
@@ -121,7 +123,10 @@ Bus 003 Device 009: ID 0403:6001 Future Technology Devices International, Ltd FT
 <pre class="code literal-block">
 SUBSYSTEM==&quot;tty&quot;, ATTRS{idVendor}==&quot;0403&quot;, ATTRS{idProduct}==&quot;6001&quot;, SYMLINK+=&quot;ttyUSBEnOcean&quot;, MODE==&quot;0666&quot;
 </pre>
-<p>Following option could be added as well, to set the group of this TTY: <tt class="docutils literal"><span class="pre">GROUP=&quot;dialout&quot;</span></tt> ou <tt class="docutils literal"><span class="pre">GROUP=&quot;uucp&quot;</span></tt>, in which case your user shall be in that group (rather than running <tt class="docutils literal">sudo chmod 777 /dev/ttyUSB0</tt> each time the device is inserted for example).</p>
+<p>Following extra option could be added to the previous line, in order to set the group of this TTY: <tt class="docutils literal"><span class="pre">GROUP=&quot;dialout&quot;</span></tt> or <tt class="docutils literal"><span class="pre">GROUP=&quot;uucp&quot;</span></tt>, in which case your user shall be in that group (rather than running <tt class="docutils literal">sudo chmod 777 /dev/ttyUSB0</tt> each time the device is inserted for example):</p>
+<pre class="code bash literal-block">
+$ sudo usermod -a -G dialout my_username
+</pre>
 <p>One may run <tt class="docutils literal">sudo udevadm control <span class="pre">--reload-rules</span> &amp;&amp; sudo udevadm trigger</tt> to ensure that these changes are taken into account.</p>
 <p>Then inserting said dongle should generate log entries that <tt class="docutils literal">journalctl <span class="pre">-xe</span></tt> can show, like (timestamps and hostname edited):</p>
 <pre class="code literal-block">
@@ -140,25 +145,30 @@ mtp-probe[74548]: checking bus 3, device 9: &quot;/sys/devices/pci0000:00/0000:0
 mtp-probe[74548]: bus: 3, device: 9 was not an MTP device
 </pre>
 <p>On insertion we have then:</p>
-<pre class="literal-block">
-.. code:: bash
-</pre>
-<blockquote>
+<pre class="code bash literal-block">
 $ ls -l /dev/ttyUSBEnOcean /dev/ttyUSB0
-FIXME</blockquote>
+  crw-rw-rw- <span class="m">1</span> root uucp <span class="m">188</span>, /dev/ttyUSB0
+  lrwxrwxrwx <span class="m">1</span> root root      /dev/ttyUSBEnOcean -&gt; ttyUSB0
+</pre>
 </div>
 <div class="section" id="software-prerequisites">
 <h1><a class="toc-backref" href="#toc-entry-7">Software Prerequisites</a></h1>
 <p>Ceylan-Oceanic relies on general-purpose services offered by <a class="reference external" href="http://myriad.esperide.org">Ceylan-Myriad</a> (implying of course <a class="reference external" href="https://myriad.esperide.org/#software-prerequisites">Erlang itself</a>), and on an Erlang driver for serial communication.</p>
-<p id="erlang-serial">We chose <a class="reference external" href="https://github.com/tonyg/erlang-serial">erlang-serial</a> for that, and we prefer installing it in user space that way:</p>
+<p id="erlang-serial">We use our version <a class="footnote-reference" href="#footnote-1" id="footnote-reference-1">[1]</a> of <a class="reference external" href="https://github.com/Olivier-Boudeville/erlang-serial">erlang-serial</a> for that, which we prefer installing in user space that way:</p>
 <pre class="code bash literal-block">
 $ mkdir ~/Software <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ~/Software
-$ git clone https://github.com/tonyg/erlang-serial.git
+$ git clone https://github.com/Olivier-Boudeville/erlang-serial
 $ <span class="nb">cd</span> erlang-serial
 $ make <span class="o">&amp;&amp;</span> <span class="nv">DESTDIR</span><span class="o">=</span>. make install
 </pre>
+<table class="docutils footnote" frame="void" id="footnote-1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-1">[1]</a></td><td>A fork of the original <a class="reference external" href="https://github.com/tonyg/erlang-serial">erlang-serial</a>, which had to be modified notably in terms of RTS/CTS flow control in order to be able to send data to the Enocean gateway.</td></tr>
+</tbody>
+</table>
 <p>Then using erlang-serial will be just a matter of adding it to the code path.</p>
-<p>One may update the <em>Erlang-serial section</em> in Ocenanic's <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc">GNUmakevars.inc</a> to take into account any other convention.</p>
+<p>One may update the <tt class="docutils literal"><span class="pre">Erlang-serial</span> section</tt> in Oceanic's <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc">GNUmakevars.inc</a> in order to take into account any other path convention.</p>
 <p>One may run, from the root of Oceanic, <tt class="docutils literal">make <span class="pre">info-serial</span></tt> to check that <tt class="docutils literal">ERLANG_SERIAL_BASE</tt> points indeed to a directory containing serial's <tt class="docutils literal">ebin</tt> directory.</p>
 <p>To test it (whether or not any dongle is connected):</p>
 <pre class="code bash literal-block">
@@ -173,6 +183,13 @@ Eshell V13.0  <span class="o">(</span>abort with ^G<span class="o">)</span>
 </div>
 <div class="section" id="testing">
 <h1><a class="toc-backref" href="#toc-entry-8">Testing</a></h1>
+<p>Ensure that none of the next serial tools/terminals is left running, otherwise it may block your ability to send telegrams thanks to Oceanic.</p>
+<p>To check, one mat rely on:</p>
+<pre class="code bash literal-block">
+$ lsof /dev/ttyUSBEnOcean
+COMMAND    PID      USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+serial  <span class="m">214977</span> your_user   3u   CHR  <span class="m">188</span>,0      0t0 <span class="m">1066</span> /dev/ttyUSB0
+</pre>
 <div class="section" id="basic-direct-testing">
 <h2><a class="toc-backref" href="#toc-entry-9">Basic, Direct Testing</a></h2>
 <p>It is as simple as executing from the command-line (thus without Oceanic or Erlang being involved):</p>
@@ -183,14 +200,20 @@ $ od -x &lt; /dev/ttyUSBEnOcean
 </pre>
 <p>(of course for such a binary content to be received, Enocean telegrams must be emitted; the simplest approach is to trigger any Enocean device able to send on demand such telegrams, like a button/rocker/switch)</p>
 <p><tt class="docutils literal">hexdump</tt> can be also used to intercept telegrams. If needing to set the transmission speed beforehand, use <tt class="docutils literal">stty <span class="pre">-F</span> /dev/ttyUSBEnOcean 57600</tt>.</p>
-<p>Incoming data can also be recorded and &quot;replayed&quot; (yet this is not expected to activate an Enocean receiver):</p>
+<p>Incoming data can also be recorded and &quot;replayed&quot;:</p>
 <pre class="code bash literal-block">
 $ cat &lt; /dev/ttyUSBEnOcean &gt; my_record.bin
 $ cat my_record.bin &gt; /dev/ttyUSBEnOcean
 </pre>
 </div>
+<div class="section" id="with-a-graphical-serial-terminal">
+<h2><a class="toc-backref" href="#toc-entry-10">With a Graphical Serial Terminal</a></h2>
+<p>One may use <a class="reference external" href="https://cutecom.sourceforge.net/">cutecom</a> to directly test input/output telegrams.</p>
+<p>A priori neither RTS nor DTR shall be enabled, yet in our tests these had no impact.</p>
+<p>We recommend using the <tt class="docutils literal">Hex</tt> input and output.</p>
+</div>
 <div class="section" id="oceanic-testing">
-<h2><a class="toc-backref" href="#toc-entry-10">Oceanic Testing</a></h2>
+<h2><a class="toc-backref" href="#toc-entry-11">Oceanic Testing</a></h2>
 <p>From the root of the Ceylan-Oceanic clone, supposing Myriad and erlang-serial are already available and built:</p>
 <pre class="code bash literal-block">
 <span class="c1"># Ensure that Ceylan-Oceanic is built:
@@ -216,7 +239,7 @@ Starting the Enocean <span class="nb">test</span> based on the gateway TTY <span
 </div>
 </div>
 <div class="section" id="enocean-documentation">
-<h1><a class="toc-backref" href="#toc-entry-11">Enocean Documentation</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-12">Enocean Documentation</a></h1>
 <ul class="simple">
 <li>[ETS]: <a class="reference external" href="https://www.enocean-alliance.org/specifications/">Enocean Technical Specifications</a>, notably for:<ul>
 <li>[EEP-gen]: <a class="reference external" href="https://www.enocean-alliance.org/eep/">EnOcean Equipment Profiles</a> (e.g. version 3.1.4, 36 pages), a short, general view onto the structure of the various telegram types that are available (e.g. the RPS one)</li>
@@ -226,18 +249,25 @@ Starting the Enocean <span class="nb">test</span> based on the gateway TTY <span
 <li>[ESP3]: <a class="reference external" href="https://www.enocean.com/esp">Enocean Serial Protocol (ESP3) - SPECIFICATION</a> (e.g. version 1.51, 116 pages), a point-to-point packet-based protocol that is lower-level in the network stack; of less interest here)</li>
 </ul>
 </div>
+<div class="section" id="protocol-information">
+<h1><a class="toc-backref" href="#toc-entry-13">Protocol Information</a></h1>
+<p>Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), it looked as if replaying Enocean telegrams would be pretty straightforward; yet, in practice, just intercepting a telegram and re-emitting it will be successfully acknowledged in terms of code returned by the target device, but it will <em>not</em> trigger the intended effect.</p>
+<p>Not only we actually receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving), but, more importantly, even if forging an apparently acceptable telegram (i.e. creating a correct one, mentioning the EURID of a legit emitter already paired to the receiving device, with proper send-related information), this will still not be sufficient.</p>
+<p>We interpret that as the devices relying on a lower-level protocol (possibly. ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); a bit like if spoofing IP addresses whereas the device compares MAC addresses.</p>
+<p>As these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on &quot;standard&quot; USB gateways, explaning why Oceanic has to support a whole teach-in procedure.</p>
+</div>
 <div class="section" id="support">
-<h1><a class="toc-backref" href="#toc-entry-12">Support</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-14">Support</a></h1>
 <p>Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">project interface</a> (typically <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues">issues</a>) or directly at the email address mentioned at the beginning of this longer document.</p>
 </div>
 <div class="section" id="additional-information">
-<h1><a class="toc-backref" href="#toc-entry-13">Additional Information</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-15">Additional Information</a></h1>
 <ul class="simple">
 <li><a class="reference external" href="http://tvaira.free.fr/projets/activites/enocean.html">EnOcean in Practice</a> (very clear information, in French)</li>
 </ul>
 </div>
 <div class="section" id="related-projects">
-<h1><a class="toc-backref" href="#toc-entry-14">Related Projects</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-16">Related Projects</a></h1>
 <p>They may be used as sources of inspiration:</p>
 <ul class="simple">
 <li>[PY-EN] the rather complete <a class="reference external" href="https://github.com/kipe/enocean">Python EnOcean</a> library, including for its <a class="reference external" href="https://github.com/kipe/enocean/blob/master/enocean/protocol/EEP.xml">EEP (XML) information</a></li>
@@ -249,11 +279,11 @@ Starting the Enocean <span class="nb">test</span> based on the gateway TTY <span
 </ul>
 </div>
 <div class="section" id="please-react">
-<h1><a class="toc-backref" href="#toc-entry-15">Please React!</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-17">Please React!</a></h1>
 <p>If you have information more detailed or more recent than those presented in this document, if you noticed errors, neglects or points insufficiently discussed, drop us a line! (for that, follow the <a class="reference internal" href="#support">Support</a> guidelines).</p>
 </div>
 <div class="section" id="ending-word">
-<h1><a class="toc-backref" href="#toc-entry-16">Ending Word</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-18">Ending Word</a></h1>
 <p>Have fun with Ceylan-Oceanic!</p>
 <p><span class="raw-html"><center><img src="oceanic-title.png" id="responsive-image-small"></img></center></span>
 </p>
