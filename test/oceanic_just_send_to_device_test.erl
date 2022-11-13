@@ -68,8 +68,8 @@ replay_telegrams( SerialPid ) ->
 		<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
 		%<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,58,0,60>>,
 
-	test_facilities:display( "Sending first press event (~w).",
-							 [ PressTelegram1 ] ),
+	test_facilities:display( "Sending first press event: ~ts.",
+							 [ oceanic:telegram_to_string( PressTelegram1 ) ] ),
 
 	SerialPid ! { send, PressTelegram1 },
 
@@ -146,9 +146,13 @@ actual_test( TtyPath ) ->
 	% broadcast transmission, best RSSI value being -68 dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
 	%
-	PressTelegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
-		TargetEurid, button_ao, pressed ),
+	%PressTelegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
+	%	TargetEurid, button_ao, pressed ),
 
+	% Alternate form:
+	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr ] ),
+	PressTelegram = oceanic:hexastring_to_telegram(
+		"55000707017af630002ee1963001ffffffff" ),
 
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
@@ -160,10 +164,10 @@ actual_test( TtyPath ) ->
 	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
 	%                         [ oceanic:device_event_to_string( Event ) ] ),
 
-	test_facilities:display( "Sending as ~ts, to ~ts, following telegram "
-		"(size: ~B bytes) for double-rocker press:~n~p",
-		[ SourceEuridStr, TargetEuridStr, size( PressTelegram ),
-		  PressTelegram ] ),
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker press "
+		"following ~ts.",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( PressTelegram ) ] ),
 
 	SerialPid ! { send, PressTelegram },
 	SerialPid ! { send, PressTelegram },

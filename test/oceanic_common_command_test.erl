@@ -23,13 +23,13 @@
 % <http://www.mozilla.org/MPL/>.
 %
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
-% Creation date: Saturday, October 22, 2022.
+% Creation date: Friday, November 11, 2022.
 
 
-% @doc Testing of the Ceylan-Oceanic <b>sending and encoding of statically
-% defined telegrams</b>.
+% @doc Testing of the Ceylan-Oceanic management of Enocean <b>Common
+% Commands</b>, to interact directly with the local USB (Enocean) gateway.
 %
--module(oceanic_static_sending_test).
+-module(oceanic_common_command_test).
 
 
 -export([ run/0 ]).
@@ -43,14 +43,11 @@
 
 % Shorthands:
 
-%-type telegram() :: oceanic:telegram().
-
-%-type device_table() :: oceanic:device_table().
 -type device_path() :: oceanic:device_path().
 
 
 
-% @doc Receives a (single) event, if any is received at short term.
+% @doc Receives a (single) event.
 receive_event() ->
 
 	test_facilities:display( "(waiting for any incoming event)" ),
@@ -68,10 +65,6 @@ receive_event() ->
 			test_facilities:display( "Received following message: ~p.",
 									 [ Other ] )
 
-	after 1000 ->
-
-		test_facilities:display( "(no specific event received afterwards)" )
-
 	end.
 
 
@@ -80,59 +73,17 @@ receive_event() ->
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 
+	test_facilities:display( "Testing the management of Common Commands." ),
+
 	OcSrvPid = oceanic:start_link( TtyPath ),
 
-	%oceanic:register_device( _SourceEurid= "002ee196",
-	%   _Name="Test Source Device", _EEP="F6-02-01", OcSrvPid ),
+	ReadResp = oceanic:read_version( OcSrvPid ),
+	test_facilities:display( "Read version: ~ts.",
+							 [ oceanic:device_event_to_string( ReadResp ) ] ),
 
-	SourceEuridStr = "002ee196",
-	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
-
-	% We create a device for the source, so that we can decode by ourselves the
-	% telegram that we will forge (in order to check its generation):
-
-	%EepId = oceanic_generated:get_first_for_eep_strings( <<"F6-02-01">> ),
-
-	%SourceDeviceRec = #enocean_device{ eurid=SourceEurid,
-	%                                   name= <<"Test Source Device">>,
-	%                                   eep=EepId },
-
-	%InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
-
-	TargetEurid = oceanic:get_broadcast_eurid(),
-	%TargetEuridStr = "all (broadcast)",
-
-	% Double-rocker device has its top A button pressed, based on with a single
-	% subtelegram, targeted to the address for broadcast transmission; its EEP
-	% is double_rocker_switch (F6-02-01):
-	%
-	PressTelegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
-									TargetEurid, button_ao, pressed ),
-
-	% Alternate form:
-	%basic_utils:ignore_unused( [ SourceEurid, TargetEurid ] ),
-	%PressTelegram = oceanic:hexastring_to_telegram(
-	%	"55000707017af630002ee1963001ffffffff" ),
-
-	DecodeStr = case oceanic:decode_telegram( PressTelegram, OcSrvPid ) of
-
-		DecodingError when is_atom( DecodingError ) ->
-			text_utils:format( "a decoding error (~ts)", [ DecodingError ] );
-
-		DecodedEvent ->
-			text_utils:format( "following event: ~ts",
-				[ oceanic:device_event_to_string( DecodedEvent ) ] )
-
-	end,
-
-	test_facilities:display( "The generated telegram to be sent next is ~ts.~n"
-		"Decoding it before results in ~ts",
-		[ oceanic:telegram_to_string( PressTelegram ), DecodeStr ] ),
-
-	oceanic:send( PressTelegram, OcSrvPid ),
-
-	% May be useful if the sending corresponds to a request:
-	receive_event(),
+	ReadLogs = oceanic:read_logs( OcSrvPid ),
+	test_facilities:display( "Read logs: ~ts.",
+							 [ oceanic:device_event_to_string( ReadLogs ) ] ),
 
 	oceanic:stop( OcSrvPid ),
 

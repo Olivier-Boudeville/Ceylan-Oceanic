@@ -91,15 +91,17 @@ actual_test( TtyPath, MaybeRecordFilePath ) ->
 % @doc Listens endlessly.
 listen( MaybeFile ) ->
 
+	Hint = " (hit CTRL-C to stop)...",
+
 	test_facilities:display( "Test waiting for the next telegram to be received"
-		" (hit CTRL-C to stop)..." ),
+							 ++ Hint ),
 
 	receive
 
 		% Receives data from the serial port:
 		{ data, NewChunk } ->
-			test_facilities:display( "Test received telegram chunk: ~p.",
-									 [ NewChunk ] ),
+			test_facilities:display( "~nTest received as chunk ~ts.~n" ++ Hint,	
+				[ oceanic:telegram_to_string( NewChunk ) ] ),
 
 			MaybeFile =:= undefined orelse
 				file_utils:write_ustring( MaybeFile, "{ \"~ts\", ~w }.~n",

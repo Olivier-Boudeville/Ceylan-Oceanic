@@ -55,10 +55,38 @@
 
 
 
+
+% Record for commands of any type to be sent by Oceanic.
+%
+% Useful to report problems, typically time-out while waiting for a response
+% (e.g. a mere aknowledgement).
+%
+%  - the PID of the requester of that command:
+%           requester_pid :: oceanic:requester_pid()
+
+
+% Record allowing to keep track of a submitted command request.
+-record( command_request, {
+
+	% An identifier corresponding to the count of this command could be added
+	% (yet only up to one can be in the air at a given time).
+
+	% Type information about that pending command, to designate it:
+	command_type :: oceanic:command_type(),
+
+	% The telegram corresponding to that command:
+	command_telegram :: oceanic:telegram(),
+
+	% The requester of this command:
+	requester_pid :: oceanic:requester_pid() } ).
+
+
+
+
 % Definition of device events, preferably ordered by increasing EEP.
 
 
-% All of them start with the same first four fields:
+% By convention all of them start with the same first four fields:
 %
 % - the EnOcean Unique Radio Identifier of the emitting device:
 %           source_eurid :: oceanic:eurid()
@@ -408,7 +436,12 @@
 
 
 
+
 % Record for responses to common commands (seen as events).
+%
+% By convention all of them start with the same field:
+%  - the PID of the requester of that command:
+%           requester_pid :: oceanic:requester_pid()
 
 
 % Response to a successful 'read version' common command request.

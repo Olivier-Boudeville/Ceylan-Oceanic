@@ -104,7 +104,8 @@ decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, State ) ->
 
 decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents, State ) ->
 
-	test_facilities:display( "~nTest examining telegram ~w now:", [ Tl ] ),
+	test_facilities:display( "~nTest examining telegram ~ts now:",
+							 [ oceanic:telegram_to_string( Tl ) ] ),
 
 	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl, State ) of
 

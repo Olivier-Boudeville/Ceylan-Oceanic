@@ -53,8 +53,9 @@ decode_telegrams( _Telegrams=[], _DeviceTable, Count ) ->
 decode_telegrams( _Telegrams=[ Tele | T ], DeviceTable, Count ) ->
 
 	test_facilities:display( "~nWhereas this current test device table "
-		"references ~ts decoding test telegram '~w':",
-		[ oceanic:device_table_to_string( DeviceTable ), Tele ] ),
+		"references ~ts decoding test ~ts",
+		[ oceanic:device_table_to_string( DeviceTable ),
+		  oceanic:telegram_to_string( Tele ) ] ),
 
 	% To have different timestamps, otherwise all pseudo-devices will be
 	% considered to be seen only once:
@@ -65,7 +66,7 @@ decode_telegrams( _Telegrams=[ Tele | T ], DeviceTable, Count ) ->
 
 		{ decoded, Event, _NextChunk= <<>>, NewState } ->
 
-			test_facilities:display( "Decoded event: ~ts",
+			test_facilities:display( "Decoded event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),
 
 			decode_telegrams( T, oceanic:get_device_table( NewState ),
@@ -137,7 +138,9 @@ run() ->
 	% Not even a start byte here:
 	TInvalid = <<0,7,7,1,122,213,9,1,149,159,98,0,1,255,255,255,255,70,0,67>>,
 
-	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid ],
+	TOther = oceanic:hexastring_to_telegram( "5500010002650000" ),
+
+	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid, TOther ],
 
 	% To select any subset of them next:
 	basic_utils:ignore_unused( AllTelegrams ),
@@ -148,7 +151,8 @@ run() ->
 	%Telegrams = [ TF6A ],
 	%Telegrams = [ TF6B ],
 	%Telegrams = [ TInvalid ],
-	Telegrams = AllTelegrams,
+	Telegrams = [ TOther ],
+	%Telegrams = AllTelegrams,
 
 	test_facilities:display(
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",
