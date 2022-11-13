@@ -42,7 +42,7 @@ all:
 	@echo "  Run 'make doc' to generate the documentation of the Oceanic library."
 
 
-doc: html pdf #create-api-doc
+doc: html pdf create-api-doc
 
 
 html: local-html
