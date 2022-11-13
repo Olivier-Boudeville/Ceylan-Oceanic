@@ -100,7 +100,7 @@ listen( MaybeFile ) ->
 
 		% Receives data from the serial port:
 		{ data, NewChunk } ->
-			test_facilities:display( "~nTest received as chunk ~ts.~n" ++ Hint,	
+			test_facilities:display( "~nTest received as chunk ~ts.~n" ++ Hint,
 				[ oceanic:telegram_to_string( NewChunk ) ] ),
 
 			MaybeFile =:= undefined orelse
