@@ -59,16 +59,16 @@
 % may be wrongly attempted by rebar3, when used as a dependency:
 
 
-{pre_hooks,  [ {compile, "make -s rebar3-bulletproof-compile-pre-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar --verbose'"} ]}.
+%{pre_hooks,  [ {compile, "make -s rebar3-bulletproof-compile-pre-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar --verbose'"} ]}.
 
 % Verbosity disabled:
-%{pre_hooks,  [ {compile, "make -s rebar3-bulletproof-compile-pre-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar'"} ]}.
+{pre_hooks,  [ {compile, "make -s rebar3-bulletproof-compile-pre-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar'"} ]}.
 
 
-{post_hooks, [ {compile, "make -s rebar3-bulletproof-compile-post-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar --verbose'"} ]}.
+%{post_hooks, [ {compile, "make -s rebar3-bulletproof-compile-post-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar --verbose'"} ]}.
 
 % Verbosity disabled:
-%{post_hooks, [ {compile, "make -s all rebar3-bulletproof-compile-post-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar'"} ]}.
+{post_hooks, [ {compile, "make -s all rebar3-bulletproof-compile-post-hook REBAR_HOOK_EXTRA_OPTS='--hiding-for-rebar'"} ]}.
 
 
 
