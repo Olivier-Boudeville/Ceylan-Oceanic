@@ -566,7 +566,7 @@
 								| 'time_out'.
 % Generic causes of failure for a common command request.
 %
-% See also oceanic_constants:get_return_code_topic_spec/0.
+% See also oceanic_generated:get_return_code_topic_spec/0.
 
 
 
