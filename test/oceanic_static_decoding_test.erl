@@ -90,13 +90,6 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
-	test_facilities:display( "BEAMs in path: ~ts",
-		[ text_utils:atoms_to_string( code_utils:list_beams_in_path() ) ] ),
-
-	test_facilities:display( "In path? ~p; whereas ~ts",
-		[ code_utils:is_beam_in_path( oceanic_generated ),
-		  code_utils:get_code_path_as_string() ] ),
-
 	% Not useful here: OceanicServerPid = oceanic:start(),
 
 	% Yet for the decoding of at least some types of packets, we need the EEP to
@@ -145,9 +138,24 @@ run() ->
 	% Not even a start byte here:
 	TInvalid = <<0,7,7,1,122,213,9,1,149,159,98,0,1,255,255,255,255,70,0,67>>,
 
-	TOther = oceanic:hexastring_to_telegram( "5500010002650000" ),
+	% Just a command response (status code: OK) - whereas no command sent:
+	TResp = oceanic:hexastring_to_telegram( "5500010002650000" ),
 
-	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid, TOther ],
+	% Another F6-02-01 double-rocker, for a bottom secondary button press:
+	TDRWhitePress = oceanic:hexastring_to_telegram(
+						"55000707017af650002f50d63001ffffffff3d00b4" ),
+
+	TDRWhiteRelease = oceanic:hexastring_to_telegram(
+						"55000707017af600002f50d62001ffffffff3c0012" ),
+
+	% Placeholder for easy decoding of test telegrams:
+	TTested = oceanic:hexastring_to_telegram(
+		%"55000707017af630002f50d63001ffffffff490047" ),
+		%"55000707017af600002f50d62001ffffffff4900f1" ),
+		"55000707017af632deadbeef3103ffffffffff000c" ),
+
+	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid, TResp,
+					 TDRWhitePress, TDRWhiteRelease, TTested ],
 
 	% To select any subset of them next:
 	basic_utils:ignore_unused( AllTelegrams ),
@@ -158,7 +166,11 @@ run() ->
 	%Telegrams = [ TF6A ],
 	%Telegrams = [ TF6B ],
 	%Telegrams = [ TInvalid ],
-	Telegrams = [ TOther ],
+	%Telegrams = [ TResp ],
+	%Telegrams = [ TDRWhitePress ],
+	%Telegrams = [ TDRWhiteRelease ],
+	Telegrams = [ TTested ],
+
 	%Telegrams = AllTelegrams,
 
 	test_facilities:display(
