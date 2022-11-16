@@ -85,8 +85,18 @@ actual_test( TtyPath ) ->
 	%oceanic:register_device( _SourceEurid= "002ee196",
 	%   _Name="Test Source Device", _EEP="F6-02-01", OcSrvPid ),
 
-	SourceEuridStr = "002ee196",
-	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
+	% If attempting (and failing) to spoof a well-known device:
+	%SourceEuridStr = "002ee196",
+
+	% Not to clash (hopefully) with any actual device:
+	% (deactivated as we want to use the base EURID of the USB gateway)
+	%
+	%SourceEuridStr = ?default_emitter_eurid,
+
+	%SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
+
+	SourceEurid = oceanic:get_base_eurid( OcSrvPid ),
+
 
 	% We create a device for the source, so that we can decode by ourselves the
 	% telegram that we will forge (in order to check its generation):
@@ -106,15 +116,18 @@ actual_test( TtyPath ) ->
 	% subtelegram, targeted to the address for broadcast transmission; its EEP
 	% is double_rocker_switch (F6-02-01):
 	%
-	PressTelegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
+	TelegramToSend = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
 									TargetEurid, button_ao, pressed ),
 
 	% Alternate form:
 	%basic_utils:ignore_unused( [ SourceEurid, TargetEurid ] ),
-	%PressTelegram = oceanic:hexastring_to_telegram(
-	%	"55000707017af630002ee1963001ffffffff" ),
 
-	DecodeStr = case oceanic:decode_telegram( PressTelegram, OcSrvPid ) of
+
+	_TelegramToSend = oceanic:hexastring_to_telegram(
+	%   "55000707017af630002ee1963001ffffffff" ),
+	   "55000707017af630002f50d63001ffffffff490047" ),
+
+	DecodeStr = case oceanic:decode_telegram( TelegramToSend, OcSrvPid ) of
 
 		DecodingError when is_atom( DecodingError ) ->
 			text_utils:format( "a decoding error (~ts)", [ DecodingError ] );
@@ -127,9 +140,9 @@ actual_test( TtyPath ) ->
 
 	test_facilities:display( "The generated telegram to be sent next is ~ts.~n"
 		"Decoding it before results in ~ts",
-		[ oceanic:telegram_to_string( PressTelegram ), DecodeStr ] ),
+		[ oceanic:telegram_to_string( TelegramToSend ), DecodeStr ] ),
 
-	oceanic:send( PressTelegram, OcSrvPid ),
+	oceanic:send( TelegramToSend, OcSrvPid ),
 
 	% May be useful if the sending corresponds to a request:
 	receive_event(),
