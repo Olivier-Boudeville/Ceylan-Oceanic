@@ -108,7 +108,9 @@ Reciprocally, telegrams for the supported EEPs can also be encoded and sent.
 
 Yet, for some reason (still unknown), currently our target device (a smart plug) does not seem to accept them (no reaction).
 
-This problem does not seem specific to Oceanic, insofar as recording directly from the command-line an accepted telegram from the USB gateway and sending it exactly as it was (replay) has no effect either on said device - whereas no anti-replay mechanism seems to be enforced here. Investigations are in progress.
+This problem does not seem specific to Oceanic, insofar as recording directly from the command-line an accepted telegram from the USB gateway and sending it exactly as it was (replay) has no effect either on said device - whereas no anti-replay mechanism seems to be enforced here [#]. Investigations are in progress.
+
+.. [#] Note though that some devices are so-called "ciphered"; they rely on a rolling code updated at each sending; then a receiver is to keep track of a window of typically 50 elements of the corresponding sequence, to accommodate for any reasonable telegram loss.
 
 Oceanic can also execute a few common commands directly onto the gateway chip, and perform teach-in operations.
 
