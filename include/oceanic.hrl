@@ -26,6 +26,39 @@
 % Creation date: Tuesday, September 27, 2022.
 
 
+% Defines of possible interest for the user:
+
+% The name under which the Oceanic server will register locally:
+-define( oceanic_server_reg_name, oceanic_server ).
+
+
+% Transmission speed, in bits per second:
+-define( esp2_speed, 9600 ).
+
+% Matters, otherwise faulty content received:
+-define( esp3_speed, 57600 ).
+
+
+% Default EURID of the pseudo-device emitter (if any) of any telegram to be sent
+% by Oceanic.
+%
+% (never gets old hexadecimal pun)
+%
+% Translates to ``<<222,173,190,239>>''.
+%
+% Note that now by default the base identifier of the USB gateway is used
+% instead, as soon as it is determined (as read thanks to a co_rd_idbase common
+% command).
+%
+-define( default_emitter_eurid, "DEADBEEF" ).
+
+
+% Denotes a broadcast transmission (as opposed to an Addressed Transmission,
+% ADT):
+%
+-define( eurid_broadcast, 16#ffffffff ). % That is 4294967295
+
+
 % Information regarding an Enocean device.
 -record( enocean_device, {
 
@@ -61,8 +94,8 @@
 % Useful to report problems, typically time-out while waiting for a response
 % (e.g. a mere aknowledgement).
 %
-%  - the PID of the requester of that command:
-%           requester_pid :: oceanic:requester_pid()
+%  - the identifier of the requester of that command:
+%           requester :: oceanic:requester()
 
 
 % Record allowing to keep track of a submitted command request.
@@ -78,7 +111,7 @@
 	command_telegram :: oceanic:telegram(),
 
 	% The requester of this command:
-	requester_pid :: oceanic:requester_pid() } ).
+	requester :: oceanic:requester() } ).
 
 
 
@@ -440,8 +473,8 @@
 % Record for responses to common commands (seen as events).
 %
 % By convention all of them start with the same field:
-%  - the PID of the requester of that command:
-%           requester_pid :: oceanic:requester_pid()
+%  - the identifier of the requester of that command:
+%           requester :: oceanic:requester()
 
 
 % Response to a successful 'read version' common command request.
@@ -475,3 +508,18 @@
 	% Logs counters for the API.
 
 } ).
+
+
+
+% Response to a successful 'read base ID information' (CO_RD_IDBASE) common
+% command request.
+%
+-record( read_base_id_info_response, {
+
+	% The start address of the Base ID Range (between 0xFF800000 and 0xFFFFFF80)
+	% of the local emitting device (as read from the USB gateway):
+	%
+	base_eurid :: oceanic:eurid(),
+
+	% Remaining write cycles for the Base ID.
+	remaining_write_cycles :: type_utils:uint8() | 'unlimited' } ).
