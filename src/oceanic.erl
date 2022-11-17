@@ -39,11 +39,15 @@
 		  start_link/0, start_link/1, start_link/2,
 
 		  get_server_registration_name/0, get_server_pid/0,
-		  load_configuration/0, load_configuration/1, load_configuration/2,
+
+		  load_configuration/1, load_configuration/2,
 
 		  send/2,
 
 		  acknowledge_teach_request/2, acknowledge_teach_request/3,
+
+		  % For lower-level operation/testing:
+		  encode_esp3_packet/2, encode_esp3_packet/3,
 
 		  encode_double_rocker_switch_telegram/4,
 
@@ -76,7 +80,7 @@
 
 % Exported only for testing:
 -export([ get_test_state/0, get_test_state/1,
-		  test_decode/2, secure_tty/1, try_integrate_chunk/4,
+		  test_decode/1, secure_tty/1, try_integrate_chunk/4,
 
 		  telegram_to_string/1,
 		  telegram_to_hexastring/1, hexastring_to_telegram/1,
@@ -1162,6 +1166,10 @@ get_base_state( SerialServerPid ) ->
 								 oceanic_state() ) -> oceanic_state().
 wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
+	cond_utils:if_defined( oceanic_debug_tty,
+		trace_utils:debug_fmt( "Waiting initial base request "
+			"(ToSkipLen=~B, AccChunk=~w).", [ ToSkipLen, AccChunk ] ) ),
+
 	receive
 
 		% Received data from the serial port:
@@ -1183,7 +1191,13 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
 					ReadState#oceanic_state{ emitter_eurid=BaseEurid };
 
-				{ _Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
+				{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
+
+					cond_utils:if_defined( oceanic_debug_tty,
+						trace_utils:debug_fmt( "Unsuccessful decoding (~w), "
+							"(NewToSkipLen=~B, NewAccChunk=~w).",
+							[ Unsuccessful, NewToSkipLen, NewAccChunk ] ) ),
+
 					wait_initial_base_request( NewToSkipLen, NewAccChunk,
 											   NewState )
 
@@ -1191,19 +1205,6 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
 	end.
 
-
-
-% @doc Loads, typically in a test context and based on a base state, Oceanic
-% configuration information from the default Ceylan preferences file, if any,
-% otherwise returns a state with an empty device table.
-%
-% See the 'preferences' module.
-%
--spec load_configuration() -> oceanic_state().
-load_configuration() ->
-	BaseState = get_base_state( _PseudoSerialServerPid=self() ),
-
-	load_configuration( BaseState ).
 
 
 
@@ -1568,7 +1569,8 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 get_optional_data_for_sending( TargetEurid ) ->
 
 	% We are sending here:
-	SubTelNum = 3,
+	%SubTelNum = 3,
+	SubTelNum = 1,
 	DBm = 16#ff,
 	SecurityLevel = 0,
 
@@ -1975,7 +1977,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 				trace_bridge:debug_fmt( "Requested to decode telegram ~ts.",
 					[ telegram_to_string( Telegram ) ] ) ),
 
-			% Not interfering with received bits (curret state used for that,
+			% Not interfering with received bits (current state used for that,
 			% but will not be affected):
 			%
 			Res = case try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
@@ -1985,7 +1987,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 					DeviceEvent;
 
 				{ DecError, _NewToSkipLen, _NewNextChunk, _NewState } ->
-					 DecError
+					DecError
 
 			end,
 
@@ -2111,20 +2113,32 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 
 
 % @doc Helper introduced only to make the decoding logic available for tests.
--spec test_decode( telegram_chunk(), device_table() ) -> decoding_outcome().
-test_decode( Chunk, DeviceTable ) ->
+-spec test_decode( telegram_chunk() ) -> decoding_outcome().
+test_decode( Chunk ) ->
 	try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>, Chunk,
-						 get_test_state( DeviceTable ) ).
+						 get_test_state() ).
 
 
 
 % @doc Returns a pseudo-state, loaded from default configuration; only useful
 % for some tests.
 %
+% Note that, in order that an encoding or decoding (non-sending, non-receiving)
+% test can work without any actual device, we create here a type-correct yet
+% incorrect state (no real base ID, no relevant serial server).
+%
+% So thise resulting state, which does not need an actual USB gateway to be
+% available, is mostly bogus.
+%
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
 
-	BaseState = get_base_state( _SerialServerPid=self() ), % for correct typing
+	BaseState = #oceanic_state{
+		serial_server_pid=self(),
+		emitter_eurid=string_to_eurid( ?default_emitter_eurid ),
+		command_queue=queue:new(),
+		device_table=table:new(),
+		wait_timeout=?max_response_waiting_duration },
 
 	load_configuration( BaseState ).
 
@@ -2137,7 +2151,7 @@ get_test_state() ->
 get_test_state( DeviceTable ) ->
 
 	% Normally there is a real serial server:
-	BaseState = get_base_state( self() ), % for correct typing
+	BaseState = get_test_state(),
 
 	BaseState#oceanic_state{ device_table=DeviceTable }.
 
