@@ -65,8 +65,9 @@ replay_telegrams( SerialPid ) ->
 	%
 	PressTelegram1 =
 		%<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,68,0,254>>,
-		<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
+		%<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>,
 		%<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,58,0,60>>,
+		<<85,0,7,7,1,122,246,48,0,47,80,214,48,1,255,255,255,255,61,0,177>>,
 
 	test_facilities:display( "Sending first press event: ~ts.",
 							 [ oceanic:telegram_to_string( PressTelegram1 ) ] ),
@@ -75,6 +76,8 @@ replay_telegrams( SerialPid ) ->
 
 
 	test_facilities:display( "Sending first release event." ),
+
+	timer:sleep( 1000 ),
 
 	% Double-rocker device (whose EURID is 002ee196) has no button released
 	% simultaneously, based on with a single subtelegram, targeted to the
@@ -124,7 +127,8 @@ actual_test( TtyPath ) ->
 
 	replay_telegrams( SerialPid ),
 
-	SourceEuridStr = "002ee196",
+	%SourceEuridStr = "002ee196",
+	SourceEuridStr = "ffa2df00",
 	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
 	% We create a device for the source, so that we can decode by ourselves the
@@ -151,8 +155,13 @@ actual_test( TtyPath ) ->
 
 	% Alternate form:
 	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr ] ),
-	PressTelegram = oceanic:hexastring_to_telegram(
-		"55000707017af630002ee1963001ffffffff" ),
+	%PressTelegram = oceanic:hexastring_to_telegram(
+	%	"55000707017af630002ee1963001ffffffff" ),
+
+	% Another alternate form:
+	PressTelegram = oceanic:encode_esp3_packet( _PacketType=radio_erp1_type,
+		_Data=text_utils:hexastring_to_binary("F6000109D97020") ),
+
 
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
