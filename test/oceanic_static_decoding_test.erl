@@ -41,45 +41,42 @@
 
 -type telegram() :: oceanic:telegram().
 
--type device_table() :: oceanic:device_table().
+%-type device_table() :: oceanic:device_table().
 
 
 
 % @doc Attempts to decode the specified telegrams in turn.
--spec decode_telegrams( [ telegram() ], device_table(), count() ) -> count().
-decode_telegrams( _Telegrams=[], _DeviceTable, Count ) ->
+-spec decode_telegrams( [ telegram() ], count() ) -> count().
+decode_telegrams( _Telegrams=[], Count ) ->
 	Count;
 
-decode_telegrams( _Telegrams=[ Tele | T ], DeviceTable, Count ) ->
+decode_telegrams( _Telegrams=[ Tele | T ], Count ) ->
 
-	test_facilities:display( "~nWhereas this current test device table "
-		"references ~ts decoding test ~ts",
-		[ oceanic:device_table_to_string( DeviceTable ),
-		  oceanic:telegram_to_string( Tele ) ] ),
+	test_facilities:display( "~nDecoding test ~ts.",
+							 [ oceanic:telegram_to_string( Tele ) ] ),
 
 	% To have different timestamps, otherwise all pseudo-devices will be
 	% considered to be seen only once:
 	%
 	timer:sleep( _Ms=1000 ),
 
-	case oceanic:test_decode( Tele, DeviceTable ) of
+	case oceanic:test_decode( Tele ) of
 
-		{ decoded, Event, _NextChunk= <<>>, NewState } ->
+		{ decoded, Event, _NextChunk= <<>>, _NewState } ->
 
 			test_facilities:display( "Decoded event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),
 
-			decode_telegrams( T, oceanic:get_device_table( NewState ),
-							  Count+1 );
+			decode_telegrams( T, Count+1 );
 
 
-		{ FailedOutcome, SkipLen, NextChunk, NewState } ->
+		{ FailedOutcome, SkipLen, NextChunk, _NewState } ->
 
 			test_facilities:display( "Decoding failed: ~ts "
 				"(while skip length: ~B and next chunk: ~w).",
 				[ FailedOutcome, SkipLen, NextChunk ] ),
 
-			decode_telegrams( T, oceanic:get_device_table( NewState ), Count )
+			decode_telegrams( T, Count )
 
 	end.
 
@@ -95,9 +92,7 @@ run() ->
 	% Yet for the decoding of at least some types of packets, we need the EEP to
 	% be configured from the corresponding emitting devices, so:
 	%
-	InitialOcState = oceanic:load_configuration(),
-
-	InitialDeviceTable = oceanic:get_device_table( InitialOcState ),
+	%InitialOcState = oceanic:get_test_state(),
 
 	% Samples of a few hardcoded telegrams:
 	% (here we gathered only full telegrams, not truncated ones)
@@ -152,7 +147,8 @@ run() ->
 	TTested = oceanic:hexastring_to_telegram(
 		%"55000707017af630002f50d63001ffffffff490047" ),
 		%"55000707017af600002f50d62001ffffffff4900f1" ),
-		"55000707017af632deadbeef3103ffffffffff000c" ),
+		%"55000707017af632deadbeef3103ffffffffff000c" ),
+		"55000707017af630002f50d63001ffffffff3d00b1" ),
 
 	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid, TResp,
 					 TDRWhitePress, TDRWhiteRelease, TTested ],
@@ -177,7 +173,7 @@ run() ->
 		"Starting the Enocean test based on ~B static, pre-recorded telegrams.",
 		[ length( Telegrams ) ] ),
 
-	Count = decode_telegrams( Telegrams, InitialDeviceTable, _Count=0 ),
+	Count = decode_telegrams( Telegrams, _Count=0 ),
 
 	test_facilities:display( "Successfully decoded ~B telegram(s).",
 							 [ Count ] ),
