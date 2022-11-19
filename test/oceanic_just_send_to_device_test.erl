@@ -125,7 +125,7 @@ actual_test( TtyPath ) ->
 	SerialPid = oceanic:secure_tty( TtyPath ),
 	%{ ok, FD } = serctl:open( TtyPath ),
 
-	replay_telegrams( SerialPid ),
+	%replay_telegrams( SerialPid ),
 
 	%SourceEuridStr = "002ee196",
 	SourceEuridStr = "ffa2df00",
@@ -159,9 +159,28 @@ actual_test( TtyPath ) ->
 	%	"55000707017af630002ee1963001ffffffff" ),
 
 	% Another alternate form:
-	PressTelegram = oceanic:encode_esp3_packet( _PacketType=radio_erp1_type,
-		_Data=text_utils:hexastring_to_binary("F6000109D97020") ),
+	_PressTelegram = oceanic:encode_esp3_packet( _PacketType=radio_erp1_type,
+	%	_Data=text_utils:hexastring_to_binary("F6000109D97020") ),
+	% 0x01 ['0xf6', '0x0', '0x1', '0x9', '0xd9', '0x70', '0x20'] [] OrderedDict()
+		_Data=text_utils:hexastring_to_binary("550007000111f6100109d970300c" ) ),
+		%_Data=text_utils:hexastring_to_binary("550007000111f6000109d97020e2" ) ),
 
+%HHHHHHHH: b'5500010005700838'
+%HHHHHHHH: b'550007000111f6100109d970300c'
+%HHHHHHHH: b'550007000111f6000109d97020e2'
+
+	_A= text_utils:hexastring_to_binary("5500010005700838"),
+	%SerialPid ! { send, A },
+
+	
+	%B=text_utils:hexastring_to_binary("550007000111f6100109d970300c"),SerialPid ! { send, B },
+
+	%timer:sleep( 2000 ),
+
+	C=text_utils:hexastring_to_binary("550007000111f6000109d97020e2"),SerialPid ! { send, C },
+
+	%PressTelegram = text_utils:hexastring_to_binary("550007000111f6100109d970300c" ),
+	PressTelegram = text_utils:hexastring_to_binary("550007000111f6000109d97020e2" ),
 
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
@@ -178,16 +197,18 @@ actual_test( TtyPath ) ->
 		[ SourceEuridStr, TargetEuridStr,
 		  oceanic:telegram_to_string( PressTelegram ) ] ),
 
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
-	SerialPid ! { send, PressTelegram },
+	%SerialPid ! { send, PressTelegram },
+	test_facilities:display( "Sending"),
+
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
+	%% SerialPid ! { send, PressTelegram },
 
 
 	timer:sleep( 500 ),

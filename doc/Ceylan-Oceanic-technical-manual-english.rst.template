@@ -152,11 +152,14 @@ We will interact with this USB gateway as if it was a serial port.
 
 Rather than having it designated by an obscure, potentially changing name (like ``/dev/ttyUSB0``, ``/dev/ttyUSB1``, etc.), we prefer assigning it a fixed, well-chosen path, like ``/dev/ttyUSBEnOcean``.
 
-For that, one may define a suitable udev rule, typically stored in ``/etc/udev/rules.d/99-enocean.rules``, whose content can simply be:
+For that, one may define a suitable udev rule, typically stored in ``/etc/udev/rules.d/99-enocean.rules``, whose content can simply [#]_ be:
 
 .. code::
 
- SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", MODE=="0666"
+ SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", MODE="0666"
+
+
+.. [#] Note though the different roles played by ``==`` (for matching) and ``=`` (for assignment).
 
 
 Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example).
@@ -165,7 +168,7 @@ So one may prefer:
 
 .. code::
 
- SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", GROUP="uucp", MODE=="0660"
+ SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", GROUP="uucp", MODE="0660"
 
 and:
 

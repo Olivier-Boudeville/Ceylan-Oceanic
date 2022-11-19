@@ -43,9 +43,6 @@
 
 % Shorthands:
 
-%-type telegram() :: oceanic:telegram().
-
-%-type device_table() :: oceanic:device_table().
 -type device_path() :: oceanic:device_path().
 
 
@@ -82,6 +79,10 @@ actual_test( TtyPath ) ->
 
 	OcSrvPid = oceanic:start_link( TtyPath ),
 
+	test_facilities:display( "Starting test; note that direct telegram "
+		"sendings are made here, thus Oceanic will detect responses "
+		"that do not match with any past request that it sent." ),
+
 	%oceanic:register_device( _SourceEurid= "002ee196",
 	%   _Name="Test Source Device", _EEP="F6-02-01", OcSrvPid ),
 
@@ -95,7 +96,8 @@ actual_test( TtyPath ) ->
 
 	%SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
-	SourceEurid = oceanic:get_base_eurid( OcSrvPid ),
+	%SourceEurid = oceanic:get_base_eurid( OcSrvPid ),
+	SourceEurid = oceanic:string_to_eurid( "0109d970" ),
 
 
 	% We create a device for the source, so that we can decode by ourselves the
@@ -109,25 +111,54 @@ actual_test( TtyPath ) ->
 
 	%InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
-	TargetEurid = oceanic:get_broadcast_eurid(),
-	%TargetEuridStr = "all (broadcast)",
-
-	% Double-rocker device has its top A button pressed, based on with a single
-	% subtelegram, targeted to the address for broadcast transmission; its EEP
-	% is double_rocker_switch (F6-02-01):
-	%
-	TelegramToSend = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
-									TargetEurid, button_ao, pressed ),
+	% Both forms, with a target (hence with optional data) or not, will work:
+	MaybeTargetEurid = oceanic:get_broadcast_eurid(),
+	%MaybeTargetEurid = undefined,
 
 	% Alternate form:
-	%basic_utils:ignore_unused( [ SourceEurid, TargetEurid ] ),
+	%basic_utils:ignore_unused( [ SourceEurid, MaybeTargetEurid ] ),
 
 
-	_TelegramToSend = oceanic:hexastring_to_telegram(
-	%   "55000707017af630002ee1963001ffffffff" ),
-	   "55000707017af630002f50d63001ffffffff490047" ),
+	% These two buttons are actually considered independently, and for our test
+	% the "on" one has no special interest, only the "off" one is taken account
+	% by the target device, a (double-rocker) switch:
+	%
+	SwitchOnButton = button_ao,
+	SwitchOffButton = button_ai,
 
-	DecodeStr = case oceanic:decode_telegram( TelegramToSend, OcSrvPid ) of
+	% We first encode all telegrams of interest, so that we can send them
+	% afterwards as wanted and in any order:
+
+
+	% Apparently, after a telegram notifying a press or a release has been sent,
+	% all telegrams of the same type will be ignored. So a proper transition has
+	% to send them both (and in the correct order: 'pressed' then 'released').
+
+
+	% Double-rocker device has its top A rocker pressed, based on with a single
+	% subtelegram, not targeting any specified address (not even the address for
+	% broadcast transmission); its EEP is double_rocker_switch (F6-02-01):
+	%
+	PressOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, MaybeTargetEurid, SwitchOnButton, pressed ),
+
+	ReleaseOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, MaybeTargetEurid, SwitchOnButton, released ),
+
+
+	PressOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, MaybeTargetEurid, SwitchOffButton, pressed ),
+
+	ReleaseOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, MaybeTargetEurid, SwitchOffButton, released ),
+
+	SwitchTelegrams =  [ PressOnButtonTelegram, ReleaseOnButtonTelegram,
+						 PressOffButtonTelegram, ReleaseOffButtonTelegram ],
+
+	basic_utils:ignore_unused( SwitchTelegrams ),
+
+	DecodeStr = case oceanic:decode_telegram( PressOffButtonTelegram,
+											  OcSrvPid ) of
 
 		DecodingError when is_atom( DecodingError ) ->
 			text_utils:format( "a decoding error (~ts)", [ DecodingError ] );
@@ -138,11 +169,47 @@ actual_test( TtyPath ) ->
 
 	end,
 
-	test_facilities:display( "The generated telegram to be sent next is ~ts.~n"
-		"Decoding it before results in ~ts",
-		[ oceanic:telegram_to_string( TelegramToSend ), DecodeStr ] ),
+	test_facilities:display( "The generated telegrams are: ~ts"
+		"Decoding the 'pressed' one for the 'off' button results in ~ts",
+		[ text_utils:strings_to_string( [
+			oceanic:telegram_to_string( T ) || T <- SwitchTelegrams ] ),
+		  DecodeStr ] ),
 
-	oceanic:send( TelegramToSend, OcSrvPid ),
+	test_facilities:display( "All telegrams of interest encoded." ),
+
+
+	% In our test setting, the "on" button is not specifically learnt and has
+	% not impact:
+	%
+	%oceanic:send( PressOnButtonTelegram, OcSrvPid ),
+	%oceanic:send( ReleaseOnButtonTelegram, OcSrvPid ),
+
+
+	% In our test setting, the "off" button has been learnt; a press *and* a
+	% release are needed to trigger any action; and this action is to toggle
+	% on/off the switch.
+	%
+	% So, supposing that for this test the switch is initially off and we want
+	% to switch it one temporarily, we have to:
+
+	test_facilities:display( "First we press (and then also release) the "
+		"'switch off' button, '~ts' (which must have already been learnt), "
+		"typically in order to switch on a lamp.", [ SwitchOnButton ] ),
+
+	% The actual switching on depends on both telegrams:
+	oceanic:send( PressOffButtonTelegram, OcSrvPid ),
+	% No waiting needed:
+	oceanic:send( ReleaseOffButtonTelegram, OcSrvPid ),
+
+
+	test_facilities:display( "Then, after a short waiting, we press "
+		"(and then release) this 'switch off' button again, '~ts', typically "
+		"to switch off the lamp.", [ SwitchOffButton ] ),
+
+	timer:sleep( 1000 ),
+
+	oceanic:send( PressOffButtonTelegram, OcSrvPid ),
+	oceanic:send( ReleaseOffButtonTelegram, OcSrvPid ),
 
 	% May be useful if the sending corresponds to a request:
 	receive_event(),

@@ -313,6 +313,8 @@
 	  | 'button_bo'. % Switch light off / Dim light up / Move blind open
 % Designates a button corresponding to a A or B channel.
 %
+% A given ocker behaves as two buttons (e.g. AI/AO).
+%
 % In application style 1, the O position is the top/up one, while the I position
 % is the bottom/down one.
 
@@ -347,8 +349,8 @@
 % The range of a temperature sensor.
 
 -type decoding_error() ::
-	  'not_reached'   % End of packet still ahead
-	| 'incomplete'    % Truncated packet
+	  'not_reached'   % Beginning of next packet still ahead
+	| 'incomplete'    % Truncated packet (end of packet still ahead)
 	| 'invalid'       % Corrupted packet
 	| 'unsupported'   % Type of packet (currently) unsupported by Oceanic
 	| 'unconfigured'. % Device not configure (typically EEP not known)
@@ -1194,8 +1196,8 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 				{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
-						trace_utils:debug_fmt( "Unsuccessful decoding (~w), "
-							"(NewToSkipLen=~B, NewAccChunk=~w).",
+						trace_utils:debug_fmt( "Unsuccessful decoding, '~w' "
+							"(whereas NewToSkipLen=~B, NewAccChunk=~w).",
 							[ Unsuccessful, NewToSkipLen, NewAccChunk ] ) ),
 
 					wait_initial_base_request( NewToSkipLen, NewAccChunk,
@@ -1483,7 +1485,8 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 
 
 % @doc Encodes a double-rocker switch telegram, from the specified device to the
-% specified one, reporting the specified transition for the specified button.
+% specified one (if any), reporting the specified transition for the specified
+% button.
 %
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
 % Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
@@ -1491,9 +1494,9 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 %
 % See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 %
--spec encode_double_rocker_switch_telegram( eurid(), eurid(),
+-spec encode_double_rocker_switch_telegram( eurid(), maybe( eurid() ),
 		button_designator(), button_transition() ) -> telegram().
-encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
+encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 									  ButtonDesignator, ButtonTransition ) ->
 
 	% No EEP to be determined from double_rocker_switch (implicit in packet).
@@ -1532,18 +1535,25 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 	% per sender ID.
 	%
 	DB_0 = <<R1Enum:3, EB:1, R2Enum:3, SA:1>>,
+	%DB_0 = <<0>>,
 
-	T21 = 1,
-	NU = 1,
+	_T21 = 1,
+	_NU = 1,
 
 	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
-	RC = 1,
+	%RC = 1,
+	_RC = 0,
 
-	Status = <<0:2, T21:1, NU:1, RC:4>>,
+	_A=1,
+	_B=0,
+
+	%Status = <<0:2, T21:1, NU:1, RC:4>>,
+	%Status = <<A:1, B:1, T21:1, NU:1, RC:4>>,
+	Status = <<16#20>>,
 
 	Data = <<RorgNum:8, DB_0:1/binary, SourceEurid:32, Status:1/binary>>,
 
-	OptData = get_optional_data_for_sending( TargetEurid ),
+	MaybeOptData = get_optional_data_for_sending( MaybeTargetEurid ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
@@ -1555,17 +1565,22 @@ encode_double_rocker_switch_telegram( SourceEurid, TargetEurid,
 				"data size=~B, optional data size=~B, status=~ts.",
 				[ RadioPacketType, text_utils:integer_to_hexastring( RorgNum ),
 				  text_utils:integer_to_bits( DB_0AsInt, PadWidth ),
-				  size( Data ), size( OptData ),
+				  size( Data ), size( MaybeOptData ),
 				  text_utils:integer_to_bits( StatusAsInt, PadWidth ) ] )
 		end ),
 
 	% Radio, hence 1 here:
-	encode_esp3_packet( RadioPacketType, Data, OptData ).
+	encode_esp3_packet( RadioPacketType, Data, MaybeOptData ).
 
 
 
-% @doc Returns the optional data suitable for sending to the specified device.
--spec get_optional_data_for_sending( eurid() ) -> telegram_opt_data().
+% @doc Returns the optional data suitable for sending to the specified device
+% (if any).
+%
+-spec get_optional_data_for_sending( maybe( eurid() ) ) -> telegram_opt_data().
+get_optional_data_for_sending( _MaybeTargetEurid=undefined ) ->
+	<<>>;
+
 get_optional_data_for_sending( TargetEurid ) ->
 
 	% We are sending here:
@@ -2263,8 +2278,8 @@ try_decode_chunk( TelegramChunk, State ) ->
 scan_past_start( NewTelegramChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Examining now following of size ~B bytes:"
-			"~n~p.", [ size( NewTelegramChunk ), NewTelegramChunk  ] ) ),
+		trace_bridge:debug_fmt( "Examining now following chunk of ~B bytes:"
+			"~p.", [ size( NewTelegramChunk ), NewTelegramChunk  ] ) ),
 
 	% This new chunk corresponds to a telegram that is invalid, or unsupported,
 	% or (currently) truncated, or valid (hence decoded):
@@ -2395,11 +2410,27 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 							FullLen = DataLen + OptDataLen,
 
-							<<FullData:FullLen/binary, _>> = Rest,
+							% May happen; e.g. if two telegrams overlap:
+							case Rest of
 
-							examine_full_data( FullData, FullDataCRC, Data,
-								OptData, PacketType, FullTelegramChunk,
-								AnyNextChunk, State )
+								<<FullData:FullLen/binary, _>> ->
+									examine_full_data( FullData, FullDataCRC,
+										Data, OptData, PacketType,
+										FullTelegramChunk, AnyNextChunk,
+										State );
+
+								TooShortChunk ->
+									cond_utils:if_defined(
+										oceanic_debug_decoding,
+										trace_bridge:debug_fmt( "Chunk ~p too "
+											"short.", [ TooShortChunk ] ) ),
+
+									% By design start byte already chopped:
+									{ incomplete, _ToSkipLen=0,
+									  FullTelegramChunk, State }
+
+
+							end
 
 					end
 
@@ -2786,7 +2817,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_rps_double_rocker_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
+decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
 		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
 		AnyNextChunk, Device,
@@ -2844,8 +2875,8 @@ decode_rps_double_rocker_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 		{ _T21=1, _NU=0 } ->
 
 			% The 4 last bits shall be 0:
-			cond_utils:assert( oceanic_check_decoding,
-							   DB_0AsInt band 2#00001111 =:= 0 ),
+			%cond_utils:assert( oceanic_check_decoding,
+			%				   DB_0AsInt band 2#00001111 =:= 0 ),
 
 			<<R1:3, EB:1, _:4>> = DB_0,
 
@@ -3609,7 +3640,7 @@ learn_to_string( _LearnActivated=false ) ->
 
 
 
-% @doc Decodes the specified optional data.
+% @doc Decodes the specified optional data, if any.
 %
 % Refer to [ESP3] p.18 for its description.
 %
@@ -3622,6 +3653,9 @@ decode_optional_data( _OptData= <<SubTelNum:8, DestinationEurid:32, DBm:8,
 								  SecurityLevel:8>> ) ->
 	{ SubTelNum, DestinationEurid, decode_maybe_dbm( DBm ),
 	  decode_maybe_security_level( SecurityLevel ) };
+
+decode_optional_data( _NoOptData= <<>> ) ->
+	undefined;
 
 decode_optional_data( Other ) ->
 	trace_bridge:warning_fmt( "Unable to decode following optional data "
@@ -3664,7 +3698,7 @@ decode_maybe_security_level( Other ) ->
 
 
 
-% @doc Helper to resolve correctly elements of optional data.
+% @doc Helper to resolve correctly elements (if any) of optional data.
 -spec resolve_maybe_decoded_data( maybe( decoded_optional_data() ) ) ->
 		{ maybe( subtelegram_count() ), maybe( eurid() ), maybe( dbm() ),
 		  maybe( security_level() ) }.
@@ -3761,8 +3795,8 @@ record_device_failure( Eurid, DeviceTable ) ->
 	case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device ~ts.",
-								   [ eurid_to_string( Eurid ) ] ),
+			trace_bridge:info_fmt( "Discovering Enocean device ~ts "
+				"through failure.", [ eurid_to_string( Eurid ) ] ),
 
 			NewDevice = #enocean_device{ eurid=Eurid,
 										 name=undefined,
@@ -4026,6 +4060,10 @@ optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 % @doc Returns a textual description of the specified decoded optional data.
 -spec optional_data_to_string( subtelegram_count(), eurid(), maybe( dbm() ),
 							   maybe( security_level() ) ) -> ustring().
+optional_data_to_string( _SubTelNum=undefined, _DestinationEurid=undefined,
+						 _MaybeDBm=undefined, _MaybeSecurityLevel=undefined ) ->
+	" (with no optional data)";
+
 optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 						 MaybeSecurityLevel ) ->
 

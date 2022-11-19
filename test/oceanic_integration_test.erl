@@ -35,7 +35,7 @@
 -module(oceanic_integration_test).
 
 
--export([ run/0 ]).
+-export([ run/0, wait_for_test_events/2 ]).
 
 
 % Shorthands:
@@ -54,7 +54,7 @@ actual_test( TtyPath ) ->
 	%wait_for_test_events( _Count=5, OcSrvPid ),
 
 	% Infinite listening:
-	wait_for_test_events( _Count=-1, OcSrvPid ),
+	%wait_for_test_events( _Count=-1, OcSrvPid ),
 
 	oceanic:stop( OcSrvPid ).
 
