@@ -51,10 +51,12 @@ actual_test( TtyPath ) ->
 
 	OcSrvPid = oceanic:start_link( TtyPath ),
 
-	%wait_for_test_events( _Count=5, OcSrvPid ),
+	%WaitCount = 5,
 
 	% Infinite listening:
-	%wait_for_test_events( _Count=-1, OcSrvPid ),
+	WaitCount = -1,
+
+	wait_for_test_events( WaitCount, OcSrvPid ),
 
 	oceanic:stop( OcSrvPid ).
 
