@@ -1084,6 +1084,19 @@ secure_tty( TtyPath ) ->
 
 	end,
 
+	code_utils:is_beam_in_path( serial ) == not_found andalso
+		begin
+			trace_bridge:error_fmt( "The 'serial' module is not found, "
+				"whereas the ~ts"
+				"Has our fork of 'serial' been already installed? Please refer "
+				"to Oceanic's documentation.",
+				[ code_utils:get_code_path_as_string() ] ),
+
+			throw( serial_library_not_found )
+		end,
+
+
+
 	% Symmetrical speed here (in bits per second):
 	Speed = ?esp3_speed,
 
@@ -1535,21 +1548,20 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 	% per sender ID.
 	%
 	DB_0 = <<R1Enum:3, EB:1, R2Enum:3, SA:1>>,
-	%DB_0 = <<0>>,
 
-	_T21 = 1,
-	_NU = 1,
+	T21 = 1,
+	NU = 1,
 
 	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
 	%RC = 1,
-	_RC = 0,
+	RC = 0,
 
 	_A=1,
 	_B=0,
 
-	%Status = <<0:2, T21:1, NU:1, RC:4>>,
+	Status = <<0:2, T21:1, NU:1, RC:4>>,
 	%Status = <<A:1, B:1, T21:1, NU:1, RC:4>>,
-	Status = <<16#20>>,
+	%Status = <<16#20>>,
 
 	Data = <<RorgNum:8, DB_0:1/binary, SourceEurid:32, Status:1/binary>>,
 
@@ -1839,10 +1851,37 @@ decode_telegram( Telegram, OcSrvPid ) ->
 oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Waiting for any message "
-			"including a telegram chunk, whereas having "
-			"~B bytes to skip, and having accumulated ~w.",
-			[ ToSkipLen, AccChunk ] ) ),
+		begin
+			SkipStr = case ToSkipLen of
+
+				0 ->
+					"no byte";
+
+				1 ->
+					"a single byte";
+
+				_ ->
+					text_utils:format( "~B bytes", [ ToSkipLen ] )
+
+			end,
+
+			ChunkStr = case AccChunk of
+
+				<<>> ->
+					"no chunk";
+
+				_ ->
+					 text_utils:format( "a chunk of ~B bytes (~p)",
+										[ size(AccChunk  ), AccChunk ] )
+
+			end,
+
+			trace_bridge:debug_fmt( "Waiting for any message "
+				"including a telegram chunk, whereas having ~ts to skip, "
+				"and having accumulated ~ts.", [ SkipStr, ChunkStr ] )
+
+		end ),
+
 
 	receive
 
@@ -2018,7 +2057,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 			cond_utils:if_defined( oceanic_debug_tty,
 				trace_bridge:debug_fmt( "Stopping serial server ~w, "
-					"while in following state: ~ts",
+					"while in following state: ~ts.",
 					[ SerialPid, state_to_string( State ) ] ) ),
 
 			SerialPid ! stop,
@@ -2278,7 +2317,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 scan_past_start( NewTelegramChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Examining now following chunk of ~B bytes:"
+		trace_bridge:debug_fmt( "Examining now following chunk of ~B bytes: "
 			"~p.", [ size( NewTelegramChunk ), NewTelegramChunk  ] ) ),
 
 	% This new chunk corresponds to a telegram that is invalid, or unsupported,
@@ -3072,7 +3111,7 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 	cond_utils:if_defined( oceanic_debug_commands,
 		trace_bridge:debug_fmt( "Sending back to requester ~w "
 		"the following response: ~ts.",
-		[ device_event_to_string( Response ) ] ) ),
+		[ RequesterPid, device_event_to_string( Response ) ] ) ),
 
 	RequesterPid ! { oceanic_command_outcome, Response },
 
