@@ -104,8 +104,10 @@ listen( MaybeFile ) ->
 				[ oceanic:telegram_to_string( NewChunk ) ] ),
 
 			MaybeFile =:= undefined orelse
-				file_utils:write_ustring( MaybeFile, "{ \"~ts\", ~w }.~n",
-					[ time_utils:get_textual_timestamp(), NewChunk ] ),
+				file_utils:write_ustring( MaybeFile,
+					"{ \"~ts\", ~w, \"~ts\" }.~n",
+					[ time_utils:get_textual_timestamp(), NewChunk,
+					  text_utils:binary_to_hexastring( NewChunk ) ] ),
 
 			listen( MaybeFile )
 
