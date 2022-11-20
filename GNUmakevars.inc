@@ -37,6 +37,21 @@ else
 endif
 
 
+# Adapted, for the sync-* targets:
+ifndef SYNC_TOOL
+
+	SYNC_TOOL := $$(which rsync 2>/dev/null)
+
+	ifdef SSH_PORT
+		SSH_OPT := -e "ssh -p $(SSH_PORT)"
+	endif
+
+	# -a and -t added, compared to Myriad:
+	SYNC_OPT := -atrlpD -vz $(SSH_OPT)
+
+endif
+
+
 
 # Tells whether the debug mode will be activated for the next Oceanic classes to
 # be built (maximum performance versus extended checkings).
