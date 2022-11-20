@@ -72,8 +72,9 @@ decode_file( RecordPath ) ->
 
 	test_facilities:display( "Decoding this telegram stream now." ),
 
-	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0, _FirstNextChunk= <<>>,
-								_AccMsgs=[], oceanic:get_test_state() ),
+	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0,
+		_FirstMaybeNextChunk=undefined, _AccMsgs=[],
+		oceanic:get_test_state() ),
 
 	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
 		[ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
@@ -86,15 +87,23 @@ decode_file( RecordPath ) ->
 % @doc Decodes in turn all specified telegrams, relying on the specified
 % decoding context.
 %
-decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, State ) ->
+decode_all( _Telegrams=[], ToSkipLen, MaybeAccChunk, AccEvents, State ) ->
 
 	ToSkipLen =:= 0 orelse test_facilities:display(
 		"(test finished whereas still having ~B bytes to skip.",
 		[ ToSkipLen ] ),
 
-	AccChunk =:= <<>> orelse test_facilities:display(
-		"(test finished whereas still having following chunk: ~w)",
-		[ AccChunk ] ),
+	case MaybeAccChunk of
+
+		undefined ->
+			ok;
+
+		_ ->
+			test_facilities:display(
+				"(test finished whereas still having following chunk: ~w)",
+				[ MaybeAccChunk ] )
+
+	end,
 
 	test_facilities:display( "~nFinal state: ~ts~n",
 							 [ oceanic:state_to_string( State ) ] ),
@@ -102,12 +111,13 @@ decode_all( _Telegrams=[], ToSkipLen, AccChunk, AccEvents, State ) ->
 	lists:reverse( AccEvents );
 
 
-decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents, State ) ->
+decode_all( _Telegrams=[ Tl | T ], ToSkipLen, MaybeAccChunk, AccEvents,
+			State ) ->
 
 	test_facilities:display( "~nTest examining telegram ~ts now:",
 							 [ oceanic:telegram_to_string( Tl ) ] ),
 
-	case oceanic:try_integrate_chunk( ToSkipLen, AccChunk, Tl, State ) of
+	case oceanic:try_integrate_chunk( ToSkipLen, MaybeAccChunk, Tl, State ) of
 
 		{ decoded, Event, AnyNextChunk, NewState } ->
 
@@ -117,9 +127,9 @@ decode_all( _Telegrams=[ Tl | T ], ToSkipLen, AccChunk, AccEvents, State ) ->
 			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ],
 						NewState );
 
-		{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
+		{ Unsuccessful, NewToSkipLen, NewMaybeAccChunk, NewState } ->
 			test_facilities:display( "(chunk outcome: ~p)", [ Unsuccessful ] ),
-			decode_all( T, NewToSkipLen, NewAccChunk, AccEvents, NewState )
+			decode_all( T, NewToSkipLen, NewMaybeAccChunk, AccEvents, NewState )
 
 	end.
 
