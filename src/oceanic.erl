@@ -1159,7 +1159,7 @@ oceanic_start( TtyPath, MaybeEventListenerPid ) ->
 	InitialState = LoadedState#oceanic_state{
 		event_listener_pid=MaybeEventListenerPid },
 
-	oceanic_loop( _SkipLen=0, _AccChunk= <<>>, InitialState ).
+	oceanic_loop( _SkipLen=0, _MaybeAccChunk=undefined, InitialState ).
 
 
 
@@ -1194,7 +1194,8 @@ get_base_state( SerialServerPid ) ->
 
 	SentState = send_raw_telegram( CmdTelegram, InitialState ),
 
-	wait_initial_base_request( _ToSkipLen=0, _AccChunk= <<>>, SentState ).
+	wait_initial_base_request( _ToSkipLen=0, _MaybeAccChunk=undefined,
+							   SentState ).
 
 
 
@@ -1221,8 +1222,24 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
 				{ decoded, Event=#read_base_id_info_response{
 						% (not interested here in remaining_write_cycles)
-						base_eurid=BaseEurid }, _AnyNextChunk= <<>>,
+						base_eurid=BaseEurid }, MaybeAnyNextChunk,
 						ReadState } ->
+
+					% Clearer that way:
+					case MaybeAnyNextChunk of
+
+						undefined ->
+							ok;
+
+						<<>> ->
+							ok;
+
+						DroppedChunk ->
+							trace_utils:warning_fmt( "Dropping initially "
+								"chunk ~ts.",
+								[ telegram_to_string( DroppedChunk ) ] )
+
+					end,
 
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_utils:debug_fmt( "Successfully ~ts.",
@@ -1869,10 +1886,14 @@ decode_telegram( Telegram, OcSrvPid ) ->
 % - remaining content from past, unsupported packet types that is still to be
 % skipped (hence ToSkipLen; finer than only searching for start bytes)
 % - any already-received beginning of the current telegram to be taken into
-% account (hence AccChunk - which never includes the starting byte)
+% account (hence MaybeAccChunk - which never includes the starting byte); we
+% have to discriminate the value of MaybeAccChunk between "nothing already read"
+% (then it is equal to undefined) and "only the start byte was read (and
+% chopped)" (then it is equal to <<>>)
 %
--spec oceanic_loop( count(), telegram_chunk(), oceanic_state() ) -> no_return().
-oceanic_loop( ToSkipLen, AccChunk, State ) ->
+-spec oceanic_loop( count(), maybe( telegram_chunk() ), oceanic_state() ) ->
+											no_return().
+oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
@@ -1889,14 +1910,17 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 			end,
 
-			ChunkStr = case AccChunk of
+			ChunkStr = case MaybeAccChunk of
 
-				<<>> ->
+				undefined ->
 					"no chunk";
 
-				_ ->
-					 text_utils:format( "a chunk of ~B bytes (~p)",
-										[ size(AccChunk  ), AccChunk ] )
+				<<>> ->
+					"just the start byte";
+
+				AccChunk ->
+					 text_utils:format( "a chunk of ~B bytes (~p) after "
+						"the start byte", [ size( AccChunk ), AccChunk ] )
 
 			end,
 
@@ -1918,17 +1942,18 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 					[ size( NewChunk ), NewChunk,
 					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ) ),
 
-			case try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) of
+			case try_integrate_chunk( ToSkipLen, MaybeAccChunk, NewChunk,
+									  State ) of
 
 				% Commands have been already answered directly, no response
 				% echoed to any listener:
 				%
-				{ decoded, _Event=command_processed, AnyNextChunk,
+				{ decoded, _Event=command_processed, AnyNextMaybeChunk,
 				  NewState } ->
-					oceanic_loop( _SkipLen=0, AnyNextChunk, NewState );
+					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
 
 				% Then just an event, possibly listened to:
-				{ decoded, Event, AnyNextChunk, NewState } ->
+				{ decoded, Event, AnyNextMaybeChunk, NewState } ->
 
 					trace_bridge:debug_fmt( "Decoded following event: ~ts.",
 						[ device_event_to_string( Event ) ] ),
@@ -1943,16 +1968,16 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 
 					end,
 
-					oceanic_loop( _SkipLen=0, AnyNextChunk, NewState );
+					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
 
 
-				{ _Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
+				{ _Unsuccessful, NewToSkipLen, NewMaybeAccChunk, NewState } ->
 					% when Unsuccessful     =:= not_reached
 					%   orelse Unsuccessful =:= incomplete
 					%   orelse Unsuccessful =:= invalid
 					%   orelse Unsuccessful =:= unsupported ->
 					%   orelse Unsuccessful =:= unconfigured ->
-					oceanic_loop( NewToSkipLen, NewAccChunk, NewState )
+					oceanic_loop( NewToSkipLen, NewMaybeAccChunk, NewState )
 
 			end;
 
@@ -1967,7 +1992,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			ExecState = execute_command_helper( _CmdType=device_command,
 				CmdTelegram, RequesterPid, State ),
 
-			oceanic_loop( ToSkipLen, AccChunk, ExecState );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, ExecState );
 
 
 		{ executeCommonCommand, CommonCommand, RequesterPid } ->
@@ -1986,23 +2011,19 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			ExecState = execute_command_helper( _CmdType=CommonCommand,
 				CmdTelegram, RequesterPid, State ),
 
-			oceanic_loop( ToSkipLen, AccChunk, ExecState );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, ExecState );
 
 
 		{ getBaseEurid, RequesterPid } ->
 			RequesterPid !
 				{ oceanic_base_eurid, State#oceanic_state.emitter_eurid },
 
-			oceanic_loop( ToSkipLen, AccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
 
 		% Sent by the timer associated to the currently pending command, a timer
 		% that just expired:
 		%
-		% See handle_next_command/2 to understand why this has been commented
-		% out:
-		%
-		%{ considerCommandTimeout, TimerRef } ->
 		{ considerCommandTimeout, CmdCount } ->
 
 			TimeState = case State#oceanic_state.waited_command_info of
@@ -2039,13 +2060,13 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			NewState = handle_next_command(
 				TimeState#oceanic_state.command_queue, TimeState ),
 
-			oceanic_loop( ToSkipLen, AccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
 
 		% Mostly useful for testing purpose:
 		{ sendOceanic, Telegram } ->
 			NewState = send_raw_telegram( Telegram, State ),
-			oceanic_loop( ToSkipLen, AccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
 
 		% Mostly useful for testing purpose:
@@ -2058,8 +2079,8 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			% Not interfering with received bits (current state used for that,
 			% but will not be affected):
 			%
-			Res = case try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
-											Telegram, State ) of
+			Res = case try_integrate_chunk( _ToSkipLen=0,
+								_MaybeAccChunk=undefined, Telegram, State ) of
 
 				{ decoded, DeviceEvent, _NewNextChunk, _NewState } ->
 					DeviceEvent;
@@ -2072,10 +2093,12 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			SenderPid ! { decoding_result, Res },
 
 			% Strictly unaffected:
-			oceanic_loop( ToSkipLen, AccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
 
 		terminate ->
+
+			% (any pending chunk discarded)
 
 			SerialPid = State#oceanic_state.serial_server_pid,
 
@@ -2094,7 +2117,7 @@ oceanic_loop( ToSkipLen, AccChunk, State ) ->
 			trace_bridge:debug_fmt( "Oceanic server ~w received an unexpected "
 				"message: '~w', ignoring it.", [ self(), UnexpectedMsg ] ),
 
-			oceanic_loop( ToSkipLen, AccChunk, State )
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State )
 
 	end.
 
@@ -2181,8 +2204,9 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt(
 			"Sending to serial server ~w actual telegram ~w "
-			"(hexadecimal form: '~ts').", [ SerialPid, ActualSending,
-				telegram_to_hexastring( Telegram ) ] ) ),
+			"(hexadecimal form: '~ts').",
+			[ SerialPid, ActualSending,
+			  telegram_to_hexastring( Telegram ) ] ) ),
 
 	SerialPid ! { send, ActualSending },
 
@@ -2193,7 +2217,7 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 % @doc Helper introduced only to make the decoding logic available for tests.
 -spec test_decode( telegram_chunk() ) -> decoding_outcome().
 test_decode( Chunk ) ->
-	try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>, Chunk,
+	try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, Chunk,
 						 get_test_state() ).
 
 
@@ -2247,24 +2271,10 @@ get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
 % @doc Tries to integrate a new telegram chunk, that is to decode an ESP3 packet
 % from the specified chunk.
 %
--spec try_integrate_chunk( count(), telegram_chunk(), telegram_chunk(),
+-spec try_integrate_chunk( count(), maybe( telegram_chunk() ), telegram_chunk(),
 						   oceanic_state() ) -> decoding_outcome().
-% Special-casing "no skip" is clearer; guard needed to ensure we indeed already
-% chopped a start byte:
-%
-try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk, State )
-									when AccChunk =/= <<>> ->
 
-	% May happen (at least initially):
-	%cond_utils:assert( oceanic_check_decoding, AccChunk =/= <<>> ),
-
-	% Start byte was already chopped from AccChunk:
-	scan_past_start( <<AccChunk/binary, NewChunk/binary>>, State );
-
-
-try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) ->
-
-	cond_utils:assert( oceanic_check_decoding, AccChunk =:= <<>> ),
+try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 
 	ChunkSize = size( NewChunk ),
 
@@ -2272,16 +2282,32 @@ try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) ->
 
 		% Not having reached a new packet yet:
 		StillToSkip when StillToSkip >= 0 ->
-			{ not_reached, StillToSkip, _EmptyAcc= <<>>, State };
+			{ not_reached, StillToSkip, _NoAccChunk=undefined, State };
 
 		% ChunkSize > ToSkipLen, so next packet already started in this
-		% new chunk:
+		% new chunk.
 		%
+		% This will start by scanning for any start byte:
 		_ ->
 			<<_Skipped:ToSkipLen/binary, TargetChunk/binary>> = NewChunk,
 			try_decode_chunk( TargetChunk, State )
 
-	end.
+	end;
+
+% Special-casing "no skip" is clearer; guard needed to ensure we indeed already
+% chopped a start byte:
+%
+% May happen (at least initially):
+try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, NewChunk,
+					 State ) ->
+	scan_past_start( NewChunk, State );
+
+
+try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk, State ) ->
+	% Start byte was already chopped from AccChunk:
+	scan_past_start( <<AccChunk/binary, NewChunk/binary>>, State ).
+
+
 
 
 
@@ -2317,7 +2343,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
 					"so dropping its ~B bytes)", [ DroppedCount ] ) ),
-			{ invalid, _StillToSkipLen=0, <<>>, State };
+			{ invalid, _StillToSkipLen=0, _NoAccChunk=undefined, State };
 
 
 		{ NewTelegramChunk, DroppedCount } ->
@@ -2353,12 +2379,12 @@ scan_past_start( NewTelegramChunk, State ) ->
 		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
 			examine_header( Header, HeaderCRC, Rest, NewTelegramChunk, State );
 
-			% So less than 5 bytes (yet), cannot be complete:
-			_ ->
-				cond_utils:if_defined( oceanic_debug_decoding,
-					trace_bridge:debug( "(no complete header to decode)" ) ),
+		% So less than 5 bytes (yet), cannot be complete, but is kept:
+		_ ->
+			cond_utils:if_defined( oceanic_debug_decoding,
+				trace_bridge:debug( "(no complete header to decode)" ) ),
 
-				% Waiting to concatenate any additional receiving:
+			% Waiting to concatenate any additional receiving:
 			{ incomplete, _ToSkipLen=0, NewTelegramChunk, State }
 
 	end.
@@ -2367,7 +2393,7 @@ scan_past_start( NewTelegramChunk, State ) ->
 
 
 % @doc Extracts the content from the specified telegram chunk, returning a chunk
-% that is beginning just after any start byte (which is 0x55, i.e. 85).
+% that is beginning just after any start byte (which is 0x55, i.e. 85), if any.
 %
 % Generally there are no leading bytes to be dropped.
 %
@@ -2440,7 +2466,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 						%
 						_ ->
 							StillToSkip = SkipLen - size( Rest ),
-							{ not_reached, StillToSkip, _AccChunk= <<>>, State }
+							{ not_reached, StillToSkip, _NoAccChunk=undefined,
+							  State }
 
 					end;
 
@@ -2464,8 +2491,31 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 						% We have at least enough:
 						false ->
+
 							<<Data:DataLen/binary, OptData:OptDataLen/binary,
-							  FullDataCRC:8, AnyNextChunk/binary>> = Rest,
+							  FullDataCRC:8, NextBin/binary>> = Rest,
+
+							MaybeNextChunk = case NextBin of
+
+								<<>> ->
+									undefined;
+
+								% We cannot include NextBin as a chunk, this
+								% would mean it was starting with a start byte;
+								% so:
+								%
+								NonEmptyBin ->
+									case scan_for_packet_start( NonEmptyBin ) of
+
+										{ no_content, _DropCount } ->
+											undefined;
+
+										{ ChoppedChunk, _DropCount } ->
+											ChoppedChunk
+
+									end
+
+							end,
 
 							% This CRC corresponds to the whole FullData, we
 							% extract it (again) rather than concatenating
@@ -2476,10 +2526,11 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 							% May happen; e.g. if two telegrams overlap:
 							case Rest of
 
+								% Post-telegram not lost:
 								<<FullData:FullLen/binary, _>> ->
 									examine_full_data( FullData, FullDataCRC,
 										Data, OptData, PacketType,
-										FullTelegramChunk, AnyNextChunk,
+										FullTelegramChunk, MaybeNextChunk,
 										State );
 
 								TooShortChunk ->
@@ -2505,10 +2556,10 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 				trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
 					"dropping this telegram candidate.", [ OtherHeaderCRC ] ) ),
 
-			% Rather than discarding this chunk as a whole, tries to scavange
+			% Rather than discarding this chunk as a whole, tries to scavage
 			% (very conservatively) any trailing element by reintroducing a
-			% potentially valid new chunk - knowing that the past start byte has
-			% already been chopped:
+			% potentially still valid new chunk - knowing that the past start
+			% byte has already been chopped, so we go for any next one:
 			%
 			try_decode_chunk( FullTelegramChunk, State )
 
@@ -2543,8 +2594,8 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 			% Not expecting being fooled by data accidentally looking like a
 			% legit CRC'ed header, so supposing this is just a valid telegram
 			% that ended up to be corrupted, yet for extra safety we will
-			% restart the decoding at the very first (yet still progressing -
-			% not wanting to recurse infinitely) step:
+			% restart the decoding at the very first step (we are nevertheless
+			% still progressing - not wanting to recurse infinitely on a chunk):
 			%
 			scan_for_packet_start( FullTelegramChunk )
 
@@ -2668,15 +2719,15 @@ decode_packet( _PacketType=response_type,
 			case Requester of
 
 				internal ->
-					{ invalid, _ToSkipLen=0, _NextChunk= <<>>, RespState };
+					{ invalid, _ToSkipLen=0, AnyNextChunk, RespState };
 
 				RequesterPid ->
 
 					RequesterPid !
 						{ oceanic_command_outcome, _Outcome=FailureReturn },
 
-						% Waiting information already cleared:
-					{ decoded, command_processed, _NextChunk= <<>>, RespState }
+					% Waiting information already cleared:
+					{ decoded, command_processed, AnyNextChunk, RespState }
 
 			end
 
@@ -4814,6 +4865,8 @@ get_crc_array() ->
 
 
 % Section for execution as (e)script.
+%
+% See also oceanic_script_include.hrl .
 
 
 % @doc Secures the usability of (our fork of) erlang-serial, typically from an
