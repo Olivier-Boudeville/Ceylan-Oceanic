@@ -41,9 +41,12 @@ main( ArgList ) ->
 
 	OceanicRootDir = file_utils:join( [ MyriadRootDir, "..", "oceanic" ] ),
 
-	OceanicDirs = [ file_utils:join( OceanicRootDir, D ) || D <- [ "src" ] ],
+	OceanicDirs = [ file_utils:join( OceanicRootDir, D )
+						|| D <- [ "src", "src/scripts" ] ],
 
 	code_utils:declare_beam_directories( OceanicDirs ),
+
+	oceanic:secure_serial( OceanicRootDir ),
 
 	ArgTable = script_utils:get_arguments( ArgList ),
 
