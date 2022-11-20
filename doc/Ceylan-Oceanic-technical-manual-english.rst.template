@@ -622,6 +622,8 @@ To experiment and troubleshoot communication issues, one may also use tests that
 
 - use ``make oceanic_just_send_to_device_run`` to emit raw telegrams, typically recorded as explained above or forged (encoded) by Oceanic
 
+Corresponding very handy scripts are available as well, ``decode-telegram.sh`` and ``send-telegram.sh``, to which the telegram is to be given (as an hexadecimal string).
+
 We can verify that devices like rocker switch are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed.
 
 
