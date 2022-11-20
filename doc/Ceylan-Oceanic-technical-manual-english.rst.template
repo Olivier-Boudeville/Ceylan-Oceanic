@@ -75,9 +75,9 @@ The latest version of this documentation is to be found at the `official Ceylan-
 Overview
 ========
 
-The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting / very low-consumption and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
+The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
 
-So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi, no IP connectivity either, hence no real risk of data leak.
+So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi, no IP connectivity either, hence no real risk of privacy/data leak.
 
 Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
 
@@ -94,32 +94,30 @@ Purpose
 
 The main motivation of Oceanic is to provide some basic home automation features, especially in terms of security, in order to be able to:
 
-- **intercept and decode telegrams** emitted by sensors, notably single-input contacts (to detect the opening/closing of doors or windows), temperature / humidity sensors or to detect electricity outages, typically to implement one's own alarm center
-- **generate and emit telegrams** to control various electrical devices (e.g. lamps), typically to turn on an electric heater or to run one's own presence simulator
+- **intercept and decode telegrams** emitted by sensors, notably single-input contacts (to detect the opening/closing of doors or windows), temperature / humidity sensors or to detect electricity outages, typically in order to implement one's own alarm center
+- **generate and emit telegrams** to control any kind of electrical devices (driven by a smart plug or an in-wall module), typically to turn on an electric heater or to run one's own presence simulator (possibly with lamps and sound devices)
 
 
 
 Progress & Enocean Coverage
 ===========================
 
-The targeted basic Enocean support has been implemented, so EEP Enocean telegrams can be intercepted and, for the supported EEPs (others may be quite easily added), such telegrams can be properly decoded, as incoming higher-level events.
+The targeted basic Enocean support has been implemented, so EEP Enocean telegrams can be intercepted and, for the supported EEPs (other ones may be quite easily added), such telegrams can be properly decoded and notified as higher-level, incoming events to be managed by one's application.
 
-Reciprocally, telegrams for the supported EEPs can also be encoded and sent.
+Reciprocally, telegrams for the supported EEPs can also be encoded and sent, and they are able to trigger appropriately-configured (Enocean) devices (actuators).
 
-Yet, for some reason (still unknown), currently our target device (a smart plug) does not seem to accept them (no reaction).
+.. comment [#] Note though that some devices are so-called "ciphered"; they rely on a rolling code updated at each sending; then a receiver is to keep track of a window of typically 50 elements of the corresponding sequence, to accommodate for any reasonable telegram loss.
 
-This problem does not seem specific to Oceanic, insofar as recording directly from the command-line an accepted telegram from the USB gateway and sending it exactly as it was (replay) has no effect either on said device - whereas no anti-replay mechanism seems to be enforced here [#]. Investigations are in progress.
+Oceanic can also execute a few common commands directly onto the local USB gateway chip.
 
-.. [#] Note though that some devices are so-called "ciphered"; they rely on a rolling code updated at each sending; then a receiver is to keep track of a window of typically 50 elements of the corresponding sequence, to accommodate for any reasonable telegram loss.
-
-Oceanic can also execute a few common commands directly onto the gateway chip, and perform teach-in operations.
+.. , and perform teach-in operations.
 
 
 
 Testing Ceylan-Oceanic in Two Steps
 ===================================
 
-Now, let's discuss these subjects a bit more in-depth.
+Now, let's discuss all these subjects a bit more in-depth.
 
 
 
@@ -128,10 +126,10 @@ Hardware Prerequisites
 
 In terms of Enocean devices, one needs typically:
 
-- any kind of emitter/sensor, for example a single-input contact/rocker button like `these ones <https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902>`_
-- a receiver, typically a USB gateway, which includes a `UART <https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter>`_ for asynchronous serial communication with an integrated RF module
+- any kind of emitter/sensor device, for example a single-input contact/rocker button like `these ones <https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902>`_; opening sensors are also convenient, as we can easily act on them directly
+- a general-purpose emitter/receiver, typically a USB gateway, which includes a `UART <https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter>`_ for asynchronous serial communication with an integrated RF module
 
-Popular USB dongles, which often rely on the `TCM 310 chip <https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf>`_, include the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_, which allows an external antenna to be connected in order to boost emission / reception ranges inexpensively.
+For that popular USB dongles can be purchased, which often rely on the `TCM 310 chip <https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf>`_; this includes the `USB300 <https://www.enocean.com/en/product/usb-300-500u-400j/>`_ one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer, as it features a `SMA connector <https://en.wikipedia.org/wiki/SMA_connector>`_, which allows an external antenna to be connected in order to boost emission / reception ranges inexpensively.
 
 We will rely here on such a configuration.
 
@@ -150,7 +148,7 @@ Once the USB dongle is connected (here on an Arch Linux host), ``lsusb`` tells u
 
 We will interact with this USB gateway as if it was a serial port.
 
-Rather than having it designated by an obscure, potentially changing name (like ``/dev/ttyUSB0``, ``/dev/ttyUSB1``, etc.), we prefer assigning it a fixed, well-chosen path, like ``/dev/ttyUSBEnOcean``.
+Rather than having it designated by an obscure, potentially changing name (like ``/dev/ttyUSB0``, ``/dev/ttyUSB1``, etc.), we prefer assigning it a fixed, clearer, well-chosen path, like ``/dev/ttyUSBEnOcean``.
 
 For that, one may define a suitable udev rule, typically stored in ``/etc/udev/rules.d/99-enocean.rules``, whose content can simply [#]_ be:
 
@@ -162,7 +160,7 @@ For that, one may define a suitable udev rule, typically stored in ``/etc/udev/r
 .. [#] Note though the different roles played by ``==`` (for matching) and ``=`` (for assignment).
 
 
-Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"``, in which case your user shall be in that group (rather than running ``sudo chmod 777 /dev/ttyUSB0`` each time the device is inserted for example).
+Following extra option could be added to the previous line, in order to set the group of this TTY: ``GROUP="dialout"`` or ``GROUP="uucp"`` (depending on the system's conventions), in which case your user shall be in that group (rather than executing ``sudo chmod 777 /dev/ttyUSB0`` each time the USB dongle is inserted for example).
 
 So one may prefer:
 
@@ -170,16 +168,16 @@ So one may prefer:
 
  SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ttyUSBEnOcean", GROUP="uucp", MODE="0660"
 
-and:
+and, to ensure that the user of interest for Oceanic (let's name it ``stallone``) belongs to that group:
 
 .. code:: bash
 
- $ sudo usermod -a -G uucp my_username
+ $ sudo usermod -a -G uucp stallone
 
 
-One may run ``sudo udevadm control --reload-rules && sudo udevadm trigger`` to ensure that these changes are taken into account.
+One may then run ``sudo udevadm control --reload-rules && sudo udevadm trigger`` to ensure that these changes are taken into account from now on.
 
-Then inserting said dongle should generate log entries that ``journalctl -xe`` can show, like (timestamps and hostname edited):
+Then inserting said USB dongle should generate log entries that ``journalctl -xe`` can show, like (timestamps and hostname edited):
 
 .. code::
 
@@ -211,11 +209,22 @@ On insertion we have then, with the former settings:
 Software Prerequisites
 ======================
 
-Ceylan-Oceanic relies on general-purpose services offered by `Ceylan-Myriad <http://myriad.esperide.org>`_ (implying of course `Erlang itself <https://myriad.esperide.org/#software-prerequisites>`_), and on an Erlang driver for serial communication.
+Ceylan-Oceanic relies on general-purpose services offered by `Ceylan-Myriad <http://myriad.esperide.org>`_ (implying of course `Erlang itself <https://myriad.esperide.org/#software-prerequisites>`_), and on a suitable Erlang driver for serial communication.
+
+
+Erlang
+------
+
+If needed, follow `these Myriad guidelines for installing Erlang <https://myriad.esperide.org/#software-prerequisites>`_ in order to obtain a proper, recent-enough version thereof.
+
+
+
+Serial
+------
 
 .. _`erlang serial`:
 
-We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville/erlang-serial>`_ for that, which we prefer installing in user space that way:
+We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville/erlang-serial>`_ for that, which we prefer installing in user space (rather than in the system tree) that way:
 
 .. code:: bash
 
@@ -225,16 +234,15 @@ We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville
  $ make && DESTDIR=. make install
 
 
-.. [#] A fork of the original `erlang-serial <https://github.com/tonyg/erlang-serial>`_, which had to be modified notably in terms of disabled RTS/CTS flow control, in order to be able to properly send data to the Enocean gateway.
+.. [#] This is a fork of the original `erlang-serial <https://github.com/tonyg/erlang-serial>`_, which had to be modified notably in terms of disabled RTS/CTS flow control, in order to be able to properly send data to the Enocean gateway.
 
-Then using ``erlang-serial`` will be just a matter of adding it to one's code path.
-
-One may update the ``Erlang-serial section`` in Oceanic's `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ in order to take into account any other path convention.
-
-One may run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing erlang-serial's ``ebin`` directory.
+Then using ``erlang-serial`` will be just a matter of adding it to one's code path [#]_.
 
 
-To test it (whether or not any dongle is connected):
+.. [#] Later in the installation one may update the ``Erlang-serial section`` in Oceanic's `GNUmakevars.inc <https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc>`_ in order to take into account any other path convention. One may then run, from the root of Oceanic, ``make info-serial`` to check that ``ERLANG_SERIAL_BASE`` points indeed to a directory containing erlang-serial's ``ebin`` directory. Otherwise runtime checks will detect and report any issue.
+
+
+To test this erlang-serial installation (whether or not any dongle is connected):
 
 .. code:: bash
 
@@ -245,8 +253,35 @@ To test it (whether or not any dongle is connected):
  1> serial:start().
  <0.82.0>
 
-
 Perfect!
+
+
+
+Ceylan-Myriad
+-------------
+
+Oceanic expects to find a fully-built Myriad source tree as a sibling of its own tree, named ``myriad``, and possibly made available through a symbolic link.
+
+As per `these Myriad guidelines <https://myriad.esperide.org/#getting-myriad-s-sources>`_, this source tree can be obtained by changing to a directory of choice that will contain both Myriad and Oceanic, and issuing:
+
+.. code:: bash
+
+ $ git clone https://github.com/Olivier-Boudeville/Ceylan-Myriad.git
+ $ ln -s Ceylan-Myriad myriad && cd myriad && make all && cd ..
+
+
+
+Ceylan-Oceanic
+--------------
+
+From the same parent directory, very similarly:
+
+.. code:: bash
+
+ $ git clone https://github.com/Olivier-Boudeville/Ceylan-Oceanic.git
+ # Symlink just for consistency:
+ $ ln -s Ceylan-Oceanic oceanic && cd oceanic && make all && cd ..
+
 
 
 
@@ -260,9 +295,9 @@ Perfect!
 Testing Enocean
 ===============
 
-Ensure that none of the next serial tools / terminals is left running, otherwise this may block your ability to send telegrams thanks to Oceanic.
+Ensure first that none of the next serial tools / terminals has been left running, otherwise exclusive access may block your ability to send telegrams thanks to Oceanic.
 
-To check, one mat rely on:
+To check, one may rely on:
 
 .. code:: bash
 
@@ -271,11 +306,13 @@ To check, one mat rely on:
  serial  214977 your_user   3u   CHR  188,0      0t0 1066 /dev/ttyUSB0
 
 
+Note also that, from that point EURIDs are altered/edited (fake ones used). Minor discrepancies may happen.
+
 
 Basic, Direct Command-line Testing
 ----------------------------------
 
-It is as simple as executing from the command-line (thus without Oceanic or Erlang being involved):
+It is as simple as executing from the command-line (thus without Oceanic, Serial or Erlang being involved):
 
 .. code:: bash
 
@@ -301,7 +338,7 @@ With a Graphical Serial Terminal
 
 One may use `cutecom <https://cutecom.sourceforge.net/>`_ to directly test input/output telegrams.
 
-A priori neither RTS nor DTR shall be enabled, yet in our tests these had no impact.
+A priori neither RTS nor DTR shall be enabled (yet in our tests these had no impact with cutecom; however not disabling them with Oceanic was leading to emitting telegrams not understood by their target devices).
 
 We recommend using the ``Hex`` input and output.
 
@@ -310,28 +347,239 @@ We recommend using the ``Hex`` input and output.
 Oceanic Testing
 ---------------
 
-From the root of the Ceylan-Oceanic clone, supposing that Myriad and erlang-serial are already available and built:
 
-.. code:: bash
+First test: executing a few Common Commands
+___________________________________________
+
+This consists in having Oceanic discuss with the local USB gateway dongle, regardless of any actual Enocean device.
+
+From the root of the Ceylan-Oceanic clone, supposing that Myriad and erlang-serial are already available and built (whereas here debug flags have been activated, see Oceanic's ``GNUmakevars.inc``):
+
+.. code::
+
+ # Ensure erlang-serial is available:
+ $ make info-serial
+ ERLANG_SERIAL_BASE = /home/stallone/Software/erlang-serial/erlang/lib/serial-1.1
 
  # Ensure that Ceylan-Oceanic is built:
  $ make all
 
  $ cd test
- $ make oceanic_run
 
-		Running unitary test oceanic_run (third form) from oceanic_test
+ # Triggering a Common Command does not need any target device:
+ $ make oceanic_common_command_run
 
- --> Testing module oceanic_test.
+		Running unitary test oceanic_common_command_run (third form) from oceanic_common_command_test
 
- Starting the Enocean test based on the gateway TTY '/dev/ttyUSBEnOcean'.
- [debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server <0.84.0>.
- [debug] Stopping serial server <0.84.0>.
+ --> Testing module oceanic_common_command_test.
+
+ Testing the management of Common Commands.
+ [debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server <0.86.0> (speed: 57600 bits per second).
+ [debug] Discovering our base EURID.
+ [debug] Sending to serial server <0.86.0> actual telegram <<85,0,1,0,5,112,8,56>> (hexadecimal form: '5500010005700838').
+ [debug] Waiting initial base request (ToSkipLen=0, AccChunk=<<>>).
+ [debug] Read telegram <<85,0,5,1,2,219,0,255,162,223,0,10,180>> of size 13 bytes (corresponding to hexadecimal '5500050102db00ffa3df000ab4').
+ [debug] Trying to decode '<<85,0,5,1,2,219,0,255,162,223,0,10,180>>' (of size 13 bytes)
+ [debug] Start byte found, retaining now following chunk (of size 12 bytes; after dropping 0 byte(s)):
+  <<0,5,1,2,219,0,255,162,223,0,10,180>>.
+ [debug] Examining now following chunk of 12 bytes:<<0,5,1,2,219,0,255,162,223,0,10,180>>.
+ [debug] Packet type 2; expecting 5 bytes of data, then 1 of optional data; checking first header CRC.
+ [debug] Header CRC validated (219).
+ [debug] Detected packet type: response_type.
+ [debug] Full-data CRC validated (180).
+ [debug] Decoding a command response, whereas awaiting command of type co_rd_idbase, based on telegram <<85,0,1,0,5,112,8,56>> of size 8 bytes
+ (corresponding to hexadecimal '5500010005700838'), on behalf of requester internal.
+ [debug] Returning the following internal response: read gateway base ID ffa3df00, for 10 remaining write cycles.
+ [debug] Successfully read gateway base ID ffa3df00, for 10 remaining write cycles.
+ [info] No preferences file ('/home/stallone/.ceylan-settings.etf') found.
+ [debug] Waiting for any message including a telegram chunk, whereas having 0 bytes to skip, and having accumulated <<>>.
+ [debug] Requested to execute common command 'co_rd_version', on behalf of requester <0.9.0>.
+ [...]
+ [debug] Sending back to requester <0.9.0> the following response: read application
+ version 2.11.1.0, API version 2.6.3.0, chip ID 19d46ce, chip version 1162805507 and application description 'GATEWAYCTRL'.
+ [debug] Waiting for any message including a telegram chunk, whereas having 0 bytes to skip, and having accumulated <<>>.
+ Read version: read application version 2.11.1.0, API version 2.6.3.0, chip ID 19d46bc, chip version 1162805507 and application description 'GATEWAYCTRL'.
+ [debug] Requested to execute common command 'co_rd_sys_log', on behalf of requester <0.9.0>.
+ [...]
+ Read logs: read counters: 6 for application: [254,255,255,255,255,255], and 38 for API: [255,255,255,255,255,255,
+ 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255].
+ [debug] Stopping the Oceanic server <0.85.0>.
+ [debug] Stopping serial server <0.86.0>, while in following state: Oceanic server using serial server <0.86.0>, using emitter EURID ffa3df00,
+ not having any command pending, based on a time-out of 1 second, with no command queued whereas a total of 2 of them have been issued;
+ having <0.9.0> registered as listener of Enocean events, having sent 3 telegrams, not having discarded any telegram, and knowing no Enocean device
+ [debug] Oceanic server <0.85.0> terminated.
+ Stopped.
 
  --> Successful end of test.
 
  (test finished, interpreter halted)
- (command success reported)
+
+
+Second test: controlling an actual device
+_________________________________________
+
+This more complete test will rely on experimental settings typically involving:
+
+- a **controller device** (e.g. a double-rocker switch), which will be, once discovered, spoofed next by Oceanic
+
+- a **target device** (e.g. a smart plug / socket switching actuator) that already learnt - according to its own procedure (typically pressing adequately buttons thereof) - the previous controller device; for example a lamp would be plugged on that actuator so that, when pressing and releasing a given button of the rocker switch, the lamp is toggled (on/off)
+
+The objective is to control that lamp programmatically, through Oceanic (only).
+
+First, the EURID of the controller device must be determined. Either it can be directly read from some actual label on the device, or it has to be obtained through passive listening.
+
+
+In this last case, start by running the following test (still in ``oceanic/test``):
+
+.. code::
+
+ $ make oceanic_integration_run
+
+		Running unitary test oceanic_integration_run (third form) from oceanic_integration_test
+
+ --> Testing module oceanic_integration_test.
+
+ (test waiting indefinitely for Enocean events; hit CTRL-C to stop)
+ [debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server <0.86.0> (speed: 57600 bits per second).
+ [debug] Discovering our base EURID.
+ [...]
+ [debug] Waiting for any message including a telegram chunk, whereas having no byte to skip, and having accumulated no chunk.
+
+
+Then act on the controller so that it emits a telegram (e.g. press a button of said rocker switch; it may be correspond for example to the bottom position of the first rocker, ``A``).
+
+If in range, the test should intercept it:
+
+.. code::
+
+ [debug] Received a telegram chunk of 21 bytes: <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,68,0,254>>, corresponding to
+ hexadecimal 55000707017af630002ef1963001ffffffff4400fe (whereas there are 0 bytes to skip).[...]
+ [debug] Decoding an ERP1 radio packet of R-ORG f6, hence rorg_rps, i.e. 'RPS (Repeated Switch Communication)'...
+ [info] Discovering Enocean device 002ef196 through failure.
+
+ <----------------
+ [warning] Unable to decode a RPS (F6) packet for 002ef196: device not configured, no EEP known for it.
+ ---------------->
+
+ [debug] Waiting for any message including a telegram chunk, whereas having no byte to skip, and having accumulated no chunk.
+ [...]
+
+(hit CTRL-C to stop)
+
+So we determined that this rocker switch has for EURID ``002ef196``.
+
+We can notice that a failure is reported, as Oceanic cannot decode yet the telegrams from that emitter, short of knowing to which EEP it complies. As this EEP information is not carried by such packets, it cannot be determined automatically and has thus to be specified, here once for all through a proper Oceanic configuration file, typically to be found as ``~/.ceylan-settings.etf``.
+
+In this `ETF file <https://myriad.esperide.org/#etf>`_, among possibly other entries unrelated to Oceanic, we may have:
+
+.. code:: erlang
+
+ % Oceanic section:
+
+ % Information regarding the pseudo-device emitting any telegram to be sent by
+ % Oceanic:
+ %
+ % (if overriding the base ID of this chip, read as "ffa3df00")
+ %
+ %{ oceanic_emitter, "DEADBEEF" }.
+
+ % To spoof my green switch:
+ %{ oceanic_emitter, "002EF196" }.
+
+
+ % A list of device_config() entries, clearer with user-defined names than with
+ % only raw EURIDs:
+ %
+ { oceanic_devices, [
+
+	% Either {UserDefinedName :: ustring(), EURID :: ustring(), EEP ::
+	% ustring()} or {UserDefinedName :: ustring(), EURID :: ustring(),
+	%                EEP :: ustring(), Comment :: ustring()}:
+
+	% For the local gateway (useful to decode/check self-encoded telegrams):
+	{ "my local USB gateway", "ffa3df00", "F6-02-01" },
+
+	% Single-input contacts:
+	{ "my first opening sensor", "060533EC", "D5-00-01" },
+	{ "my second opening sensor", "02959F62", "D5-00-01" },
+
+	% Temperature and humidity sensors:
+	{ "my only temperature and humidity sensor", "02A96926", "A5-04-01" },
+
+	% Switches:
+	{ "my green switch", "002EF196", "F6-02-01",
+	  "This is actually a single-rocker switch" },
+	{ "my white switch", "012F50D6", "F6-02-01" },
+
+	% In-wall modules:
+	{ "my two-channel orange module", "06035E4A", "D2-01-12" }
+
+	% Socket switching actuators:
+	%{ "my smart plug", (unknown), (unknown) }
+
+	] }.
+
+
+These entries are pretty self-explanatory:
+
+- with ``oceanic_emitter`` we define the EURID that shall be used by Oceanic whenever emitting (the default being its in-chip first base ID, as automatically determined thanks to a Common Command)
+- with ``oceanic_devices`` the EEP of the various devices that we want to be aware of are listed (naming them allows to have clearer Oceanic reports)
+
+
+Now, as the test explicitly sets the EURID of the emitter, it is just a matter of updating,  in ``oceanic_static_sending_test.erl``, the ``SourceEurid`` variable in order that this test impersonates the controller of interest (here, said green switch):
+
+.. code:: erlang
+
+	SourceEurid = oceanic:string_to_eurid( "002EF196" ),
+
+
+Running it [#]_ results in:
+
+.. [#] The decoding printout corresponds to a check made by this test: prior to sending a telegram that it just generated, it ensures that it can decode it successfully.
+
+.. code::
+
+ $ make oceanic_static_sending_run
+		Running unitary test oceanic_static_sending_run (third form) from oceanic_static_sending_test
+
+ --> Testing module oceanic_static_sending_test.
+
+ Starting test; note that direct telegram sendings are made here, thus Oceanic will detect responses that do not match with any past request that it sent.
+ [debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server <0.86.0> (speed: 57600 bits per second).
+ [debug] Discovering our base EURID.
+
+ [debug] Successfully read gateway base ID ffa3df00, for 10 remaining write cycles.
+ [debug] Initial state: Oceanic server using serial server <0.86.0>, using emitter EURID ffa3df00, not having any command pending, based
+ on a time-out of 1 second, with no command queued whereas none has been issued; not having a listener of Enocean events registered,
+ having sent a single telegram, not having discarded any telegram, and knowing 8 Enocean devices:
+ + device 'my first opening sensor' (EURID: 060533ec) applying EEP D5-00-01; it has been never seen by this server
+ [...]
+ Decoding the 'pressed' one for the 'off' button results in following event: double-rocker device 'my green switch' (whose EURID is 002ef196) has no button
+ pressed simultaneously at 2022/11/19 23:11:45, declared with a single subtelegram, targeted to the address for broadcast transmission; security
+ level: telegram not processed; its EEP is double_rocker_switch (F6-02-01)
+ [...]
+ All telegrams of interest encoded.
+ First we press (and then also release) the 'switch off' button, 'button_ao' (which must have already been learnt), typically in order to switch on a lamp.
+ Then, after a short waiting, we press (and then release) this 'switch off' button again, 'button_ai', typically to switch off the lamp.
+ [debug] Sending to serial server <0.86.0> actual telegram <<85,0,7,7,1,122,246,16,1,9,217,112,32,1,255,255,255,255,255,0,204>>
+ (hexadecimal form: '55000707017af6100109d9702001ffffffffff00cc').
+
+The lamp is expected first to turn on, then, and after one second, to turn off.
+
+Congratulations, your Oceanic program can control electrical appliances!
+
+If this test does not work as intended:
+
+- did the right position of the right button was learnt?
+- depending on the switch, apparently:
+
+  - either each of the individual buttons will act as a rocker by itself (e.g. to switch on then off the lamp, a learnt button - top or bottom - of a given rocker will have to be pressed and released twice [#]_)
+  - or the whole rocker (that is the pair made of its top and bottom buttons) will work as intended as a rocker (e.g. to switch on the lamp, the top button will have to be pressed and released, then, to switch off the lamp, the bottom button will have to be pressed and released [#]_)
+
+.. [#] This is the case for my white switch, an O2 Line Comfort double-rocker; the top and bottom buttons can then be used indifferently.
+
+.. [#] This is the case for my green switch, a VIMAR Vita (single) rocker, for which each button has a role. For example, pressing a given button more than once will have no effect (as it corresponds to a state already reached), only using the other will trigger a new transition.
+
 
 
 :raw-latex:`\pagebreak`
@@ -347,22 +595,34 @@ Enocean Documentation
 
 - [ESP3]: `Enocean Serial Protocol (ESP3) - SPECIFICATION <https://www.enocean.com/esp>`_ (e.g. version 1.51, 116 pages), a point-to-point packet-based protocol that is lower-level in the network stack; of lesser interest here)
 
-Note also that, despite the availability of ERP2 specifications, at least most devices rely on ERP1 ones.
+Note also that, despite the availability of ERP2 specifications, at least most devices we are aware of rely on ERP1 ones.
 
 
 
 Protocol Information
 ====================
 
-Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), it looked as if replaying Enocean telegrams would be pretty straightforward.
+Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently with the default, usual level of security (that is: none) implemented by the devices we tested, Enocean telegrams can be replayed [#]_: just intercepting a raw telegram and re-emitting it was successfully acknowledged (in terms of code returned) by the target device and indeed triggered its intended effect (e.g. the smart plug will switch on).
 
-However, in practice, if just intercepting a telegram and re-emitting it will be successfully acknowledged in terms of code returned by the target device, it will *not* trigger the intended effect (e.g. the smart plug will not switch on).
+.. [#] See the ``replay_telegrams/1`` function in the ``oceanic_just_send_to_device_test`` module for an example.
 
-Not only we actually receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving), but, more importantly, even if forging an apparently acceptable telegram (i.e. creating a correct one, mentioning the EURID of a legit emitter already paired to the receiving device, with proper send-related information), this will still not be sufficient.
+This is true despite the fact that:
 
-We interpret that as the devices relying on a lower-level protocol (possibly. ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); a bit like if one was spoofing IP addresses in forged packets whereas the device compares MAC addresses.
+- we actually receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving), so replaying a received telegram could be rejected on these bases
+- each emitter (here the USB dongle) has its base EURID (or range thereof); so at least in theory the chip could (through packet inspection) force emitted packets to bear the actual base EURID as source, and thus prevent easy spoofing; however in practice one can forge acceptable "send" (as opposed to "received" - like in the previous point) telegrams bearing *any* source EURID, and both the dongle and then the receiver (of course provided that this EURID was already paired) will happily accept them
 
-As these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on "standard" USB gateways, explaning why Oceanic has to support a whole teach-in procedure.
+
+.. We interpret that as the devices relying on a lower-level protocol (possibly. ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); a bit like if one was spoofing IP addresses in forged packets whereas the device compares MAC addresses.
+
+.. As these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on "standard" USB gateways, explaining why Oceanic has to support a whole teach-in procedure.
+
+To experiment and troubleshoot communication issues, one may also use tests that bypass the Oceanic server and perform direct listening / emitting:
+
+- use ``make oceanic_just_record_device_run`` to display and record in file (``enocean-test-recording.etf``) all raw, timestamped telegrams that can be intercepted
+
+- use ``make oceanic_just_send_to_device_run`` to emit raw telegrams, typically recorded as explained above or forged (encoded) by Oceanic
+
+We can verify that devices like rocker switch are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed.
 
 
 
@@ -376,7 +636,9 @@ Bugs, questions, remarks, patches, requests for enhancements, etc. are to be rep
 Additional Information
 ======================
 
-- `EnOcean in Practice <http://tvaira.free.fr/projets/activites/enocean.html>`_ (very clear information, in French)
+- use ``make sync-sources-to-server`` if needing to update directly Oceanic' sources on a remote server that hosts an appropriate USB dongle
+
+- refer to `EnOcean in Practice <http://tvaira.free.fr/projets/activites/enocean.html>`_ (very clear information, in French)
 
 
 
