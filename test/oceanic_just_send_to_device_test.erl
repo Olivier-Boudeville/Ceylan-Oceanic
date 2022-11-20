@@ -287,7 +287,7 @@ emit_forged_telegrams( SerialPid ) ->
 
 	% Trying to decode the telegram we just forged:
 	%{ decoded, Event, _AnyNextChunk, _NewState } =
-	%   oceanic:try_integrate_chunk( _ToSkipLen=0, _AccChunk= <<>>,
+	%   oceanic:try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined,
 	%                                Telegram, InitialTestState ),
 
 	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
