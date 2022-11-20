@@ -75,8 +75,13 @@
 		  string_to_eep/1 ] ).
 
 
+% For execution as (e)script:
+-export([ secure_serial/1 ]).
+
+
 % API for module generation:
 -export([ generate_support_modules/0 ]).
+
 
 % Exported only for testing:
 -export([ get_test_state/0, get_test_state/1,
@@ -896,6 +901,7 @@
 -type version_number() :: basic_utils:version_number().
 
 -type any_file_path() :: file_utils:any_file_path().
+-type directory_path() :: file_utils:directory_path().
 -type device_path() :: file_utils:device_path().
 -type entry_type() :: file_utils:entry_type().
 
@@ -1084,18 +1090,35 @@ secure_tty( TtyPath ) ->
 
 	end,
 
-	code_utils:is_beam_in_path( serial ) == not_found andalso
-		begin
+	% Not necessarily in the ~/Software tree:
+	SerialRootDir = case code_utils:is_beam_in_path( serial ) of
+
+		not_found ->
 			trace_bridge:error_fmt( "The 'serial' module is not found, "
 				"whereas the ~ts"
 				"Has our fork of 'serial' been already installed? Please refer "
 				"to Oceanic's documentation.",
 				[ code_utils:get_code_path_as_string() ] ),
 
-			throw( serial_library_not_found )
-		end,
+			throw( serial_library_not_found );
 
+		[ SinglePath ] ->
+			% We have typically ~/Software/erlang-serial/ebin/serial.beam, so:
+			file_utils:get_base_path( file_utils:get_base_path( SinglePath ) );
 
+		MultiplePaths ->
+			trace_bridge:error_fmt( "The 'serial' module has been found in "
+				"multiple locations (which is abnormal): ~ts.",
+				[ text_utils:strings_to_listed_string( MultiplePaths ) ] ),
+
+			throw( multiple_serial_libraries_found )
+
+	end,
+
+	% Determined explicitly, as in an escript context the 'priv' directory of
+	% erlang-serial may resolve into the one of Oceanic:
+	%
+	SerialPrivDir = file_utils:join( SerialRootDir, "priv" ),
 
 	% Symmetrical speed here (in bits per second):
 	Speed = ?esp3_speed,
@@ -1106,8 +1129,9 @@ secure_tty( TtyPath ) ->
 
 	% Linked process:
 	SerialPid = serial:start( [ { open, TtyPath },
-								{ speed, Speed } ] ),
-								%{ speed, _In=Speed, _Out=Speed } ] ),
+								{ speed, Speed } ],
+								%{ speed, _In=Speed, _Out=Speed } ]
+							   SerialPrivDir ),
 
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt( "Using TTY '~ts' to connect to Enocean gateway,"
@@ -4787,6 +4811,34 @@ get_crc_array() ->
 	  16#d7, 16#c2, 16#c5, 16#cc, 16#cb, 16#e6, 16#e1, 16#e8, 16#ef,
 	  16#fa, 16#fd, 16#f4, 16#f3 }.
 
+
+
+% Section for execution as (e)script.
+
+
+% @doc Secures the usability of (our fork of) erlang-serial, typically from an
+% (e)script.
+%
+-spec secure_serial( directory_path() ) -> void().
+secure_serial( _OceanicRootDir ) ->
+
+	SerialRootDir = file_utils:join( system_utils:get_software_base_directory(),
+									 "erlang-serial" ),
+
+	case file_utils:is_existing_directory_or_link( SerialRootDir ) of
+
+		true ->
+			SerialEbinDir = file_utils:join( SerialRootDir, "ebin" ),
+
+			% Supposing it built then:
+			code_utils:declare_beam_directory( SerialEbinDir );
+
+		false ->
+			% oceanic:secure_tty/1 will look-up the BEAM later:
+			trace_utils:warning_fmt( "No user 'erlang-serial' installation "
+				"found (searched for '~ts').", [ SerialRootDir ] )
+
+	end.
 
 
 
