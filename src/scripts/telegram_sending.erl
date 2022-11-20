@@ -76,11 +76,11 @@ main( ArgTable ) ->
 		[] ->
 			ok;
 
-		UnexpectedOpts ->
-			trace_utils:error_fmt( "Unexpected user input: ~ts~n~ts",
+		_UnexpectedOpts ->
+			shell_utils:error_fmt( 10, "unexpected user input, ~ts~n~ts",
 				[ shell_utils:argument_table_to_string( ShrunkArgTable ),
-				  get_usage() ] ),
-			throw( { unexpected_command_line_options, UnexpectedOpts } )
+				  get_usage() ] )
+			%throw( { unexpected_command_line_options, UnexpectedOpts } )
 
 	end,
 
@@ -90,16 +90,17 @@ main( ArgTable ) ->
 	case MaybeArgs of
 
 		undefined ->
-			trace_utils:error_fmt( "No argument specified.~n~ts",
-								   [ get_usage() ] ),
-			throw( no_argument_specified );
+			shell_utils:error_fmt( 15, "no argument specified.~n~ts",
+								   [ get_usage() ] );
+			%exit( no_argument_specified );
 
 		_SingleArg=[ TelegramStr ] ->
 			send_telegram( TelegramStr ),
 			basic_utils:stop( _ErrorCode=0 );
 
 		Args ->
-			trace_utils:error_fmt( "Extra argument(s) specified, got ~ts.~n~ts",
+			shell_utils:error_fmt( 20,
+				"extra argument(s) specified, got ~ts.~n~ts",
 				[ text_utils:strings_to_listed_string( Args ), get_usage() ] )
 
 	end.
@@ -113,10 +114,9 @@ display_usage() ->
 
 
 -spec send_telegram( ustring() ) -> void().
-send_telegram( TelegramStr ) ->
+send_telegram( TelegramHexStr ) ->
 
-	Telegram = list_to_binary( TelegramStr ),
-
+	Telegram = oceanic:hexastring_to_telegram( TelegramHexStr ),
 
 	% Quite similar to oceanic_just_send_to_device_test:
 
@@ -141,9 +141,9 @@ send_telegram( TelegramStr ) ->
 			timer:sleep( 500 );
 
 		{ false, Reason } ->
-			trace_utils:error_fmt( "No suitable TTY environment found "
+			shell_utils:error_fmt( 25, "no suitable TTY environment found "
 				"(cause: ~p; searched for device '~ts'), no sending done.",
-				[ Reason, TtyPath ] ),
-			throw( { no_tty_available, TtyPath } )
+				[ Reason, TtyPath ] )
+			%exit( { no_tty_available, TtyPath } )
 
 	end.
