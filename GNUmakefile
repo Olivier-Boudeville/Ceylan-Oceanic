@@ -3,11 +3,13 @@ OCEANIC_TOP = .
 
 .PHONY: help help-intro help-oceanic                                       \
 		all register-version-in-header register-oceanic list-beam-dirs     \
+		sync                                                               \
 		add-prerequisite-plts link-plt                                     \
 		release release-zip release-bz2 release-xz                         \
 		prepare-release clean-release clean-archive stats                  \
 		info-context info-versions info-paths                              \
-		info-compile info-conditionals info-deps info-serial
+		info-compile info-conditionals info-deps info-serial               \
+		info-sync-sources
 
 
 MODULES_DIRS = src doc conf test priv
@@ -48,6 +50,21 @@ register-oceanic:
 # Useful to extract internal layout for re-use in upper layers:
 list-beam-dirs:
 	@for d in $(OCEANIC_BEAM_DIRS); do echo $$(readlink -f $$d); done
+
+
+# To synchronise from the local tree the code base of a remote server having a
+# USB gateway, with no Git commit needed.
+#
+# If the source tree is built and up to date, no need to (re)build on the server
+# (if homogeneous in terms of versions).
+#
+# (note that files removed from the local sources will remain in the target
+# server)
+#
+sync-sources-to-server:
+	@$(MAKE) -s all
+	@echo " Synchronising the $$(basename $$(pwd)) layer to $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT)"
+	@if [ -n "$(OCEANIC_SRV)" ]; then if [ -n "$(OCEANIC_SYNC_TARGET_ROOT)" ]; then $(SYNC_TOOL) $(SYNC_OPT) $(OCEANIC_TOP)/../oceanic $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT); else echo "Error, no OCEANIC_SYNC_TARGET_ROOT variable set." 1>&2; exit 4; fi; else echo "Error, no OCEANIC_SRV variable set." 1>&2; exit 5; fi
 
 
 add-prerequisite-plts: link-plt
@@ -139,6 +156,11 @@ info-deps: info-serial
 
 info-serial:
 	@echo "ERLANG_SERIAL_BASE = $(ERLANG_SERIAL_BASE)"
+
+
+info-sync-sources: info-sync
+	@echo "OCEANIC_SRV = $(OCEANIC_SRV)"
+	@echo "OCEANIC_SYNC_TARGET_ROOT = $(OCEANIC_SYNC_TARGET_ROOT)"
 
 
 include $(OCEANIC_TOP)/GNUmakesettings.inc
