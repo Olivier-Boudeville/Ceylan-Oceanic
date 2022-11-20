@@ -30,6 +30,8 @@
 %
 -include_lib("../../../myriad/include/scripts/myriad_script_include.hrl").
 
+-include_lib("../../../oceanic/include/oceanic_script_include.hrl").
+
 
 % @doc Entry point of this escript.
 main( ArgList ) ->
@@ -37,16 +39,8 @@ main( ArgList ) ->
 	% First, enable all possible helper code (hence to be done first of all):
 	MyriadRootDir = update_code_path_for_myriad(),
 
-	% Myriad now available:
-
-	OceanicRootDir = file_utils:join( [ MyriadRootDir, "..", "oceanic" ] ),
-
-	OceanicDirs = [ file_utils:join( OceanicRootDir, D )
-						|| D <- [ "src", "src/scripts" ] ],
-
-	code_utils:declare_beam_directories( OceanicDirs ),
-
-	oceanic:secure_serial( OceanicRootDir ),
+	% Now that Myriad is available; obtained from Oceanic include:
+	_OceanicRootDir = secure_from_escript( MyriadRootDir ),
 
 	ArgTable = script_utils:get_arguments( ArgList ),
 
