@@ -55,8 +55,8 @@
 		  % For any kind of (already-encoded) command:
 		  execute_command/2,
 
-		  % Needed to properly encode telegrams:
-		  get_base_eurid/1,
+		  % Useful to properly encode telegrams:
+		  get_oceanic_eurid/1,
 
 		  % For common commands:
 		  read_version/1, read_logs/1, read_base_id_info/1,
@@ -681,6 +681,8 @@
 % 32-bit; could have been ``type_utils:uint32()''.
 
 
+
+
 % Internal defines.
 
 
@@ -707,7 +709,17 @@
 % The default maximum waiting duration, in milliseconds, for a pending command,
 % sent yet not acknowledged:
 %
--define( max_response_waiting_duration, 1000 ).
+-define( default_max_response_waiting_duration, 1000 ).
+
+
+% The default threshold, in bytes per second (hence roughly a dozen legit
+% telegrams per second) above which an onEnoceanJamming event is triggered:
+%
+-define( default_jamming_threshold, 250 ).
+
+% To test detection:
+%-define( default_jamming_threshold, 25 ).
+
 
 
 % Protocol notes:
@@ -830,13 +842,13 @@
 	serial_server_pid :: serial_server_pid(),
 
 	% To identify the pseudo-device emitter of any telegram to be sent by
-	% Oceanic; by default will be the actual EURID advertised by the local USB
-	% gateway, as obtained thanks to the co_rd_idbase common command.
+	% Oceanic; by default this will be the actual base ID advertised by the
+	% local USB gateway, as obtained thanks to the co_rd_idbase common command.
 	%
-	emitter_eurid :: eurid(),
+	emitter_eurid = string_to_eurid( ?default_emitter_eurid ) :: eurid(),
 
 	% A table recording all information regarding the known Enocean devices:
-	device_table :: device_table(),
+	device_table = table:new() :: device_table(),
 
 
 	% We enqueue command requests that shall result in an acknowledgement (most
@@ -853,7 +865,7 @@
 	% So this queue contains any pending, not-yet-sent ESP3 commands (be
 	% them requests for ERP1 commands, common commands, etc.):
 	%
-	command_queue :: command_queue(),
+	command_queue = queue:new() :: command_queue(),
 
 
 	% Information about any currently waited command request that shall result
@@ -870,7 +882,8 @@
 	% The maximum waiting duration for a pending command, sent yet not
 	% acknowledged:
 	%
-	wait_timeout :: time_utils:time_out(),
+	wait_timeout = ?default_max_response_waiting_duration
+									:: time_utils:time_out(),
 
 
 	% The total number of commands issued:
@@ -884,6 +897,19 @@
 	% context (e.g. a response being received whereas no request is pending):
 	%
 	discarded_count = 0 :: count(),
+
+
+	% The current level of recent sliding traffic, roughly monitored for
+	% jamming:
+	%
+	traffic_level = 0 :: bytes_per_second(),
+
+	% The timestamp corresponding the last time incoming traffic was detected:
+	last_traffic_seen = time_utils:get_timestamp() :: timestamp(),
+
+	% The threshold above which an onEnoceanJamming event is triggered:
+	jamming_threshold = ?default_jamming_threshold :: bytes_per_second(),
+
 
 	% The PID of any process listening for Enocean events:
 	event_listener_pid :: maybe( event_listener_pid() ) } ).
@@ -909,6 +935,9 @@
 -type ustring() :: text_utils:ustring().
 -type bin_string() :: text_utils:bin_string().
 -type any_string() :: text_utils:any_string().
+
+-type byte_size() :: system_utils:byte_size().
+-type bytes_per_second() :: system_utils:bytes_per_second().
 
 -type uint8() :: type_utils:uint8().
 
@@ -1187,11 +1216,7 @@ get_base_state( SerialServerPid ) ->
 
 	InitialState = #oceanic_state{
 		serial_server_pid=SerialServerPid,
-		emitter_eurid=?default_emitter_eurid,
-		command_queue=queue:new(),
-		device_table=table:new(),
-		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined },
-		wait_timeout=?max_response_waiting_duration },
+		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined } },
 
 	SentState = send_raw_telegram( CmdTelegram, InitialState ),
 
@@ -1311,7 +1336,8 @@ load_configuration( State ) ->
 -spec load_configuration( any_file_path(), oceanic_state() ) -> oceanic_state().
 load_configuration( ConfFilePath,
 					State=#oceanic_state{ emitter_eurid=BaseEurid,
-										  device_table=DeviceTable } ) ->
+										  device_table=DeviceTable,
+										  jamming_threshold=JamThreshold } ) ->
 
 	file_utils:is_existing_file_or_link( ConfFilePath )
 		orelse throw( { oceanic_config_file_not_found, ConfFilePath } ),
@@ -1337,8 +1363,20 @@ load_configuration( ConfFilePath,
 	%
 	LoadedDeviceTable = declare_devices( DeviceEntries, DeviceTable ),
 
+	CfgJamThreshold = case list_table:lookup_entry( oceanic_jamming_threshold,
+													Pairs ) of
+
+		key_not_found ->
+			JamThreshold;
+
+		{ value, UserJamThreshold } ->
+			UserJamThreshold
+
+	end,
+
 	State#oceanic_state{ emitter_eurid=EmitterEurid,
-						 device_table=LoadedDeviceTable }.
+						 device_table=LoadedDeviceTable,
+						 jamming_threshold=CfgJamThreshold }.
 
 
 
@@ -1543,11 +1581,19 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 % specified one (if any), reporting the specified transition for the specified
 % button.
 %
+% As this encoding is done exclusively on the caller side (the Oceanic server
+% not being involved), it is up to the caller to specify the source EURID. We
+% recommend at the caller fetches from the Oceanic server its EURID (see
+% get_oceanic_eurid/1) once for all, and use it afterwards.
+%
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
 % Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
 % radio packet encapsulated into an ESP3 one.
 %
 % See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+%
+% Depending on how Oceanic was learnt by the target actuator, it will be seen
+% either as a rocker (recommended) or as push-button(s).
 %
 -spec encode_double_rocker_switch_telegram( eurid(), maybe( eurid() ),
 		button_designator(), button_transition() ) -> telegram().
@@ -1766,17 +1812,18 @@ execute_command( CmdTelegram, OcSrvPid ) ->
 
 
 
-% @doc Returns the base EURID of the local USB gateway.
+% @doc Returns the current (emitter) EURID used by Oceanic for the local USB
+% gateway, notably as default source EURID when generating telegrams.
 %
-% Needed to encode telegrams.
+% Useful when encoding telegrams.
 %
--spec get_base_eurid( oceanic_server_pid() ) -> eurid().
-get_base_eurid( OcSrvPid ) ->
-	OcSrvPid ! { getBaseEurid, self() },
+-spec get_oceanic_eurid( oceanic_server_pid() ) -> eurid().
+get_oceanic_eurid( OcSrvPid ) ->
+	OcSrvPid ! { getOceanicEurid, self() },
 
 	receive
 
-		{ oceanic_base_eurid, BaseEurid } ->
+		{ oceanic_eurid, BaseEurid } ->
 			BaseEurid
 
 	end.
@@ -2025,15 +2072,20 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 		% Received data from the serial port:
 		{ data, NewChunk } ->
+
+			NewChunkSize = size( NewChunk ),
+
 			cond_utils:if_defined( oceanic_debug_tty,
 				trace_bridge:debug_fmt( "Received a telegram chunk "
 					"of ~B bytes: ~w, corresponding to hexadecimal ~ts "
 					"(whereas there are ~B bytes to skip).",
-					[ size( NewChunk ), NewChunk,
+					[ NewChunkSize, NewChunk,
 					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ) ),
 
+			JamState = monitor_jamming( NewChunkSize, State ),
+
 			case try_integrate_chunk( ToSkipLen, MaybeAccChunk, NewChunk,
-									  State ) of
+									  JamState ) of
 
 				% Commands have been already answered directly, no response
 				% echoed to any listener:
@@ -2104,9 +2156,9 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			oceanic_loop( ToSkipLen, MaybeAccChunk, ExecState );
 
 
-		{ getBaseEurid, RequesterPid } ->
+		{ getOceanicEurid, RequesterPid } ->
 			RequesterPid !
-				{ oceanic_base_eurid, State#oceanic_state.emitter_eurid },
+				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
 
 			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
@@ -2210,6 +2262,52 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			oceanic_loop( ToSkipLen, MaybeAccChunk, State )
 
 	end.
+
+
+
+% @doc Detects and notifies any suspected jamming attempt.
+-spec monitor_jamming( byte_size(), oceanic_state() ) -> oceanic_state().
+monitor_jamming( ChunkSize,
+				 State=#oceanic_state{ traffic_level=TrafficLvl,
+									   last_traffic_seen=LastTimestamp,
+									   jamming_threshold=JamThreshold,
+									   event_listener_pid=MaybeListnPid } ) ->
+
+	Now = time_utils:get_timestamp(),
+
+	Dur = time_utils:get_duration( LastTimestamp, Now ),
+
+	% Relatively exponential backoff, as same second: not reduced; halved if
+	% previous second, etc.:
+	%
+	AggTrafficLvl = round( TrafficLvl / (Dur+1) ) + ChunkSize,
+
+	NewTrafficLvl = case AggTrafficLvl > JamThreshold of
+
+		true ->
+			% We notify (if possible) and reset the monitored level:
+			trace_bridge:alert_fmt( "The jamming detection threshold "
+				"(~B bytes per second) has been reached (with ~B bytes per "
+				"second); an attempt to saturate actuators may be "
+				"in progress.",
+				[ JamThreshold, AggTrafficLvl ] ),
+
+			MaybeListnPid =:= undefined orelse
+				% PID sent mostly to discriminate between multiple Oceanic
+				% servers:
+				%
+				MaybeListnPid ! { onEnoceanJamming, [ AggTrafficLvl, self() ] },
+
+			% Single notification per detection:
+			0;
+
+		false ->
+			AggTrafficLvl
+
+	end,
+
+	State#oceanic_state{ traffic_level=NewTrafficLvl,
+						 last_traffic_seen=Now }.
 
 
 
@@ -2324,15 +2422,8 @@ test_decode( Chunk ) ->
 %
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
-
-	BaseState = #oceanic_state{
-		serial_server_pid=self(),
-		emitter_eurid=string_to_eurid( ?default_emitter_eurid ),
-		command_queue=queue:new(),
-		device_table=table:new(),
-		wait_timeout=?max_response_waiting_duration },
-
-	load_configuration( BaseState ).
+	TestState = #oceanic_state{ serial_server_pid=self() },
+	load_configuration( TestState ).
 
 
 
@@ -4118,7 +4209,7 @@ telegram_to_hexastring( Telegram ) ->
 %
 % Useful for testing with serial clients like cutecom.
 %
--spec telegram_to_hexastring( ustring() ) -> telegram().
+-spec hexastring_to_telegram( ustring() ) -> telegram().
 hexastring_to_telegram( HexaStr ) ->
 	text_utils:hexastring_to_binary( HexaStr ).
 
@@ -4384,7 +4475,7 @@ device_event_to_string( #thermo_hygro_event{
 	end,
 
 	text_utils:format( "thermo-hygro sensor device ~ts reports at ~ts "
-		"a ~ts ~ts~ts, declared~ts; ~ts",
+		"a ~ts ~ts~ts; this is declared~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
@@ -4411,8 +4502,8 @@ device_event_to_string( #single_input_contact_event{
 		contact=ContactStatus } ) ->
 
 	% Apparently either state transitions or just periodic state reports:
-	text_utils:format( "single-contact device ~ts is in ~ts state at ~ts~ts, "
-		"declared~ts; ~ts",
+	text_utils:format( "single-contact device ~ts is in ~ts state at ~ts~ts; "
+		"this is declared~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  time_utils:timestamp_to_string( Timestamp ),
@@ -4481,8 +4572,7 @@ device_event_to_string( #double_rocker_switch_event{
 				[ button_designator_to_string( SecondButtonDesignator ) ] ),
 
 	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
-		"whereas its second action ~ts, at ~ts, "
-		"declared~ts; ~ts",
+		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  button_designator_to_string( FirstButtonDesignator ),
 		  get_button_transition_description( ButtonTransition ),
@@ -4519,7 +4609,7 @@ device_event_to_string( #double_rocker_multipress_event{
 	end ++ " " ++ get_button_transition_description( ButtonTransition ),
 
 	text_utils:format( "double-rocker device ~ts has ~ts simultaneously "
-		"at ~ts, declared~ts; ~ts",
+		"at ~ts; this is declared~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ), TransStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
@@ -4672,6 +4762,8 @@ state_to_string( #oceanic_state{
 		command_count=CmdCount,
 		sent_count=SentCount,
 		discarded_count=DiscardedCount,
+		traffic_level=TrafficLvl,
+		jamming_threshold=JamThreshold,
 		event_listener_pid=MaybeListenerPid } ) ->
 
 	WaitStr = case MaybeWaitedCommandInfo of
@@ -4754,10 +4846,15 @@ state_to_string( #oceanic_state{
 
 	end,
 
+	JamStr = text_utils:format( "currently monitoring a sliding traffic "
+		"of roughly ~B bytes per second (for a jamming threshold set at "
+		"~B bytes per second)", [ TrafficLvl, JamThreshold ] ),
+
 	text_utils:format( "Oceanic server using serial server ~w, "
-		"using emitter EURID ~ts, ~ts, ~ts; ~ts, ~ts, ~ts, and knowing ~ts",
+		"using emitter EURID ~ts, ~ts, ~ts; ~ts, ~ts, ~ts, ~ts, "
+		"and knowing ~ts",
 		[ SerialServerPid, eurid_to_string( EmitterEurid ), WaitStr, QStr,
-		  ListenStr, SentStr, DiscStr,
+		  ListenStr, SentStr, DiscStr, JamStr,
 		  device_table_to_string( DeviceTable ) ] ).
 
 
