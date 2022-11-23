@@ -43,7 +43,7 @@ run() ->
 get_usage() ->
 	text_utils:format( "Usage: ~ts TELEGRAM_STRING [-h|--help]~n"
 		"  Sends the telegram specified as an hexadecimal string.~n"
-		"Example: ~ts \"55000707017af630002ee1963001ffffffff4400fe\"",
+		"Example: ~ts \"55000707017af630002ef1963001ffffffff4400fe\"",
 		[ ?exec_name, ?exec_name ] ).
 
 

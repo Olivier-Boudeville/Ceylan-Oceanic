@@ -112,14 +112,14 @@ run() ->
 	%
 	TD5 = <<85,0,7,7,1,122,213,9,5,5,51,236,0,1,255,255,255,255,46,0,146>>,
 
-	% Double-rocker device (whose EURID is 002ee196) has its top A button
+	% Double-rocker device (whose EURID is 002ef196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
 	% broadcast transmission, best RSSI value being -83dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
 	%
 	TF6A = <<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,83,0,194>>,
 
-	% Double-rocker device (whose EURID is 002ee196) has its top A button
+	% Double-rocker device (whose EURID is 002ef196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
 	% broadcast transmission, best RSSI value being -57dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):

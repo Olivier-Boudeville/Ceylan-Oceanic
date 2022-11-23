@@ -83,11 +83,11 @@ actual_test( TtyPath ) ->
 		"sendings are made here, thus Oceanic will detect responses "
 		"that do not match with any past request that it sent." ),
 
-	%oceanic:register_device( _SourceEurid= "002ee196",
+	%oceanic:register_device( _SourceEurid= "002ef196",
 	%   _Name="Test Source Device", _EEP="F6-02-01", OcSrvPid ),
 
 	% If attempting (and failing) to spoof a well-known device:
-	%SourceEuridStr = "002ee196",
+	%SourceEuridStr = "002ef196",
 
 	% Not to clash (hopefully) with any actual device:
 	% (deactivated as we want to use the base EURID of the USB gateway)

@@ -4242,8 +4242,8 @@ eurid_to_string( _Eurid=?eurid_broadcast ) ->
 
 eurid_to_string( Eurid ) ->
 
-	% We want to return for example a correct "002ee196", not an
-	% ambiguously-shortened "2ee196":
+	% We want to return for example a correct "002ef196", not an
+	% ambiguously-shortened "2ef196":
 	%
 	HexaStr = text_utils:integer_to_hexastring( Eurid ),
 
@@ -4257,7 +4257,7 @@ eurid_to_string( Eurid ) ->
 % @doc Returns the actual EURID corresponding to the specified (plain) EURID
 % string.
 %
-% Ex: 3072406 = oceanic:string_to_eurid("002ee196")
+% Ex: 3076502 = oceanic:string_to_eurid("002ef196")
 %
 -spec string_to_eurid( ustring() ) -> eurid().
 string_to_eurid( EuridStr ) ->
