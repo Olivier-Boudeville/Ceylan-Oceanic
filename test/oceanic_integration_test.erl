@@ -86,11 +86,23 @@ wait_for_test_events( Count, OcSrvPid ) ->
 	receive
 
 		{ onEnoceanEvent, [ Event, OcSrvPid ] } ->
-			test_facilities:display( "Received at ~ts following event: ~ts.",
+
+			test_facilities:display( "Received at ~ts the following event: "
+				"~ts.",
 				[ time_utils:get_textual_timestamp(),
 				  oceanic:device_event_to_string( Event ) ] ),
 
-			wait_for_test_events( Count-1, OcSrvPid )
+			wait_for_test_events( Count-1, OcSrvPid );
+
+
+		{ onEnoceanJamming, [ AlertTrafficLevel, OcSrvPid ] } ->
+
+			test_facilities:display( "Received at ~ts a possible jamming "
+				"detection from ~w (at ~B bytes per second).",
+				[ time_utils:get_textual_timestamp(), OcSrvPid,
+				  AlertTrafficLevel ] ),
+
+			wait_for_test_events( Count, OcSrvPid )
 
 	end.
 
