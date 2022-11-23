@@ -88,23 +88,23 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 
 	% Short name: telegram "A"
 	TopButtonPressedTelegram = oceanic:hexastring_to_telegram(
-		%"55000707017af630002ee1963001ffffffff4600d4" ),
-		 "55000707017af630002ee1963001ffffffff4a0028" ),
+		%"55000707017af630002ef1963001ffffffff4600d4" ),
+		 "55000707017af630002ef1963001ffffffff4a0028" ),
 
 	% Short name: telegram "B"
 	TopButtonReleasedTelegram = oceanic:hexastring_to_telegram(
-		%"55000707017af600002ee1962001ffffffff460062" ),
-		 "55000707017af600002ee1962001ffffffff4c00e0" ),
+		%"55000707017af600002ef1962001ffffffff460062" ),
+		 "55000707017af600002ef1962001ffffffff4c00e0" ),
 
 	% Short name: telegram "C"
 	BottomButtonPressedTelegram = oceanic:hexastring_to_telegram(
-		%"55000707017af610002ee1963001ffffffff43006b" ),
-		 "55000707017af610002ee1963001ffffffff47003f" ),
+		%"55000707017af610002ef1963001ffffffff43006b" ),
+		 "55000707017af610002ef1963001ffffffff47003f" ),
 
 	% Short name: telegram "D"
 	BottomButtonReleasedTelegram = oceanic:hexastring_to_telegram(
-		%"55000707017af600002ee1962001ffffffff440048" ),
-		 "55000707017af600002ee1962001ffffffff460062" ),
+		%"55000707017af600002ef1962001ffffffff440048" ),
+		 "55000707017af600002ef1962001ffffffff460062" ),
 
 	basic_utils:ignore_unused( [ TopButtonPressedTelegram,
 		TopButtonReleasedTelegram, BottomButtonPressedTelegram,
@@ -189,7 +189,7 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 -spec replay_telegrams_for_white_switch( pid() ) -> void().
 replay_telegrams_for_white_switch( SerialPid ) ->
 
-	% Double-rocker device (whose EURID is 002ee196) has its top A button
+	% Double-rocker device (whose EURID is 002ef196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
 	% broadcast transmission, best RSSI value being -68 dBm; security level:
 	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
@@ -210,7 +210,7 @@ replay_telegrams_for_white_switch( SerialPid ) ->
 
 	timer:sleep( 1000 ),
 
-	% Double-rocker device (whose EURID is 002ee196) has no button released
+	% Double-rocker device (whose EURID is 002ef196) has no button released
 	% simultaneously, based on with a single subtelegram, targeted to the
 	% address for broadcast transmission, best RSSI value being -65 dBm;
 	% security level: telegram not processed; its EEP is double_rocker_switch
@@ -247,17 +247,19 @@ emit_forged_telegrams( SerialPid ) ->
 -spec emit_forged_telegrams_for_green_switch( pid() ) -> void().
 emit_forged_telegrams_for_green_switch( SerialPid ) ->
 
-	% If impersonating directly the device of interest (green switch, expected
-	% to have already been learnt by the actuator), despite the USB dongle
-	% having a different base EURID:
+	% If trying to impersonate directly a device of interest (e.g. my green
+	% switch, expected to have already been learnt by the actuator), despite the
+	% USB dongle having a different base ID (anyway the protocol will not be
+	% fooled only by matching source EURIDs):
 	%
-	SourceEuridStr = "002ee196",
+	%SourceEuridStr = "002ef196",
+	SourceEuridStr = "AAAAAAAA",
 
 	% If using our true own base EURID (as read from the USB dongle through a
 	% Common Command) - thus requiring the actual actuator to have learnt
 	% specifically that base EURID:
 	%
-	%SourceEuridStr = "ffa2df00",
+	%SourceEuridStr = "...", % edited
 
 	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
