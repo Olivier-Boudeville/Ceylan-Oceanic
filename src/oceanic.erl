@@ -50,6 +50,7 @@
 		  encode_esp3_packet/2, encode_esp3_packet/3,
 
 		  encode_double_rocker_switch_telegram/4,
+		  encode_double_rocker_multipress_telegram/4,
 
 		  % For any kind of (already-encoded) command:
 		  execute_command/2,
@@ -1569,8 +1570,13 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 
 	IsSecondActionValid = false,
 
-	% Not relevant here:
-	R2Enum = R1Enum,
+	% Semantics R2Enum/SA unclear; we thought R2 was meaningless if second
+	% action was invalid, but visibly it matters:
+
+	%R2Enum = R1Enum,
+
+	% Test:
+	R2Enum = get_designated_button_enum( button_ai ),
 
 	SA = case IsSecondActionValid of
 
@@ -1624,6 +1630,90 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 
 	% Radio, hence 1 here:
 	encode_esp3_packet( RadioPacketType, Data, MaybeOptData ).
+
+
+
+% @doc Encodes a double-rocker multipress telegram, from the specified device to
+% the specified one (if any), reporting the specified transition for the
+% specified button.
+%
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
+% radio packet encapsulated into an ESP3 one.
+%
+% See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+%
+-spec encode_double_rocker_multipress_telegram( eurid(), maybe( eurid() ),
+		button_counting(), button_transition() ) -> telegram().
+encode_double_rocker_multipress_telegram( SourceEurid, MaybeTargetEurid,
+										  ButtonCounting, ButtonTransition ) ->
+
+	% No EEP to be determined from double_rocker_multipress (implicit in
+	% packet).
+
+	% Best understood backwards, from the end of this function.
+
+	RadioPacketType = radio_erp1_type,
+
+	% F6 here:
+	RorgNum = oceanic_generated:get_second_for_rorg( _Rorg=rorg_rps ),
+	RorgNum = 16#f6,
+
+	CountEnum = case ButtonCounting of
+
+		none ->
+			0;
+
+		three_or_four ->
+			3
+
+	end,
+
+
+	EB = get_button_transition_enum( ButtonTransition ),
+
+	% No LRN (Learn) bit for RPS, which can only send data and has no special
+	% telegram modification to teach-in the device. Therefore, the teach-in
+	% procedure takes place manually on the actuator/controller through a normal
+	% data telegram. The EEP profile must be manually supplied to the controller
+	% per sender ID.
+	%
+	DB_0 = <<CountEnum:3, EB:1, 0:4>>,
+
+	T21 = 1,
+	NU = 0,
+
+	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
+	%RC = 1,
+	RC = 0,
+
+	_A=1,
+	_B=0,
+
+	Status = <<0:2, T21:1, NU:1, RC:4>>,
+	%Status = <<A:1, B:1, T21:1, NU:1, RC:4>>,
+
+	Data = <<RorgNum:8, DB_0:1/binary, SourceEurid:32, Status:1/binary>>,
+
+	MaybeOptData = get_optional_data_for_sending( MaybeTargetEurid ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		begin
+			<<DB_0AsInt>> = DB_0,
+			<<StatusAsInt>> = Status,
+			PadWidth = 8,
+			trace_bridge:debug_fmt(
+				"Generated packet: type=~ts RORG=~ts, DB_0=~ts, "
+				"data size=~B, optional data size=~B, status=~ts.",
+				[ RadioPacketType, text_utils:integer_to_hexastring( RorgNum ),
+				  text_utils:integer_to_bits( DB_0AsInt, PadWidth ),
+				  size( Data ), size( MaybeOptData ),
+				  text_utils:integer_to_bits( StatusAsInt, PadWidth ) ] )
+		end ),
+
+	% Radio, hence 1 here:
+	encode_esp3_packet( RadioPacketType, Data, MaybeOptData ).
+
 
 
 
@@ -4366,22 +4456,37 @@ device_event_to_string( #double_rocker_switch_event{
 		second_action_button=SecondButtonDesignator,
 		second_action_valid=IsValid } ) ->
 
-	SecondStr = case IsValid of
+	%% SecondStr = case IsValid of
 
-		true ->
-			text_utils:format( " and its ~ts",
-				[ button_designator_to_string( SecondButtonDesignator ) ] );
+	%%	true ->
+	%%		text_utils:format( " and its ~ts",
+	%%			[ button_designator_to_string( SecondButtonDesignator ) ] );
 
-		false ->
-			""
+	%%	false ->
+	%%		""
 
-	end,
+	%% end,
 
-	text_utils:format( "double-rocker device ~ts has its ~ts~ts ~ts at ~ts, "
+	% Less ambiguous:
+	SecondStr = text_utils:format( "~ts is "
+		++ case IsValid of
+
+			true ->
+				"";
+
+			false ->
+				"not "
+
+		   end ++ "valid",
+				[ button_designator_to_string( SecondButtonDesignator ) ] ),
+
+	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
+		"whereas its second action ~ts, at ~ts, "
 		"declared~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
-		  button_designator_to_string( FirstButtonDesignator ), SecondStr,
+		  button_designator_to_string( FirstButtonDesignator ),
 		  get_button_transition_description( ButtonTransition ),
+		  SecondStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),

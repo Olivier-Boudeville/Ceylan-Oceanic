@@ -151,7 +151,7 @@ decode_telegram( TelegramHexStr ) ->
 
 				{ Unsuccessful, _NewToSkipLen, _NewAccChunk, _NewState } ->
 					shell_utils:error_fmt( 10, "Unable to decode telegram: "
-						"~ts.", Unsuccessful )
+						"~ts.", [ Unsuccessful ] )
 
 			end,
 

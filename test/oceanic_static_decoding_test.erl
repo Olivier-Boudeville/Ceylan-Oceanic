@@ -41,8 +41,6 @@
 
 -type telegram() :: oceanic:telegram().
 
-%-type device_table() :: oceanic:device_table().
-
 
 
 % @doc Attempts to decode the specified telegrams in turn.

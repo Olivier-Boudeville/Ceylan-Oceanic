@@ -602,29 +602,147 @@ Note also that, despite the availability of ERP2 specifications, at least most d
 Protocol Information
 ====================
 
-Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently with the default, usual level of security (that is: none) implemented by the devices we tested, Enocean telegrams can be replayed [#]_: just intercepting a raw telegram and re-emitting it was successfully acknowledged (in terms of code returned) by the target device and indeed triggered its intended effect (e.g. the smart plug will switch on).
+
+Guarding Against Spoofing: Lying about One's Source EURID will Not Suffice
+--------------------------------------------------------------------------
+
+Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently even with the default, usual level of security (that is: none) implemented by the devices that we tested, Enocean telegrams could *not* be replayed [#]_: just intercepting a raw telegram and re-emitting was not acknowledged by the target device and did not trigger its intended effect on at least our `main test actuator`_ (e.g. the smart plug did not switch on/off).
+
 
 .. [#] See the ``replay_telegrams/1`` function in the ``oceanic_just_send_to_device_test`` module for an example.
 
-This is true despite the fact that:
+One explanation could have been that we were re-emitting from Oceanic "receive" telegrams (as opposed to "send" ones), as we actually always receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving; and of course the checksums are modified accordingly) - so replaying a received telegram *could* be rejected on these bases.
 
-- we actually receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving), so replaying a received telegram could be rejected on these bases
-- each emitter (here the USB dongle) has its base EURID (or range thereof); so at least in theory the chip could (through packet inspection) force emitted packets to bear the actual base EURID as source, and thus prevent easy spoofing; however in practice one can forge acceptable "send" (as opposed to "received" - like in the previous point) telegrams bearing *any* source EURID, and both the dongle and then the receiver (of course provided that this EURID was already paired) will happily accept them
+Nevertheless, forging from scratch proper "send telegrams" (yet carrying the same functional information) and sending them by ourselves still did not trigger the actuator.
+
+So we believe that extra information is available to actuators through the Enocean network stack, that may/will be used by them in order to discriminate between actual emitters.
+
+This was further confirmed by testing the same telegram exchanges after having learnt a device, either the real one, or one impersonated by Oceanic: apparently, only the ones that have been explicitly learnt previously will be accepted afterwards.
+
+By forging telegrams bearing a source EURID different from the base one, we came to the conclusion that:
+
+- most if not all telegrams carry a source EURID that can be freely set (typically through Oceanic calls)
+- yet in parallel each emitter (be them an USB dongle controlled by Oceanic or a "real" device) has its own internal ID (or a base ID range, such such dongles); these IDs look like EURIDs but are probably not considered as actual EURIDs, they may be handled only in low-level ESP3-like protocols (invisibly from the "applicative layer" seen when exchanging with the dongle)
+- learning a device relies on these internal IDs
+- a telegram will be considered by an actuator iff the internal ID of the emitter carried by this telegram matches with one that has been learnt by the actuator
+- the source EURID included in a telegram will designate a device but may not match the internal ID of the emitter; so for example we could forge from Oceanic telegrams whose source EURID matches the one of an actual device (a rocker switch) - and therefore did not match the internal ID of the dongle - while nevertheless, *provided that the dongle had already been learnt by the actuator, typically thanks to a previous Oceanic sending*, we could operate the actuator programmatically
+- for the repeating mechanisms to have an interest, their re-emitted telegrams must be taken into account by the target actuators; so accepting already-sent telegrams emanating from different emitters than the one specified in the telegrams is needed; repeating is most probably handled transparently by lower-level protocols as well
 
 
-.. We interpret that as the devices relying on a lower-level protocol (possibly. ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); a bit like if one was spoofing IP addresses in forged packets whereas the device compares MAC addresses.
+.. false: ; so at least in theory the chip could (through packet inspection) force emitted packets to bear the actual base EURID as source, and thus prevent easy spoofing; however in practice one can forge apparently acceptable "send" (as opposed to "received" - like in the previous point) telegrams bearing *any* source EURID, and both the dongle and then the receiver (of course provided that this EURID was already paired) will happily accept them
 
-.. As these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on "standard" USB gateways, explaining why Oceanic has to support a whole teach-in procedure.
+We can also verify that devices like rocker switches are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed (they have no memory).
 
-To experiment and troubleshoot communication issues, one may also use tests that bypass the Oceanic server and perform direct listening / emitting:
+.. (in terms of code returned)
+
+
+So from our experiments we believe that, in terms of identification, the devices rely on a lower-level protocol (possibly ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); as these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on "standard" USB gateways (therefore Oceanic having to be involved also in the learn process, not only in the emitting one).
+
+.. has to support a whole teach-in procedure.
+
+And forging custom source EURIDs may have an interest, yet the spoofer must have been previously learnt - otherwise this would be a bit like if one was spoofing IP addresses in forged packets, whereas the target device would first compare MAC addresses.
+
+
+Other Network-Related Risks
+---------------------------
+
+The spoofing risk being mostly alleviated, the only extra risks that we could foresee are:
+
+- possibly **brute-force attempts** to match already-learnt base identifiers, from a debug gateway allowing to act on ESP3 packets (a threat that does not seem likely for common burglaries)
+- the **jamming of an actuator** by saturating it with telegrams (be them well-formed and sensible, or not), so that any actual telegram of interest (e.g. regarding a door opening) may not reach the receiver
+
+Oceanic provides a basic yet possibly sufficient mechanism guarding against both of these threats: in a wireless context, nothing can be done against emission, but a configurable threshold in terms of incoming traffic volume can be monitored (with proper back-off), so that, if the application registered as a listener, Oceanic notifies it whenever detecting such an attempt of denial of service - which can be considered by itself as a cause of alarm as serious as the other ones.
+
+
+Studying Actual Protocols
+-------------------------
+
+To experiment and troubleshoot communication issues (this may be especially of use should different devices/actuators interpret differently the Enocean specifications / develop their own behaviour), one may also use tests that perform direct listening / emitting (possibly bypassing partly the logic of the Oceanic server):
 
 - use ``make oceanic_just_record_device_run`` to display and record in file (``enocean-test-recording.etf``) all raw, timestamped telegrams that can be intercepted
 
 - use ``make oceanic_just_send_to_device_run`` to emit raw telegrams, typically recorded as explained above or forged (encoded) by Oceanic
 
-Corresponding very handy scripts are available as well, ``decode-telegram.sh`` and ``send-telegram.sh``, to which the telegram is to be given (as an hexadecimal string).
+Corresponding very handy scripts are available as well, ``decode-telegram.sh`` and ``send-telegram.sh``, to which a raw telegram can be given (as an hexadecimal string).
 
-We can verify that devices like rocker switch are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed.
+
+
+
+
+Usage Hints
+-----------
+
+
+Good Practices
+______________
+
+Before any new test, one should properly fully reset one's actuator, otherwise weird / wild / overly complex interpretations may happen.
+
+
+
+Pairing
+________
+
+As mentioned, when using Oceanic as an emitter, it *must* have been paired to the target actuator.
+
+Pairing can be done through teach-in (through an exchange of specific telegrams) or through learning (putting the actuator is a specific mode, and forcing the emitter to emit a telegram). Some actuators support both procedures.
+
+As detailed in the next section, some actuators are able to learn a device according to various device types/EEPs (e.g. a rocker as a rocker, or as two push-buttons).
+
+This choice matters: although this may not impact the telegrams to be sent by the device, it is bound to impact the behaviour of the actuator when receiving these telegrams.
+
+.. Thanks to Oceanic we were able to forge proper "send" telegrams corresponding exactly (thus excepted the dbM information and the corresponding checksum) to the ones we intercepted for a given device (namely our green switch having its top button pressed then released).
+
+.. We tried, based on a fully-reset smart plug, to determine if having our telegram or the original ones be learnt would matter afterwards. This is the case: putting the smart plug in "learning push-button mode" and then sending the corresponding telegram from Oceanic or from the switch results in that device being learnt, but not the other.
+
+.. So we believe that out of band information (typically the base EURID of our USB dongle) may actually be used (possibly based on an ESP3-related lower-protocol) by the actuator, rather than the source EURID specified in the packet. This would limit the spoofing risks.
+
+.. To make the interpretation worse, another test showed us the case where Oceanic could trigger a smart plug controlled by this green switch seen as a rocker, although Oceanic was controlling it as a push-button. Maybe the plug was not properly reset.
+
+
+
+
+Buttons vs Rocker: Transition vs State
+______________________________________
+
+Depending on the choice made by the user (typically as selected by pressing different buttons on the actuator, to enter a given learning mode), an actuator (e.g. a smart plug controlling a basic lamp) may learn a device (e.g. a rocker) differently (according to different EEPs).
+
+For example a (single) rocker may be seen:
+
+- case A: either as two independent push-buttons (a top button and an unrelated bottom one)
+- case B: or as a whole rocker (hence two associated buttons together with the memory of the current state on the actuator)
+
+A key difference is that, in case A (two push-buttons), each button taken individually may toggle the smart plug, while, in case B (rocker), pressing the top button whereas the smart plug is already passing (i.e. in the "triggered" state) will have no effect (e.g. the lamp remains on).
+
+Said differently, case A is about toggling (forcing state transitions) while case B is about setting (forcing state values).
+
+In the general case, setting (hence the rocker behaviour) may be seen as more reliable than toggling (the push-button behaviour): a given setting order may be sent multiple times to a rocker to ensure a given state is reached despite a possible message loss, whereas any loss of a toggling message will result in being consistently from then on in the opposite state of the intended one.
+
+Another approach is to enable and manage state feedback / status return through confirmation telegrams about the current state of the actuator.
+
+
+
+.. _`main test actuator`:
+
+
+Eltako Socket switching actuator FSSA
+_____________________________________
+
+
+In practice, in addition to the documentation, we found clearer to respect the following procedures:
+
+- to reset: press left-button for about 3 "large" seconds, then the LED blinks continuously, then press the right-button for about 5 seconds, until the LED turns off
+
+- to learn a device as:
+
+  - a push-button : press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *once*; the LED will blink once and stay fixed until a telegram is received and learnt: if for example we pressed the top bottom to generate such telegram, this button will act as a on/off toggle, whereas its associated bottom button will have no effect
+
+  - a "direction push-button" (maybe a synonymous of rocker): press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *twice*; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to "set on"), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to "set off"
+
+
+Afterwards, the LED will blink once a telegram of a learnt device is received (whether or not this specified action has been learnt).
+
+As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting" mode.
 
 
 

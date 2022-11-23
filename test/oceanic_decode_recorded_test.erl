@@ -93,17 +93,10 @@ decode_all( _Telegrams=[], ToSkipLen, MaybeAccChunk, AccEvents, State ) ->
 		"(test finished whereas still having ~B bytes to skip.",
 		[ ToSkipLen ] ),
 
-	case MaybeAccChunk of
-
-		undefined ->
-			ok;
-
-		_ ->
-			test_facilities:display(
-				"(test finished whereas still having following chunk: ~w)",
-				[ MaybeAccChunk ] )
-
-	end,
+	MaybeAccChunk =:= undefined orelse
+		test_facilities:display(
+			"(test finished whereas still having following chunk: ~w)",
+			[ MaybeAccChunk ] ),
 
 	test_facilities:display( "~nFinal state: ~ts~n",
 							 [ oceanic:state_to_string( State ) ] ),
