@@ -77,7 +77,13 @@ Overview
 
 The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
 
-So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi, no IP connectivity either, hence no real risk of privacy/data leak.
+So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged), no IP connectivity either, hence no real risk in terms of health or privacy/data leak [#]_ (Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times). At least most of the Enocean specifications are `freely available <https://www.enocean-alliance.org/specifications/>`_.
+
+.. [#] More recent technologies and open standards exist, including `Matter <https://en.wikipedia.org/wiki/Matter_(standard)>`_. They are promoted by Amazon, Apple and Google, so that they integrate with their respective home assistants, and communicate over IP.
+
+	   Everyone is entitled to their opinion; as for us, we prefer not having in our home "Big Five"-originating black boxes full of sensors, cameras and microphones able to communicate rather freely with any "cloud" on the Internet.
+	   We are puzzled that some people actually happily *purchase* such devices.
+
 
 Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
 
