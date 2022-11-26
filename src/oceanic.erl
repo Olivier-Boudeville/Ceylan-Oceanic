@@ -64,7 +64,7 @@
 
 		  decode_telegram/2,
 
-		  stop/0, stop/1,
+		  stop/0, stop/1, synchronous_stop/1,
 
 		  eurid_to_string/1, eurid_to_bin_string/1, eurid_to_bin_string/2,
 		  string_to_eurid/1, get_broadcast_eurid/0,
@@ -2238,6 +2238,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
 
+		% Asynchronous:
 		terminate ->
 
 			% (any pending chunk discarded)
@@ -2253,6 +2254,36 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			trace_bridge:debug_fmt( "Oceanic server ~w terminated.",
 									[ self() ] );
+
+
+		{ terminateSynchronously, SenderPid } ->
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug_fmt( "Requested by ~w to "
+					"terminate synchronously.", [ SenderPid ] ) ),
+
+			% (any pending chunk discarded)
+
+			SerialPid = State#oceanic_state.serial_server_pid,
+
+			SerialPid ! { stop, self() },
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug_fmt( "Stopping serial server ~w, "
+					"while in following state: ~ts.",
+					[ SerialPid, state_to_string( State ) ] ) ),
+
+			receive
+
+				serial_stopped ->
+					ok
+
+			end,
+
+			SenderPid ! oceanic_terminated,
+
+			trace_bridge:debug_fmt(
+				"Oceanic server ~w terminated synchronously.", [ self() ] );
 
 
 		UnexpectedMsg ->
@@ -4161,6 +4192,23 @@ stop() ->
 stop( SrvPid ) ->
 	trace_bridge:debug_fmt( "Stopping the Oceanic server ~w.", [ SrvPid ] ),
 	SrvPid ! terminate.
+
+
+
+% @doc Stops and terminates synchronously the specified Oceanic server.
+-spec synchronous_stop( oceanic_server_pid() ) -> void().
+synchronous_stop( SrvPid ) ->
+	SrvPid ! { terminateSynchronously, self() },
+
+	trace_bridge:debug_fmt( "Stopping synchronously the Oceanic server ~w.",
+							[ SrvPid ] ),
+
+	receive
+
+		oceanic_terminated ->
+			ok
+
+	end.
 
 
 
