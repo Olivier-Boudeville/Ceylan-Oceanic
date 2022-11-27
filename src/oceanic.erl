@@ -35,6 +35,8 @@
 % Base API:
 -export([ get_default_tty_path/0, has_tty/0, has_tty/1,
 
+		  is_available/1,
+
 		  start/0, start/1, start/2,
 		  start_link/0, start_link/1, start_link/2,
 
@@ -96,6 +98,12 @@
 
 % Silencing:
 -export([ encode_common_command/2 ]).
+
+
+-type availability_outcome() ::
+		{ 'true', SerialRootDir :: directory_path() }
+	  | { 'false', Reason :: ustring(), basic_utils:error_term() }.
+% The outcome of an availability check for Oceanic.
 
 
 -type oceanic_server_pid() :: pid().
@@ -597,7 +605,9 @@
 
 
 
--export_type([ oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
+-export_type([ availability_outcome/0,
+
+			   oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
 			   requester/0,
 
 			   device_name/0, device_plain_name/0, device_any_name/0,
@@ -956,6 +966,80 @@
 
 
 
+% @doc Tells whether Oceanic should be available, that is if all its
+% prerequisites seem to be met.
+%
+% Useful to de-risk a future launch thereof and factor code.
+%
+-spec is_available( device_path() ) -> availability_outcome().
+is_available( TtyPath ) ->
+
+	case has_tty( TtyPath ) of
+
+		true ->
+			% Not necessarily in the ~/Software tree:
+			case code_utils:is_beam_in_path( serial ) of
+
+				not_found ->
+					ReasonStr = text_utils:format(
+						"The 'serial' module is not found, whereas the ~ts~n"
+						"Has our fork of 'serial' been already installed? "
+						"Please refer to Oceanic's documentation.",
+						[ code_utils:get_code_path_as_string() ] ),
+
+					{ false, ReasonStr, _ErrorTerm=serial_library_not_found };
+
+
+				[ SinglePath ] ->
+
+					% We have typically
+					% ~/Software/erlang-serial/ebin/serial.beam, so:
+					%
+					SerialRootDir = file_utils:get_base_path(
+						file_utils:get_base_path( SinglePath ) ),
+
+					{ true, SerialRootDir };
+
+
+				MultiplePaths ->
+
+					ReasonStr = text_utils:format(
+						"The 'serial' module has been found in "
+						"multiple locations (which is abnormal): ~ts.",
+						[ text_utils:strings_to_listed_string(
+							MultiplePaths ) ] ),
+
+					{ false, ReasonStr,
+					  _ErrorTerm=multiple_serial_libraries_found }
+
+			end;
+
+
+		{ false, non_existing } ->
+
+			ReasonStr = text_utils:format( "The specified TTY, '~ts', "
+				"does not exist. Is the device for the Enocean gateway "
+				"plugged in, and named accordingly?", [ TtyPath ] ),
+
+			ErrorTerm = { non_existing_tty, TtyPath },
+
+			{ false, ReasonStr, ErrorTerm };
+
+
+		{ false, { not_device, OtherType } } ->
+
+			ReasonStr = text_utils:format( "The specified TTY for the "
+				"Enocean gateway, '~ts', is not a device but a ~ts.",
+				[ TtyPath, OtherType ] ),
+
+			ErrorTerm = { not_a_device, TtyPath, OtherType },
+
+			{ false, ReasonStr, ErrorTerm }
+
+	end.
+
+
+
 % Start subsection, with no link.
 
 
@@ -1099,49 +1183,14 @@ has_tty( TtyPath ) ->
 -spec secure_tty( device_path() ) -> serial_server_pid().
 secure_tty( TtyPath ) ->
 
-	case has_tty( TtyPath ) of
+	SerialRootDir = case is_available( TtyPath ) of
 
-		true ->
-			ok;
+		{ true, SerialDir } ->
+			SerialDir;
 
-		{ false, non_existing } ->
-			trace_bridge:error_fmt( "The specified TTY, '~ts', "
-				"does not exist. Is the device for the Enocean gateway "
-				"plugged in, and named accordingly?", [ TtyPath ] ),
-			throw( { non_existing_tty, TtyPath } );
-
-
-		{ false, { not_device, OtherType } } ->
-			trace_bridge:error_fmt( "The specified TTY for the "
-				"Enocean gateway, '~ts', is not a device but a ~ts.",
-				[ TtyPath, OtherType ] ),
-
-			throw( { not_a_device, TtyPath, OtherType } )
-
-	end,
-
-	% Not necessarily in the ~/Software tree:
-	SerialRootDir = case code_utils:is_beam_in_path( serial ) of
-
-		not_found ->
-			trace_bridge:error_fmt( "The 'serial' module is not found, "
-				"whereas the ~ts"
-				"Has our fork of 'serial' been already installed? Please refer "
-				"to Oceanic's documentation.",
-				[ code_utils:get_code_path_as_string() ] ),
-
-			throw( serial_library_not_found );
-
-		[ SinglePath ] ->
-			% We have typically ~/Software/erlang-serial/ebin/serial.beam, so:
-			file_utils:get_base_path( file_utils:get_base_path( SinglePath ) );
-
-		MultiplePaths ->
-			trace_bridge:error_fmt( "The 'serial' module has been found in "
-				"multiple locations (which is abnormal): ~ts.",
-				[ text_utils:strings_to_listed_string( MultiplePaths ) ] ),
-
-			throw( multiple_serial_libraries_found )
+		{ false, ReasonStr, ErrorTerm } ->
+			trace_bridge:error( ReasonStr ),
+			throw( ErrorTerm )
 
 	end,
 
