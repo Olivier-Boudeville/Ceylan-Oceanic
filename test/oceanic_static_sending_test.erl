@@ -86,6 +86,10 @@ actual_test( TtyPath ) ->
 	%oceanic:register_device( _SourceEurid= "002ef196",
 	%   _Name="Test Source Device", _EEP="F6-02-01", OcSrvPid ),
 
+	% Of course Enoceanic can send telegrams with changing source EURIDs, so
+	% that, despite being a single emitter, it can control independently as many
+	% actuators as wanted.
+
 	% If attempting (and failing) to spoof a well-known device:
 	%SourceEuridStr = "002ef196",
 
@@ -96,9 +100,19 @@ actual_test( TtyPath ) ->
 
 	%SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
-	%SourceEurid = oceanic:string_to_eurid( "0109d970" ),
+	% For example if a newer, simple smart plug learnt this EURID:
+	%SourceEurid = oceanic:string_to_eurid( "11111111" ),
+	%SourceEurid = oceanic:string_to_eurid( "22222222" ),
+	%SourceEurid = oceanic:string_to_eurid( "77665544" ),
+	%SourceEurid = oceanic:string_to_eurid( "11223344" ),
+	%SourceEurid = oceanic:string_to_eurid( "22223344" ),
+	%SourceEurid = oceanic:string_to_eurid( "44223344" ),
+	%SourceEurid = oceanic:string_to_eurid( "002F50D6" ),
 
+	% For example if our first smart plug learnt this EURID:
 	SourceEurid = oceanic:get_oceanic_eurid( OcSrvPid ),
+	%SourceEurid = oceanic:string_to_eurid( "ffa2df00" ),
+	%SourceEurid = oceanic:string_to_eurid( "fea2df00" ),
 
 
 	% We create a device for the source, so that we can decode by ourselves the
@@ -131,7 +145,7 @@ actual_test( TtyPath ) ->
 	% (e.g. the "off" one) as a single input contact (hence not as a double
 	% rocker), the "on" one has no special interest, only the "off" one is taken
 	% account by the target device, a (double-rocker) switch.
-	
+
 	SwitchOnButton = button_ao,
 	SwitchOffButton = button_ai,
 
@@ -178,9 +192,11 @@ actual_test( TtyPath ) ->
 
 	end,
 
-	test_facilities:display( "The generated telegrams are: ~ts"
+	test_facilities:display( "The generated telegrams, "
+		"based on source EURID ~ts, are: ~ts"
 		"Decoding the 'pressed' one for the 'off' button results in ~ts",
-		[ text_utils:strings_to_string( [
+		[ oceanic:eurid_to_string( SourceEurid ),
+		  text_utils:strings_to_string( [
 			oceanic:telegram_to_string( T ) || T <- SwitchTelegrams ] ),
 		  DecodeStr ] ),
 
