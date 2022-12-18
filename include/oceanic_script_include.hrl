@@ -5,11 +5,11 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 %
 % Released as LGPL software.
-
+% Creation date: November 2022.
 
 
 % To silence any unused warning (yet Myriad counterpart include may already have
-% defined functions:
+% defined functions):
 %
 %-export([ secure_from_escript/1 ]).
 
@@ -19,7 +19,8 @@
 %
 % Returns the Oceanic root directory.
 %
-% Cannot be in an Oceanic module, as they are not available yet.
+% This code cannot be located in an Oceanic module, as they are not available
+% yet.
 %
 % @private
 %
