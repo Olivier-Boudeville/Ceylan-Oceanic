@@ -211,6 +211,16 @@
 %
 % Refer to [EEP-spec] p.27 for further details.
 %
+% Note that, at least by default, most if not all opening detectors not only
+% report state transitions (as soon as they happen; toggling between closed and
+% opened), they also notify regularly (e.g. every 5-30 minutes, on average often
+% 15 minutes) and spontaneously their current state (even if no specific
+% transition happened), presumably to help overcoming any message loss.
+%
+% So any listener of these events shall store their current state, to be able to
+% detect the actual transitions (even if they are late due to a prior message
+% loss).
+%
 -record( single_input_contact_event, {
 
 	% Section common to all events:
