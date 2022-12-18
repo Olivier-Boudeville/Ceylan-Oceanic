@@ -4175,8 +4175,8 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 
 
-% @doc Decodes a rorg_vld smart_plug (D2-01-OA, an "Electronic switches and
-% dimmers with Energy Measurement and Local Control" of type OA) packet.
+% @doc Decodes a rorg_vld smart_plug (D2-01-0A, an "Electronic switches and
+% dimmers with Energy Measurement and Local Control" of type 0A) packet.
 %
 % This corresponds to basic smart, non-metering plugs bidirectional actuators
 % that control (switch on/off) most electrical load (e.g. appliances).
@@ -4203,22 +4203,61 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 		trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
 			"for command '~ts' (~B); sender is ~ts, ~ts.",
 			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
-			   maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 			] ) ),
 
 	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	%Event = to_do,
+
+	%{ decoded, Event, AnyNextChunk, NewState }.
+
+	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
 
 
-	Event = fixme,
 
-	{ decoded, Event, AnyNextChunk, NewState }.
+% @doc Decodes a rorg_vld smart_plug_with_metering (D2-01-0B, an "Electronic
+% switches and dimmers with Energy Measurement and Local Control" of type 0B)
+% packet.
+%
+% This corresponds to smart, metering plugs bidirectional actuators that control
+% (switch on/off) most electrical load (e.g. appliances) and may report it.
+%
+% Discussed in [EEP-spec] p.143.
+%
+decode_vld_smart_plug_with_metering_packet(
+		_Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
+		SenderEurid, _Status, OptData, AnyNextChunk, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt(
+			"Decoding a VLD smart plug with metering packet "
+			"for command '~ts' (~B); sender is ~ts, ~ts.",
+			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
+			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			] ) ),
+
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	%Event = to_do,
+
+	%{ decoded, Event, AnyNextChunk, NewState }.
+
+	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
 
 
-
-decode_vld_smart_plug_with_metering_packet( _Payload,
-				_SenderEurid, _Status,_OptData, _AnyNextChunk, _Device, _State ) ->
-	throw( todo ).
 
 
 % @doc Returns a textual description of the specified temperature.
