@@ -33,49 +33,51 @@
 
 
 % Base API:
--export([ get_default_tty_path/0, has_tty/0, has_tty/1,
+-export([
 
-		  is_available/1,
+	get_default_tty_path/0, has_tty/0, has_tty/1,
 
-		  start/0, start/1, start/2,
-		  start_link/0, start_link/1, start_link/2,
+	is_available/1,
 
-		  get_server_registration_name/0, get_server_pid/0,
+	start/0, start/1, start/2,
+	start_link/0, start_link/1, start_link/2,
 
-		  load_configuration/1, load_configuration/2,
+	get_server_registration_name/0, get_server_pid/0,
 
-		  send/2,
+	load_configuration/1, load_configuration/2,
 
-		  acknowledge_teach_request/2, acknowledge_teach_request/3,
+	send/2,
 
-		  % For lower-level operation/testing:
-		  encode_esp3_packet/2, encode_esp3_packet/3,
+	acknowledge_teach_request/2, acknowledge_teach_request/3,
 
-		  encode_double_rocker_switch_telegram/4,
-		  encode_double_rocker_multipress_telegram/4,
+	% For lower-level operation/testing:
+	encode_esp3_packet/2, encode_esp3_packet/3,
 
-		  % For any kind of (already-encoded) command:
-		  execute_command/2,
+	encode_double_rocker_switch_telegram/4,
+	encode_double_rocker_multipress_telegram/4,
 
-		  % Useful to properly encode telegrams:
-		  get_oceanic_eurid/1,
+	% For any kind of (already-encoded) command:
+	execute_command/2,
 
-		  % For common commands:
-		  read_version/1, read_logs/1, read_base_id_info/1,
+	% Useful to properly encode telegrams:
+	get_oceanic_eurid/1,
+
+	% For common commands:
+	read_version/1, read_logs/1, read_base_id_info/1,
 
 
-		  decode_telegram/2,
+	decode_telegram/2,
 
-		  stop/0, stop/1, synchronous_stop/1,
+	stop/0, stop/1, synchronous_stop/1,
 
-		  eurid_to_string/1, eurid_to_bin_string/1, eurid_to_bin_string/2,
-		  string_to_eurid/1, get_broadcast_eurid/0,
+	eurid_to_string/1, eurid_to_bin_string/1, eurid_to_bin_string/2,
+	string_to_eurid/1, get_broadcast_eurid/0,
 
-		  get_best_naming/2,
+	get_best_naming/2,
 
-		  get_device_table/1,
+	get_device_table/1,
 
-		  string_to_eep/1 ] ).
+	string_to_eep/1 ] ).
 
 
 % For execution as (e)script:
@@ -362,6 +364,50 @@
 						   | 'high'. % -20°C to +60°C (A5-04-02)
 % The range of a temperature sensor.
 
+
+-type vld_rcp_message_type() ::
+	'a'  % ID 01
+  | 'b'  % ID 02
+  | 'c'  % ID 03
+  | 'd'  % ID 04
+  | 'e'  % ID 05
+  | 'f'  % ID 06 (non-existing)
+  | 'g'  % ID 07 (non-existing)
+  | 'h'. % ID 08 (non-existing)
+% The type of a VLD message, in the context of the D2-00 EEPs: "Room Control
+% Panel (RCP)".
+%
+% It is also designated by the MI field of these VLD telegrams, the 3 last bits
+% of the first byte of the payload (hence 8 possible values).
+%
+% Described in [EEP-spec] p.127.
+
+
+-type vld_d2_00_cmd() :: 'actuator_set_output'
+					   | 'actuator_set_local'
+					   | 'actuator_status_query'
+					   | 'actuator_status_response'
+					   | 'actuator_set_measurement'
+					   | 'actuator_measurement_query'
+					   | 'actuator_measurement_response'
+					   | 'actuator_set_pilot_wire_mode'
+					   | 'actuator_pilot_wire_mode_query'
+					   | 'actuator_pilot_wire_mode_response'
+					   | 'actuator_set_external_interface_settings'
+					   | 'actuator_external_interface_settings_query'
+					   | 'actuator_external_interface_settings_response'.
+% The type of a VLD message, in the context of the D2-01 EEPs: "Electronic
+% switches and dimmers with Energy Measurement and Local Control".
+%
+% Refer to the 'vld_d2_00_cmd' topic.
+%
+% It is also designated by the CMD field of these VLD telegrams, the 4 last bits
+% of the first byte of the payload (hence 16 possible values).
+%
+% Described in [EEP-spec] p.131.
+
+
+
 -type decoding_error() ::
 	  'not_reached'   % Beginning of next packet still ahead
 	| 'incomplete'    % Truncated packet (end of packet still ahead)
@@ -448,6 +494,14 @@
 % packet, encapsulated in an ESP3 packet).
 
 
+-type vld_payload() :: binary().
+% The actual payload of a VLD (D2) packet.
+%
+% VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
+% their design.
+
+
+
 %-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
 
 
@@ -511,7 +565,15 @@
 % D5-00 corresponds to Contacts and Switches.
 %
 % Refer to [EEP-spec] p.27 for further details.
-
+%
+% Note that, at least by default, most if not all opening detectors not only
+% report state transitions (between closed and opened), they also notify
+% regularly (e.g. every 5-30 minutes, on average often 15 minutes) and
+% spontaneously their current state (even if no specific transition happened),
+% presumably to help overcoming any message loss.
+%
+% So any listener of these events shall store their current state, to be able to
+% detect the actual transitions (even if they are late).
 
 
 -type push_button_event() :: #push_button_event{}.
@@ -631,6 +693,7 @@
 			   contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
 			   temperature_range/0,
+			   vld_rcp_message_type/0, vld_d2_00_cmd/0,
 			   decoding_outcome/0,
 
 			   eurid/0,
@@ -1437,8 +1500,19 @@ declare_devices( _DeviceCfgs=[], DeviceTable ) ->
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 				 DeviceTable ) ->
 
-	Eurid = text_utils:hexastring_to_integer(
-		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ),
+	Eurid = try text_utils:hexastring_to_integer(
+			text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
+
+				Int ->
+					Int
+
+		% Typically error:badarg:
+		catch _:E ->
+			trace_bridge:error_fmt( "Invalid EURID ('~ts') "
+				"for device named '~ts'.", [ EuridStr, NameStr ] ),
+			throw( { invalid_eurid, EuridStr, E, NameStr } )
+
+	end,
 
 	EepBinStr = text_utils:ensure_binary( EepStr ),
 
@@ -2897,6 +2971,9 @@ decode_packet( _PacketType=radio_erp1_type,
 		rorg_ute ->
 			decode_ute_packet( DataTail, OptData, AnyNextChunk, State );
 
+		rorg_vld ->
+			decode_vld_packet( DataTail, OptData, AnyNextChunk, State );
+
 		_ ->
 			trace_bridge:warning_fmt( "The decoding of ERP1 radio packets "
 				"of R-ORG ~ts, hence ~ts (i.e. '~ts') is not implemented; "
@@ -3990,6 +4067,158 @@ decode_ute_packet(
 
 	{ decoded, Event, AnyNextChunk, NewState }.
 
+
+
+
+% @doc Decodes a rorg_vld (D2) packet, that is a R-ORG telegram containing
+% Variable Length Data.
+%
+% VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
+% their design.
+%
+% Discussed in [EEP-gen] p.12.
+%
+% Various packet types exist, in both directions (from/to sensor/actuator), and
+% depend on the actual EEP (hence on its FUNC and TYPE) implemented by the
+% emitter device.
+%
+% Yet only the RORG (namely D2) is specified on such telegrams, therefore their
+% interpretation depends on the extra FUNC and TYPE information supposed to be
+% known a priori by the receiver.
+%
+-spec decode_vld_packet( telegram_data_tail(), telegram_opt_data(),
+			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+decode_vld_packet( DataTail, OptData, AnyNextChunk,
+				   State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% We do not know yet the size of the payload, but we know that DataTail ends
+	% with SenderEurid:32 then Status:1/binary:
+	%
+	PayloadSize = size( DataTail ) - (4+1),
+
+	<<Payload:PayloadSize/binary, SenderEurid:32, Status:1/binary>> = DataTail,
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Found a payload of ~B bytes: ~w.",
+								[ PayloadSize, Payload ] ) ),
+
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
+	case table:lookup_entry( SenderEurid, DeviceTable ) of
+
+		% Device first time seen:
+		key_not_found ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _Now, _MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
+				"for ~ts: device not configured, no EEP known for it.",
+				[ eurid_to_string( SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+
+
+		% Knowing the actual EEP is needed in order to decode:
+		{ value, _Device=#enocean_device{ eep=undefined } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a VLD packet "
+				"for ~ts: no EEP known for it.",
+				[ get_best_naming( MaybeDeviceName, SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+
+
+		{ value, Device=#enocean_device{ eep=smart_plug } } ->
+			decode_vld_smart_plug_packet( Payload, SenderEurid, Status,
+				OptData, AnyNextChunk, Device, State );
+
+
+		{ value, Device=#enocean_device{ eep=smart_plug_with_metering } } ->
+			decode_vld_smart_plug_with_metering_packet( Payload,
+				SenderEurid, Status, OptData, AnyNextChunk, Device, State );
+
+
+		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a VLD (D2) packet "
+				"for ~ts: EEP ~ts (~ts) not supported.",
+				[ get_best_naming( MaybeDeviceName, SenderEurid ),
+				  UnsupportedEepId,
+				  oceanic_generated:get_second_for_eep_strings(
+					UnsupportedEepId ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+
+	end.
+
+
+
+% @doc Decodes a rorg_vld smart_plug (D2-01-OA, an "Electronic switches and
+% dimmers with Energy Measurement and Local Control" of type OA) packet.
+%
+% This corresponds to basic smart, non-metering plugs bidirectional actuators
+% that control (switch on/off) most electrical load (e.g. appliances).
+%
+% Discussed in [EEP-spec] p.143.
+%
+-spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
+		telegram_opt_data(), telegram_chunk(), enocean_device(),
+		oceanic_state() ) -> decoding_outcome().
+decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
+		SenderEurid, _Status, OptData, AnyNextChunk, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
+			"for command '~ts' (~B); sender is ~ts, ~ts.",
+			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
+			   maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			] ) ),
+
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+
+	Event = fixme,
+
+	{ decoded, Event, AnyNextChunk, NewState }.
+
+
+
+decode_vld_smart_plug_with_metering_packet( _Payload,
+				_SenderEurid, _Status,_OptData, _AnyNextChunk, _Device, _State ) ->
+	throw( todo ).
 
 
 % @doc Returns a textual description of the specified temperature.
@@ -5209,7 +5438,8 @@ generate_support_modules() ->
 
 	AllSpecNames = [ get_packet_type_topic_spec, get_return_code_topic_spec,
 		get_event_code_topic_spec, get_rorg_topic_spec,
-		get_rorg_description_topic_spec, get_common_command_topic_spec ],
+		get_rorg_description_topic_spec, get_common_command_topic_spec,
+		get_vld_d2_00_cmd_topic_spec ],
 
 	TopicSpecs = [ oceanic_constants:F() || F <- AllSpecNames ]
 		++ oceanic_constants:get_eep_topic_specs(),
