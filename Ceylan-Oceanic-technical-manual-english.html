@@ -599,7 +599,7 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <div class="section" id="pairing">
 <h3><a class="toc-backref" href="#toc-entry-25">Pairing</a></h3>
 <p>As mentioned, when using Oceanic as an emitter, it <em>must</em> have been paired to the target actuator.</p>
-<p>Pairing can be done through teach-in (through an exchange of specific telegrams) or through learning (putting the actuator is a specific mode, and forcing the emitter to emit a telegram). Some actuators support both procedures.</p>
+<p>Pairing can be done through teach-in (through an exchange of specific telegrams) or through learning (putting the actuator in a specific mode, and forcing the emitter to send a telegram). Some actuators support both procedures.</p>
 <p>As detailed in the next section, some actuators are able to learn a device according to various device types/EEPs (e.g. a rocker as a rocker, or as two push-buttons).</p>
 <p>This choice matters: although this may not impact the telegrams to be sent by the device, it is bound to impact the behaviour of the actuator when receiving these telegrams.</p>
 </div>
@@ -613,7 +613,7 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 </ul>
 <p>A key difference is that, in case A (two push-buttons), each button taken individually may toggle the smart plug, while, in case B (rocker), pressing the top button whereas the smart plug is already passing (i.e. in the &quot;triggered&quot; state) will have no effect (e.g. the lamp remains on).</p>
 <p>Said differently, case A is about toggling (forcing state transitions) while case B is about setting (forcing state values).</p>
-<p>In the general case, setting (hence the rocker behaviour) may be seen as more reliable than toggling (the push-button behaviour): a given setting order may be sent multiple times to a rocker to ensure a given state is reached despite a possible message loss, whereas any loss of a toggling message will result in being consistently from then on in the opposite state of the intended one.</p>
+<p>In the general case, setting (hence the rocker behaviour) may be seen as more reliable than toggling (the push-button behaviour): a given setting order may be sent multiple times to a rocker to ensure a given state is reached despite a possible message loss, whereas a single loss of a toggling message will result in being consistently from then on in the opposite state of the intended one.</p>
 <p>Another approach is to enable and manage state feedback / status return through confirmation telegrams about the current state of the actuator.</p>
 </div>
 <div class="section" id="eltako-socket-switching-actuator-fssa">
