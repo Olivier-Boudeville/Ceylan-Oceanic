@@ -1,6 +1,6 @@
 % Copyright (C) 2022-2022 Olivier Boudeville
 %
-% This file is part of the Ceylan-OCEANIC library.
+% This file is part of the Ceylan-Oceanic library.
 %
 % This library is free software: you can redistribute it and/or modify
 % it under the terms of the GNU Lesser General Public License or
@@ -96,8 +96,9 @@ actual_test( TtyPath ) ->
 
 	%SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
-	%SourceEurid = oceanic:get_base_eurid( OcSrvPid ),
-	SourceEurid = oceanic:string_to_eurid( "0109d970" ),
+	%SourceEurid = oceanic:string_to_eurid( "0109d970" ),
+
+	SourceEurid = oceanic:get_oceanic_eurid( OcSrvPid ),
 
 
 	% We create a device for the source, so that we can decode by ourselves the
@@ -115,14 +116,22 @@ actual_test( TtyPath ) ->
 	MaybeTargetEurid = oceanic:get_broadcast_eurid(),
 	%MaybeTargetEurid = undefined,
 
-	% Alternate form:
 	%basic_utils:ignore_unused( [ SourceEurid, MaybeTargetEurid ] ),
 
+	% Any given target device, typically a smart plug, must have already learnt
+	% the Oceanic gateway for this test to act on it. Note that two kinds of
+	% learnings may have been done: either as a simple button or as a double
+	% rocker (we recommend that setting); depending on that the telegrams sent
+	% by Oceanic will be interpreted differently (e.g. in the former case,
+	% either run of this test will toggle the plug, whereas in the latter case
+	% the plug will be switched on then off at each test execution.
 
-	% These two buttons are actually considered independently, and for our test
-	% the "on" one has no special interest, only the "off" one is taken account
-	% by the target device, a (double-rocker) switch:
-	%
+	% These two buttons are actually considered independently, and for a test
+	% where the emitter is registered only by pressing one of the buttons
+	% (e.g. the "off" one) as a single input contact (hence not as a double
+	% rocker), the "on" one has no special interest, only the "off" one is taken
+	% account by the target device, a (double-rocker) switch.
+	
 	SwitchOnButton = button_ao,
 	SwitchOffButton = button_ai,
 
@@ -152,8 +161,8 @@ actual_test( TtyPath ) ->
 	ReleaseOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
 		SourceEurid, MaybeTargetEurid, SwitchOffButton, released ),
 
-	SwitchTelegrams =  [ PressOnButtonTelegram, ReleaseOnButtonTelegram,
-						 PressOffButtonTelegram, ReleaseOffButtonTelegram ],
+	SwitchTelegrams = [ PressOnButtonTelegram, ReleaseOnButtonTelegram,
+						PressOffButtonTelegram, ReleaseOffButtonTelegram ],
 
 	basic_utils:ignore_unused( SwitchTelegrams ),
 
@@ -175,35 +184,36 @@ actual_test( TtyPath ) ->
 			oceanic:telegram_to_string( T ) || T <- SwitchTelegrams ] ),
 		  DecodeStr ] ),
 
-	test_facilities:display( "All telegrams of interest encoded." ),
+	test_facilities:display( "All telegrams of interest are encoded." ),
 
 
-	% In our test setting, the "on" button is not specifically learnt and has
-	% not impact:
+	% In our single-contact test setting, the "on" button is not specifically
+	% learnt and has not impact:
 	%
 	%oceanic:send( PressOnButtonTelegram, OcSrvPid ),
 	%oceanic:send( ReleaseOnButtonTelegram, OcSrvPid ),
 
 
-	% In our test setting, the "off" button has been learnt; a press *and* a
-	% release are needed to trigger any action; and this action is to toggle
-	% on/off the switch.
-	%
-	% So, supposing that for this test the switch is initially off and we want
-	% to switch it one temporarily, we have to:
+	% In some test settings, the "off" button may have been learnt as a single
+	% contact button; a press *and* a release may be needed in order to trigger
+	% any action; and this action is to toggle on/off the switch.
+
+	% Here we suppose that for this test the switch was registered as a double
+	% rocker (not a single-contact button), is initially off and that we want to
+	% switch it on temporarily (for one second); we have to:
 
 	test_facilities:display( "First we press (and then also release) the "
-		"'switch off' button, '~ts' (which must have already been learnt), "
+		"'switch on' button, '~ts' (which must have already been learnt), "
 		"typically in order to switch on a lamp.", [ SwitchOnButton ] ),
 
 	% The actual switching on depends on both telegrams:
-	oceanic:send( PressOffButtonTelegram, OcSrvPid ),
+	oceanic:send( PressOnButtonTelegram, OcSrvPid ),
 	% No waiting needed:
-	oceanic:send( ReleaseOffButtonTelegram, OcSrvPid ),
+	oceanic:send( ReleaseOnButtonTelegram, OcSrvPid ),
 
 
 	test_facilities:display( "Then, after a short waiting, we press "
-		"(and then release) this 'switch off' button again, '~ts', typically "
+		"(and then release) the 'switch off' button, '~ts', typically "
 		"to switch off the lamp.", [ SwitchOffButton ] ),
 
 	timer:sleep( 1000 ),
