@@ -36,7 +36,7 @@
 -export([ get_packet_type_topic_spec/0, get_return_code_topic_spec/0,
 		  get_event_code_topic_spec/0, get_rorg_topic_spec/0,
 		  get_rorg_description_topic_spec/0, get_common_command_topic_spec/0,
-		  get_eep_topic_specs/0 ] ).
+		  get_vld_d2_00_cmd_topic_spec/0, get_eep_topic_specs/0 ] ).
 
 
 
@@ -150,7 +150,7 @@ get_rorg_description_topic_spec() ->
 		{ rorg_rps,        <<"RPS (Repeated Switch Communication)">> },
 		{ rorg_1bs,        <<"1BS (1-byte Communication)">> },
 		{ rorg_4bs,        <<"4BS (4-byte Communication)">> },
-		{ rorg_vld,        <<"VLD 'Variable Length Data)">> },
+		{ rorg_vld,        <<"VLD (Variable Length Data)">> },
 		{ rorg_msc,        <<"MSC (Manufacturer-Specific Communication)">> },
 		{ rorg_adt,        <<"ADT (Addressing Destination Telegram)">> },
 		{ rorg_sm_lrn_req, <<"SM_LRN_REQ (SMART ACK Learn Request)">> },
@@ -284,6 +284,38 @@ get_common_command_topic_spec() ->
 
 
 
+% @doc Returns the specification for the 'vld_d2_00_cmd' topic.
+%
+% First elements are VLD D2-00 command identifiers, designated by the CMD field
+% of these VLD telegrams, the 4 last bits of the first byte of the payload
+% (hence 16 possible values)
+
+% Second elements are their higher-level command names.
+%
+% Described in [EEP-spec] p.131.
+%
+-spec get_vld_d2_00_cmd_topic_spec() -> topic_spec().
+get_vld_d2_00_cmd_topic_spec() ->
+
+	Entries = [
+		{ 16#01, actuator_set_output },
+		{ 16#02, actuator_set_local },
+		{ 16#03, actuator_status_query },
+		{ 16#04, actuator_status_response },
+		{ 16#05, actuator_set_measurement },
+		{ 16#06, actuator_measurement_query },
+		{ 16#07, actuator_measurement_response },
+		{ 16#08, actuator_set_pilot_wire_mode },
+		{ 16#09, actuator_pilot_wire_mode_query },
+		{ 16#0A, actuator_pilot_wire_mode_response },
+		{ 16#0B, actuator_set_external_interface_settings },
+		{ 16#0C, actuator_external_interface_settings_query },
+		{ 16#0D, actuator_external_interface_settings_response } ],
+
+	{ vld_d2_00_cmd, Entries }.
+
+
+
 % @doc Returns the specification for the 'eep' topics.
 -spec get_eep_topic_specs() -> [ topic_spec() ].
 get_eep_topic_specs() ->
@@ -317,6 +349,12 @@ get_eep_topic_specs() ->
 
 		% Contacts:
 		{ single_input_contact, "D5-00-01" },
+
+
+		% Electronic switches and dimmers (e.g. smart plugs):
+		{ smart_plug,               "D2-01-0A" },
+		{ smart_plug_with_metering, "D2-01-0B" },
+
 
 		% In-wall modules:
 		{ single_channel_module, "D2-01-0E" },
