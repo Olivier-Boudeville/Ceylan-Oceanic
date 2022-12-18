@@ -29,7 +29,7 @@
 </tr>
 <tr class="field"><th class="field-name">Creation date:</th><td class="field-body">Wednesday, September 7, 2022</td>
 </tr>
-<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Wednesday, November 23, 2022</td>
+<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Sunday, December 18, 2022</td>
 </tr>
 <tr class="field"><th class="field-name">Version:</th><td class="field-body">0.0.2</td>
 </tr>
@@ -98,16 +98,25 @@
 <div class="section" id="overview">
 <h1><a class="toc-backref" href="#toc-entry-1">Overview</a></h1>
 <p>The Ceylan-Oceanic library provides <a class="reference external" href="http://erlang.org">Erlang</a>-based facilities for the support of the <a class="reference external" href="https://en.wikipedia.org/wiki/EnOcean">Enocean</a> building automation system, whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).</p>
-<p>So Enocean, whose slogan could be &quot;no wire, no battery&quot;, is rather unique. No Wifi, no IP connectivity either, hence no real risk of privacy/data leak.</p>
+<p>So Enocean, whose slogan could be &quot;no wire, no battery&quot;, is rather unique. No Wifi (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged), no IP connectivity either, hence no real risk in terms of health or privacy/data leak <a class="footnote-reference" href="#footnote-1" id="footnote-reference-1">[1]</a> (Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times). At least most of the Enocean specifications are <a class="reference external" href="https://www.enocean-alliance.org/specifications/">freely available</a>.</p>
+<table class="docutils footnote" frame="void" id="footnote-1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-1">[1]</a></td><td><p class="first">More recent technologies and open standards exist, including <a class="reference external" href="https://en.wikipedia.org/wiki/Matter_(standard)">Matter</a>. They are promoted by Amazon, Apple and Google, so that they integrate with their respective home assistants, and communicate over IP.</p>
+<p class="last">Everyone is entitled to their opinion; as for us, we prefer not having in our home &quot;Big Five&quot;-originating black boxes full of sensors, cameras and microphones able to communicate rather freely with any &quot;cloud&quot; on the Internet.
+We are puzzled that some people actually happily <em>purchase</em> such devices.</p>
+</td></tr>
+</tbody>
+</table>
 <p>Besides Erlang, Ceylan-Oceanic relies only on <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Myriad">Ceylan-Myriad</a> and is a rather autonomous part of the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan">Ceylan</a> project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.</p>
 <p>The project repository is located <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">here</a>.</p>
 <p>At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.</p>
 </div>
 <div class="section" id="purpose">
 <h1><a class="toc-backref" href="#toc-entry-2">Purpose</a></h1>
-<p>The main motivation of Oceanic is to provide some basic home automation features, especially in terms of security, in order to be able to:</p>
+<p>The main motivation of Oceanic is to provide some basic home automation features, especially here in terms of security, in order to be able to:</p>
 <ul class="simple">
-<li><strong>intercept and decode telegrams</strong> emitted by sensors, notably single-input contacts (to detect the opening/closing of doors or windows), temperature / humidity sensors or to detect electricity outages, typically in order to implement one's own alarm center</li>
+<li><strong>intercept and decode telegrams</strong> emitted by sensors - notably single-input contacts (to detect the opening/closing of doors or windows), presence or temperature / humidity sensors or to detect electricity outages or jamming attempts, typically in order to implement one's own alarm center; should a security event happen, a network camera can be switched on, e-mails and/or <a class="reference external" href="https://mobile.esperide.org">SMS</a> can be sent, etc.</li>
 <li><strong>generate and emit telegrams</strong> to control any kind of electrical devices (driven by a smart plug or an in-wall module), typically to turn on an electric heater or to run one's own presence simulator (possibly with lamps and sound devices)</li>
 </ul>
 </div>
@@ -140,14 +149,14 @@ Bus 003 Device 009: ID 0403:6001 Future Technology Devices International, Ltd FT
 <p>(which applies both to USB300 and USB310)</p>
 <p>We will interact with this USB gateway as if it was a serial port.</p>
 <p>Rather than having it designated by an obscure, potentially changing name (like <tt class="docutils literal">/dev/ttyUSB0</tt>, <tt class="docutils literal">/dev/ttyUSB1</tt>, etc.), we prefer assigning it a fixed, clearer, well-chosen path, like <tt class="docutils literal">/dev/ttyUSBEnOcean</tt>.</p>
-<p>For that, one may define a suitable udev rule, typically stored in <tt class="docutils literal"><span class="pre">/etc/udev/rules.d/99-enocean.rules</span></tt>, whose content can simply <a class="footnote-reference" href="#footnote-1" id="footnote-reference-1">[1]</a> be:</p>
+<p>For that, one may define a suitable udev rule, typically stored in <tt class="docutils literal"><span class="pre">/etc/udev/rules.d/99-enocean.rules</span></tt>, whose content can simply <a class="footnote-reference" href="#footnote-2" id="footnote-reference-2">[2]</a> be:</p>
 <pre class="code literal-block">
 SUBSYSTEM==&quot;tty&quot;, ATTRS{idVendor}==&quot;0403&quot;, ATTRS{idProduct}==&quot;6001&quot;, SYMLINK+=&quot;ttyUSBEnOcean&quot;, MODE=&quot;0666&quot;
 </pre>
-<table class="docutils footnote" frame="void" id="footnote-1" rules="none">
+<table class="docutils footnote" frame="void" id="footnote-2" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-1">[1]</a></td><td>Note though the different roles played by <tt class="docutils literal">==</tt> (for matching) and <tt class="docutils literal">=</tt> (for assignment).</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-2">[2]</a></td><td>Note though the different roles played by <tt class="docutils literal">==</tt> (for matching) and <tt class="docutils literal">=</tt> (for assignment).</td></tr>
 </tbody>
 </table>
 <p>Following extra option could be added to the previous line, in order to set the group of this TTY: <tt class="docutils literal"><span class="pre">GROUP=&quot;dialout&quot;</span></tt> or <tt class="docutils literal"><span class="pre">GROUP=&quot;uucp&quot;</span></tt> (depending on the system's conventions), in which case your user shall be in that group (rather than executing <tt class="docutils literal">sudo chmod 777 /dev/ttyUSB0</tt> each time the USB dongle is inserted for example).</p>
@@ -192,24 +201,24 @@ $ ls -l /dev/ttyUSBEnOcean /dev/ttyUSB0
 </div>
 <div class="section" id="serial">
 <h2><a class="toc-backref" href="#toc-entry-9">Serial</a></h2>
-<p id="erlang-serial">We use our version <a class="footnote-reference" href="#footnote-2" id="footnote-reference-2">[2]</a> of <a class="reference external" href="https://github.com/Olivier-Boudeville/erlang-serial">erlang-serial</a> for that, which we prefer installing in user space (rather than in the system tree) that way:</p>
+<p id="erlang-serial">We use our version <a class="footnote-reference" href="#footnote-3" id="footnote-reference-3">[3]</a> of <a class="reference external" href="https://github.com/Olivier-Boudeville/erlang-serial">erlang-serial</a> for that, which we prefer installing in user space (rather than in the system tree) that way:</p>
 <pre class="code bash literal-block">
 $ mkdir ~/Software <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ~/Software
 $ git clone https://github.com/Olivier-Boudeville/erlang-serial
 $ <span class="nb">cd</span> erlang-serial
 $ make <span class="o">&amp;&amp;</span> <span class="nv">DESTDIR</span><span class="o">=</span>. make install
 </pre>
-<table class="docutils footnote" frame="void" id="footnote-2" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-2">[2]</a></td><td>This is a fork of the original <a class="reference external" href="https://github.com/tonyg/erlang-serial">erlang-serial</a>, which had to be modified notably in terms of disabled RTS/CTS flow control, in order to be able to properly send data to the Enocean gateway.</td></tr>
-</tbody>
-</table>
-<p>Then using <tt class="docutils literal"><span class="pre">erlang-serial</span></tt> will be just a matter of adding it to one's code path <a class="footnote-reference" href="#footnote-3" id="footnote-reference-3">[3]</a>.</p>
 <table class="docutils footnote" frame="void" id="footnote-3" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-3">[3]</a></td><td>Later in the installation one may update the <tt class="docutils literal"><span class="pre">Erlang-serial</span> section</tt> in Oceanic's <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc">GNUmakevars.inc</a> in order to take into account any other path convention. One may then run, from the root of Oceanic, <tt class="docutils literal">make <span class="pre">info-serial</span></tt> to check that <tt class="docutils literal">ERLANG_SERIAL_BASE</tt> points indeed to a directory containing erlang-serial's <tt class="docutils literal">ebin</tt> directory. Otherwise runtime checks will detect and report any issue.</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-3">[3]</a></td><td>This is a fork of the original <a class="reference external" href="https://github.com/tonyg/erlang-serial">erlang-serial</a>, which had to be modified notably in terms of disabled RTS/CTS flow control, in order to be able to properly send data to the Enocean gateway.</td></tr>
+</tbody>
+</table>
+<p>Then using <tt class="docutils literal"><span class="pre">erlang-serial</span></tt> will be just a matter of adding it to one's code path <a class="footnote-reference" href="#footnote-4" id="footnote-reference-4">[4]</a>.</p>
+<table class="docutils footnote" frame="void" id="footnote-4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-4">[4]</a></td><td>Later in the installation one may update the <tt class="docutils literal"><span class="pre">Erlang-serial</span> section</tt> in Oceanic's <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/blob/main/GNUmakevars.inc">GNUmakevars.inc</a> in order to take into account any other path convention. One may then run, from the root of Oceanic, <tt class="docutils literal">make <span class="pre">info-serial</span></tt> to check that <tt class="docutils literal">ERLANG_SERIAL_BASE</tt> points indeed to a directory containing erlang-serial's <tt class="docutils literal">ebin</tt> directory. Otherwise runtime checks will detect and report any issue.</td></tr>
 </tbody>
 </table>
 <p>To test this erlang-serial installation (whether or not any dongle is connected):</p>
@@ -436,11 +445,11 @@ hexadecimal 55000707017af630002ef1963001ffffffff4400fe (whereas there are 0 byte
 <pre class="code erlang literal-block">
 <span class="nv">SourceEurid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nn">oceanic</span><span class="p">:</span><span class="nf">string_to_eurid</span><span class="p">(</span><span class="w"> </span><span class="s">&quot;002EF196&quot;</span><span class="w"> </span><span class="p">),</span>
 </pre>
-<p>Running it <a class="footnote-reference" href="#footnote-4" id="footnote-reference-4">[4]</a> results in:</p>
-<table class="docutils footnote" frame="void" id="footnote-4" rules="none">
+<p>Running it <a class="footnote-reference" href="#footnote-5" id="footnote-reference-5">[5]</a> results in:</p>
+<table class="docutils footnote" frame="void" id="footnote-5" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-4">[4]</a></td><td>The decoding printout corresponds to a check made by this test: prior to sending a telegram that it just generated, it ensures that it can decode it successfully.</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-5">[5]</a></td><td>The decoding printout corresponds to a check made by this test: prior to sending a telegram that it just generated, it ensures that it can decode it successfully.</td></tr>
 </tbody>
 </table>
 <pre class="code literal-block">
@@ -475,21 +484,21 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <ul class="simple">
 <li>did the right position of the right button was learnt?</li>
 <li>depending on the switch, apparently:<ul>
-<li>either each of the individual buttons will act as a rocker by itself (e.g. to switch on then off the lamp, a learnt button - top or bottom - of a given rocker will have to be pressed and released twice <a class="footnote-reference" href="#footnote-5" id="footnote-reference-5">[5]</a>)</li>
-<li>or the whole rocker (that is the pair made of its top and bottom buttons) will work as intended as a rocker (e.g. to switch on the lamp, the top button will have to be pressed and released, then, to switch off the lamp, the bottom button will have to be pressed and released <a class="footnote-reference" href="#footnote-6" id="footnote-reference-6">[6]</a>)</li>
+<li>either each of the individual buttons will act as a rocker by itself (e.g. to switch on then off the lamp, a learnt button - top or bottom - of a given rocker will have to be pressed and released twice <a class="footnote-reference" href="#footnote-6" id="footnote-reference-6">[6]</a>)</li>
+<li>or the whole rocker (that is the pair made of its top and bottom buttons) will work as intended as a rocker (e.g. to switch on the lamp, the top button will have to be pressed and released, then, to switch off the lamp, the bottom button will have to be pressed and released <a class="footnote-reference" href="#footnote-7" id="footnote-reference-7">[7]</a>)</li>
 </ul>
 </li>
 </ul>
-<table class="docutils footnote" frame="void" id="footnote-5" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-5">[5]</a></td><td>This is the case for my white switch, an O2 Line Comfort double-rocker; the top and bottom buttons can then be used indifferently.</td></tr>
-</tbody>
-</table>
 <table class="docutils footnote" frame="void" id="footnote-6" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-6">[6]</a></td><td>This is the case for my green switch, a VIMAR Vita (single) rocker, for which each button has a role. For example, pressing a given button more than once will have no effect (as it corresponds to a state already reached), only using the other will trigger a new transition.</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-6">[6]</a></td><td>This is the case for my white switch, an O2 Line Comfort double-rocker; the top and bottom buttons can then be used indifferently.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="footnote-7" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-7">[7]</a></td><td>This is the case for my green switch, a VIMAR Vita (single) rocker, for which each button has a role. For example, pressing a given button more than once will have no effect (as it corresponds to a state already reached), only using the other will trigger a new transition.</td></tr>
 </tbody>
 </table>
 <p></p>
@@ -512,25 +521,36 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <h1><a class="toc-backref" href="#toc-entry-19">Protocol Information</a></h1>
 <div class="section" id="guarding-against-spoofing-lying-about-one-s-source-eurid-will-not-suffice">
 <h2><a class="toc-backref" href="#toc-entry-20">Guarding Against Spoofing: Lying about One's Source EURID will Not Suffice</a></h2>
-<p>Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently even with the default, usual level of security (that is: none) implemented by the devices that we tested, Enocean telegrams could <em>not</em> be replayed <a class="footnote-reference" href="#footnote-7" id="footnote-reference-7">[7]</a>: just intercepting a raw telegram and re-emitting was not acknowledged by the target device and did not trigger its intended effect on at least our <a class="reference internal" href="#main-test-actuator">main test actuator</a> (e.g. the smart plug did not switch on/off).</p>
-<table class="docutils footnote" frame="void" id="footnote-7" rules="none">
+<p>Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently even with the default, usual level of security (that is: none) implemented by the devices that we tested, Enocean telegrams could <em>not</em> be replayed <a class="footnote-reference" href="#footnote-8" id="footnote-reference-8">[8]</a>: just intercepting a raw telegram and re-emitting was not acknowledged by the target device and did not trigger its intended effect on at least our <a class="reference internal" href="#main-test-actuator">main test actuator</a> (e.g. the smart plug did not switch on/off).</p>
+<table class="docutils footnote" frame="void" id="footnote-8" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-7">[7]</a></td><td>See the <tt class="docutils literal">replay_telegrams/1</tt> function in the <tt class="docutils literal">oceanic_just_send_to_device_test</tt> module for an example.</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-8">[8]</a></td><td>See the <tt class="docutils literal">replay_telegrams/1</tt> function in the <tt class="docutils literal">oceanic_just_send_to_device_test</tt> module for an example.</td></tr>
 </tbody>
 </table>
 <p>One explanation could have been that we were re-emitting from Oceanic &quot;receive&quot; telegrams (as opposed to &quot;send&quot; ones), as we actually always receive information different from what was sent (e.g. the dbM measure, the repeating count, etc. are visibly set between the emission and the receiving; and of course the checksums are modified accordingly) - so replaying a received telegram <em>could</em> be rejected on these bases.</p>
-<p>Nevertheless, forging from scratch proper &quot;send telegrams&quot; (yet carrying the same functional information) and sending them by ourselves still did not trigger the actuator.</p>
+<p>Nevertheless, forging from scratch proper &quot;send telegrams&quot; (yet carrying the same functional information) and sending them by ourselves still did not trigger the actuator (we did multiple tests on multiple devices of different manufacturers).</p>
 <p>So we believe that extra information is available to actuators through the Enocean network stack, that may/will be used by them in order to discriminate between actual emitters.</p>
 <p>This was further confirmed by testing the same telegram exchanges after having learnt a device, either the real one, or one impersonated by Oceanic: apparently, only the ones that have been explicitly learnt previously will be accepted afterwards.</p>
 <p>By forging telegrams bearing a source EURID different from the base one, we came to the conclusion that:</p>
 <ul class="simple">
 <li>most if not all telegrams carry a source EURID that can be freely set (typically through Oceanic calls)</li>
-<li>yet in parallel each emitter (be them an USB dongle controlled by Oceanic or a &quot;real&quot; device) has its own internal ID (or a base ID range, such such dongles); these IDs look like EURIDs but are probably not considered as actual EURIDs, they may be handled only in low-level ESP3-like protocols (invisibly from the &quot;applicative layer&quot; seen when exchanging with the dongle)</li>
-<li>learning a device relies on these internal IDs</li>
-<li>a telegram will be considered by an actuator iff the internal ID of the emitter carried by this telegram matches with one that has been learnt by the actuator</li>
-<li>the source EURID included in a telegram will designate a device but may not match the internal ID of the emitter; so for example we could forge from Oceanic telegrams whose source EURID matches the one of an actual device (a rocker switch) - and therefore did not match the internal ID of the dongle - while nevertheless, <em>provided that the dongle had already been learnt by the actuator, typically thanks to a previous Oceanic sending</em>, we could operate the actuator programmatically</li>
-<li>for the repeating mechanisms to have an interest, their re-emitted telegrams must be taken into account by the target actuators; so accepting already-sent telegrams emanating from different emitters than the one specified in the telegrams is needed; repeating is most probably handled transparently by lower-level protocols as well</li>
+<li>yet in parallel each emitter (be them an USB dongle controlled by Oceanic or a &quot;real&quot; device) has its own internal, &quot;base&quot; ID (or a base ID range, for such dongles); these IDs have the same type as EURIDs, and we suppose that they can be considered as actual EURIDs - yet they <em>could</em> be handled specifically only in low-level ESP3-like protocols (invisibly from the &quot;applicative layer&quot; seen when exchanging with the dongle); by default, unless specified (see the <tt class="docutils literal">oceanic_emitter</tt> configuration entry), the source EURID used by telegrams generated by Oceanic match the ID obtained (through a Common Command) from the USB dongle <a class="footnote-reference" href="#footnote-9" id="footnote-reference-9">[9]</a></li>
+<li>learning a device relies at least on these internal IDs, sometimes also on the specified in-telegram source one</li>
+<li>a telegram will be considered by an actuator iff the internal ID of the emitter carried by this telegram matches with one that has been learnt by the actuator (hence no easy spoofing with rogue, undeclared emitters)</li>
+<li>the source EURID included in a telegram will designate a device but may not match the internal ID of the emitter; so for example we could forge, from Oceanic, telegrams whose source EURID matches the one of an actual device (a rocker switch) - and therefore did not match the internal ID of the dongle - while nevertheless, <em>provided that the dongle had already been learnt by the actuator, typically thanks to a previous Oceanic sending</em>, we could operate the actuator programmatically (despite these telegrams having inconsistent IDs)</li>
+<li>yet, do these Oceanic telegrams have to specify the same EURID as used for their registering, or any already-registered EURID - or would any EURID would do the trick?</li>
+</ul>
+<ul>
+<li><p class="first">for the repeating mechanisms to have an interest, their re-emitted telegrams must be taken into account by the target actuators; so accepting already-sent telegrams emanating from different emitters than the one specified in the telegrams is needed; repeating is most probably handled transparently by lower-level protocols as well</p>
+<table class="docutils footnote" frame="void" id="footnote-9" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-9">[9]</a></td><td><p class="first last">This is merely a convention though, as apparently any another EURID could be used instead at this level. We used to add &quot;<em>provided it is consistently used from then on</em>&quot; (that is: when learning and also when sending telegram afterwards), yet we could see that even forging a telegram with a random source EURID but sending it from a right, already learnt device (hence using another EURID then) is sufficient to have the corresponding request accepted and processed - at least by some actuators.</p>
+</td></tr>
+</tbody>
+</table>
+</li>
 </ul>
 <p>We can also verify that devices like rocker switches are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed (they have no memory).</p>
 <p>So from our experiments we believe that, in terms of identification, the devices rely on a lower-level protocol (possibly ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); as these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on &quot;standard&quot; USB gateways (therefore Oceanic having to be involved also in the learn process, not only in the emitting one).</p>
@@ -541,9 +561,25 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <p>The spoofing risk being mostly alleviated, the only extra risks that we could foresee are:</p>
 <ul class="simple">
 <li>possibly <strong>brute-force attempts</strong> to match already-learnt base identifiers, from a debug gateway allowing to act on ESP3 packets (a threat that does not seem likely for common burglaries)</li>
-<li>the <strong>jamming of an actuator</strong> by saturating it with telegrams (be them well-formed and sensible, or not), so that any actual telegram of interest (e.g. regarding a door opening) may not reach the receiver</li>
+<li>the <strong>jamming of an actuator</strong> by saturating it with telegrams (be them well-formed and sensible, or not <a class="footnote-reference" href="#footnote-10" id="footnote-reference-10">[10]</a>), so that any actual telegram of interest (e.g. regarding a door opening) may not reach the receiver</li>
+<li>sensors devices being <strong>incapacitated before they are able to raise an alarm</strong> (for example destroyed, or possibly flashed by an electromagnetic impulse)</li>
 </ul>
-<p>Oceanic provides a basic yet possibly sufficient mechanism guarding against both of these threats: in a wireless context, nothing can be done against emission, but a configurable threshold in terms of incoming traffic volume can be monitored (with proper back-off), so that, if the application registered as a listener, Oceanic notifies it whenever detecting such an attempt of denial of service - which can be considered by itself as a cause of alarm as serious as the other ones.</p>
+<table class="docutils footnote" frame="void" id="footnote-10" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-10">[10]</a></td><td>A battery-operated, generic-purpose jammer operating on the usual frequencies, like 868 MHz in Europe, may be able to affect most of the (now wireless) protocols for house-automation just by emitting powerfully-enough random noise on these bandwidths.</td></tr>
+</tbody>
+</table>
+<p>Oceanic provides basic yet possibly sufficient mechanisms guarding against these three threats.</p>
+<p>For the first two risks: in a wireless context, nothing can be done against emission, but a configurable threshold in terms of incoming traffic volume can be monitored (with proper back-off), so that, if the application registered as a listener, Oceanic notifies it whenever detecting such an attempt of denial of service - which can be considered by itself as a cause of alarm as serious as the other ones.</p>
+<p>This threshold is expressed in bytes per second (knowing that telegrams are often fragmented), and its default value (see the <tt class="docutils literal">oceanic_jamming_threshold</tt> configuration entry) is <tt class="docutils literal">250</tt>. As the size of many Enocean legit telegrams is 21 bytes, an <tt class="docutils literal">onEnoceanJamming</tt> event will be sent to the Oceanic-using application should a dozen of them be received during the same second, or a bit more in (a bit) longer time window (e.g. 20 in two seconds).</p>
+<p>For the last risk, sensors (typically opening detectors) report instantly state transitions but also send periodic state notifications (even if no change happened). So a listener can monitor the duration elapsed since such a sensor was last seen, and if it exceeds a threshold (for example 30 minutes <a class="footnote-reference" href="#footnote-11" id="footnote-reference-11">[11]</a>), this may considered as a reason to raise an alarm.</p>
+<table class="docutils footnote" frame="void" id="footnote-11" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-11">[11]</a></td><td>So the event will be detected, albeit with a latency that, depending on the use case, may or may not be acceptable / useful.</td></tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="studying-actual-protocols">
 <h2><a class="toc-backref" href="#toc-entry-22">Studying Actual Protocols</a></h2>

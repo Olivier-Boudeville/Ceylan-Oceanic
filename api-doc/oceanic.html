@@ -27,6 +27,10 @@
 <p><tt>any_string() = <a href="text_utils.html#type-any_string">text_utils:any_string()</a></tt></p>
 
 
+<h3 class="typedecl"><a name="type-availability_outcome">availability_outcome()</a></h3>
+<p><tt>availability_outcome() = {true, SerialRootDir::<a href="#type-directory_path">directory_path()</a>} | {false, Reason::<a href="#type-ustring">ustring()</a>, <a href="basic_utils.html#type-error_term">basic_utils:error_term()</a>}</tt></p>
+<p> The outcome of an availability check for Oceanic.</p>
+
 <h3 class="typedecl"><a name="type-bin_string">bin_string()</a></h3>
 <p><tt>bin_string() = <a href="text_utils.html#type-bin_string">text_utils:bin_string()</a></tt></p>
 
@@ -42,6 +46,10 @@
 <h3 class="typedecl"><a name="type-button_transition">button_transition()</a></h3>
 <p><tt>button_transition() = pressed | released</tt></p>
 <p> Tells whether a button has been pressed (and held) or released.</p>
+
+<h3 class="typedecl"><a name="type-bytes_per_second">bytes_per_second()</a></h3>
+<p><tt>bytes_per_second() = <a href="system_utils.html#type-bytes_per_second">system_utils:bytes_per_second()</a></tt></p>
+
 
 <h3 class="typedecl"><a name="type-channel_taught">channel_taught()</a></h3>
 <p><tt>channel_taught() = <a href="#type-uint8">uint8()</a> | all</tt></p>
@@ -267,7 +275,7 @@ on devices.</p>
 <p> The PID of an Oceanic server.</p>
 
 <h3 class="typedecl"><a name="type-oceanic_state">oceanic_state()</a></h3>
-<p><tt>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid">serial_server_pid()</a>, emitter_eurid = <a href="#type-eurid">eurid()</a>, device_table = <a href="#type-device_table">device_table()</a>, command_queue = <a href="#type-command_queue">command_queue()</a>, waited_command_info = <a href="#type-maybe">maybe</a>(<a href="#type-waited_command_info">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out">time_utils:time_out()</a>, command_count = <a href="#type-count">count()</a>, sent_count = <a href="#type-count">count()</a>, discarded_count = <a href="#type-count">count()</a>, event_listener_pid = <a href="#type-maybe">maybe</a>(<a href="#type-event_listener_pid">event_listener_pid()</a>)}</tt></p>
+<p><tt>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid">serial_server_pid()</a>, emitter_eurid = <a href="#type-eurid">eurid()</a>, device_table = <a href="#type-device_table">device_table()</a>, command_queue = <a href="#type-command_queue">command_queue()</a>, waited_command_info = <a href="#type-maybe">maybe</a>(<a href="#type-waited_command_info">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out">time_utils:time_out()</a>, command_count = <a href="#type-count">count()</a>, sent_count = <a href="#type-count">count()</a>, discarded_count = <a href="#type-count">count()</a>, traffic_level = <a href="#type-bytes_per_second">bytes_per_second()</a>, last_traffic_seen = <a href="#type-timestamp">timestamp()</a>, jamming_threshold = <a href="#type-bytes_per_second">bytes_per_second()</a>, event_listener_pid = <a href="#type-maybe">maybe</a>(<a href="#type-event_listener_pid">event_listener_pid()</a>)}</tt></p>
 <p> An Oceanic state, including configuration typically loaded from an ETF file.</p>
 
 <h3 class="typedecl"><a name="type-packet">packet()</a></h3>
@@ -367,7 +375,16 @@ Oceanic focuses primarily on newer, richer, ESP3.</p>
 
  <p>D5-00 corresponds to Contacts and Switches.</p>
 
- Refer to [EEP-spec] p.27 for further details.</p>
+ <p>Refer to [EEP-spec] p.27 for further details.</p>
+
+ <p>Note that, at least by default, most if not all opening detectors not only 
+report state transitions (between closed and opened), they also notify 
+regularly (e.g. every 5-30 minutes, on average often 15 minutes) and 
+spontaneously their current state (even if no specific transition happened), 
+presumably to help overcoming any message loss.</p>
+
+ So any listener of these events shall store their current state, to be able to
+ detect the actual transitions (even if they are late).</p>
 
 <h3 class="typedecl"><a name="type-subtelegram_count">subtelegram_count()</a></h3>
 <p><tt>subtelegram_count() = <a href="#type-count">count()</a></tt></p>
@@ -437,6 +454,10 @@ range).</p>
 <p><tt>timer_ref() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/timer.html#type-tref">timer:tref()</a></tt></p>
 
 
+<h3 class="typedecl"><a name="type-timestamp">timestamp()</a></h3>
+<p><tt>timestamp() = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a></tt></p>
+
+
 <h3 class="typedecl"><a name="type-tty_detection_outcome">tty_detection_outcome()</a></h3>
 <p><tt>tty_detection_outcome() = true | {false, non_existing | {not_device, <a href="#type-entry_type">entry_type()</a>}}</tt></p>
 <p> The outcome of an attempt of TTY detection.</p>
@@ -455,6 +476,22 @@ range).</p>
 
 <h3 class="typedecl"><a name="type-version_number">version_number()</a></h3>
 <p><tt>version_number() = <a href="basic_utils.html#type-version_number">basic_utils:version_number()</a></tt></p>
+
+
+<h3 class="typedecl"><a name="type-vld_d2_00_cmd">vld_d2_00_cmd()</a></h3>
+<p><tt>vld_d2_00_cmd() = actuator_set_output | actuator_set_local | actuator_status_query | actuator_status_response | actuator_set_measurement | actuator_measurement_query | actuator_measurement_response | actuator_set_pilot_wire_mode | actuator_pilot_wire_mode_query | actuator_pilot_wire_mode_response | actuator_set_external_interface_settings | actuator_external_interface_settings_query | actuator_external_interface_settings_response</tt></p>
+<p><p> The type of a VLD message, in the context of the D2-01 EEPs: "Electronic 
+switches and dimmers with Energy Measurement and Local Control".</p>
+
+ <p>Refer to the 'vld_d2_00_cmd' topic.</p>
+
+ <p>It is also designated by the CMD field of these VLD telegrams, the 4 last bits 
+of the first byte of the payload (hence 16 possible values).</p>
+
+ Described in [EEP-spec] p.131.</p>
+
+<h3 class="typedecl"><a name="type-vld_rcp_message_type">vld_rcp_message_type()</a></h3>
+<p><tt>vld_rcp_message_type() = a | b | c | d | e | f | g | h</tt></p>
 
 
 <h3 class="typedecl"><a name="type-waited_command_info">waited_command_info()</a></h3>
@@ -492,7 +529,6 @@ button.</td></tr>
  recipient device, with a response telegram.</td></tr>
 <tr><td valign="top"><a href="#generate_support_modules-0">generate_support_modules/0</a></td><td>To be called by the 'oceanic_generated.beam' automatic make target in
  order to generate, here, a (single) module to share the Oceanic constants.</td></tr>
-<tr><td valign="top"><a href="#get_base_eurid-1">get_base_eurid/1</a></td><td>Returns the base EURID of the local USB gateway.</td></tr>
 <tr><td valign="top"><a href="#get_best_naming-2">get_best_naming/2</a></td><td>Returns the best naming for a device, as any kind of string, depending on
  the available information.</td></tr>
 <tr><td valign="top"><a href="#get_broadcast_eurid-0">get_broadcast_eurid/0</a></td><td>Returns the broadcast EURID, suitable to target all devices in range.</td></tr>
@@ -500,6 +536,8 @@ button.</td></tr>
  according to our conventions.</td></tr>
 <tr><td valign="top"><a href="#get_device_table-1">get_device_table/1</a></td><td>Returns the device state in the specified state; only useful for some
  tests.</td></tr>
+<tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td>Returns the current (emitter) EURID used by Oceanic for the local USB 
+gateway, notably as default source EURID when generating telegrams.</td></tr>
 <tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td>Returns the PID of the (supposedly-existing) Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td>Returns the registration name of the Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_test_state-0">get_test_state/0</a></td><td>Returns a pseudo-state, loaded from default configuration; only useful 
@@ -510,6 +548,8 @@ for some tests.</td></tr>
 <tr><td valign="top"><a href="#has_tty-1">has_tty/1</a></td><td>Tells whether the specified TTY exists and is a device, together with any 
 failure reason.</td></tr>
 <tr><td valign="top"><a href="#hexastring_to_telegram-1">hexastring_to_telegram/1</a></td><td>Returns an hexadecimal string corresponding to the specified telegram.</td></tr>
+<tr><td valign="top"><a href="#is_available-1">is_available/1</a></td><td>Tells whether Oceanic should be available, that is if all its 
+prerequisites seem to be met.</td></tr>
 <tr><td valign="top"><a href="#load_configuration-1">load_configuration/1</a></td><td>Loads Oceanic configuration information from the default Ceylan 
 preferences file, if any, otherwise returns a state with an empty device 
 table.</td></tr>
@@ -557,6 +597,7 @@ listener process for Enocean events.</td></tr>
 <tr><td valign="top"><a href="#string_to_eep-1">string_to_eep/1</a></td><td>Converts an EEP described as a string into its internal form.</td></tr>
 <tr><td valign="top"><a href="#string_to_eurid-1">string_to_eurid/1</a></td><td>Returns the actual EURID corresponding to the specified (plain) EURID 
 string.</td></tr>
+<tr><td valign="top"><a href="#synchronous_stop-1">synchronous_stop/1</a></td><td>Stops and terminates synchronously the specified Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#telegram_to_hexastring-1">telegram_to_hexastring/1</a></td><td>Returns an hexadecimal string corresponding to the specified telegram.</td></tr>
 <tr><td valign="top"><a href="#telegram_to_string-1">telegram_to_string/1</a></td><td>Returns a textual description of the specified telegram.</td></tr>
 <tr><td valign="top"><a href="#test_decode-1">test_decode/1</a></td><td>Helper introduced only to make the decoding logic available for tests.</td></tr>
@@ -641,11 +682,19 @@ radio packet encapsulated into an ESP3 one.</p>
 specified one (if any), reporting the specified transition for the specified 
 button.</p>
 
+ <p>As this encoding is done exclusively on the caller side (the Oceanic server 
+not being involved), it is up to the caller to specify the source EURID. We 
+recommend at the caller fetches from the Oceanic server its EURID (see 
+get_oceanic_eurid/1) once for all, and use it afterwards.</p>
+
  <p>Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
 Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1 
 radio packet encapsulated into an ESP3 one.</p>
 
- See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+ <p>See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.</p>
+
+ Depending on how Oceanic was learnt by the target actuator, it will be seen
+ either as a rocker (recommended) or as push-button(s).
 </p>
 
 <h3 class="function"><a name="encode_esp3_packet-2">encode_esp3_packet/2</a></h3>
@@ -699,15 +748,6 @@ radio packet encapsulated into an ESP3 one.</p>
  order to generate, here, a (single) module to share the Oceanic constants.
 </p>
 
-<h3 class="function"><a name="get_base_eurid-1">get_base_eurid/1</a></h3>
-<div class="spec">
-<p><tt>get_base_eurid(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-eurid">eurid()</a></tt><br></p>
-<p> </p>
-</div><p><p>Returns the base EURID of the local USB gateway.</p>
-
- Needed to encode telegrams.
-</p>
-
 <h3 class="function"><a name="get_best_naming-2">get_best_naming/2</a></h3>
 <div class="spec">
 <p><tt>get_best_naming(MaybeDevName::<a href="#type-maybe">maybe</a>(<a href="#type-device_name">device_name()</a>), Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-any_string">any_string()</a></tt><br></p>
@@ -736,6 +776,16 @@ radio packet encapsulated into an ESP3 one.</p>
 <p> </p>
 </div><p>Returns the device state in the specified state; only useful for some
  tests.
+</p>
+
+<h3 class="function"><a name="get_oceanic_eurid-1">get_oceanic_eurid/1</a></h3>
+<div class="spec">
+<p><tt>get_oceanic_eurid(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-eurid">eurid()</a></tt><br></p>
+<p> </p>
+</div><p><p>Returns the current (emitter) EURID used by Oceanic for the local USB 
+gateway, notably as default source EURID when generating telegrams.</p>
+
+ Useful when encoding telegrams.
 </p>
 
 <h3 class="function"><a name="get_server_pid-0">get_server_pid/0</a></h3>
@@ -799,6 +849,16 @@ failure reason.</p>
 </div><p><p>Returns an hexadecimal string corresponding to the specified telegram.</p>
 
  Useful for testing with serial clients like cutecom.
+</p>
+
+<h3 class="function"><a name="is_available-1">is_available/1</a></h3>
+<div class="spec">
+<p><tt>is_available(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-availability_outcome">availability_outcome()</a></tt><br></p>
+<p> </p>
+</div><p><p>Tells whether Oceanic should be available, that is if all its 
+prerequisites seem to be met.</p>
+
+ Useful to de-risk a future launch thereof and factor code.
 </p>
 
 <h3 class="function"><a name="load_configuration-1">load_configuration/1</a></h3>
@@ -982,8 +1042,14 @@ listener process for Enocean events.</p>
 </div><p><p>Returns the actual EURID corresponding to the specified (plain) EURID 
 string.</p>
 
- Ex: 3072406 = oceanic:string_to_eurid("002ee196")
+ Ex: 3076502 = oceanic:string_to_eurid("002ef196")
 </p>
+
+<h3 class="function"><a name="synchronous_stop-1">synchronous_stop/1</a></h3>
+<div class="spec">
+<p><tt>synchronous_stop(SrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></tt><br></p>
+<p> </p>
+</div><p>Stops and terminates synchronously the specified Oceanic server.</p>
 
 <h3 class="function"><a name="telegram_to_hexastring-1">telegram_to_hexastring/1</a></h3>
 <div class="spec">
