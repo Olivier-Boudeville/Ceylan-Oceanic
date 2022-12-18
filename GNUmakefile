@@ -63,8 +63,7 @@ list-beam-dirs:
 #
 sync-sources-to-server:
 	@$(MAKE) -s all
-	@echo " Synchronising the $$(basename $$(pwd)) layer to $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT)"
-	@if [ -n "$(OCEANIC_SRV)" ]; then if [ -n "$(OCEANIC_SYNC_TARGET_ROOT)" ]; then $(SYNC_TOOL) $(SYNC_OPT) $(OCEANIC_TOP)/../oceanic $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT); else echo "Error, no OCEANIC_SYNC_TARGET_ROOT variable set." 1>&2; exit 4; fi; else echo "Error, no OCEANIC_SRV variable set." 1>&2; exit 5; fi
+	@if [ -n "$(OCEANIC_SRV)" ]; then if [ -n "$(OCEANIC_SYNC_TARGET_ROOT)" ]; then echo " Synchronising the $$(basename $$(pwd)) layer to $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT)"; $(SYNC_TOOL) $(SYNC_CODE_OPT) $(OCEANIC_TOP)/../oceanic $(OCEANIC_SRV):$(OCEANIC_SYNC_TARGET_ROOT); else echo "Error, no OCEANIC_SYNC_TARGET_ROOT variable set." 1>&2; exit 4; fi; else echo "Error, no OCEANIC_SRV variable set." 1>&2; exit 5; fi
 
 
 add-prerequisite-plts: link-plt
