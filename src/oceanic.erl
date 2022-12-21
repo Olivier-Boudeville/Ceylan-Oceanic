@@ -98,8 +98,11 @@
 		  device_event_to_string/1, device_table_to_string/1,
 		  state_to_string/1 ]).
 
-% Silencing:
--export([ encode_common_command/2 ]).
+
+% Silencing (depending on the tokens defined):
+-export([ encode_common_command/2, ptm_module_to_string/1,
+		  nu_message_type_to_string/1, optional_data_to_string/1,
+		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
 
 
 -type availability_outcome() ::
@@ -1353,8 +1356,9 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 		% Received data from the serial port:
 		{ data, NewChunk } ->
 
-			trace_utils:debug_fmt( "Read ~ts.",
-				[ telegram_to_string( NewChunk ) ] ),
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_utils:debug_fmt( "Read ~ts.",
+					[ telegram_to_string( NewChunk ) ] ) ),
 
 			case try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) of
 
@@ -1381,16 +1385,19 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_utils:debug_fmt( "Successfully ~ts.",
-							[ device_event_to_string( Event ) ] ) ),
+							[ device_event_to_string( Event ) ] ),
+						basic_utils:ignore_unused( Event ) ),
 
 					ReadState#oceanic_state{ emitter_eurid=BaseEurid };
+
 
 				{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_utils:debug_fmt( "Unsuccessful decoding, '~w' "
 							"(whereas NewToSkipLen=~B, NewAccChunk=~w).",
-							[ Unsuccessful, NewToSkipLen, NewAccChunk ] ) ),
+							[ Unsuccessful, NewToSkipLen, NewAccChunk ] ),
+						basic_utils:ignore_unused( Unsuccessful ) ),
 
 					wait_initial_base_request( NewToSkipLen, NewAccChunk,
 											   NewState )
@@ -1768,7 +1775,9 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 	T21 = 1,
 	NU = 1,
 
-	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
+	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer, yet
+	% zero already works, so:
+
 	%RC = 1,
 	RC = 0,
 
@@ -2220,8 +2229,9 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 				% Then just an event, possibly listened to:
 				{ decoded, Event, AnyNextMaybeChunk, NewState } ->
 
-					trace_bridge:debug_fmt( "Decoded following event: ~ts.",
-						[ device_event_to_string( Event ) ] ),
+					cond_utils:if_defined( oceanic_debug_decoding,
+						trace_bridge:debug_fmt( "Decoded following event: ~ts.",
+							[ device_event_to_string( Event ) ] ) ),
 
 					case NewState#oceanic_state.event_listener_pid of
 
@@ -2312,7 +2322,8 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_bridge:debug_fmt( "Sending to requester "
 							"a time-out regarding command ~ts.",
-							[ command_request_to_string( CmdReq ) ] ) ),
+							[ command_request_to_string( CmdReq ) ] ),
+						basic_utils:ignore_unused( CmdReq ) ),
 
 					RequesterPid !
 						{ oceanic_command_outcome, _Outcome=time_out },
@@ -2675,9 +2686,12 @@ try_decode_chunk( TelegramChunk, State ) ->
 	case scan_for_packet_start( TelegramChunk ) of
 
 		{ no_content, DroppedCount } ->
+
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
-					"so dropping its ~B bytes)", [ DroppedCount ] ) ),
+					"so dropping its ~B bytes)", [ DroppedCount ] ),
+				basic_utils:ignore_unused( DroppedCount ) ),
+
 			{ invalid, _StillToSkipLen=0, _NoAccChunk=undefined, State };
 
 
@@ -2688,7 +2702,8 @@ try_decode_chunk( TelegramChunk, State ) ->
 					"following chunk (of size ~B bytes; "
 					"after dropping ~B byte(s)):~n  ~p.",
 					[ size( NewTelegramChunk ), DroppedCount,
-					  NewTelegramChunk ] ) ),
+					  NewTelegramChunk ] ),
+				basic_utils:ignore_unused( DroppedCount ) ),
 
 			scan_past_start( NewTelegramChunk, State )
 
@@ -2869,10 +2884,14 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 										State );
 
 								TooShortChunk ->
+
 									cond_utils:if_defined(
 										oceanic_debug_decoding,
-										trace_bridge:debug_fmt( "Chunk ~p too "
-											"short.", [ TooShortChunk ] ) ),
+										trace_bridge:debug_fmt(
+											"Chunk ~p too short.",
+											[ TooShortChunk ] ),
+										basic_utils:ignore_unused(
+											TooShortChunk ) ),
 
 									% By design start byte already chopped:
 									{ incomplete, _ToSkipLen=0,
@@ -2889,7 +2908,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
-					"dropping this telegram candidate.", [ OtherHeaderCRC ] ) ),
+					"dropping this telegram candidate.", [ OtherHeaderCRC ] ),
+				basic_utils:ignore_unused( OtherHeaderCRC ) ),
 
 			% Rather than discarding this chunk as a whole, tries to scavage
 			% (very conservatively) any trailing element by reintroducing a
@@ -2924,7 +2944,8 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "Obtained unexpected full-data CRC "
 					"(~B, instead of ~B), dropping candidate telegram.",
-					[ OtherCRC, ExpectedFullDataCRC ] ) ),
+					[ OtherCRC, ExpectedFullDataCRC ] ),
+				basic_utils:ignore_unused( OtherCRC ) ),
 
 			% Not expecting being fooled by data accidentally looking like a
 			% legit CRC'ed header, so supposing this is just a valid telegram
@@ -3238,8 +3259,9 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 			  ptm_module_to_string( PTMSwitchModuleType ),
 			  nu_message_type_to_string( NuType ),
 			  repeater_count_to_string( RepCount ),
-			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ) ),
+			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData ) ] ),
+		basic_utils:ignore_unused(
+		  [ DB_0, PTMSwitchModuleType, NuType, RepCount ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -3731,7 +3753,8 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 			  ContactStatus, get_best_naming( MaybeDeviceName, SenderEurid ),
 			  Status,
 			  maybe_optional_data_to_string( MaybeDecodedOptData,
-											 OptData ) ] ) ),
+											 OptData ) ] ),
+		basic_utils:ignore_unused( [ DataTail, Status ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -3775,7 +3798,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 			[ size( DataTail ), DB_3, DB_2, DB_1, DB_0,
 			  eurid_to_string( SenderEurid ), repeater_count_to_string( RC ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ) ),
+			] ),
+		basic_utils:ignore_unused( [ DataTail, RC, MaybeDecodedOptData ] ) ),
 
 	% We have to know the specific EEP of this device in order to decode this
 	% telegram:
@@ -4041,7 +4065,9 @@ decode_ute_packet(
 				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 				] )
 
-		end ),
+		end,
+		basic_utils:ignore_unused( [ PTMSwitchModuleType, NuType, RepCount ] )
+						),
 
 	<<_DB_6:8,ToEcho/binary>> = DataTail,
 
@@ -4204,7 +4230,9 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 			"for command '~ts' (~B); sender is ~ts, ~ts.",
 			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ) ),
+			] ),
+		basic_utils:ignore_unused( [ SenderEurid, Cmd, MaybeDeviceName,
+									 MaybeDecodedOptData ] ) ),
 
 	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -4246,7 +4274,9 @@ decode_vld_smart_plug_with_metering_packet(
 			"for command '~ts' (~B); sender is ~ts, ~ts.",
 			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ) ),
+			] ),
+		basic_utils:ignore_unused( [ SenderEurid, Cmd, MaybeDeviceName,
+									 MaybeDecodedOptData ] ) ),
 
 	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
