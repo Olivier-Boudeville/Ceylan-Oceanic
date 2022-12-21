@@ -40,7 +40,7 @@
 
 % Shorthands:
 
-%-type count() :: basic_utils:count().
+-type count() :: basic_utils:count().
 -type device_path() :: file_utils:device_path().
 
 
@@ -66,6 +66,7 @@ actual_test( TtyPath ) ->
 %
 % The PID of the Oceanic server is just for test purpose.
 %
+-spec wait_for_test_events( count(), oceanic:oceanic_server_pid() ) -> void().
 wait_for_test_events( _Count=0, _OcSrvPid ) ->
 	test_facilities:display( "(all intended events received)" );
 
@@ -87,7 +88,7 @@ wait_for_test_events( Count, OcSrvPid ) ->
 
 		{ onEnoceanEvent, [ Event, OcSrvPid ] } ->
 
-			test_facilities:display( "Received at ~ts the following event: "
+			test_facilities:display( "Test eceived at ~ts the following event: "
 				"~ts.",
 				[ time_utils:get_textual_timestamp(),
 				  oceanic:device_event_to_string( Event ) ] ),
