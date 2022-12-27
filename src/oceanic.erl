@@ -162,10 +162,11 @@
 
 -type device_config() ::
 
-	{ UserDefinedName :: ustring(), EURID :: ustring(), EEP :: ustring() }
+	{ UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	  EEP :: ustring() }
 
-  | { UserDefinedName :: ustring(), EURID :: ustring(), EEP :: ustring(),
-	  Comment :: ustring() }.
+  | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	  EEP :: ustring(), Comment :: ustring() }.
 % An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
 % describe a given device.
 
@@ -454,6 +455,12 @@
 % ADT).
 
 
+-type eurid_string() :: ustring().
+% An EURID, expressed as a string.
+%
+% For example: "B50533EC".
+
+
 -type packet() :: binary().
 % An ESP-level data unit.
 
@@ -699,7 +706,7 @@
 			   vld_rcp_message_type/0, vld_d2_00_cmd/0,
 			   decoding_outcome/0,
 
-			   eurid/0,
+			   eurid/0, eurid_string/0,
 			   packet/0, crc/0, esp3_packet/0, packet_type/0, payload/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
 			   command_type/0, command_request/0, command_outcome/0,
@@ -1945,7 +1952,7 @@ execute_command( CmdTelegram, OcSrvPid ) ->
 
 
 % @doc Returns the current (emitter) EURID used by Oceanic for the local USB
-% gateway, notably as default source EURID when generating telegrams.
+% gateway, notably as default source base identifier when generating telegrams.
 %
 % Useful when encoding telegrams.
 %
