@@ -75,23 +75,36 @@ The latest version of this documentation is to be found at the `official Ceylan-
 Overview
 ========
 
-The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings).
+The Ceylan-Oceanic library provides `Erlang <http://erlang.org>`_-based facilities for the support of the `Enocean <https://en.wikipedia.org/wiki/EnOcean>`_ building automation system, an open standard whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings) with very low traffic.
 
-So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged), no IP connectivity either, hence no real risk in terms of health or privacy/data leak [#]_ (Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times). At least most of the Enocean specifications are `freely available <https://www.enocean-alliance.org/specifications/>`_.
+So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wifi involved (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged; no real risk of interferences), no IP connectivity either, hence no real risk in terms of health or privacy/data leak (see next section), as Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times: the gateway can only communicate with its host (hence with Oceanic), moreover through a low-level USB serial interface (no third-party driver involved on that hosting computer), and the devices only send tiny telegrams that can be listened to only at short range (up to a few dozens meters).
 
-.. [#] More recent technologies and open standards exist, including `Matter <https://en.wikipedia.org/wiki/Matter_(standard)>`_. They are promoted by Amazon, Apple and Google, so that they integrate with their respective home assistants, and communicate over IP.
+Finally, at least most of the Enocean specifications are `freely available <https://www.enocean-alliance.org/specifications/>`_.
 
-	   Everyone is entitled to their opinion; as for us, we prefer not having in our home "Big Five"-originating black boxes full of sensors, cameras and microphones able to communicate rather freely with any "cloud" on the Internet.
-	   We are puzzled that some people actually happily *purchase* such devices.
+Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our `US-Main home automation server <https://us-main.esperide.org/#home-automation>`_.
 
-
-Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux.
-
-The project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
+The Ceylan-Oceanic project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
 
 At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.
 
-.. comment Seasoned Oceanic users may directly bookmark this always useful `cheat sheet`_.
+
+
+
+A Word About Other Standards and Confidentiality
+================================================
+
+Compared to Enocean, more recent technologies and open standards exist, including `Matter <https://en.wikipedia.org/wiki/Matter_(standard)>`_. They are increasingly promoted by Amazon, Apple and Google, so that they integrate with their respective home assistants; they communicate over IP.
+
+Such devices are certainly convenient and often cheap, yet, as for us, we prefer not having in our home "Big Five"-originating black boxes generally full of sensors, cameras and microphones, running closed, proprietary, transparently-upgradable software, having their own IP connectivity (they typically obtain through DHCP their own local IP address) and therefore able to communicate rather freely with any "cloud" on the Internet (in practice, almost nobody blocks outgoing traffic from such dynamically-allocated IPs, knowing moreover that these devices often rely on Internet services and expect to regularly update their software).
+
+So we are a bit puzzled that so many people trust such home automation devices to the point of actually happily *purchasing* them, and placing them at the core of their home - whereas there are already `examples <https://www.eff.org/fr/deeplinks/2022/07/ring-reveals-they-give-videos-police-without-user-consent-or-warrant>`_ showing, if necessary, that their owner is certainly not in full control of them.
+
+Many will consider that non-IP protocols like Enocean or Z-Wave are already superseded by newer technologies like the aforementioned Matter system. Another point of view is that a standard like Enocean (that is moreover interesting for its unique energy-harvesting capabilities) is probably the last (and thus the most advanced one) that *can be easily trusted*.
+
+It could also be argued that all wireless protocols are flawed anyway, as they can be relatively easily snooped and/or jammed, as opposed to wired ones (like with KNX, X10 and other PLC-based ones) that are by design safer / more reliable (albeit more expensive). At least for new buildings (as opposed to partially-renovated ones), such wired systems could be considered, but, to the best of our knowledge, no such practical (open, affordable, future-proof) option exists (and this is a bit of a pity).
+
+So overall we consider that sticking to Enocean makes sense, hopefully for a long time.
+
 
 
 
@@ -792,7 +805,7 @@ Additional Information
 
 
 
-Related Projects
+Similar Projects
 ================
 
 They may be used as sources of inspiration:
@@ -807,6 +820,8 @@ They may be used as sources of inspiration:
 - the (Java) `OpenEnocean openHAB binding <https://github.com/fruggy83/openocean>`_
 
 - a first `Rust implementation <https://github.com/Cutii/enocean>`_
+
+Finally, there are nice, interesting integrated solutions like `Jeedom <https://www.jeedom.com>`_ that are mostly open-source (yet the `support for Enocean <https://market.jeedom.com/index.php?v=d&p=market_display&id=2622>`_ may require closed-source plugins to be bought).
 
 
 
