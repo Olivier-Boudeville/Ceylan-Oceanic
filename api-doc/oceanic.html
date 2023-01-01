@@ -148,7 +148,7 @@ telegrams.</p>
 <p> A user-defined device name, a lot more convenient than a EURID.</p>
 
 <h3 class="typedecl"><a name="type-device_config">device_config()</a></h3>
-<p><tt>device_config() = {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURID::<a href="#type-ustring">ustring()</a>, EEP::<a href="#type-ustring">ustring()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURID::<a href="#type-ustring">ustring()</a>, EEP::<a href="#type-ustring">ustring()</a>, Comment::<a href="#type-ustring">ustring()</a>}</tt></p>
+<p><tt>device_config() = {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, Comment::<a href="#type-ustring">ustring()</a>}</tt></p>
 <p> An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
  describe a given device.</p>
 
@@ -244,6 +244,12 @@ on devices.</p>
  A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
  denotes a broadcast transmission (as opposed to an Addressed Transmission,
  ADT).</p>
+
+<h3 class="typedecl"><a name="type-eurid_string">eurid_string()</a></h3>
+<p><tt>eurid_string() = <a href="#type-ustring">ustring()</a></tt></p>
+<p><p> An EURID, expressed as a string.</p>
+
+ For example: "B50533EC".</p>
 
 <h3 class="typedecl"><a name="type-event_listener_pid">event_listener_pid()</a></h3>
 <p><tt>event_listener_pid() = pid()</tt></p>
@@ -537,7 +543,7 @@ button.</td></tr>
 <tr><td valign="top"><a href="#get_device_table-1">get_device_table/1</a></td><td>Returns the device state in the specified state; only useful for some
  tests.</td></tr>
 <tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td>Returns the current (emitter) EURID used by Oceanic for the local USB 
-gateway, notably as default source EURID when generating telegrams.</td></tr>
+gateway, notably as default source base identifier when generating telegrams.</td></tr>
 <tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td>Returns the PID of the (supposedly-existing) Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td>Returns the registration name of the Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_test_state-0">get_test_state/0</a></td><td>Returns a pseudo-state, loaded from default configuration; only useful 
@@ -555,12 +561,19 @@ preferences file, if any, otherwise returns a state with an empty device
 table.</td></tr>
 <tr><td valign="top"><a href="#load_configuration-2">load_configuration/2</a></td><td>Loads Oceanic configuration information in the specified state from the 
 specified ETF file, and returns a corresponding updated state.</td></tr>
+<tr><td valign="top"><a href="#maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></td><td>Returns a textual description of the specified decoded maybe-optional
+ data, otherwise from the corresponding raw data.</td></tr>
+<tr><td valign="top"><a href="#nu_message_type_to_string-1">nu_message_type_to_string/1</a></td><td>Returns a textual description of the specified "Nu" Message type, as
+ defined in RPS packets.</td></tr>
+<tr><td valign="top"><a href="#optional_data_to_string-1">optional_data_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#ptm_module_to_string-1">ptm_module_to_string/1</a></td><td>Returns a textual description of the specified PTM switch module.</td></tr>
 <tr><td valign="top"><a href="#read_base_id_info-1">read_base_id_info/1</a></td><td>Returns the information held by the USB gateway about its base ID, thanks
  to a (local) common command.</td></tr>
 <tr><td valign="top"><a href="#read_logs-1">read_logs/1</a></td><td>Returns the log information held by the USB gateway, thanks to a
  (local) common command.</td></tr>
 <tr><td valign="top"><a href="#read_version-1">read_version/1</a></td><td>Returns the version information held by the USB gateway, thanks to a
  (local) common command.</td></tr>
+<tr><td valign="top"><a href="#repeater_count_to_string-1">repeater_count_to_string/1</a></td><td>Returns a textual description of the specified repeater count.</td></tr>
 <tr><td valign="top"><a href="#secure_serial-1">secure_serial/1</a></td><td>Secures the usability of (our fork of) erlang-serial, typically from an
  (e)script.</td></tr>
 <tr><td valign="top"><a href="#secure_tty-1">secure_tty/1</a></td><td>Secures the TTY connection to the Enocean gateway.</td></tr>
@@ -783,7 +796,7 @@ radio packet encapsulated into an ESP3 one.</p>
 <p><tt>get_oceanic_eurid(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-eurid">eurid()</a></tt><br></p>
 <p> </p>
 </div><p><p>Returns the current (emitter) EURID used by Oceanic for the local USB 
-gateway, notably as default source EURID when generating telegrams.</p>
+gateway, notably as default source base identifier when generating telegrams.</p>
 
  Useful when encoding telegrams.
 </p>
@@ -889,6 +902,34 @@ shall be preferred; refer to the co_rd_idbase common command)</p>
  - oceanic_config: to declare the known devices
 </p>
 
+<h3 class="function"><a name="maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></h3>
+<div class="spec">
+<p><tt>maybe_optional_data_to_string(MaybeDecodedOptData::<a href="#type-maybe">maybe</a>(<a href="#type-decoded_optional_data">decoded_optional_data()</a>), OptData::<a href="#type-telegram_opt_data">telegram_opt_data()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a textual description of the specified decoded maybe-optional
+ data, otherwise from the corresponding raw data.
+</p>
+
+<h3 class="function"><a name="nu_message_type_to_string-1">nu_message_type_to_string/1</a></h3>
+<div class="spec">
+<p><tt>nu_message_type_to_string(Nu::<a href="#type-nu_message_type">nu_message_type()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a textual description of the specified "Nu" Message type, as
+ defined in RPS packets.
+</p>
+
+<h3 class="function"><a name="optional_data_to_string-1">optional_data_to_string/1</a></h3>
+<div class="spec">
+<p><tt>optional_data_to_string(OptData::<a href="#type-decoded_optional_data">decoded_optional_data()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="ptm_module_to_string-1">ptm_module_to_string/1</a></h3>
+<div class="spec">
+<p><tt>ptm_module_to_string(ModType::<a href="#type-ptm_switch_module_type">ptm_switch_module_type()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a textual description of the specified PTM switch module.</p>
+
 <h3 class="function"><a name="read_base_id_info-1">read_base_id_info/1</a></h3>
 <div class="spec">
 <p><tt>read_base_id_info(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-read_base_id_info_response">read_base_id_info_response()</a> | <a href="#type-common_command_failure">common_command_failure()</a></tt><br></p>
@@ -912,6 +953,12 @@ shall be preferred; refer to the co_rd_idbase common command)</p>
 </div><p>Returns the version information held by the USB gateway, thanks to a
  (local) common command.
 </p>
+
+<h3 class="function"><a name="repeater_count_to_string-1">repeater_count_to_string/1</a></h3>
+<div class="spec">
+<p><tt>repeater_count_to_string(RC::<a href="#type-count">count()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a textual description of the specified repeater count.</p>
 
 <h3 class="function"><a name="secure_serial-1">secure_serial/1</a></h3>
 <div class="spec">
