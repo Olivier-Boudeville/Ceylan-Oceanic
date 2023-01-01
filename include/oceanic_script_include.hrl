@@ -1,4 +1,4 @@
-% Copyright (C) 2022-2022 Olivier Boudeville
+% Copyright (C) 2022-2023 Olivier Boudeville
 %
 % Include file meant to simplify the writing of Oceanic-using escripts.
 %
