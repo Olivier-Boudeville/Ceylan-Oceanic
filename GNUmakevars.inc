@@ -174,7 +174,7 @@ ERLANG_SERIAL_EMBEDDED_BEAM_DIR := $(ERLANG_SERIAL_EMBEDDED_BASE)/ebin
 # (in addition to _build we could also look in _checkouts)
 #
 ERLANG_SERIAL_REBAR_BUILD_BASE := $(OCEANIC_TOP)/_build/default/lib/erlang-serial
-ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR := $(ERLANG_SERIAL_REBAR_BUILD_BASE/ebin)
+ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR := $(ERLANG_SERIAL_REBAR_BUILD_BASE)/ebin
 
 # Third possible location (userspace, that is in user account):
 # (note: no $$HOME, no quotes either)
