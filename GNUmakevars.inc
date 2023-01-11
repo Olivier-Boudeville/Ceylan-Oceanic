@@ -159,24 +159,28 @@ MYRIAD_LOCAL_EBIN := $(MYRIAD_LOCAL_APP)/ebin
 
 # Erlang-serial section
 #
-# Three options in order to locate a proper erlang-serial (embedded, rebar-style
-# or userspace, tested in this order) obtained from our fork,
+# Four options in order to locate a proper erlang-serial (embedded, two
+# rebar-style flavours - _checkouts and _build - or userspace, tested in this
+# order) obtained from our fork,
 # https://github.com/Olivier-Boudeville/erlang-serial.
 #
 # (refer to http://oceanic.esperide.org/#erlang-serial for installation
 # guidelines)
 
-# First possible location (embedded):
+# First possible location (embedded as a sibling source tree):
 ERLANG_SERIAL_EMBEDDED_BASE := $(OCEANIC_TOP)/../erlang-serial
 ERLANG_SERIAL_EMBEDDED_BEAM_DIR := $(ERLANG_SERIAL_EMBEDDED_BASE)/ebin
 
-# Second possible location (rebar-style):
-# (in addition to _build we could also look in _checkouts)
-#
+# Second and third possible locations (rebar-style):
+ERLANG_SERIAL_REBAR_CHECKOUT_BASE := $(OCEANIC_TOP)/_checkouts/erlang-serial
+ERLANG_SERIAL_REBAR_CHECKOUT_BEAM_DIR := $(ERLANG_SERIAL_REBAR_CHECKOUT_BASE)/ebin
+
 ERLANG_SERIAL_REBAR_BUILD_BASE := $(OCEANIC_TOP)/_build/default/lib/erlang-serial
 ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR := $(ERLANG_SERIAL_REBAR_BUILD_BASE)/ebin
 
-# Third possible location (userspace, that is in user account):
+# Fourth possible location (userspace, that is in an absolute path in user
+# account):
+#
 # (note: no $$HOME, no quotes either)
 #
 ERLANG_SERIAL_USER_ROOT := $(HOME)/Software/erlang-serial
@@ -191,26 +195,33 @@ ifneq "$(wildcard $(ERLANG_SERIAL_EMBEDDED_BEAM_DIR))" ""
 
 else
 
-	ifneq "$(wildcard $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR))" ""
+	ifneq "$(wildcard $(ERLANG_SERIAL_REBAR_CHECKOUT_BEAM_DIR))" ""
 
-		BEAM_DIRS += $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR)
+		BEAM_DIRS += $(ERLANG_SERIAL_REBAR_CHECKOUT_BEAM_DIR)
 
 	else
 
-		ifneq "$(wildcard $(ERLANG_SERIAL_USER_BEAM_DIR))" ""
+		ifneq "$(wildcard $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR))" ""
 
-			ABS_BEAM_DIRS += $(ERLANG_SERIAL_USER_BEAM_DIR)
+			BEAM_DIRS += $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR)
 
 		else
 
-			FORCE_EVAL := $(error Unable to find an erlang-serial installation base; searched for $(ERLANG_SERIAL_EMBEDDED_BEAM_DIR), $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR) and $(ERLANG_SERIAL_USER_BEAM_DIR), from $(PWD)))
+			ifneq "$(wildcard $(ERLANG_SERIAL_USER_BEAM_DIR))" ""
+
+				ABS_BEAM_DIRS += $(ERLANG_SERIAL_USER_BEAM_DIR)
+
+			else
+
+				FORCE_EVAL := $(error Unable to find an erlang-serial installation base; searched for $(ERLANG_SERIAL_EMBEDDED_BEAM_DIR), $(ERLANG_SERIAL_REBAR_BUILD_BEAM_DIR) and $(ERLANG_SERIAL_USER_BEAM_DIR), from $(PWD)))
+
+			endif
 
 		endif
 
 	endif
 
 endif
-
 
 
 
@@ -275,8 +286,6 @@ MYRIAD_PARSE_TRANSFORMS_PZ_OPT = -pz $(MYRIAD_OTP_BEAM_DIR_FROM_USUAL) \
 # integration, hence no $(ERLANG_SERIAL_USER_BEAM_DIR) in BEAM_DIRS):
 #
 BEAM_DIRS += $(OCEANIC_BEAM_DIRS)
-
-
 
 
 ifndef VM_TEST_NAME
