@@ -789,6 +789,30 @@ As mentioned in the previous section, we prefer the "direction push-button" mode
 
 
 
+Troubleshooting
+===============
+
+If an error report such as ``Cannot open terminal /dev/ttyUSBEnOcean for read and write`` is issued, this may be the sign that a past failed ``serial`` instance may linger and block the USB dongle.
+
+To check and solve:
+
+.. code:: bash
+
+ $ fuser /dev/ttyUSBEnOcean
+ /dev/ttyUSB2:        91437
+
+ $ ps -edf | grep 91437
+bond+   91437   91408  0 Jan08 ttyUSB2  00:00:00 /home/bond/Software/erlang-serial/erlang/lib/serial-1.1/priv/bin/serial -erlang
+
+ $ kill 91437
+
+ $ fuser /dev/ttyUSBEnOcean
+
+
+This should happen in the rare case of a prior crash.
+
+
+
 Support
 =======
 
