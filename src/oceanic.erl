@@ -717,6 +717,7 @@
 % See also oceanic_generated:get_return_code_topic_spec/0.
 
 
+-type timer_ref() :: timer:tref().
 
 
 -export_type([ availability_outcome/0,
@@ -761,6 +762,7 @@
 			   device_event/0,
 
 			   common_command/0, common_command_failure/0,
+			   timer_ref/0,
 
 			   read_version_response/0, read_logs_response/0,
 			   read_base_id_info_response/0,
@@ -1057,10 +1059,6 @@
 
 -type oceanic_state() :: #oceanic_state{}.
 % An Oceanic state, including configuration typically loaded from an ETF file.
-
-
--type timer_ref() :: timer:tref().
-
 
 
 
@@ -1386,7 +1384,6 @@ get_base_state( SerialServerPid ) ->
 
 	% We discover from start our base EURID; a direct, ad hoc logic cannot
 	% really be used, as request tracking would be in the way:
-
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_utils:debug( "Discovering our base EURID." ) ),
 
@@ -1582,7 +1579,6 @@ apply_conf_settings( OcSettings, State ) ->
 
 
 
-
 % Extracts the relevant Oceanic settings, and returns any remaining element.
 extract_settings( _Pairs=[], Acc, State ) ->
 	{ Acc, State };
@@ -1624,6 +1620,12 @@ extract_settings( _Pairs=[ { oceanic_jamming_threshold, Other } | T ], Acc,
 	extract_settings( T, Acc, State );
 
 
+% Typically an entry unrelated to Oceanic:
+extract_settings( _Pairs=[ _E={ _K, _V } | T ], Acc, State )  ->
+	%trace_bridge:debug_fmt( "Ignoring the following entry: ~p.", [ E ] ),
+	extract_settings( T, Acc, State );
+
+
 extract_settings( Other, Acc, State ) ->
 	trace_bridge:error_fmt( "Ignoring the following incorrect (non-list) "
 		"Oceanic settings: ~p.", [ Other ] ),
@@ -1649,8 +1651,8 @@ declare_devices( _DeviceCfgs=[
 	Eurid = try text_utils:hexastring_to_integer(
 		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
 
-				Int ->
-					Int
+			Int ->
+				Int
 
 		% Typically error:badarg:
 		catch _:E ->
@@ -2830,7 +2832,14 @@ test_decode( Chunk ) ->
 %
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
-	TestState = #oceanic_state{ serial_server_pid=self() },
+
+	TestState = #oceanic_state{
+		serial_server_pid=self() ,
+		emitter_eurid=string_to_eurid( ?default_emitter_eurid ),
+		device_table=table:new(),
+		command_queue=queue:new(),
+		last_traffic_seen=time_utils:get_timestamp() },
+
 	load_configuration( TestState ).
 
 
@@ -4788,7 +4797,7 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 	stop_any_timer( MaybeActTimer ),
 
 	% Adding a 20% margin to avoid false alarms:
-	SeenDurationMs = 1.2 * 1000 * time_utils:get_duration( FirstSeen, Now ),
+	SeenDurationMs = 1200 * time_utils:get_duration( FirstSeen, Now ),
 
 	SeenCount = TeleCount + ErrCount,
 
