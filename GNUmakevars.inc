@@ -57,6 +57,7 @@ endif
 #  - decoding: for the decoding of Enocean telegrams
 #  - encoding: for the encoding of Enocean telegrams
 #  - commands: for the management of all types of commands
+#  - activity: regarding the monitoring of device activity (vanishing sensors)
 #
 # Defining debug flags (at least the most verbose are by default commented-out):
 ifeq ($(ENABLE_DEBUG),true)
@@ -64,6 +65,7 @@ ifeq ($(ENABLE_DEBUG),true)
 	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_decoding
 	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_encoding
 	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_commands
+	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_activity
 endif
 
 # Defining check flags:
@@ -72,6 +74,7 @@ ifeq ($(EXECUTION_TARGET),development)
 	#OCEANIC_CHECK_FLAGS += -Doceanic_check_decoding
 	#OCEANIC_CHECK_FLAGS += -Doceanic_check_encoding
 	#OCEANIC_CHECK_FLAGS += -Doceanic_check_commands
+	#OCEANIC_CHECK_FLAGS += -Doceanic_check_activity
 endif
 
 
