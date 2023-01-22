@@ -45,6 +45,7 @@
 	get_server_registration_name/0, get_server_pid/0,
 
 	load_configuration/1, load_configuration/2,
+	add_configuration_settings/2,
 
 	send/2,
 
@@ -80,6 +81,22 @@
 	string_to_eep/1 ] ).
 
 
+
+% Event-related API, to achieve some kind of polymorphism on the corresponding
+% records:
+%
+-export([ get_source_eurid/1, get_maybe_device_name/1, get_maybe_eep/1,
+		  get_timestamp/1,
+		  get_subtelegram_count/1, get_maybe_destination_eurid/1,
+		  get_maybe_dbm/1, get_maybe_security_level/1 ]).
+
+
+% String-related functions:
+-export([ telegram_to_string/1,
+		  telegram_to_hexastring/1, hexastring_to_telegram/1 ]).
+
+
+
 % For execution as (e)script:
 -export([ secure_serial/1 ]).
 
@@ -92,9 +109,6 @@
 -export([ get_test_state/0, get_test_state/1,
 		  test_decode/1, secure_tty/1, try_integrate_chunk/4,
 
-		  telegram_to_string/1,
-		  telegram_to_hexastring/1, hexastring_to_telegram/1,
-
 		  device_event_to_string/1, device_table_to_string/1,
 		  state_to_string/1 ]).
 
@@ -106,8 +120,8 @@
 
 
 -type availability_outcome() ::
-		{ 'true', SerialRootDir :: directory_path() }
-	  | { 'false', Reason :: ustring(), basic_utils:error_term() }.
+	{ 'true', SerialRootDir :: directory_path() }
+  | { 'false', Reason :: ustring(), basic_utils:error_term() }.
 % The outcome of an availability check for Oceanic.
 
 
@@ -144,6 +158,25 @@
 % thanks to a user-defined name (as any kind of string).
 
 
+-type declared_device_activity_periodicity() ::
+	dhms_duration()
+  | 'none'    % Typically if no spontaneous state feedback
+  | 'default' % Apply a reasonable default
+  | 'learn'.  % To be automatically determined by Oceanic
+% A user-declared activity periodicity regarding a device (expected rhythm of
+% telegram sending).
+
+-type expected_periodicity() ::
+	milliseconds() % Typically an upper bound
+  | 'none'         % Typically if no state feedback or no monitoring wanted
+  | 'auto'.        % To be managed by Oceanic
+
+
+-type oceanic_settings() :: list_table().
+% Specification of Oceanic settings, as key/values pairs, as read from a
+% configuration file or transmitted by other services.
+
+
 % For the device-related records:
 -include("oceanic.hrl").
 
@@ -162,17 +195,22 @@
 
 -type device_config() ::
 
+	% Then the activity periodicity will be learnt:
 	{ UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
 	  EEP :: ustring() }
 
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring(), Comment :: ustring() }.
+	  EEP :: ustring(), declared_device_activity_periodicity() }
+
+  | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	  EEP :: ustring(), declared_device_activity_periodicity(),
+	  Comment :: ustring() }.
 % An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
 % describe a given device.
 
 
 -type tty_detection_outcome() ::
-		'true' | { 'false', 'non_existing' | { 'not_device', entry_type() } }.
+	'true' | { 'false', 'non_existing' | { 'not_device', entry_type() } }.
 % The outcome of an attempt of TTY detection.
 
 
@@ -256,10 +294,11 @@
 
 -type teach_request_type() :: 'teach_in' | 'teach_out'.
 
--type teach_outcome() :: 'teach_refused'          % "General reason"
-					   | 'teach_in_accepted'      % Addition success
-					   | 'teach_out_accepted'     % Deletion success
-					   | 'teach_eep_unsupported'. % EEP not supported
+-type teach_outcome() ::
+	'teach_refused'          % "General reason"
+  | 'teach_in_accepted'      % Addition success
+  | 'teach_out_accepted'     % Deletion success
+  | 'teach_eep_unsupported'. % EEP not supported
 
 
 -type channel_taught() :: uint8() | 'all'.
@@ -289,19 +328,20 @@
 % complying to the same EEP can be interchanged.
 
 
--type eep_id() :: 'thermo_hygro_low'
-				| 'thermo_hygro_mid'
-				| 'thermo_hygro_high'
-				| 'push_button'
+-type eep_id() ::
+	  'thermo_hygro_low'
+	| 'thermo_hygro_mid'
+	| 'thermo_hygro_high'
+	| 'push_button'
 
-				  % They include the simple rocker ones:
-				| 'double_rocker_switch'
-				| 'double_rocker_multipress'
+	  % They include the simple rocker ones:
+	| 'double_rocker_switch'
+	| 'double_rocker_multipress'
 
-				| 'single_input_contact'
-				| 'single_channel_module'
-				| 'double_channel_module'
-				| atom().
+	| 'single_input_contact'
+	| 'single_channel_module'
+	| 'double_channel_module'
+	| atom().
 % The (atom) identifier of an EnOcean Equipment Profile, corresponding to
 % (R-ORG)-(FUNC)-(TYPE) triplet.
 %
@@ -327,10 +367,10 @@
 
 
 -type button_designator() ::
-		'button_ai'  % Switch light on / Dim light down / Move blind closed
-	  | 'button_ao'  % Switch light off / Dim light up / Move blind open
-	  | 'button_bi'  % Switch light on / Dim light down / Move blind closed
-	  | 'button_bo'. % Switch light off / Dim light up / Move blind open
+	  'button_ai'  % Switch light on / Dim light down / Move blind closed
+	| 'button_ao'  % Switch light off / Dim light up / Move blind open
+	| 'button_bi'  % Switch light on / Dim light down / Move blind closed
+	| 'button_bo'. % Switch light off / Dim light up / Move blind open
 % Designates a button corresponding to a A or B channel.
 %
 % A given ocker behaves as two buttons (e.g. AI/AO).
@@ -387,19 +427,20 @@
 % Described in [EEP-spec] p.127.
 
 
--type vld_d2_00_cmd() :: 'actuator_set_output'
-					   | 'actuator_set_local'
-					   | 'actuator_status_query'
-					   | 'actuator_status_response'
-					   | 'actuator_set_measurement'
-					   | 'actuator_measurement_query'
-					   | 'actuator_measurement_response'
-					   | 'actuator_set_pilot_wire_mode'
-					   | 'actuator_pilot_wire_mode_query'
-					   | 'actuator_pilot_wire_mode_response'
-					   | 'actuator_set_external_interface_settings'
-					   | 'actuator_external_interface_settings_query'
-					   | 'actuator_external_interface_settings_response'.
+-type vld_d2_00_cmd() ::
+	'actuator_set_output'
+  | 'actuator_set_local'
+  | 'actuator_status_query'
+  | 'actuator_status_response'
+  | 'actuator_set_measurement'
+  | 'actuator_measurement_query'
+  | 'actuator_measurement_response'
+  | 'actuator_set_pilot_wire_mode'
+  | 'actuator_pilot_wire_mode_query'
+  | 'actuator_pilot_wire_mode_response'
+  | 'actuator_set_external_interface_settings'
+  | 'actuator_external_interface_settings_query'
+  | 'actuator_external_interface_settings_response'.
 % The type of a VLD message, in the context of the D2-01 EEPs: "Electronic
 % switches and dimmers with Energy Measurement and Local Control".
 %
@@ -413,11 +454,11 @@
 
 
 -type decoding_error() ::
-	  'not_reached'   % Beginning of next packet still ahead
-	| 'incomplete'    % Truncated packet (end of packet still ahead)
-	| 'invalid'       % Corrupted packet
-	| 'unsupported'   % Type of packet (currently) unsupported by Oceanic
-	| 'unconfigured'. % Device not configure (typically EEP not known)
+	'not_reached'   % Beginning of next packet still ahead
+  | 'incomplete'    % Truncated packet (end of packet still ahead)
+  | 'invalid'       % Corrupted packet
+  | 'unsupported'   % Type of packet (currently) unsupported by Oceanic
+  | 'unconfigured'. % Device not configure (typically EEP not known)
 % The various kinds of errors that may happen when decoding.
 
 
@@ -480,11 +521,12 @@
 % used to extend an existing ESP3 packet.
 
 
--type packet_type() :: 'reserved' | 'radio_erp1' | 'response'
-					 | 'radio_sub_tel' | 'event' | 'common_command'
-					 | 'smart_ack_command' | 'remote_man_command'
-					 | 'radio_message' | 'radio_erp2' | 'radio_802_15_4'
-					 | 'command_2_4'.
+-type packet_type() ::
+	  'reserved' | 'radio_erp1' | 'response'
+	| 'radio_sub_tel' | 'event' | 'common_command'
+	| 'smart_ack_command' | 'remote_man_command'
+	| 'radio_message' | 'radio_erp2' | 'radio_802_15_4'
+	| 'command_2_4'.
 % The type of a (typically ESP3) packet.
 %
 % Refer to [ESP3] p.12.
@@ -527,7 +569,7 @@
 
 
 -type enocean_version() :: { Main :: version_number(), Beta :: version_number(),
-					Alpha :: version_number(), Build :: version_number() }.
+	Alpha :: version_number(), Build :: version_number() }.
 % The version of an EnOcean application or API.
 %
 % This is a basic_utils:four_digit_version().
@@ -683,7 +725,8 @@
 			   requester/0,
 
 			   device_name/0, device_plain_name/0, device_any_name/0,
-			   device_designator/0,
+			   device_designator/0, declared_device_activity_periodicity/0,
+			   expected_periodicity/0,
 
 			   enocean_device/0, device_table/0, device_config/0,
 			   tty_detection_outcome/0, serial_protocol/0,
@@ -795,14 +838,25 @@
 -define( default_max_response_waiting_duration, 1000 ).
 
 
-% The default threshold, in bytes per second (hence roughly a dozen legit
-% telegrams per second) above which an onEnoceanJamming event is triggered:
+% The minimum timeout (in milliseconds) regarding the monitoring of device
+% activity, as a security to avoid too frequent checking:
+%
+-define( min_activity_timeout, 5000 ).
+
+% The default threshold, in bytes per second (hence, considering an usual
+% telegram size of 21 bytes, roughly a dozen legit telegrams per second) above
+% which an onEnoceanJamming event should be triggered:
 %
 -define( default_jamming_threshold, 250 ).
 
 % To test detection:
-%-define( default_jamming_threshold, 25 ).
+%-define( default_jamming_threshold, 10 ).
 
+
+% The default DHMS expected activity periodicity for a device (hence a telegram
+% is expected here to be received on average every 25 minutes):
+%
+-define( default_dhms_periodicity, { 0, 0, 25, 0 } ).
 
 
 % Protocol notes:
@@ -931,7 +985,7 @@
 	emitter_eurid = string_to_eurid( ?default_emitter_eurid ) :: eurid(),
 
 	% A table recording all information regarding the known Enocean devices:
-	device_table = table:new() :: device_table(),
+	device_table :: device_table(),
 
 
 	% We enqueue command requests that shall result in an acknowledgement (most
@@ -948,7 +1002,7 @@
 	% So this queue contains any pending, not-yet-sent ESP3 commands (be
 	% them requests for ERP1 commands, common commands, etc.):
 	%
-	command_queue = queue:new() :: command_queue(),
+	command_queue :: command_queue(),
 
 
 	% Information about any currently waited command request that shall result
@@ -987,8 +1041,11 @@
 	%
 	traffic_level = 0 :: bytes_per_second(),
 
-	% The timestamp corresponding the last time incoming traffic was detected:
-	last_traffic_seen = time_utils:get_timestamp() :: timestamp(),
+	% The timestamp corresponding the last time incoming traffic was detected,
+	% to determine jamming level:
+	%
+	last_traffic_seen :: timestamp(),
+
 
 	% The threshold above which an onEnoceanJamming event is triggered:
 	jamming_threshold = ?default_jamming_threshold :: bytes_per_second(),
@@ -1003,6 +1060,8 @@
 
 
 -type timer_ref() :: timer:tref().
+
+
 
 
 % Shorthands:
@@ -1025,6 +1084,9 @@
 -type uint8() :: type_utils:uint8().
 
 -type timestamp() :: time_utils:timestamp().
+-type dhms_duration() :: time_utils:dhms_duration().
+%-type seconds() :: time_utils:seconds().
+-type milliseconds() :: time_utils:milliseconds().
 
 -type percent() :: math_utils:percent().
 
@@ -1032,6 +1094,7 @@
 
 -type celsius() :: unit_utils:celsius().
 
+-type list_table() :: list_table:list_table().
 
 
 % For myriad_spawn*:
@@ -1296,6 +1359,8 @@ secure_tty( TtyPath ) ->
 
 % Oceanic server process subsection.
 
+
+% @doc Start procedure of the spawned Oceanic server process.
 -spec oceanic_start( device_path(), maybe( event_listener_pid() )  ) ->
 											no_return().
 oceanic_start( TtyPath, MaybeEventListenerPid ) ->
@@ -1338,7 +1403,11 @@ get_base_state( SerialServerPid ) ->
 
 	InitialState = #oceanic_state{
 		serial_server_pid=SerialServerPid,
-		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined } },
+		emitter_eurid=string_to_eurid( ?default_emitter_eurid ),
+		device_table=table:new(),
+		command_queue=queue:new(),
+		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined },
+		last_traffic_seen=time_utils:get_timestamp() },
 
 	SentState = send_raw_telegram( CmdTelegram, InitialState ),
 
@@ -1420,7 +1489,9 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 % preferences file, if any, otherwise returns a state with an empty device
 % table.
 %
-% See the 'preferences' module.
+% Refer to load_configuration/2 for key information.
+%
+% See also the 'preferences' Myriad module.
 %
 -spec load_configuration( oceanic_state() ) -> oceanic_state().
 load_configuration( State ) ->
@@ -1438,8 +1509,8 @@ load_configuration( State ) ->
 
 		{ false, PrefPath } ->
 
-			trace_bridge:info_fmt( "No preferences file ('~ts') found.",
-								   [ PrefPath ] ),
+			trace_bridge:info_fmt( "No preferences file ('~ts') found, "
+				"no device information obtained from it.", [ PrefPath ] ),
 
 			State
 
@@ -1457,52 +1528,106 @@ load_configuration( State ) ->
 % sent by Oceanic (note that USB gateways have already their own base EURID that
 % shall be preferred; refer to the co_rd_idbase common command)
 %
-% - oceanic_config: to declare the known devices
+% - oceanic_jamming_threshold: to set a non-default threshold
+%
+% - oceanic_devices: to declare the known devices; a given device shall never be
+% declared more than once
 %
 -spec load_configuration( any_file_path(), oceanic_state() ) -> oceanic_state().
-load_configuration( ConfFilePath,
-					State=#oceanic_state{ emitter_eurid=BaseEurid,
-										  device_table=DeviceTable,
-										  jamming_threshold=JamThreshold } ) ->
+load_configuration( ConfFilePath, State ) ->
 
 	file_utils:is_existing_file_or_link( ConfFilePath )
 		orelse throw( { oceanic_config_file_not_found, ConfFilePath } ),
 
+	trace_bridge:info_fmt( "Reading preferences file '~ts'.",
+						   [ ConfFilePath ] ),
+
 	Pairs = file_utils:read_etf_file( ConfFilePath ),
 
-	EmitterEurid = case list_table:lookup_entry( _K=oceanic_emitter,
-												 _Table=Pairs ) of
+	% Not all pairs may be about Oceanic, so extra ones may exist:
+	{ _RemainingPairs, NewState } = extract_settings( Pairs, _Acc=[], State ),
 
-		key_not_found ->
-			BaseEurid;
+	NewState.
 
-		{ value, EmitterEuridStr } ->
-			text_utils:hexastring_to_integer( EmitterEuridStr )
 
-	end,
 
-	DeviceEntries = list_table:get_value_with_default( oceanic_devices,
-													   _DefDevs=[], Pairs ),
+% @doc Registers the specified additional Oceanic configuration in the specified
+% Oceanic server.
+%
+% Refer to load_configuration/2 for key information.
+%
+-spec add_configuration_settings( oceanic_settings(), oceanic_server_pid() ) ->
+		void().
+add_configuration_settings( OcSettings, OcSrvPid ) ->
+	OcSrvPid ! { addConfigurationSettings, OcSettings }.
 
-	% Device table indexed by device eurid(), which is duplicated in the record
-	% values for convenience:
-	%
-	LoadedDeviceTable = declare_devices( DeviceEntries, DeviceTable ),
 
-	CfgJamThreshold = case list_table:lookup_entry( oceanic_jamming_threshold,
-													Pairs ) of
+% @doc Registers internally the specified Oceanic configuration, overriding any
+% prior settings, and returns a corresponding updated state.
+%
+-spec apply_conf_settings( oceanic_settings(), oceanic_state() ) ->
+								oceanic_state().
+apply_conf_settings( OcSettings, State ) ->
+	case extract_settings( OcSettings, _Acc=[], State ) of
 
-		key_not_found ->
-			JamThreshold;
+		{ _RemainingPairs=[], NewState } ->
+			NewState;
 
-		{ value, UserJamThreshold } ->
-			UserJamThreshold
+		{ RemainingPairs, NewState } ->
+			trace_bridge:error_fmt( "Received invalid Oceanic settings, which "
+				"have been ignored: ~p.", [ RemainingPairs ] ),
+			NewState
 
-	end,
+	end.
 
-	State#oceanic_state{ emitter_eurid=EmitterEurid,
-						 device_table=LoadedDeviceTable,
-						 jamming_threshold=CfgJamThreshold }.
+
+
+
+% Extracts the relevant Oceanic settings, and returns any remaining element.
+extract_settings( _Pairs=[], Acc, State ) ->
+	{ Acc, State };
+
+
+extract_settings( _Pairs=[ { oceanic_emitter, EmitterEuridStr } | T ], Acc,
+				  State ) ->
+	EmitterEurid = text_utils:hexastring_to_integer( EmitterEuridStr ),
+	NewState = State#oceanic_state{ emitter_eurid=EmitterEurid },
+	extract_settings( T, Acc, NewState );
+
+
+extract_settings( _Pairs=[ { oceanic_devices, DeviceEntries } | T ], Acc,
+				  State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	NewDeviceTable = declare_devices( DeviceEntries, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	extract_settings( T, Acc, NewState );
+
+
+extract_settings(
+		_Pairs=[ { oceanic_jamming_threshold, UserJamThreshold } | T ],
+		Acc, State ) when is_integer( UserJamThreshold )
+						  andalso UserJamThreshold > 0 ->
+
+	NewState = State#oceanic_state{ jamming_threshold=UserJamThreshold },
+
+	extract_settings( T, Acc, NewState );
+
+
+extract_settings( _Pairs=[ { oceanic_jamming_threshold, Other } | T ], Acc,
+				  State )  ->
+
+	trace_bridge:error_fmt( "Ignoring the following incorrect jamming "
+		"threshold: ~p.", [ Other ] ),
+
+	extract_settings( T, Acc, State );
+
+
+extract_settings( Other, Acc, State ) ->
+	trace_bridge:error_fmt( "Ignoring the following incorrect (non-list) "
+		"Oceanic settings: ~p.", [ Other ] ),
+	{ Acc, State }.
 
 
 
@@ -1513,9 +1638,16 @@ declare_devices( _DeviceCfgs=[], DeviceTable ) ->
 
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 				 DeviceTable ) ->
+	declare_devices( [ { NameStr, EuridStr, EepStr,
+						 _MaybeActPeriodicity=learn } | T ],
+					 DeviceTable );
+
+declare_devices( _DeviceCfgs=[
+					{ NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
+				 DeviceTable ) ->
 
 	Eurid = try text_utils:hexastring_to_integer(
-			text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
+		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
 
 				Int ->
 					Int
@@ -1545,19 +1677,59 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 
 	end,
 
+	ActPeriod = case MaybeActPeriodicity of
+
+		none ->
+			none;
+
+		default ->
+			1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
+
+		learn ->
+			auto;
+
+		DHMS ->
+			case time_utils:is_dhms_duration( DHMS ) of
+
+				true ->
+					1000 * time_utils:dhms_to_seconds( DHMS );
+
+				false ->
+					trace_bridge:error_fmt( "Invalid DHMS activity periodicity "
+						"('~p') for device named '~ts'.",
+						[ DHMS, NameStr ] ),
+					throw( { invalid_dhms_activity_periodicity, DHMS,
+							 NameStr } )
+
+			end
+
+	end,
+
+	% Device table indexed by device eurid(), which is duplicated in the record
+	% values for convenience:
+	%
 	DeviceRec = #enocean_device{ eurid=Eurid,
 								 name=text_utils:ensure_binary( NameStr ),
 								 eep=EepId,
-								 discovered_through=configuration },
+								 discovered_through=configuration,
+								 expected_periodicity=ActPeriod },
 
-	NewDeviceTable = table:add_new_entry( Eurid, DeviceRec, DeviceTable ),
+	table:has_entry( Eurid, DeviceTable ) andalso
+		trace_bridge:warning_fmt( "Overriding device entry for EURID ~ts "
+			"(with: ~ts)",
+			[ eurid_to_string( Eurid ), device_to_string( DeviceRec ) ] ),
+
+	% Overriding allowed:
+	NewDeviceTable = table:add_entry( Eurid, DeviceRec, DeviceTable ),
 
 	declare_devices( T, NewDeviceTable );
 
 % Dropping comment (useful only for the user configuration):
-declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr, CommentStr } | T ],
+declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr,
+								 MaybeActPeriodicity, CommentStr } | T ],
 				 DeviceTable ) when is_list( CommentStr ) ->
-	declare_devices( [ { NameStr, EuridStr, EepStr } | T ], DeviceTable );
+	declare_devices( [ { NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
+					 DeviceTable );
 
 
 declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
@@ -2246,7 +2418,8 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 							ok;
 
 						ListenerPid ->
-							ListenerPid ! { onEnoceanEvent, [ Event, self() ] }
+							ListenerPid !
+								{ onEnoceanDeviceEvent, [ Event, self() ] }
 
 					end,
 
@@ -2262,6 +2435,63 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 					oceanic_loop( NewToSkipLen, NewMaybeAccChunk, NewState )
 
 			end;
+
+
+		{ onActivityTimeout, LostEurid, PeriodicityMs } ->
+
+			DeviceTable = State#oceanic_state.device_table,
+
+			NewDeviceTable =
+					case table:lookup_entry( LostEurid, DeviceTable ) of
+
+				key_not_found ->
+					% Really abnormal:
+					trace_bridge:error_fmt( "A sensor of EURID '~ts' was "
+						"reported as lost whereas it is not known.",
+						[ eurid_to_string( LostEurid ) ] ),
+					% This EURID is not specifically registered.
+					DeviceTable;
+
+				{ value, LostDevice } ->
+
+					cond_utils:if_defined( oceanic_debug_activity,
+						trace_bridge:debug_fmt(
+							"Activity time-out (after ~ts) for device ~ts.",
+							[ time_utils:duration_to_string( PeriodicityMs ),
+							  device_to_string( LostDevice ) ] ) ),
+
+					case State#oceanic_state.event_listener_pid of
+
+						undefined ->
+							ok;
+
+						ListenerPid ->
+							ListenerPid ! { onEnoceanDeviceLost, [ LostEurid,
+								LostDevice#enocean_device.name,
+								LostDevice#enocean_device.last_seen,
+								PeriodicityMs, self() ] }
+
+					end,
+
+					MaybeNewTimerRef = reset_timer(
+						LostDevice#enocean_device.activity_timer, LostEurid,
+						LostDevice#enocean_device.expected_periodicity,
+						LostDevice#enocean_device.first_seen,
+						LostDevice#enocean_device.telegram_count,
+						LostDevice#enocean_device.error_count,
+						_Now=time_utils:get_timestamp() ),
+
+					% Not updated periodicity:
+					NewLostDevice = LostDevice#enocean_device{
+						activity_timer=MaybeNewTimerRef },
+
+					table:add_entry( LostEurid, NewLostDevice, DeviceTable )
+
+			end,
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
 
 		{ executeCommand, CmdTelegram, RequesterPid } ->
@@ -2343,6 +2573,11 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			NewState = handle_next_command(
 				TimeState#oceanic_state.command_queue, TimeState ),
 
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+
+
+		{ addConfigurationSettings, OcSettings } ->
+			NewState = apply_conf_settings( OcSettings, State ),
 			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
 
@@ -2449,8 +2684,9 @@ monitor_jamming( ChunkSize,
 
 	Dur = time_utils:get_duration( LastTimestamp, Now ),
 
-	% Relatively exponential backoff, as same second: not reduced; halved if
-	% previous second, etc.:
+	% Relatively exponential backoff, as:
+	%  - same second: not reduced
+	%  - halved if previous second, etc.
 	%
 	AggTrafficLvl = round( TrafficLvl / (Dur+1) ) + ChunkSize,
 
@@ -3042,16 +3278,7 @@ decode_packet( _PacketType=response_type,
 			"awaiting ~ts.", [ command_request_to_string( WaitedCmdReq ) ] ) ),
 
 	% In all cases the pending request is over:
-
-	case MaybeTimerRef of
-
-		undefined ->
-			ok;
-
-		TimerRef ->
-			{ ok, cancel } = timer:cancel( TimerRef )
-
-	end,
+	stop_any_timer( MaybeTimerRef ),
 
 	RespState = State#oceanic_state{ waited_command_info=undefined },
 
@@ -3357,7 +3584,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			% The 4 last bits shall be 0:
 			%cond_utils:assert( oceanic_check_decoding,
-			%				   DB_0AsInt band 2#00001111 =:= 0 ),
+			%                   B_0AsInt band 2#00001111 =:= 0 ),
 
 			<<R1:3, EB:1, _:4>> = DB_0,
 
@@ -3558,7 +3785,6 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 	RequesterPid ! { oceanic_command_outcome, Response },
 
 	{ decoded, command_processed, AnyNextChunk, State }.
-
 
 
 
@@ -4437,7 +4663,9 @@ record_known_device_success( Device=#enocean_device{
 		name=MaybeDeviceName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
-		telegram_count=TeleCount }, DeviceTable ) ->
+		telegram_count=TeleCount,
+		expected_periodicity=Periodicity,
+		activity_timer=MaybeActTimer }, DeviceTable ) ->
 
 	Now = time_utils:get_timestamp(),
 
@@ -4451,9 +4679,13 @@ record_known_device_success( Device=#enocean_device{
 
 	end,
 
+	ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
+		TeleCount, Device#enocean_device.error_count, Now ),
+
 	UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
 										   last_seen=Now,
-										   telegram_count=TeleCount+1 },
+										   telegram_count=TeleCount+1,
+										   activity_timer=ResetTimer },
 
 	NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
@@ -4485,7 +4717,9 @@ record_device_failure( Eurid, DeviceTable ) ->
 										 first_seen=Now,
 										 last_seen=Now,
 										 telegram_count=0,
-										 error_count=1 },
+										 error_count=1,
+										 expected_periodicity=none,
+										 activity_timer=undefined },
 
 			% Necessarily new:
 			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
@@ -4510,7 +4744,9 @@ record_known_device_failure( Device=#enocean_device{
 		name=MaybeDeviceName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
-		error_count=ErrCount }, DeviceTable ) ->
+		error_count=ErrCount,
+		expected_periodicity=Periodicity,
+		activity_timer=MaybeActTimer }, DeviceTable ) ->
 
 	Now = time_utils:get_timestamp(),
 
@@ -4524,13 +4760,78 @@ record_known_device_failure( Device=#enocean_device{
 
 	end,
 
+	ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
+		Device#enocean_device.telegram_count, ErrCount, Now ),
+
 	UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
 										   last_seen=Now,
-										   error_count=ErrCount+1 },
+										   error_count=ErrCount+1,
+										   activity_timer=ResetTimer },
 
 	NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
 	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId }.
+
+
+
+% @doc Resets any needed activity timer.
+-spec reset_timer( maybe( timer_ref() ), eurid(), expected_periodicity(),
+		timestamp(), count(), count(), timestamp() ) -> maybe( timer_ref() ).
+reset_timer( MaybeActTimer, _Eurid, _Periodicity=none, _FirstSeen,
+			 _TeleCount, _ErrCount, _Now ) ->
+	stop_any_timer( MaybeActTimer ),
+	undefined;
+
+reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
+			 TeleCount, ErrCount, Now ) ->
+
+	stop_any_timer( MaybeActTimer ),
+
+	% Adding a 20% margin to avoid false alarms:
+	SeenDurationMs = 1.2 * 1000 * time_utils:get_duration( FirstSeen, Now ),
+
+	SeenCount = TeleCount + ErrCount,
+
+	NextDelayMs = case SeenCount of
+
+		0 ->
+			?min_activity_timeout;
+
+		_ ->
+			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
+
+	end,
+
+	TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
+	{ ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
+	TimerRef;
+
+reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
+			 _TeleCount, _ErrCount, _Now ) ->
+
+	stop_any_timer( MaybeActTimer ),
+
+	TimedMsg = { onActivityTimeout, Eurid, PeriodicityMs },
+	case timer:send_after( PeriodicityMs, TimedMsg ) of
+
+		{ ok, TimerRef } ->
+			TimerRef;
+
+		{ error, Reason } ->
+			trace_bridge:error_fmt( "Failed to register a timer for sending "
+				"message '~p' after ~w milliseconds; reason: ~p.",
+				[ TimedMsg, PeriodicityMs, Reason ] ),
+			undefined
+
+	end.
+
+
+
+stop_any_timer( _MaybeTimer=undefined ) ->
+	ok;
+
+stop_any_timer( TimerRef ) ->
+	{ ok, cancel } = timer:cancel( TimerRef ).
 
 
 
@@ -4606,7 +4907,6 @@ telegram_to_hexastring( Telegram ) ->
 	text_utils:binary_to_hexastring( Telegram ).
 
 
-
 % @doc Returns an hexadecimal string corresponding to the specified telegram.
 %
 % Useful for testing with serial clients like cutecom.
@@ -4659,7 +4959,7 @@ eurid_to_string( Eurid ) ->
 % @doc Returns the actual EURID corresponding to the specified (plain) EURID
 % string.
 %
-% Ex: 3076502 = oceanic:string_to_eurid("002ef196")
+% For example 3076502 = oceanic:string_to_eurid("002ef196")
 %
 -spec string_to_eurid( ustring() ) -> eurid().
 string_to_eurid( EuridStr ) ->
@@ -4746,6 +5046,77 @@ string_to_eep( Str ) ->
 
 	end.
 
+
+
+% Device-related events API, to achieve some kind of polymorphism on the
+% corresponding records.
+%
+% These functions are simple as,conventionally (by design), the first fields are
+% uniform.
+
+
+% @doc Returns the source EURID stored in the specified device event.
+-spec get_source_eurid( device_event() ) -> eurid().
+get_source_eurid( DevEventTuple ) ->
+	erlang:element( _PosIdx=1, DevEventTuple ).
+
+
+% @doc Returns the emitting device name (if any) stored in the specified device
+% event.
+%
+-spec get_maybe_device_name( device_event() ) -> maybe( device_name() ).
+get_maybe_device_name( DevEventTuple ) ->
+	erlang:element( _PosIdx=2, DevEventTuple ).
+
+
+% @doc Returns the EEP (if any is defined and registered) stored in the
+% specified device event.
+%
+-spec get_maybe_eep( device_event() ) -> maybe( eep_id() ).
+get_maybe_eep( DevEventTuple ) ->
+	erlang:element( _PosIdx=3, DevEventTuple ).
+
+
+% @doc Returns the timestamp stored in the specified device event.
+-spec get_timestamp( device_event() ) -> timestamp().
+get_timestamp( DevEventTuple ) ->
+	erlang:element( _PosIdx=4, DevEventTuple ).
+
+
+% @doc Returns the number (if any) of subtelegrams stored in the specified
+% device event.
+%
+-spec get_subtelegram_count( device_event() ) -> maybe( subtelegram_count() ).
+get_subtelegram_count( DevEventTuple ) ->
+	erlang:element( _PosIdx=5, DevEventTuple ).
+
+
+% @doc Returns the EURID of the target of this transmission (addressed or
+% broadcast), if any, stored in the specified device event.
+%
+-spec get_maybe_destination_eurid( device_event() ) -> maybe( eurid() ).
+get_maybe_destination_eurid( DevEventTuple ) ->
+	erlang:element( _PosIdx=6, DevEventTuple ).
+
+
+% @doc Returns the best RSSI value (if any) stored in the specified device
+% event.
+%
+-spec get_maybe_dbm( device_event() ) -> maybe( dbm() ).
+get_maybe_dbm( DevEventTuple ) ->
+	erlang:element( _PosIdx=7, DevEventTuple ).
+
+
+% @doc Returns the stored in the specified device event.
+-spec get_maybe_security_level( device_event() ) -> maybe( security_level() ).
+get_maybe_security_level( DevEventTuple ) ->
+	erlang:element( _PosIdx=8, DevEventTuple ).
+
+
+
+
+
+% Other string-related conversions:
 
 -spec optional_data_to_string( decoded_optional_data() ) -> ustring().
 optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
@@ -5292,7 +5663,9 @@ device_to_string( #enocean_device{ eurid=Eurid,
 								   first_seen=MaybeFirstTimestamp,
 								   last_seen=MaybeLastTimestamp,
 								   telegram_count=TeleCount,
-								   error_count=ErrCount } ) ->
+								   error_count=ErrCount,
+								   expected_periodicity=ActPeriod,
+								   activity_timer=MaybeActTimer } ) ->
 
 	NameStr = case MaybeName of
 
@@ -5403,8 +5776,29 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 		end,
 
-		text_utils:format( "~ts applying ~ts; it has been ~ts~ts~ts~ts",
-			[ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr ] ).
+		PeriodStr = case ActPeriod of
+
+			none ->
+				"no activity monitoring of this device";
+
+			auto ->
+				"the activity of this device is monitored ("
+					++ case MaybeActTimer of
+							undefined -> "no activity timer set";
+							ActTimer -> text_utils:format(
+								"activity timer ~w set", [ ActTimer ] )
+					   end ++ ")";
+
+			Milliseconds ->
+				text_utils:format( "its activity is monitored, and expected "
+					"to happen about every ~ts",
+					[ time_utils:duration_to_string( Milliseconds ) ] )
+
+		end,
+
+		text_utils:format( "~ts applying ~ts; it has been ~ts~ts~ts~ts; ~ts",
+			[ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr,
+			  PeriodStr ] ).
 
 
 
