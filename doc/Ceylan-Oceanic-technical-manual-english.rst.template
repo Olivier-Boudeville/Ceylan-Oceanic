@@ -81,7 +81,7 @@ So Enocean, whose slogan could be "no wire, no battery", is rather unique. No Wi
 
 Finally, at least most of the Enocean specifications are `freely available <https://www.enocean-alliance.org/specifications/>`_.
 
-Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our `US-Main home automation server <https://us-main.esperide.org/#home-automation>`_.
+Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our `US-Main home automation server <https://us-main.esperide.org/#home-automation>`_, especially its `sensor manager <https://github.com/Olivier-Boudeville/us-main/blob/master/src/class_USSensorManager.erl>`_.
 
 The Ceylan-Oceanic project repository is located `here <https://github.com/Olivier-Boudeville/Ceylan-Oceanic>`_.
 
@@ -113,7 +113,7 @@ Purpose
 
 The main motivation of Oceanic is to provide some basic home automation features, especially here in terms of security, in order to be able to:
 
-- **intercept and decode telegrams** emitted by sensors - notably single-input contacts (to detect the opening/closing of doors or windows), presence or temperature / humidity sensors or to detect electricity outages or jamming attempts, typically in order to implement one's own alarm center; should a security event happen, a network camera can be switched on, e-mails and/or `SMS <https://mobile.esperide.org>`_ can be sent, etc.
+- **intercept and decode telegrams** emitted by sensors - notably single-input contacts (to detect the opening/closing of doors or windows), presence or temperature / humidity sensors or to detect electricity outages, sensor losses (having been sabotaged or running out of energy), jamming attempts, typically in order to implement one's own alarm center; should a security event happen, a network camera can be switched on, e-mails and/or `SMS <https://mobile.esperide.org>`_ can be sent, etc.
 - **generate and emit telegrams** to control any kind of electrical devices (driven by a smart plug or an in-wall module), typically to turn on an electric heater or to run one's own presence simulator (possibly with lamps and sound devices)
 
 
@@ -243,7 +243,7 @@ Serial
 
 .. _`erlang serial`:
 
-We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville/erlang-serial>`_ for that, which we prefer installing in user space (rather than in the system tree) that way:
+We use our version [#]_ of `erlang-serial <https://github.com/Olivier-Boudeville/erlang-serial>`_ for that, which we generally prefer, for standalone use, installing in user space (rather than in the system tree and embedded in a release) that way:
 
 .. code:: bash
 
@@ -325,13 +325,13 @@ To check, one may rely on:
  serial  214977 your_user   3u   CHR  188,0      0t0 1066 /dev/ttyUSB0
 
 
-Note also that, from that point EURIDs are altered/edited (fake ones used). Minor discrepancies may happen.
+Note also that, from that point, EURIDs are altered/edited (fake ones used). Minor discrepancies may happen.
 
 
 Basic, Direct Command-line Testing
 ----------------------------------
 
-It is as simple as executing from the command-line (thus without Oceanic, Serial or Erlang being involved):
+It is as simple as executing from the command-line (thus without Oceanic, Serial or even Erlang being involved):
 
 .. code:: bash
 
@@ -363,12 +363,43 @@ We recommend using the ``Hex`` input and output.
 
 
 
-Oceanic Testing
----------------
+Configuring Oceanic
+===================
+
+Oceanic can be configured thanks to a set of key/value pairs:
+
+- ``oceanic_emitter :: oceanic:eurid_string()`` (e.g. ``{oceanic_emitter, "002EE196"}``) in order to specify the EURID of the pseudo-device emitting any telegram to be sent by Oceanic; otherwise a default value applies (see ``default_emitter_eurid``); anyway, unless specified otherwise, Oceanic will switch to the base ID of the Enocean USB dongle once it has been fetched (through a Common Command, at Oceanic start-up)
+
+- ``oceanic_jamming_threshold :: system_utils:bytes_per_second()`` (e.g. ``{oceanic_jamming_threshold, 200}``) specifies the threshold of Enocean incoming traffic, in bytes per second, above which an ``onEnoceanJamming`` message shall be sent by Oceanic to any user listener process; considering an usual Enocean telegram size of 21 bytes, the default threshold (see ``default_jamming_threshold``), 250 bytes per second, corresponds roughly to a threshold of a dozen legit telegrams per second
+
+- ``oceanic_devices :: [oceanic:device_config()]`` allows to tell Oceanic about the Enocean devices of interest, by specifying for each of them at least the following ``{UserDefinedName, EURIDStr, EEPStr}`` triplet:
+
+  - a user-friendly name for that device: ``UserDefinedName :: ustring()``, like ``"My opening detector at the front door"``
+  - its EURID: ``EURIDStr :: oceanic:eurid_string()``, like ``"0585E962"``
+  - the EEP that it implements: ``EEPStr :: ustring()``, like ``"D5-00-01"``
+
+  Extra information can be added in this tuple:
+
+  - first, its expected activity periodicity (the average rhythm at which this device is expected to emit telegrams, to detect if for any reason it happens to become missing in action), ``ActPeriod :: oceanic:declared_device_activity_periodicity()``, which may be ``none`` (typically if the device emits no spontaneous state feedback), ``default`` (to apply a reasonable default), a DHMS value (Days/Hours/Minutes/Seconds, like ``{0,2,15,0}``; see ``time_utils:dhms_duration()``), or ``learn`` (to be automatically determined by Oceanic over time; the default setting)
+  - then a mere, optional comment, ``CommentStr :: ustring()``, like ``"Just a switch, not a rocker; controls the smart plug in the living room"``; only of interest for the user (ignored by Oceanic)
+
+  Examples of device configurations (see also the `Oceanic settings`_ complete example below):
+
+- ``{"My thermo-hygro sensor", "050533EF", "A5-04-01"}``
+- ``{"My Foo opening detector", "A18EE2B1", "D5-00-01", {0,0,25,0}}``
+- ``{"My outdoor double-rocker switch", "002B6B15", "F6-02-01", learn, "Presumably hidden in the well"}``
+
+
+These configuration information can be provided either thanks to the Ceylan-Myriad preferences system (see the ``preferences`` module; this usually boils down to an `ETF file <https://myriad.esperide.org/#etf>`_, by default ``~/.ceylan-settings.etf``) and/or programmatically (see the ``oceanic:add_configuration_settings/2``; in which case these settings would take priority over any set preferences).
+
+
+
+Testing Oceanic
+===============
 
 
 First test: executing a few Common Commands
-___________________________________________
+-------------------------------------------
 
 This consists in having Oceanic discuss with the local USB gateway dongle, regardless of any actual Enocean device.
 
@@ -434,8 +465,9 @@ From the root of the Ceylan-Oceanic clone, supposing that Myriad and erlang-seri
  (test finished, interpreter halted)
 
 
+
 Second test: controlling an actual device
-_________________________________________
+-----------------------------------------
 
 This more complete test will rely on experimental settings typically involving:
 
@@ -487,7 +519,13 @@ If in range, the test should intercept it:
 
 So we determined that this rocker switch has for EURID ``002ef196``.
 
-We can notice that a failure is reported, as Oceanic cannot decode yet the telegrams from that emitter, short of knowing to which EEP it complies. As this EEP information is not carried by such packets, it cannot be determined automatically and has thus to be specified, here once for all through a proper Oceanic configuration file, typically to be found as ``~/.ceylan-settings.etf``.
+We can notice that a failure is reported, as Oceanic cannot decode yet the telegrams from that emitter, short of knowing to which EEP it complies.
+
+
+As this EEP information is not carried by such packets, it cannot be determined automatically and has thus to be specified, here once for all through a proper Oceanic configuration file, typically to be found as ``~/.ceylan-settings.etf``.
+
+
+.. _`Oceanic settings`:
 
 In this `ETF file <https://myriad.esperide.org/#etf>`_, among possibly other entries unrelated to Oceanic, we may have:
 
@@ -502,24 +540,39 @@ In this `ETF file <https://myriad.esperide.org/#etf>`_, among possibly other ent
  %
  %{ oceanic_emitter, "DEADBEEF" }.
 
- % To spoof my green switch:
+ % Attempting to spoof my green switch:
  %{ oceanic_emitter, "002EF196" }.
 
+ % Threshold, expressed in bytes per second, regarding the incoming Enocean
+ % traffic (received telegrams), in order to trigger onEnoceanJamming events
+ % should that threshold be exceeded:
+ %
+ { oceanic_jamming_threshold, 200 }.
 
  % A list of device_config() entries, clearer with user-defined names than with
  % only raw EURIDs:
  %
  { oceanic_devices, [
 
-	% Either {UserDefinedName :: ustring(), EURID :: ustring(), EEP ::
-	% ustring()} or {UserDefinedName :: ustring(), EURID :: ustring(),
-	%                EEP :: ustring(), Comment :: ustring()}:
+	% Each device is to be described thanks to one of the three following
+	% configuration terms:
+
+	% { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	%   EEPStr :: ustring() } % Then the activity periodicity will be learn
+
+	% { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	%   EEPStr :: ustring(), declared_device_activity_periodicity() }
+
+	% { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+	%  EEPStr :: ustring(), ActPeriod :: declared_device_activity_periodicity(),
+	%  Comment :: ustring() }.
+
 
 	% For the local gateway (useful to decode/check self-encoded telegrams):
 	{ "my local USB gateway", "ffa3df00", "F6-02-01" },
 
 	% Single-input contacts:
-	{ "my first opening sensor", "060533EC", "D5-00-01" },
+	{ "my first opening sensor", "060533EC", "D5-00-01", learn, "Battery to be added (too dark)" },
 	{ "my second opening sensor", "02959F62", "D5-00-01" },
 
 	% Temperature and humidity sensors:
@@ -531,7 +584,9 @@ In this `ETF file <https://myriad.esperide.org/#etf>`_, among possibly other ent
 	{ "my white switch", "012F50D6", "F6-02-01" },
 
 	% In-wall modules:
-	{ "my two-channel orange module", "06035E4A", "D2-01-12" }
+
+	% Expected period of about 25 minutes:
+	{ "my two-channel orange module", "06035E4A", "D2-01-12", { 0, 0, 25, 0 } },
 
 	% Socket switching actuators:
 	%{ "my smart plug", (unknown), (unknown) }
@@ -539,9 +594,12 @@ In this `ETF file <https://myriad.esperide.org/#etf>`_, among possibly other ent
 	] }.
 
 
-These entries are pretty self-explanatory:
+These entries are pretty self-explanatory and have already been described in `Configuring Oceanic`_:
 
 - with ``oceanic_emitter`` we define the EURID that shall be used by Oceanic whenever emitting (the default being its in-chip first base ID, as automatically determined thanks to a Common Command)
+
+- with ``oceanic_jamming_threshold`` we can define our own level of incoming traffic above which Oceanic shall consider that an attempt of jamming is taking place
+
 - with ``oceanic_devices`` the EEP of the various devices that we want to be aware of are listed (naming them allows to have clearer Oceanic reports)
 
 
@@ -622,7 +680,7 @@ Protocol Information
 ====================
 
 
-Guarding Against Spoofing: Lying about One's Source EURID will Not Suffice
+Guarding Against Spoofing: Lying about One's Source EURID Will Not Suffice
 --------------------------------------------------------------------------
 
 Provided that the serial link is properly configured (in terms of speed, parity, start/stop bits, RTS/CTS flow control, etc.), apparently even with the default, usual level of security (that is: none) implemented by the devices that we tested, Enocean telegrams could *not* be replayed [#]_: just intercepting a raw telegram and re-emitting was not acknowledged by the target device and did not trigger its intended effect on at least our `main test actuator`_ (e.g. the smart plug did not switch on/off).
@@ -695,6 +753,17 @@ This threshold is expressed in bytes per second (knowing that telegrams are ofte
 For the last risk, sensors (typically opening detectors) report instantly state transitions but also send periodic state notifications (even if no change happened). So a listener can monitor the duration elapsed since such a sensor was last seen, and if it exceeds a threshold (for example 30 minutes [#]_), this may considered as a reason to raise an alarm.
 
 .. [#] So the event will be detected, albeit with a latency that, depending on the use case, may or may not be acceptable / useful.
+
+For that, the user may request the activity periodicity of a device to be monitored.
+
+The corresponding checking period (refer to the ``declared_device_activity_periodicity/0`` type) can be:
+
+- directly specified by the user, as a DHMS duration; for instance ``{0,0,12,0}`` will denote an expected (maximum) duration of up to 12 minutes (0 Day, 0 Hour, 12 Minutes, 0 Second) between two telegrams sent by this device - otherwise the sensor will be reported as lost
+- a default one (see ``default_dhms_periodicity``), if the configuration specified ``default``
+- determined automatically by Oceanic, based on the rhythm that it could learn from past traffic emanating from this device, if the configuration specified ``learn`` or did not set it
+
+Whenever the checking period of a sensor elapses whereas no telegram from it has been received during that time frame, any process registered as an Oceanic event listener will be sent an ``onEnoceanDeviceLost`` message, specifying notably the name and EURID of that device, when it has been seen last, and what its expected periodicity was.
+
 
 
 Studying Actual Protocols
