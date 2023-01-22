@@ -42,7 +42,7 @@
 % Default EURID of the pseudo-device emitter (if any) of any telegram to be sent
 % by Oceanic.
 %
-% (never gets old hexadecimal pun)
+% (this hexadecimal pun never gets old)
 %
 % Translates to ``<<222,173,190,239>>''.
 %
@@ -84,7 +84,17 @@
 	telegram_count = 0 :: basic_utils:count(),
 
 	% The number of decoding failures for this device:
-	error_count = 0 :: basic_utils:count() } ).
+	error_count = 0 :: basic_utils:count(),
+
+	% The average duration expected to elapse between two signs of activity
+	% (telegram receivings):
+	%
+	expected_periodicity :: expected_periodicity(),
+
+	% A timer, if any, set to detect whether this device vanished (ceased being
+	% active), possibly being sabotaged, running out of energy, etc.:
+	%
+	activity_timer :: maybe( timer_ref() ) } ).
 
 
 
@@ -119,7 +129,7 @@
 % Definition of device events, preferably ordered by increasing EEP.
 
 
-% By convention all of them start with the same first four fields:
+% By convention all of them start with the same first four, always-set, fields:
 %
 % - the EnOcean Unique Radio Identifier of the emitting device:
 %           source_eurid :: oceanic:eurid()
