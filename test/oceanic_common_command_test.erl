@@ -1,6 +1,6 @@
 % Copyright (C) 2022-2023 Olivier Boudeville
 %
-% This file is part of the Ceylan-OCEANIC library.
+% This file is part of the Ceylan-Oceanic library.
 %
 % This library is free software: you can redistribute it and/or modify
 % it under the terms of the GNU Lesser General Public License or
@@ -54,7 +54,7 @@ receive_event() ->
 
 	receive
 
-		{ onEnoceanEvent, [ Event, _OcSrvPid ] } ->
+		{ onEnoceanDeviceEvent, [ Event, _OcSrvPid ] } ->
 
 			test_facilities:display( "Received at ~ts event ~ts.",
 				[ time_utils:get_textual_timestamp(),
