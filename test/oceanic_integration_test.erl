@@ -1,6 +1,6 @@
 % Copyright (C) 2022-2023 Olivier Boudeville
 %
-% This file is part of the Ceylan-OCEANIC library.
+% This file is part of the Ceylan-Oceanic library.
 %
 % This library is free software: you can redistribute it and/or modify
 % it under the terms of the GNU Lesser General Public License or
@@ -86,10 +86,10 @@ wait_for_test_events( Count, OcSrvPid ) ->
 
 	receive
 
-		{ onEnoceanEvent, [ Event, OcSrvPid ] } ->
+		{ onEnoceanDeviceEvent, [ Event, OcSrvPid ] } ->
 
-			test_facilities:display( "Test eceived at ~ts the following event: "
-				"~ts.",
+			test_facilities:display( "Test received at ~ts the following "
+				"device event: ~ts.",
 				[ time_utils:get_textual_timestamp(),
 				  oceanic:device_event_to_string( Event ) ] ),
 
