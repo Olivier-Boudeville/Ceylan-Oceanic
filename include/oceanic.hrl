@@ -89,12 +89,12 @@
 	% The average duration expected to elapse between two signs of activity
 	% (telegram receivings):
 	%
-	expected_periodicity :: expected_periodicity(),
+	expected_periodicity :: oceanic:expected_periodicity(),
 
 	% A timer, if any, set to detect whether this device vanished (ceased being
 	% active), possibly being sabotaged, running out of energy, etc.:
 	%
-	activity_timer :: maybe( timer_ref() ) } ).
+	activity_timer :: maybe( oceanic:timer_ref() ) } ).
 
 
 
