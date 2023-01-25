@@ -109,13 +109,14 @@
 -export([ get_test_state/0, get_test_state/1,
 		  test_decode/1, secure_tty/1, try_integrate_chunk/4,
 
-		  device_event_to_string/1, device_table_to_string/1,
+		  device_event_to_string/1, device_event_to_short_string/1,
 		  state_to_string/1 ]).
 
 
 % Silencing (depending on the tokens defined):
 -export([ encode_common_command/2, ptm_module_to_string/1,
-		  nu_message_type_to_string/1, optional_data_to_string/1,
+		  nu_message_type_to_string/1,
+		  optional_data_to_string/1, optional_data_to_short_string/2,
 		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
 
 
@@ -4803,8 +4804,9 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 
 	NextDelayMs = case SeenCount of
 
+		% No possible evaluation yet, starting with a larger default duration:
 		0 ->
-			?min_activity_timeout;
+			2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
 
 		_ ->
 			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
@@ -4965,6 +4967,25 @@ eurid_to_string( Eurid ) ->
 
 
 
+% @doc Returns a short, raw, (plain) textual description of the specified EURID.
+-spec eurid_to_short_string( eurid() ) -> ustring().
+eurid_to_short_string( _Eurid=?eurid_broadcast ) ->
+	"broadcast";
+
+eurid_to_short_string( Eurid ) ->
+
+	% We want to return for example a correct "002ef196", not an
+	% ambiguously-shortened "2ef196":
+	%
+	HexaStr = text_utils:integer_to_hexastring( Eurid ),
+
+	% 32-bit:
+	PaddedStr = text_utils:pad_string_right( HexaStr, _Width=8, $0 ),
+
+	text_utils:flatten( PaddedStr ).
+
+
+
 % @doc Returns the actual EURID corresponding to the specified (plain) EURID
 % string.
 %
@@ -5060,14 +5081,14 @@ string_to_eep( Str ) ->
 % Device-related events API, to achieve some kind of polymorphism on the
 % corresponding records.
 %
-% These functions are simple as,conventionally (by design), the first fields are
-% uniform.
+% These functions are simple as, conventionally (by design), the first fields
+% are uniform.
 
 
 % @doc Returns the source EURID stored in the specified device event.
 -spec get_source_eurid( device_event() ) -> eurid().
 get_source_eurid( DevEventTuple ) ->
-	erlang:element( _PosIdx=1, DevEventTuple ).
+	erlang:element( _PosIdx=2, DevEventTuple ).
 
 
 % @doc Returns the emitting device name (if any) stored in the specified device
@@ -5075,7 +5096,7 @@ get_source_eurid( DevEventTuple ) ->
 %
 -spec get_maybe_device_name( device_event() ) -> maybe( device_name() ).
 get_maybe_device_name( DevEventTuple ) ->
-	erlang:element( _PosIdx=2, DevEventTuple ).
+	erlang:element( _PosIdx=3, DevEventTuple ).
 
 
 % @doc Returns the EEP (if any is defined and registered) stored in the
@@ -5083,13 +5104,13 @@ get_maybe_device_name( DevEventTuple ) ->
 %
 -spec get_maybe_eep( device_event() ) -> maybe( eep_id() ).
 get_maybe_eep( DevEventTuple ) ->
-	erlang:element( _PosIdx=3, DevEventTuple ).
+	erlang:element( _PosIdx=4, DevEventTuple ).
 
 
 % @doc Returns the timestamp stored in the specified device event.
 -spec get_timestamp( device_event() ) -> timestamp().
 get_timestamp( DevEventTuple ) ->
-	erlang:element( _PosIdx=4, DevEventTuple ).
+	erlang:element( _PosIdx=5, DevEventTuple ).
 
 
 % @doc Returns the number (if any) of subtelegrams stored in the specified
@@ -5097,7 +5118,7 @@ get_timestamp( DevEventTuple ) ->
 %
 -spec get_subtelegram_count( device_event() ) -> maybe( subtelegram_count() ).
 get_subtelegram_count( DevEventTuple ) ->
-	erlang:element( _PosIdx=5, DevEventTuple ).
+	erlang:element( _PosIdx=6, DevEventTuple ).
 
 
 % @doc Returns the EURID of the target of this transmission (addressed or
@@ -5105,7 +5126,7 @@ get_subtelegram_count( DevEventTuple ) ->
 %
 -spec get_maybe_destination_eurid( device_event() ) -> maybe( eurid() ).
 get_maybe_destination_eurid( DevEventTuple ) ->
-	erlang:element( _PosIdx=6, DevEventTuple ).
+	erlang:element( _PosIdx=7, DevEventTuple ).
 
 
 % @doc Returns the best RSSI value (if any) stored in the specified device
@@ -5113,13 +5134,13 @@ get_maybe_destination_eurid( DevEventTuple ) ->
 %
 -spec get_maybe_dbm( device_event() ) -> maybe( dbm() ).
 get_maybe_dbm( DevEventTuple ) ->
-	erlang:element( _PosIdx=7, DevEventTuple ).
+	erlang:element( _PosIdx=8, DevEventTuple ).
 
 
 % @doc Returns the stored in the specified device event.
 -spec get_maybe_security_level( device_event() ) -> maybe( security_level() ).
 get_maybe_security_level( DevEventTuple ) ->
-	erlang:element( _PosIdx=8, DevEventTuple ).
+	erlang:element( _PosIdx=9, DevEventTuple ).
 
 
 
@@ -5184,6 +5205,31 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 
 
 
+% @doc Returns a short textual description of the specified decoded optional
+% data, designed for user-friendly reporting.
+%
+-spec optional_data_to_short_string( eurid(), maybe( dbm() ) ) -> ustring().
+optional_data_to_short_string( _DestinationEurid=undefined,
+							   _MaybeDBm=undefined ) ->
+	"";
+
+optional_data_to_short_string( DestinationEurid, MaybeDBm ) ->
+
+	DBmstr = case MaybeDBm of
+
+		undefined ->
+			"";
+
+		DBm ->
+			text_utils:format( " (RSSI: ~B dBm)", [ DBm ] )
+
+	end,
+
+	text_utils:format( "target: ~ts~ts",
+		[ eurid_to_short_string( DestinationEurid ), DBmstr ] ).
+
+
+
 % @doc Returns a textual description of the specified decoded maybe-optional
 % data, otherwise from the corresponding raw data.
 %
@@ -5229,7 +5275,9 @@ repeater_count_to_string( RC ) ->
 
 
 
-% @doc Returns a textual description of the specified device event.
+% @doc Returns a (rather complete) textual description of the specified device
+% event.
+%
 -spec device_event_to_string( device_event() ) -> ustring().
 device_event_to_string( #thermo_hygro_event{
 		source_eurid=Eurid,
@@ -5459,6 +5507,208 @@ device_event_to_string( OtherEvent ) ->
 
 
 
+% @doc Returns a short textual description of the specified device event,
+% designed for user-friendly reporting.
+%
+-spec device_event_to_short_string( device_event() ) -> ustring().
+device_event_to_short_string( #thermo_hygro_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		relative_humidity=RelativeHumidity,
+		temperature=MaybeTemperature,
+		temperature_range=TempRange } ) ->
+
+	TempStr = case MaybeTemperature of
+
+		undefined ->
+			"(no temperature available)";
+
+		Temp ->
+			text_utils:format( "and a ~ts (sensitivity range: ~ts)",
+				[ temperature_to_string( Temp ), TempRange ] )
+
+	end,
+
+	% Timestamp already available:
+	text_utils:format( "The thermo-hygro sensor device ~ts reports"
+		"a ~ts ~ts; ~ts; EEP: ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  relative_humidity_to_string( RelativeHumidity ), TempStr,
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+
+		  % Multiple A5-04-01-like candidates:
+		  get_eep_short_description( MaybeEepId ) ] );
+
+
+device_event_to_short_string( #single_input_contact_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		contact=ContactStatus } ) ->
+
+	% Apparently either state transitions or just periodic state reports:
+	text_utils:format( "The single-contact device ~ts is in ~ts state; "
+		"~ts; EEP: ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  get_contact_status_description( ContactStatus ),
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
+
+
+device_event_to_short_string( #push_button_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		transition=ButtonTransition } ) ->
+	text_utils:format(
+		"The push-button device ~ts has been ~ts; ~ts; EEP: ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  get_button_transition_description( ButtonTransition ),
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
+
+
+device_event_to_short_string( #double_rocker_switch_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		first_action_button=FirstButtonDesignator,
+		energy_bow=ButtonTransition,
+		second_action_button=SecondButtonDesignator,
+		second_action_valid=IsValid } ) ->
+
+	%% SecondStr = case IsValid of
+
+	%%	true ->
+	%%		text_utils:format( " and its ~ts",
+	%%			[ button_designator_to_string( SecondButtonDesignator ) ] );
+
+	%%	false ->
+	%%		""
+
+	%% end,
+
+	% Less ambiguous:
+	SecondStr = text_utils:format( "~ts is "
+		++ case IsValid of
+
+			true ->
+				"";
+
+			false ->
+				"not "
+
+		   end ++ "valid",
+				[ button_designator_to_string( SecondButtonDesignator ) ] ),
+
+	text_utils:format( "The double-rocker device ~ts has its ~ts ~ts, "
+		"whereas its second action ~ts; ~ts; EEP: ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  button_designator_to_string( FirstButtonDesignator ),
+		  get_button_transition_description( ButtonTransition ),
+		  SecondStr,
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+
+device_event_to_short_string( #double_rocker_multipress_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		button_counting=MaybeButtonCounting,
+		energy_bow=ButtonTransition } ) ->
+
+	TransStr = case MaybeButtonCounting of
+
+		undefined ->
+			"an unknown number of buttons (abnormal)";
+
+		none ->
+			"no button";
+
+		three_or_four ->
+			"3 or 4 buttons"
+
+	end ++ " " ++ get_button_transition_description( ButtonTransition ),
+
+	text_utils:format( "The double-rocker device ~ts has ~ts simultaneously; "
+		"~ts; EEP: ~ts",
+		[ get_name_description( MaybeName, Eurid ), TransStr,
+		  optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+
+device_event_to_short_string( #read_version_response{
+		app_version=AppVersion,
+		api_version=ApiVersion,
+		chip_id=ChipId,
+		chip_version=ChipVersion,
+		app_description=BinAppDesc } ) ->
+
+	text_utils:format( "read application version ~ts, API version ~ts, "
+		"chip ID ~ts, chip version ~B and application description '~ts'",
+		[ text_utils:version_to_string( AppVersion ),
+		  text_utils:version_to_string( ApiVersion ),
+		  text_utils:integer_to_hexastring( ChipId ), ChipVersion,
+		  BinAppDesc ] );
+
+
+device_event_to_short_string( #read_logs_response{ app_counters=AppCounters,
+											 api_counters=ApiCounters } ) ->
+
+
+	text_utils:format( "read counters: ~B for application: ~w, "
+		"and ~B for API: ~w", [ length( AppCounters ), AppCounters,
+								length( ApiCounters), ApiCounters ] );
+
+
+device_event_to_short_string( #read_base_id_info_response{
+		base_eurid=BaseEurid,
+		remaining_write_cycles=RemainWrtCycles } ) ->
+
+	text_utils:format( "read gateway base ID ~ts, "
+		% Possibly 'unlimited':
+		"for ~p remaining write cycles",
+		[ eurid_to_string( BaseEurid ), RemainWrtCycles ] );
+
+
+device_event_to_short_string( command_processed ) ->
+	"the current command has been successfully processed";
+
+device_event_to_short_string( error_return ) ->
+	"the current command was reported by the target device as having failed";
+
+device_event_to_short_string( not_supported_return ) ->
+	"the current command was reported by the target device as "
+		"not being supported ";
+
+device_event_to_short_string( wrong_parameter_return ) ->
+	"the current command was reported by the target device as "
+		"having failed due to incorrect supplied parameters";
+
+device_event_to_short_string( operation_denied ) ->
+	"the current command was reported by the target device as "
+		"having failed due to being a denied operation";
+
+device_event_to_short_string( time_out ) ->
+	"the current command failed to be acknowledged on time";
+
+device_event_to_short_string( OtherEvent ) ->
+	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
+
+
+
 % @doc Returns a textual description of the specified command request.
 -spec command_request_to_string( command_request() ) -> ustring().
 % Requester is either PID or 'internal':
@@ -5517,6 +5767,7 @@ get_eep_description( EepId ) ->
 		oceanic_generated:get_second_for_eep_strings( EepId ) ] ).
 
 
+
 % @doc Returns a textual description of the specified EEP (if any), with a
 % default.
 %
@@ -5528,6 +5779,28 @@ get_eep_description( _MaybeEepId=undefined, DefaultDesc ) ->
 get_eep_description( EepId, _DefaultDesc ) ->
 	get_eep_description( EepId ).
 
+
+% @doc Returns a short textual description of the specified EEP (if any).
+-spec get_eep_short_description( maybe( eep_id() ) ) -> ustring().
+get_eep_short_description( _MaybeEepId=undefined ) ->
+	"unknown";
+
+get_eep_short_description( EepId ) ->
+	text_utils:format( "~ts (~ts)", [ EepId,
+		oceanic_generated:get_second_for_eep_strings( EepId ) ] ).
+
+
+
+% @doc Returns a textual description of the specified EEP (if any), with a
+% default.
+%
+-spec get_eep_short_description( maybe( eep_id() ), ustring() ) -> ustring().
+get_eep_short_description( _MaybeEepId=undefined, DefaultDesc ) ->
+	text_utils:format( "unknown (supposing ~ts)",
+					   [ DefaultDesc ] );
+
+get_eep_short_description( EepId, _DefaultDesc ) ->
+	get_eep_short_description( EepId ).
 
 
 % @doc Returns a textual description of the specified state of the Oceanic
