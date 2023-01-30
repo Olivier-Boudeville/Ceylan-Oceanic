@@ -661,6 +661,26 @@ If this test does not work as intended:
 
 :raw-latex:`\pagebreak`
 
+Oceanic Listener Messages
+=========================
+
+Any number of processes may register to the Oceanic server process, at startup (see ``start/2`` and ``start_link/2``) and/or later (see the ``addEventListener`` / ``removeEventListener`` messages).
+
+These processes will be notified by the Oceanic server of any Enocean event of interest, thanks to the following types of messages:
+
+- ``{onEnoceanDeviceDiscovery, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean telegram that was just intercepted by the gateway and decoded, and which was sent by a device that had never been detected before (whether or not it was declared in Oceanic's configuration)
+
+- ``{onEnoceanDeviceEvent, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean telegram that was just intercepted by the gateway and decoded, and which emanates from a device that has already been detected
+
+- ``{onEnoceanDeviceLost, [Eurid, DeviceName, LastSeen, PeriodicityMs, OcSrvPid]}``, where ``LastSeen :: time_utils:timestamp()`` and ``PeriodicityMs :: unit_utils:milliseconds()``: notifies that the Oceanic server detected that a device that was expected to send spontaneous state updates apparently failed to do so on time (despite some reasonable time margin); could have run out of energy, be sabotaged, etc.
+
+- ``{onEnoceanJamming, [AggTrafficLvl, OcSrvPid]}``, where ``AggTrafficLvl :: system_utils:bytes_per_second()``: reports that the Oceanic server detected a possible jamming attempt (abnormal traffic level of Enocean telegrams)
+
+
+These message specify the PID of the Oceanic server (``OcSrvPid``) notably to support multiple instances thereof.
+
+:raw-latex:`\pagebreak`
+
 
 Enocean Documentation
 =====================
