@@ -143,6 +143,9 @@
 % - the timestamp at which this event was triggered:
 %           timestamp :: time_utils:timestamp()
 %
+% - the last timestamp (if any) at which a telegram from that device was
+% intercepted before; mostly an informative way of reporting device discovery
+%           last_seen :: maybe( time_utils:timestamp() )
 %
 % From here, the four next following fields, still common to all events, are
 % maybe-values, as they are read from optional data:
@@ -182,6 +185,12 @@
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
@@ -247,6 +256,12 @@
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
 
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
+
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
 
@@ -293,6 +308,12 @@
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
@@ -346,6 +367,12 @@
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
@@ -404,6 +431,12 @@
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
 
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
+
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
 
@@ -452,6 +485,12 @@
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: maybe( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
 	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
