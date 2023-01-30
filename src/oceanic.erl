@@ -88,7 +88,7 @@
 -export([ get_source_eurid/1, get_maybe_device_name/1, get_maybe_eep/1,
 		  get_timestamp/1,
 		  get_subtelegram_count/1, get_maybe_destination_eurid/1,
-		  get_maybe_dbm/1, get_maybe_security_level/1 ]).
+		  get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
 
 
 % String-related functions:
@@ -160,10 +160,18 @@
 
 
 -type declared_device_activity_periodicity() ::
+
 	dhms_duration()
-  | 'none'    % Typically if no spontaneous state feedback
-  | 'default' % Apply a reasonable default
-  | 'learn'.  % To be automatically determined by Oceanic
+
+  | 'none'    % Typically if no spontaneous state feedback is expected to be
+			  % sent (e.g. most buttons/rockers).
+
+  | 'default' % Supposes that periodical reports shall be expected and applies
+			  % a reasonable default duration.
+
+  | 'auto'.   % To be automatically determined by Oceanic; based on any known
+			  % EEP, either no periodical state report will be expected, or one
+			  % will be learnt through experience.
 % A user-declared activity periodicity regarding a device (expected rhythm of
 % telegram sending).
 
@@ -196,7 +204,9 @@
 
 -type device_config() ::
 
-	% Then the activity periodicity will be learnt:
+	% Then the activity periodicity will be learnt, if appropriate (e.g. contact
+	% switches send transition events but generally no periodical events):
+	%
 	{ UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
 	  EEP :: ustring() }
 
@@ -339,7 +349,7 @@
 	| 'double_rocker_switch'
 	| 'double_rocker_multipress'
 
-	| 'single_input_contact'
+	| 'single_input_contact'   % Typically opening detectors
 	| 'single_channel_module'
 	| 'double_channel_module'
 	| atom().
@@ -472,8 +482,8 @@
 	  NextChunk :: telegram_chunk(), oceanic_state() }.
 % The outcome of an attempt of integrating / decoding a telegram chunk.
 %
-% A maybe-event is returned, as for example a common command response received
-% whereas no request was sent shall be discarded.
+% A maybe-event is returned, as for example a common command response that is
+% received whereas no request was sent shall be discarded.
 
 
 
@@ -1054,8 +1064,8 @@
 	jamming_threshold = ?default_jamming_threshold :: bytes_per_second(),
 
 
-	% The PID of any process listening for Enocean events:
-	event_listener_pid :: maybe( event_listener_pid() ) } ).
+	% A list of the PID of any processes listening for Enocean events:
+	event_listeners :: [ event_listener_pid() ] } ).
 
 
 -type oceanic_state() :: #oceanic_state{}.
@@ -1180,8 +1190,8 @@ is_available( TtyPath ) ->
 
 % @doc Starts the Enocean support, based on our default conventions regarding
 % the TTY allocated to the USB Enocean gateway; returns the PID of the launched
-% Oceanic server, which registered the calling process as its Enocean event
-% listener (but did not link to it).
+% Oceanic server, which registered the calling process as one of its Enocean
+% event listeners (but did not link to it).
 %
 % Throws an exception if no relevant TTY can be used.
 %
@@ -1193,27 +1203,27 @@ start() ->
 
 % @doc Starts the Enocean support, based on the specified device path to the TTY
 % allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which registered the calling process as its Enocean event listener
-% (but did not link to it).
+% server, which registered the calling process as one of its Enocean event
+% listeners (but did not link to it).
 %
 % Throws an exception if no relevant TTY can be used.
 %
 -spec start( device_path() ) -> oceanic_server_pid().
 start( TtyPath ) ->
-	start( TtyPath, _EventListenerPid=self() ).
+	start( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
 % @doc Starts the Enocean support, based on the specified path to the TTY
 % allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
 % server (which is not linked to the calling process), registering the specified
-% listener process for Enocean events.
+% listener processes for Enocean events.
 %
 % Throws an exception if no relevant TTY can be used.
 %
--spec start( device_path(), event_listener_pid() ) -> oceanic_server_pid().
-start( TtyPath, EventListenerPid ) ->
-	?myriad_spawn( fun() -> oceanic_start( TtyPath, EventListenerPid ) end ).
+-spec start( device_path(), [ event_listener_pid() ] ) -> oceanic_server_pid().
+start( TtyPath, EventListeners ) ->
+	?myriad_spawn( fun() -> oceanic_start( TtyPath, EventListeners ) end ).
 
 
 
@@ -1223,8 +1233,8 @@ start( TtyPath, EventListenerPid ) ->
 
 % @doc Starts the Enocean support, based on our default conventions regarding
 % the TTY allocated to the USB Enocean gateway; returns the PID of the launched
-% Oceanic server, which registered the calling process as its Enocean event
-% listener and linked to it.
+% Oceanic server, which registered the calling process as one of its Enocean
+% event listeners, and linked to it.
 %
 % Throws an exception if no relevant TTY can be used.
 %
@@ -1235,28 +1245,29 @@ start_link() ->
 
 % @doc Starts the Enocean support, based on the specified device path to the TTY
 % allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which registered the calling process as its Enocean event listener and
-% linked to it.
+% server, which registered the calling process as one of its Enocean event
+% listeners, and linked to it.
 %
 % Throws an exception if no relevant TTY can be used.
 %
 -spec start_link( device_path() ) -> oceanic_server_pid().
 start_link( TtyPath ) ->
-	start_link( TtyPath, _EventListenerPid=self() ).
+	start_link( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
 % @doc Starts the Enocean support, based on the specified path to the TTY
 % allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which is linked to the calling process and registers the specified
-% listener process for Enocean events.
+% server, which registered the calling process as one of its Enocean event
+% listeners, and linked to it.
 %
 % Throws an exception if no relevant TTY can be used.
 %
--spec start_link( device_path(), event_listener_pid() ) -> oceanic_server_pid().
-start_link( TtyPath, EventListenerPid ) ->
+-spec start_link( device_path(), [ event_listener_pid() ] ) ->
+											oceanic_server_pid().
+start_link( TtyPath, EventListeners ) ->
 	?myriad_spawn_link( fun() ->
-							oceanic_start( TtyPath, EventListenerPid )
+							oceanic_start( TtyPath, EventListeners )
 						end ).
 
 
@@ -1359,10 +1370,9 @@ secure_tty( TtyPath ) ->
 % Oceanic server process subsection.
 
 
-% @doc Start procedure of the spawned Oceanic server process.
--spec oceanic_start( device_path(), maybe( event_listener_pid() )  ) ->
-											no_return().
-oceanic_start( TtyPath, MaybeEventListenerPid ) ->
+% @doc Executes the start procedure of the spawned Oceanic server process.
+-spec oceanic_start( device_path(), [ event_listener_pid() ] ) -> no_return().
+oceanic_start( TtyPath, EventListeners ) ->
 
 	SerialPid = secure_tty( TtyPath ),
 
@@ -1373,7 +1383,7 @@ oceanic_start( TtyPath, MaybeEventListenerPid ) ->
 	naming_utils:register_as( ?oceanic_server_reg_name, _RegScope=local_only ),
 
 	InitialState = LoadedState#oceanic_state{
-		event_listener_pid=MaybeEventListenerPid },
+		event_listeners=type_utils:check_pids( EventListeners ) },
 
 	oceanic_loop( _SkipLen=0, _MaybeAccChunk=undefined, InitialState ).
 
@@ -1642,7 +1652,7 @@ declare_devices( _DeviceCfgs=[], DeviceTable ) ->
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 				 DeviceTable ) ->
 	declare_devices( [ { NameStr, EuridStr, EepStr,
-						 _MaybeActPeriodicity=learn } | T ],
+						 _MaybeActPeriodicity=auto } | T ],
 					 DeviceTable );
 
 declare_devices( _DeviceCfgs=[
@@ -1665,7 +1675,7 @@ declare_devices( _DeviceCfgs=[
 
 	EepBinStr = text_utils:ensure_binary( EepStr ),
 
-	EepId = case oceanic_generated:get_maybe_first_for_eep_strings(
+	MaybeEepId = case oceanic_generated:get_maybe_first_for_eep_strings(
 						EepBinStr ) of
 
 		undefined ->
@@ -1688,8 +1698,8 @@ declare_devices( _DeviceCfgs=[
 		default ->
 			1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
 
-		learn ->
-			auto;
+		auto ->
+			decide_auto_periodicity( MaybeEepId );
 
 		DHMS ->
 			case time_utils:is_dhms_duration( DHMS ) of
@@ -1713,7 +1723,7 @@ declare_devices( _DeviceCfgs=[
 	%
 	DeviceRec = #enocean_device{ eurid=Eurid,
 								 name=text_utils:ensure_binary( NameStr ),
-								 eep=EepId,
+								 eep=MaybeEepId,
 								 discovered_through=configuration,
 								 expected_periodicity=ActPeriod },
 
@@ -1737,6 +1747,56 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr,
 
 declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
 	throw( { invalid_device_config, Other } ).
+
+
+
+% @doc Decides whether an 'auto' activity periodicity mode can be retained,
+% based on the specified EEP (if any).
+%
+% We consider that devices implementing some EEPs do not send periodical state
+% updates.
+%
+% For example contact switches shall not be left on 'auto', otherwise they are
+% likely to be considered lost after some time.
+%
+% If the choice made here is not relevant for a given device, declare for it an
+% explicit (non-auto) periodicity.
+%
+-spec decide_auto_periodicity( maybe( eep_id() ) ) -> expected_periodicity().
+decide_auto_periodicity( _MaybeEEPId=undefined ) ->
+	% Not known, supposed not talkative:
+	none;
+
+decide_auto_periodicity( _EEPId=thermo_hygro_low ) ->
+	auto;
+
+decide_auto_periodicity( _EEPId=thermo_hygro_mid ) ->
+	auto;
+
+decide_auto_periodicity( _EEPId=thermo_hygro_high ) ->
+	auto;
+
+decide_auto_periodicity( _EEPId=push_button ) ->
+	none;
+
+decide_auto_periodicity( _EEPId=double_rocker_switch ) ->
+	none;
+
+decide_auto_periodicity( _EEPId=double_rocker_multipress ) ->
+	none;
+
+% Typically opening detectors:
+decide_auto_periodicity( _EEPId=single_input_contact ) ->
+	auto;
+
+decide_auto_periodicity( _EEPId=single_channel_module ) ->
+	none;
+
+decide_auto_periodicity( _EEPId=double_channel_module ) ->
+	none;
+
+decide_auto_periodicity( _OtherEEPId ) ->
+	none.
 
 
 
@@ -2415,16 +2475,20 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 						trace_bridge:debug_fmt( "Decoded following event: ~ts.",
 							[ device_event_to_string( Event ) ] ) ),
 
-					case NewState#oceanic_state.event_listener_pid of
+					DevMsgType = case get_last_seen_info( Event ) of
 
 						undefined ->
-							ok;
+							onEnoceanDeviceDiscovery;
 
-						ListenerPid ->
-							ListenerPid !
-								{ onEnoceanDeviceEvent, [ Event, self() ] }
+						_LastSeenTimestamp ->
+							onEnoceanDeviceEvent
 
 					end,
+
+					DeviceMsg = { DevMsgType, [ Event, self() ] },
+
+					[ LPid ! DeviceMsg
+						|| LPid <- NewState#oceanic_state.event_listeners ],
 
 					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
 
@@ -2463,18 +2527,13 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 							[ time_utils:duration_to_string( PeriodicityMs ),
 							  device_to_string( LostDevice ) ] ) ),
 
-					case State#oceanic_state.event_listener_pid of
+					LostMsg = { onEnoceanDeviceLost, [ LostEurid,
+						LostDevice#enocean_device.name,
+						LostDevice#enocean_device.last_seen,
+						PeriodicityMs, self() ] },
 
-						undefined ->
-							ok;
-
-						ListenerPid ->
-							ListenerPid ! { onEnoceanDeviceLost, [ LostEurid,
-								LostDevice#enocean_device.name,
-								LostDevice#enocean_device.last_seen,
-								PeriodicityMs, self() ] }
-
-					end,
+					[ LPid ! LostMsg
+						|| LPid <- State#oceanic_state.event_listeners ],
 
 					MaybeNewTimerRef = reset_timer(
 						LostDevice#enocean_device.activity_timer, LostEurid,
@@ -2575,6 +2634,44 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			% May unblock a queued command:
 			NewState = handle_next_command(
 				TimeState#oceanic_state.command_queue, TimeState ),
+
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+
+
+		{ addEventListener, ListenerPid } ->
+
+			trace_bridge:info_fmt( "Adding Enocean event listener ~w.",
+								   [ ListenerPid ] ),
+
+			NewListeners = [ ListenerPid | #oceanic_state.event_listeners ],
+
+			NewState = State#oceanic_state{ event_listeners=NewListeners },
+
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+
+
+		{ removeEventListener, ListenerPid } ->
+
+			trace_bridge:info_fmt( "Removing Enocean event listener ~w.",
+								   [ ListenerPid ] ),
+
+			PastListeners = State#oceanic_state.event_listeners,
+
+			NewListeners = case list_utils:delete_if_existing( ListenerPid,
+												PastListeners ) of
+
+				not_found ->
+					trace_bridge:error_fmt( "Requested to remove event "
+						"listener ~w whereas not registered (hence ignored).",
+						[ ListenerPid ] ),
+					PastListeners;
+
+				ShrunkListeners ->
+					ShrunkListeners
+
+			end,
+
+			NewState = State#oceanic_state{ event_listeners=NewListeners },
 
 			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
@@ -2681,7 +2778,7 @@ monitor_jamming( ChunkSize,
 				 State=#oceanic_state{ traffic_level=TrafficLvl,
 									   last_traffic_seen=LastTimestamp,
 									   jamming_threshold=JamThreshold,
-									   event_listener_pid=MaybeListnPid } ) ->
+									   event_listeners=EventListeners } ) ->
 
 	Now = time_utils:get_timestamp(),
 
@@ -2703,11 +2800,10 @@ monitor_jamming( ChunkSize,
 				"in progress.",
 				[ JamThreshold, AggTrafficLvl ] ),
 
-			MaybeListnPid =:= undefined orelse
-				% PID sent mostly to discriminate between multiple Oceanic
-				% servers:
-				%
-				MaybeListnPid ! { onEnoceanJamming, [ AggTrafficLvl, self() ] },
+			% PID sent mostly to discriminate between multiple Oceanic servers:
+			JamMsg = { onEnoceanJamming, [ AggTrafficLvl, self() ] },
+
+			[ LPid ! JamMsg || LPid <- EventListeners ],
 
 			% Single notification per detection:
 			0;
@@ -3488,7 +3584,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
-	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+	{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName, MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -3514,6 +3610,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 								name=MaybeDeviceName,
 								eep=MaybeEepId,
 								timestamp=Now,
+								last_seen=MaybeLastSeen,
 								subtelegram_count=MaybeTelCount,
 								destination_eurid=MaybeDestEurid,
 								dbm=MaybeDBm,
@@ -3563,8 +3660,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			end,
 
-			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
-				record_known_device_success( Device, DeviceTable ),
+			{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName,
+			  MaybeEepId } = record_known_device_success( Device, DeviceTable ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -3578,6 +3675,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				name=MaybeDeviceName,
 				eep=MaybeEepId,
 				timestamp=Now,
+				last_seen=MaybeLastSeen,
 				subtelegram_count=MaybeTelCount,
 				destination_eurid=MaybeDestEurid,
 				dbm=MaybeDBm,
@@ -3614,8 +3712,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			ButtonTransition = get_button_transition( EB ),
 
-			{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
-				record_known_device_success( Device, DeviceTable ),
+			{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName,
+			  MaybeEepId } = record_known_device_success( Device, DeviceTable ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -3629,6 +3727,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				name=MaybeDeviceName,
 				eep=MaybeEepId,
 				timestamp=Now,
+				last_seen=MaybeLastSeen,
 				subtelegram_count=MaybeTelCount,
 				destination_eurid=MaybeDestEurid,
 				dbm=MaybeDBm,
@@ -3795,6 +3894,7 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 	RequesterPid ! { oceanic_command_outcome, Response },
 
 	{ decoded, command_processed, AnyNextChunk, State }.
+
 
 
 
@@ -3981,7 +4081,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	end,
 
-	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+	{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName, MaybeEepId } =
 		record_device_success( SenderEurid, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -4007,6 +4107,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 		name=MaybeDeviceName,
 		eep=MaybeEepId,
 		timestamp=Now,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -4135,7 +4236,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 	LearnActivated = DB_0 band ?b3 =:= 0,
 
-	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId } =
+	{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName, MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -4173,6 +4274,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 								 name=MaybeDeviceName,
 								 eep=MaybeEepId,
 								 timestamp=Now,
+								 last_seen=MaybeLastSeen,
 								 subtelegram_count=MaybeTelCount,
 								 destination_eurid=MaybeDestEurid,
 								 dbm=MaybeDBm,
@@ -4461,7 +4563,7 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
 
-	{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+	{ NewDeviceTable, _Now, _MaybeLastSeen, MaybeDeviceName, _MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -4504,7 +4606,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
 
-	{ NewDeviceTable, _Now, MaybeDeviceName, _MaybeEepId } =
+	{ NewDeviceTable, _Now, _MaybeLastSeen, MaybeDeviceName, _MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -4630,7 +4732,8 @@ resolve_maybe_decoded_data( DecodedOptData ) ->
 % device, registering it if it was not already.
 %
 -spec record_device_success( eurid(), device_table() ) ->
-	{ device_table(), timestamp(), maybe( device_name() ), maybe( eep_id() ) }.
+	{ device_table(), timestamp(), maybe( timestamp() ), maybe( device_name() ),
+	  maybe( eep_id() ) }.
 record_device_success( Eurid, DeviceTable ) ->
 
 	case table:lookup_entry( Eurid, DeviceTable ) of
@@ -4653,7 +4756,8 @@ record_device_success( Eurid, DeviceTable ) ->
 			% Necessarily new:
 			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
 
-			{ NewDeviceTable, Now, undefined, undefined };
+			{ NewDeviceTable, Now, _PrevLastSeen=undefined, _DevName=undefined,
+			  _EEPId=undefined };
 
 
 		{ value, Device } ->
@@ -4667,12 +4771,14 @@ record_device_success( Eurid, DeviceTable ) ->
 % already-known device.
 %
 -spec record_known_device_success( enocean_device(), device_table() ) ->
-	{ device_table(), timestamp(), maybe( device_name() ), maybe( eep_id() ) }.
+	{ device_table(), timestamp(), maybe( timestamp() ), maybe( device_name() ),
+	  maybe( eep_id() ) }.
 record_known_device_success( Device=#enocean_device{
 		eurid=Eurid,
 		name=MaybeDeviceName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
+		last_seen=MaybeLastSeen,
 		telegram_count=TeleCount,
 		expected_periodicity=Periodicity,
 		activity_timer=MaybeActTimer }, DeviceTable ) ->
@@ -4699,7 +4805,7 @@ record_known_device_success( Device=#enocean_device{
 
 	NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
-	{ NewDeviceTable, Now, MaybeDeviceName, MaybeEepId }.
+	{ NewDeviceTable, Now, MaybeLastSeen, MaybeDeviceName, MaybeEepId }.
 
 
 
@@ -4797,8 +4903,10 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 
 	stop_any_timer( MaybeActTimer ),
 
-	% Adding a 20% margin to avoid false alarms:
-	SeenDurationMs = 1200 * time_utils:get_duration( FirstSeen, Now ),
+	% Adding a 40% margin to hopefully avoid most of the false alarms (most
+	% devices are pretty irregular):
+	%
+	SeenDurationMs = 1400 * time_utils:get_duration( FirstSeen, Now ),
 
 	SeenCount = TeleCount + ErrCount,
 
@@ -5085,7 +5193,9 @@ string_to_eep( Str ) ->
 % are uniform.
 
 
-% @doc Returns the source EURID stored in the specified device event.
+% @doc Returns the EURID of the emitting device stored in the specified device
+% event.
+%
 -spec get_source_eurid( device_event() ) -> eurid().
 get_source_eurid( DevEventTuple ) ->
 	erlang:element( _PosIdx=2, DevEventTuple ).
@@ -5111,6 +5221,16 @@ get_maybe_eep( DevEventTuple ) ->
 -spec get_timestamp( device_event() ) -> timestamp().
 get_timestamp( DevEventTuple ) ->
 	erlang:element( _PosIdx=5, DevEventTuple ).
+
+
+% @doc Returns the timestamp corresponding to any previously seen telegram from
+% that device.
+%
+% Also useful to determine whether an event corresponds to a device discovery.
+%
+-spec get_last_seen_info( device_event() ) -> maybe( timestamp() ).
+get_last_seen_info( DevEventTuple ) ->
+	erlang:element( _PosIdx=6, DevEventTuple ).
 
 
 % @doc Returns the number (if any) of subtelegrams stored in the specified
@@ -5144,6 +5264,21 @@ get_maybe_security_level( DevEventTuple ) ->
 
 
 
+% @doc Tells whether the specified device event indicates that this device can
+% be interpreted as being triggered by the user.
+%
+-spec device_triggered( device_event() ) -> boolean().
+device_triggered( #push_button_event{ transition=pressed } ) ->
+	true;
+
+device_triggered( #double_rocker_switch_event{ energy_bow=pressed } ) ->
+	true;
+
+device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
+	true;
+
+device_triggered( _DevEventTuple ) ->
+	false.
 
 
 % Other string-related conversions:
@@ -5284,6 +5419,7 @@ device_event_to_string( #thermo_hygro_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -5304,8 +5440,8 @@ device_event_to_string( #thermo_hygro_event{
 
 	end,
 
-	text_utils:format( "thermo-hygro sensor device ~ts reports at ~ts "
-		"a ~ts ~ts~ts; this is declared~ts; ~ts",
+	text_utils:format( "thermo-hygro sensor device ~ts which reports at ~ts "
+		"a ~ts ~ts~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
@@ -5314,6 +5450,8 @@ device_event_to_string( #thermo_hygro_event{
 
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
+
+		  last_seen_to_string( MaybeLastSeen ),
 
 		  % Multiple A5-04-01-like candidates:
 		  get_eep_description( MaybeEepId ) ] );
@@ -5324,6 +5462,7 @@ device_event_to_string( #single_input_contact_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -5333,13 +5472,14 @@ device_event_to_string( #single_input_contact_event{
 
 	% Apparently either state transitions or just periodic state reports:
 	text_utils:format( "single-contact device ~ts is in ~ts state at ~ts~ts; "
-		"this is declared~ts; ~ts",
+		"this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  learn_to_string( LearnActivated ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
 
 
@@ -5348,19 +5488,22 @@ device_event_to_string( #push_button_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
 		security_level=MaybeSecLvl,
 		transition=ButtonTransition } ) ->
 	text_utils:format(
-		"push-button device ~ts has been ~ts at ~ts~ts; ~ts; ~ts",
+		"push-button device ~ts has been ~ts at ~ts~ts;this is declared~ts; "
+		"~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
-		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
-								   MaybeSecLvl ) ] );
+								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
+		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
 
 
 device_event_to_string( #double_rocker_switch_event{
@@ -5368,6 +5511,7 @@ device_event_to_string( #double_rocker_switch_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -5402,7 +5546,7 @@ device_event_to_string( #double_rocker_switch_event{
 				[ button_designator_to_string( SecondButtonDesignator ) ] ),
 
 	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
-		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts",
+		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  button_designator_to_string( FirstButtonDesignator ),
 		  get_button_transition_description( ButtonTransition ),
@@ -5410,6 +5554,7 @@ device_event_to_string( #double_rocker_switch_event{
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 
@@ -5418,6 +5563,7 @@ device_event_to_string( #double_rocker_multipress_event{
 		name=MaybeName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
 		subtelegram_count=MaybeTelCount,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -5439,11 +5585,12 @@ device_event_to_string( #double_rocker_multipress_event{
 	end ++ " " ++ get_button_transition_description( ButtonTransition ),
 
 	text_utils:format( "double-rocker device ~ts has ~ts simultaneously "
-		"at ~ts; this is declared~ts; ~ts",
+		"at ~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ), TransStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 
@@ -5465,10 +5612,9 @@ device_event_to_string( #read_version_response{
 device_event_to_string( #read_logs_response{ app_counters=AppCounters,
 											 api_counters=ApiCounters } ) ->
 
-
 	text_utils:format( "read counters: ~B for application: ~w, "
 		"and ~B for API: ~w", [ length( AppCounters ), AppCounters,
-								length( ApiCounters), ApiCounters ] );
+								length( ApiCounters ), ApiCounters ] );
 
 
 device_event_to_string( #read_base_id_info_response{
@@ -5489,21 +5635,35 @@ device_event_to_string( error_return ) ->
 
 device_event_to_string( not_supported_return ) ->
 	"the current command was reported by the target device as "
-		"not being supported ";
+	"not being supported";
 
 device_event_to_string( wrong_parameter_return ) ->
 	"the current command was reported by the target device as "
-		"having failed due to incorrect supplied parameters";
+	"having failed due to incorrect supplied parameters";
 
 device_event_to_string( operation_denied ) ->
 	"the current command was reported by the target device as "
-		"having failed due to being a denied operation";
+	"having failed due to being a denied operation";
 
 device_event_to_string( time_out ) ->
 	"the current command failed to be acknowledged on time";
 
 device_event_to_string( OtherEvent ) ->
 	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
+
+
+
+% @doc Returns a textual description of the specified last_seen field of a
+% device event.
+%
+-spec last_seen_to_string( maybe( timestamp() ) ) -> ustring().
+last_seen_to_string( _MaybeLastSeenTimestamp=undefined ) ->
+	"this device has just been discovered";
+
+last_seen_to_string( LastSeenTimestamp ) ->
+	text_util:format( "this device has already been discovered, "
+		"its last telegram being detected on ~ts",
+		[ time_utils:timestamp_to_string( LastSeenTimestamp ) ] ).
 
 
 
@@ -5533,8 +5693,8 @@ device_event_to_short_string( #thermo_hygro_event{
 	end,
 
 	% Timestamp already available:
-	text_utils:format( "The thermo-hygro sensor device ~ts reports"
-		"a ~ts ~ts; ~ts; EEP: ~ts",
+	text_utils:format( "The thermo-hygro sensor device ~ts reports "
+		"a ~ts ~ts; ~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -5553,7 +5713,7 @@ device_event_to_short_string( #single_input_contact_event{
 
 	% Apparently either state transitions or just periodic state reports:
 	text_utils:format( "The single-contact device ~ts is in ~ts state; "
-		"~ts; EEP: ~ts",
+		"~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -5568,7 +5728,7 @@ device_event_to_short_string( #push_button_event{
 		dbm=MaybeDBm,
 		transition=ButtonTransition } ) ->
 	text_utils:format(
-		"The push-button device ~ts has been ~ts; ~ts; EEP: ~ts",
+		"The push-button device ~ts has been ~ts; ~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -5611,7 +5771,7 @@ device_event_to_short_string( #double_rocker_switch_event{
 				[ button_designator_to_string( SecondButtonDesignator ) ] ),
 
 	text_utils:format( "The double-rocker device ~ts has its ~ts ~ts, "
-		"whereas its second action ~ts; ~ts; EEP: ~ts",
+		"whereas its second action ~ts; ~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ),
 		  button_designator_to_string( FirstButtonDesignator ),
 		  get_button_transition_description( ButtonTransition ),
@@ -5643,7 +5803,7 @@ device_event_to_short_string( #double_rocker_multipress_event{
 	end ++ " " ++ get_button_transition_description( ButtonTransition ),
 
 	text_utils:format( "The double-rocker device ~ts has ~ts simultaneously; "
-		"~ts; EEP: ~ts",
+		"~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ), TransStr,
 		  optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
@@ -5656,8 +5816,8 @@ device_event_to_short_string( #read_version_response{
 		chip_version=ChipVersion,
 		app_description=BinAppDesc } ) ->
 
-	text_utils:format( "read application version ~ts, API version ~ts, "
-		"chip ID ~ts, chip version ~B and application description '~ts'",
+	text_utils:format( "Read application version ~ts, API version ~ts, "
+		"chip ID ~ts, chip version ~B and application description '~ts'.",
 		[ text_utils:version_to_string( AppVersion ),
 		  text_utils:version_to_string( ApiVersion ),
 		  text_utils:integer_to_hexastring( ChipId ), ChipVersion,
@@ -5665,47 +5825,46 @@ device_event_to_short_string( #read_version_response{
 
 
 device_event_to_short_string( #read_logs_response{ app_counters=AppCounters,
-											 api_counters=ApiCounters } ) ->
+											api_counters=ApiCounters } ) ->
 
-
-	text_utils:format( "read counters: ~B for application: ~w, "
-		"and ~B for API: ~w", [ length( AppCounters ), AppCounters,
-								length( ApiCounters), ApiCounters ] );
+	text_utils:format( "Read counters: ~B for application: ~w, "
+		"and ~B for API: ~w.", [ length( AppCounters ), AppCounters,
+								 length( ApiCounters), ApiCounters ] );
 
 
 device_event_to_short_string( #read_base_id_info_response{
 		base_eurid=BaseEurid,
 		remaining_write_cycles=RemainWrtCycles } ) ->
 
-	text_utils:format( "read gateway base ID ~ts, "
+	text_utils:format( "Read gateway base ID ~ts, "
 		% Possibly 'unlimited':
-		"for ~p remaining write cycles",
+		"for ~p remaining write cycles.",
 		[ eurid_to_string( BaseEurid ), RemainWrtCycles ] );
 
 
 device_event_to_short_string( command_processed ) ->
-	"the current command has been successfully processed";
+	"The current command has been successfully processed.";
 
 device_event_to_short_string( error_return ) ->
-	"the current command was reported by the target device as having failed";
+	"The current command was reported by the target device as having failed.";
 
 device_event_to_short_string( not_supported_return ) ->
-	"the current command was reported by the target device as "
-		"not being supported ";
+	"The current command was reported by the target device as "
+	"not being supported.";
 
 device_event_to_short_string( wrong_parameter_return ) ->
-	"the current command was reported by the target device as "
-		"having failed due to incorrect supplied parameters";
+	"The current command was reported by the target device as "
+	"having failed due to incorrect supplied parameters.";
 
 device_event_to_short_string( operation_denied ) ->
-	"the current command was reported by the target device as "
-		"having failed due to being a denied operation";
+	"The current command was reported by the target device as "
+	"having failed due to being a denied operation.";
 
 device_event_to_short_string( time_out ) ->
-	"the current command failed to be acknowledged on time";
+	"The current command failed to be acknowledged on time.";
 
 device_event_to_short_string( OtherEvent ) ->
-	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
+	text_utils:format( "Unknown event: ~p.", [ OtherEvent ] ).
 
 
 
@@ -5819,7 +5978,7 @@ state_to_string( #oceanic_state{
 		discarded_count=DiscardedCount,
 		traffic_level=TrafficLvl,
 		jamming_threshold=JamThreshold,
-		event_listener_pid=MaybeListenerPid } ) ->
+		event_listeners=EventListeners } ) ->
 
 	WaitStr = case MaybeWaitedCommandInfo of
 
@@ -5838,39 +5997,43 @@ state_to_string( #oceanic_state{
 		[ time_utils:time_out_to_string( WaitTimeout ),
 		  case queue:len( CmdQueue ) of
 
-			  0 ->
-				  "no command";
+				0 ->
+					"no command";
 
-			  1 ->
-				  "a single command";
+				1 ->
+					"a single command";
 
-			  QCount ->
-				  text_utils:format( "~B commands", [ QCount ] )
+				QCount ->
+					text_utils:format( "~B commands", [ QCount ] )
 
 		  end,
 
 		  case CmdCount of
 
-			  0 ->
-				  "none has";
+				0 ->
+					"none has";
 
-			  1 ->
-				  "a single one has";
+				1 ->
+					"a single one has";
 
-			  _ ->
-				  text_utils:format( "a total of ~B of them have",
-									 [ CmdCount ] )
+				_ ->
+					text_utils:format( "a total of ~B of them have",
+									   [ CmdCount ] )
 
 		  end ] ),
 
-	ListenStr = case MaybeListenerPid of
+	ListenStr = case EventListeners of
 
-		undefined ->
-			"not having a listener of Enocean events registered";
+		[] ->
+			"not having any listener of Enocean events registered";
 
-		ListenerPid ->
+		[ ListenerPid ] ->
 			text_utils:format( "having ~w registered as listener "
-							   "of Enocean events", [ ListenerPid ] )
+							   "of Enocean events", [ ListenerPid ] );
+
+		_ ->
+			text_utils:format( "having ~B listeners of Enocean events (~w)",
+							   [ length( EventListeners ), EventListeners ] )
 
 	end,
 
