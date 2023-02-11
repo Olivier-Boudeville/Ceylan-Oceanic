@@ -160,23 +160,30 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 	% each toggle), yet this is not the same behaviour as when using the switch
 	% (two stateless commands, to force on or off), which is rather confusing.
 
-	%test_facilities:display( "Emulating the top button of the green switch being pressed." ), SerialPid ! { send, TopButtonPressedTelegram },
+	%test_facilities:display( "Emulating the top button of the green switch "
+	%  "being pressed." ),
+	%SerialPid ! { send, TopButtonPressedTelegram },
 
 	% Sheer paranoia:
 	timer:sleep( 200 ),
 
-	%test_facilities:display( "Emulating the top button of the green switch being released." ), SerialPid ! { send, TopButtonReleasedTelegram },
+	%test_facilities:display( "Emulating the top button of the green switch "
+	%  "being released." ),
+	%SerialPid ! { send, TopButtonReleasedTelegram },
 
 
 	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
 
-	test_facilities:display( "Emulating the bottom button of the green switch being pressed." ), SerialPid ! { send, BottomButtonPressedTelegram },
+	test_facilities:display( "Emulating the bottom button of the green switch "
+		"being pressed." ),
+	SerialPid ! { send, BottomButtonPressedTelegram },
 
 	% Sheer paranoia:
 	timer:sleep( 200 ),
 
-	test_facilities:display( "Emulating the bottom button of the green switch being released." ), SerialPid ! { send, BottomButtonReleasedTelegram },
-
+	test_facilities:display( "Emulating the bottom button of the green switch "
+		"being released." ),
+	SerialPid ! { send, BottomButtonReleasedTelegram },
 
 	test_facilities:display( "End of green switch test." ).
 
@@ -270,7 +277,9 @@ emit_forged_telegrams_for_green_switch( SerialPid ) ->
 
 	SourceDeviceRec = #enocean_device{ eurid=SourceEurid,
 									   name= <<"Test Source Device">>,
-									   eep=EepId },
+									   eep=EepId,
+									   discovered_through=configuration,
+									   expected_periodicity=none },
 
 	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
@@ -311,40 +320,53 @@ emit_forged_telegrams_for_green_switch( SerialPid ) ->
 		TopButtonReleasedTelegram, BottomButtonPressedTelegram,
 		BottomButtonReleasedTelegram, AllButtonReleasedTelegram ] ),
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker top button pressed following ~ts.", [ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),	SerialPid ! { send, TopButtonPressedTelegram },
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker top "
+		"button pressed following ~ts.", [ SourceEuridStr, TargetEuridStr,
+			oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),
+	SerialPid ! { send, TopButtonPressedTelegram },
 
 	% Sheer paranoia:
 	timer:sleep( 200 ),
 
-	%% test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	%%	"top button released following ~ts.",
-	%%	[ SourceEuridStr, TargetEuridStr,
-	%%	  oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	%% SerialPid ! { send, TopButtonReleasedTelegram },
+	%test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+	%   "top button released following ~ts.",
+	%   [ SourceEuridStr, TargetEuridStr,
+	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
+	%SerialPid ! { send, TopButtonReleasedTelegram },
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts", [ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ), SerialPid ! { send, AllButtonReleasedTelegram },
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+	SerialPid ! { send, AllButtonReleasedTelegram },
 
 
 	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
 
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker bottom button pressed following ~ts.",	[ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string( BottomButtonPressedTelegram ) ] ), SerialPid ! { send, BottomButtonPressedTelegram },
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker bottom "
+		"button pressed following ~ts.",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( BottomButtonPressedTelegram ) ] ),
+	SerialPid ! { send, BottomButtonPressedTelegram },
 
 	% Sheer paranoia:
 	timer:sleep( 200 ),
 
-	%% test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	%%	"bottom button released following ~ts.",
-	%%	[ SourceEuridStr, TargetEuridStr,
-	%%	  oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	%% SerialPid ! { send, BottomButtonReleasedTelegram }.
+	% test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+	%   "bottom button released following ~ts.",
+	%   [ SourceEuridStr, TargetEuridStr,
+	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
+	% SerialPid ! { send, BottomButtonReleasedTelegram }.
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts", [ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ), SerialPid ! { send, AllButtonReleasedTelegram },
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+	SerialPid ! { send, AllButtonReleasedTelegram },
 
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
 	% Trying to decode the telegram we just forged:
-	%{ decoded, Event, _AnyNextChunk, _NewState } =
+	%{ decoded, Event, _MaybeDiscoverOrigin, _AnyNextChunk, _NewState } =
 	%   oceanic:try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined,
 	%                                Telegram, InitialTestState ),
 

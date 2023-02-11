@@ -28,16 +28,24 @@
 
 % @doc Module defining the Oceanic constants.
 %
-% Called by generate_support_modules
+% Called by oceanic:generate_support_modules/0.
+%
 -module(oceanic_constants).
 
 
 
--export([ get_packet_type_topic_spec/0, get_return_code_topic_spec/0,
-		  get_event_code_topic_spec/0, get_rorg_topic_spec/0,
-		  get_rorg_description_topic_spec/0, get_common_command_topic_spec/0,
-		  get_vld_d2_00_cmd_topic_spec/0, get_eep_topic_specs/0 ] ).
+-export([ get_maybe_packet_type_topic_spec/0,
+		  get_maybe_return_code_topic_spec/0,
+		  get_maybe_event_code_topic_spec/0, get_maybe_rorg_topic_spec/0,
+		  get_maybe_rorg_description_topic_spec/0,
+		  get_maybe_common_command_topic_spec/0,
+		  get_maybe_vld_d2_00_cmd_topic_spec/0, get_maybe_eep_topic_specs/0 ] ).
 
+
+% Implementation notes:
+%
+% Now all topics are maybe-ones, so that it is not possible to crash the caller
+% by specifying an element that is not referenced there.
 
 
 % Shorthands:
@@ -49,8 +57,8 @@
 
 
 % @doc Returns the specification for the 'packet_type' topic.
--spec get_packet_type_topic_spec() -> topic_spec().
-get_packet_type_topic_spec() ->
+-spec get_maybe_packet_type_topic_spec() -> topic_spec().
+get_maybe_packet_type_topic_spec() ->
 
 	% We use our recommended order (first set for internal, second one for
 	% third-party).
@@ -71,7 +79,7 @@ get_packet_type_topic_spec() ->
 		{ radio_802_15_4_type,     16#10 },
 		{ command_2_4_type,        16#11 } ],
 
-	{ packet_type, Entries }.
+	{ packet_type, Entries, _ElemLookup=maybe }.
 
 
 
@@ -79,8 +87,8 @@ get_packet_type_topic_spec() ->
 
 % For return codes, as defined in [ESP3].
 %
--spec get_return_code_topic_spec() -> topic_spec().
-get_return_code_topic_spec() ->
+-spec get_maybe_return_code_topic_spec() -> topic_spec().
+get_maybe_return_code_topic_spec() ->
 
 	Entries = [
 		{ ok_return,              16#00 },
@@ -89,7 +97,7 @@ get_return_code_topic_spec() ->
 		{ wrong_parameter_return, 16#03 },
 		{ operation_denied,       16#04 } ],
 
-	{ return_code, Entries }.
+	{ return_code, Entries, _ElemLookup=maybe }.
 
 
 
@@ -97,8 +105,8 @@ get_return_code_topic_spec() ->
 %
 % For event codes, as defined in [ESP3].
 %
--spec get_event_code_topic_spec() -> topic_spec().
-get_event_code_topic_spec() ->
+-spec get_maybe_event_code_topic_spec() -> topic_spec().
+get_maybe_event_code_topic_spec() ->
 
 	Entries = [
 		% Not existing: 16#00
@@ -108,7 +116,7 @@ get_event_code_topic_spec() ->
 		{ co_ready,                16#04 },
 		{ co_event_secure_devices, 16#05 } ],
 
-	{ event_code, Entries }.
+	{ event_code, Entries, _ElemLookup=maybe }.
 
 
 
@@ -116,8 +124,8 @@ get_event_code_topic_spec() ->
 %
 % For the RORG field of an ERP radio telegram type, as defined in [EEP] p.14.
 %
--spec get_rorg_topic_spec() -> topic_spec().
-get_rorg_topic_spec() ->
+-spec get_maybe_rorg_topic_spec() -> topic_spec().
+get_maybe_rorg_topic_spec() ->
 
 	Entries = [
 		{ rorg_undefined,  16#00 },
@@ -137,13 +145,13 @@ get_rorg_topic_spec() ->
 		{ rorg_signal,     16#D0 },
 		{ rorg_ute,        16#D4 } ],
 
-	{ rorg, Entries }.
+	{ rorg, Entries, _ElemLookup=maybe }.
 
 
 
 % @doc Returns the specification for the 'rorg_description' topic.
--spec get_rorg_description_topic_spec() -> topic_spec().
-get_rorg_description_topic_spec() ->
+-spec get_maybe_rorg_description_topic_spec() -> topic_spec().
+get_maybe_rorg_description_topic_spec() ->
 
 	Entries = [
 		{ rorg_undefined,  <<"(undefined RORG)">> },
@@ -164,7 +172,7 @@ get_rorg_description_topic_spec() ->
 		{ rorg_signal,     <<"SIGNAL (Signal telegram)">> },
 		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
 
-	{ rorg_description, Entries }.
+	{ rorg_description, Entries, _ElemLookup=maybe }.
 
 
 
@@ -172,8 +180,8 @@ get_rorg_description_topic_spec() ->
 %
 % First elements are function codes, second ones are function names.
 %
--spec get_common_command_topic_spec() -> topic_spec().
-get_common_command_topic_spec() ->
+-spec get_maybe_common_command_topic_spec() -> topic_spec().
+get_maybe_common_command_topic_spec() ->
 
 	Entries = [
 		{ 1,  co_wr_sleep },          % Enter energy saving mode
@@ -280,7 +288,7 @@ get_common_command_topic_spec() ->
 		{ 65, co_rd_tx_only_mode }    % Read the state of the TX only mode.
 			  ],
 
-	{ common_command, Entries }.
+	{ common_command, Entries, _ElemLookup=maybe }.
 
 
 
@@ -294,8 +302,8 @@ get_common_command_topic_spec() ->
 %
 % Described in [EEP-spec] p.131.
 %
--spec get_vld_d2_00_cmd_topic_spec() -> topic_spec().
-get_vld_d2_00_cmd_topic_spec() ->
+-spec get_maybe_vld_d2_00_cmd_topic_spec() -> topic_spec().
+get_maybe_vld_d2_00_cmd_topic_spec() ->
 
 	Entries = [
 		{ 16#01, actuator_set_output },
@@ -312,13 +320,13 @@ get_vld_d2_00_cmd_topic_spec() ->
 		{ 16#0C, actuator_external_interface_settings_query },
 		{ 16#0D, actuator_external_interface_settings_response } ],
 
-	{ vld_d2_00_cmd, Entries }.
+	{ vld_d2_00_cmd, Entries, _ElemLookup=maybe }.
 
 
 
 % @doc Returns the specification for the 'eep' topics.
--spec get_eep_topic_specs() -> [ topic_spec() ].
-get_eep_topic_specs() ->
+-spec get_maybe_eep_topic_specs() -> [ topic_spec() ].
+get_maybe_eep_topic_specs() ->
 
 	% We want to be able to associate one of our EEP identifiers
 	% (e.g. 'single_input_contact') to either an internal triplet (e.g. {16#D5,
@@ -370,4 +378,4 @@ get_eep_topic_specs() ->
 	ElementLookup = 'maybe',
 
 	[ { eep_triplets, AsTripletsEntries, ElementLookup },
-	  { eep_strings, AsStringsEntries, ElementLookup } ].
+	  { eep_strings,  AsStringsEntries,  ElementLookup } ].

@@ -94,7 +94,7 @@
 	% A timer, if any, set to detect whether this device vanished (ceased being
 	% active), possibly being sabotaged, running out of energy, etc.:
 	%
-	activity_timer :: maybe( oceanic:timer_ref() ) } ).
+	activity_timer = undefined :: maybe( oceanic:timer_ref() ) } ).
 
 
 

@@ -43,7 +43,7 @@
 
 % Shorthands:
 
--type device_path() :: oceanic:device_path().
+-type device_path() :: file_utils:device_path().
 
 
 
