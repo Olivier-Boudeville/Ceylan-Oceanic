@@ -7,7 +7,7 @@ OCEANIC_TOP = .
 		add-prerequisite-plts link-plt                                     \
 		release release-zip release-bz2 release-xz                         \
 		prepare-release clean-release clean-archive stats                  \
-		info-context info-versions info-paths                              \
+		info-context info-versions info-paths-local                        \
 		info-compile info-conditionals info-deps info-serial               \
 		info-sync-sources
 
@@ -124,7 +124,9 @@ info-versions:
 	@echo "OCEANIC_VERSION = $(OCEANIC_VERSION)"
 
 
-info-paths:
+info-paths: info-paths-local
+
+info-paths-local:
 	@echo "BEAM_PATH_OPT = $(BEAM_PATH_OPT)"
 
 
