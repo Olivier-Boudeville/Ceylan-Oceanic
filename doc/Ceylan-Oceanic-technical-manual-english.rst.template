@@ -668,7 +668,15 @@ Any number of processes may register to the Oceanic server process, at startup (
 
 These processes will be notified by the Oceanic server of any Enocean event of interest, thanks to the following types of messages:
 
-- ``{onEnoceanDeviceDiscovery, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean telegram that was just intercepted by the gateway and decoded, and which was sent by a device that had never been detected before (whether or not it was declared in Oceanic's configuration)
+- on the **first detection** of a device:
+
+  - if it was **declared** in the Oceanic configuration: ``{onEnoceanConfiguredDeviceFirstSeen, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean telegram that was just intercepted by the gateway and decoded, and which was sent by a configured device that had never been detected before
+
+  - if it was **not declared** in the Oceanic configuration:
+
+	- if it is known through teach-in: ``{onEnoceanDeviceTeachIn, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean teach-in telegram that was just intercepted by the gateway and decoded, and which was sent by a device sending that was not even listed in the configuration yet *requests* (some actuator) to be paired (so not meaning ``onEnoceanDeviceTaughtIn``)
+
+	- if it is known through passive listening: ``{onEnoceanDeviceDiscovery, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to a normal (non teach-in) Enocean telegram that was just intercepted by the gateway and decoded, and which was sent by a device that was not even listed in the configuration
 
 - ``{onEnoceanDeviceEvent, [Event, OcSrvPid]}``, where ``Event :: oceanic:device_event()``: corresponds to an Enocean telegram that was just intercepted by the gateway and decoded, and which emanates from a device that has already been detected
 
