@@ -328,8 +328,8 @@ OCEANIC_PLT_FILE := $(OCEANIC_TOP)/Ceylan-Oceanic.plt
 # This is the merged PLT of the level just below in the software stack.
 # For 'Oceanic', it is the PLT of 'Myriad':
 #
-ifndef PREDECESSOR_PLT
-	PREDECESSOR_PLT = $(MYRIAD_PLT_FILE)
+ifndef PREDECESSOR_PLT_FILE
+	PREDECESSOR_PLT_FILE = $(MYRIAD_PLT_FILE)
 endif
 
 
