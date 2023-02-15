@@ -63,6 +63,9 @@
 	% Useful to properly encode telegrams:
 	get_oceanic_eurid/1,
 
+	% General-purpose:
+	get_device_description/2,
+
 	% For common commands:
 	read_version/1, read_logs/1, read_base_id_info/1,
 
@@ -482,6 +485,7 @@
 
 	{ 'decoded', maybe( device_event() | 'command_processed' ),
 	  MaybeDiscoverOrigin :: maybe( discovery_origin() ),
+	  MaybeDevice :: maybe( enocean_device() ),
 	  NextChunk :: telegram_chunk(), oceanic_state() }
 
   | { decoding_error(), ToSkipLen :: count(), NextChunk :: telegram_chunk(),
@@ -524,6 +528,12 @@
 % An EURID, expressed as a string.
 %
 % For example: "B50533EC".
+
+
+-type eurid_bin_string() :: bin_string().
+% An EURID, expressed as a binary string.
+%
+% For example: `<<"B50533EC">>'.
 
 
 -type packet() :: binary().
@@ -623,6 +633,9 @@
 % A timer is used for most commands, except typically internally-triggered
 % common commands.
 
+
+-type device_description() :: bin_string().
+% The description of a device, as known and returned by Oceanic.
 
 % Event types ordered here as well by increasing EEP:
 
@@ -775,7 +788,7 @@
 			   vld_rcp_message_type/0, vld_d2_00_cmd/0,
 			   decoding_outcome/0,
 
-			   eurid/0, eurid_string/0,
+			   eurid/0, eurid_string/0, eurid_bin_string/0,
 			   packet/0, crc/0, esp3_packet/0, packet_type/0, payload/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
 			   command_type/0, command_request/0, command_outcome/0,
@@ -784,7 +797,7 @@
 			   push_button_event/0,
 			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
-			   device_event/0,
+			   device_description/0, device_event/0,
 
 			   common_command/0, common_command_failure/0,
 			   timer_ref/0,
@@ -835,8 +848,9 @@
 
 
 -type recording_info() ::
-	{ device_table(), Now :: timestamp(), MaybeLastSeen :: maybe( timestamp() ),
-	  maybe( discovery_origin() ), maybe( device_name() ), maybe( eep_id() ) }.
+	{ device_table(), NewDevice :: enocean_device(), Now :: timestamp(),
+	  MaybeLastSeen :: maybe( timestamp() ), maybe( discovery_origin() ),
+	  maybe( device_name() ), maybe( eep_id() ) }.
 % Information about a recording of a device event.
 
 
@@ -1469,7 +1483,7 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 				{ decoded, Event=#read_base_id_info_response{
 						% (not interested here in remaining_write_cycles)
 						base_eurid=BaseEurid }, _MaybeDiscoverOrigin,
-						MaybeAnyNextChunk, ReadState } ->
+					_MaybeDevice, MaybeAnyNextChunk, ReadState } ->
 
 					% Clearer that way:
 					case MaybeAnyNextChunk of
@@ -1696,7 +1710,7 @@ declare_devices( _DeviceCfgs=[
 	EepBinStr = text_utils:ensure_binary( EepStr ),
 
 	MaybeEepId = case oceanic_generated:get_maybe_first_for_eep_strings(
-						EepBinStr ) of
+			EepBinStr ) of
 
 		undefined ->
 			trace_bridge:warning_fmt( "The EEP of the configured "
@@ -2224,6 +2238,24 @@ get_oceanic_eurid( OcSrvPid ) ->
 	end.
 
 
+
+% @doc Returns the best textual description found for the device specified from
+% its EURID.
+%
+-spec get_device_description( eurid(), oceanic_server_pid() ) ->
+												device_description().
+get_device_description( Eurid, OcSrvPid ) ->
+	OcSrvPid ! { getDeviceDescription, Eurid, self() },
+
+	receive
+
+		{ oceanic_device_description, BinDesc } ->
+			BinDesc
+
+	end.
+
+
+
 % Section for common commands.
 
 
@@ -2496,12 +2528,12 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 				% echoed to any listener:
 				%
 				{ decoded, _Event=command_processed, _MaybeDiscoverOrigin,
-				  AnyNextMaybeChunk, NewState } ->
+				  _MaybeDevice, AnyNextMaybeChunk, NewState } ->
 					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
 
 				% Then just an event, possibly listened to:
-				{ decoded, Event, MaybeDiscoverOrigin, AnyNextMaybeChunk,
-				  NewState } ->
+				{ decoded, Event, MaybeDiscoverOrigin, MaybeDevice,
+				  AnyNextMaybeChunk, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_decoding,
 						trace_bridge:debug_fmt( "Decoded following event "
@@ -2509,25 +2541,42 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 							[ MaybeDiscoverOrigin,
 							  device_event_to_string( Event ) ] ) ),
 
-					DevMsgType = case MaybeDiscoverOrigin of
+					DeviceMsg = case MaybeDiscoverOrigin of
 
 						% Most common case (already detected, hence not set):
 						undefined ->
-							onEnoceanDeviceEvent;
+							{ onEnoceanDeviceEvent, [ Event, self() ] };
 
-						configuration ->
-							onEnoceanConfiguredDeviceFirstSeen;
+						% Set, hence already detected:
+						DiscoverOrigin ->
+							BinDesc = case MaybeDevice of
 
-						% Detected yet not in configuration:
-						listening ->
-							onEnoceanDeviceDiscovery;
+								undefined ->
+									throw( { unexpected_undefined_device,
+											 Event } );
 
-						teaching ->
-							onEnoceanDeviceTeachIn
+								Device ->
+									get_device_description( Device )
+
+							end,
+
+							DevMsgType = case DiscoverOrigin of
+
+								configuration ->
+									onEnoceanConfiguredDeviceFirstSeen;
+
+								% Detected, yet not in configuration:
+								listening ->
+									onEnoceanDeviceDiscovery;
+
+								teaching ->
+									onEnoceanDeviceTeachIn
+
+							end,
+
+							{ DevMsgType, [ Event, BinDesc, self() ] }
 
 					end,
-
-					DeviceMsg = { DevMsgType, [ Event, self() ] },
 
 					[ LPid ! DeviceMsg
 						|| LPid <- NewState#oceanic_state.event_listeners ],
@@ -2571,6 +2620,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 					LostMsg = { onEnoceanDeviceLost, [ LostEurid,
 						LostDevice#enocean_device.name,
+						get_device_description( LostDevice ),
 						LostDevice#enocean_device.last_seen,
 						PeriodicityMs, self() ] },
 
@@ -2633,6 +2683,32 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 		{ getOceanicEurid, RequesterPid } ->
 			RequesterPid !
 				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
+
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+
+
+
+		{ getDeviceDescription, Eurid, RequesterPid } ->
+
+			DeviceTable = State#oceanic_state.device_table,
+
+			BinDesc = case table:lookup_entry( Eurid, DeviceTable ) of
+
+				key_not_found ->
+					text_utils:bin_format( "unknown device of EURID ~ts",
+						[ eurid_to_string( Eurid ) ] );
+
+				{ value, #enocean_device{ name=undefined } } ->
+					text_utils:format( "unnamed device of EURID ~ts",
+						[ eurid_to_string( Eurid ) ] );
+
+				{ value, #enocean_device{ name=BinName } } ->
+					text_utils:format( "device '~ts' of EURID ~ts",
+						[ BinName, eurid_to_string( Eurid ) ] )
+
+			end,
+
+			RequesterPid ! { oceanic_device_description, BinDesc },
 
 			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
@@ -2742,8 +2818,8 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			Res = case try_integrate_chunk( _ToSkipLen=0,
 					_MaybeAccChunk=undefined, Telegram, State ) of
 
-				{ decoded, DeviceEvent, _MaybeDiscoverOrigin, _NewNextChunk,
-				  _NewState } ->
+				{ decoded, DeviceEvent, _MaybeDiscoverOrigin, _MaybeDevice,
+				  _NewNextChunk, _NewState } ->
 					DeviceEvent;
 
 				{ DecError, _NewToSkipLen, _NewNextChunk, _NewState } ->
@@ -3423,7 +3499,7 @@ decode_packet( _PacketType=response_type, Data, OptData, AnyNextChunk,
 		"dropping it.", [ Data, OptData ] ),
 
 	{ decoded, _MaybeDeviceEvent=command_processed,
-	  _MaybeDiscoverOrigin=undefined, AnyNextChunk,
+	  _MaybeDiscoverOrigin=undefined, _MaybeDevice=undefined, AnyNextChunk,
 	  State#oceanic_state{ discarded_count=DiscCount+1 } };
 
 
@@ -3482,7 +3558,8 @@ decode_packet( _PacketType=response_type,
 
 					% Waiting information already cleared:
 					{ decoded, command_processed,
-					  _MaybeDiscoverOrigin=undefined, AnyNextChunk, RespState }
+					  _MaybeDiscoverOrigin=undefined, _MaybeDevice=undefined,
+					  AnyNextChunk, RespState }
 
 			end
 
@@ -3544,8 +3621,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _ListeningDiscoverOrigin,
-			  _UndefinedDeviceName, _MaybeEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _ListeningDiscoverOrigin, _UndefinedDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
@@ -3562,8 +3639,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _UndefinedEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _UndefinedEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -3588,8 +3665,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _UnsupportedEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _UnsupportedEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -3643,7 +3720,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
-	% EEP was known, hence device already was known as well:
+	% EEP was known, hence device was already known as well:
 	{ NewDeviceTable, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
 	  MaybeDeviceName, MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
@@ -3662,7 +3739,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 			  repeater_count_to_string( RepCount ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData ) ] ),
 		basic_utils:ignore_unused(
-		  [ DB_0, PTMSwitchModuleType, NuType, RepCount ] ) ),
+			[ DB_0, PTMSwitchModuleType, NuType, RepCount ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -3678,7 +3755,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 								security_level=MaybeSecLvl,
 								transition=ButtonTransition },
 
-	{ decoded, Event, UndefinedDiscoverOrigin, AnyNextChunk, NewState }.
+	{ decoded, Event, UndefinedDiscoverOrigin, Device, AnyNextChunk, NewState }.
 
 
 
@@ -3748,7 +3825,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				second_action_button=SecondButtonDesignator,
 				second_action_valid=IsSecondActionValid },
 
-			{ decoded, Event, UndefinedDiscoverOrigin, AnyNextChunk, NewState };
+			{ decoded, Event, UndefinedDiscoverOrigin, Device, AnyNextChunk,
+			  NewState };
 
 
 		{ _T21=1, _NU=0 } ->
@@ -3776,8 +3854,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			ButtonTransition = get_button_transition( EB ),
 
 			% EEP was known, hence device already was known as well:
-			{ NewDeviceTable, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
-			  MaybeDeviceName, MaybeEepId } =
+			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+			  UndefinedDiscoverOrigin, MaybeDeviceName, MaybeEepId } =
 				record_known_device_success( Device, DeviceTable ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -3800,11 +3878,12 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				button_counting=MaybeButtonCounting,
 				energy_bow=ButtonTransition },
 
-			{ decoded, Event, UndefinedDiscoverOrigin, AnyNextChunk, NewState };
+			{ decoded, Event, UndefinedDiscoverOrigin, NewDevice,
+			  AnyNextChunk, NewState };
 
 
 		_Other ->
-			{ NewDeviceTable, _Now,  _PrevLastSeen, _DiscoverOrigin,
+			{ NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
 			  _MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
@@ -3948,7 +4027,8 @@ notify_requester( Response, _Requester=internal, AnyNextChunk, State ) ->
 			[ device_event_to_string( Response ) ] ) ),
 
 	% We return directly the response event in that case:
-	{ decoded, Response, _MaybeDiscoverOrigin=undefined, AnyNextChunk, State };
+	{ decoded, Response, _MaybeDiscoverOrigin=undefined, _MaybeDevice=undefined,
+	  AnyNextChunk, State };
 
 notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 
@@ -3959,8 +4039,8 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 
 	RequesterPid ! { oceanic_command_outcome, Response },
 
-	{ decoded, command_processed, _MaybeDiscoverOrigin=undefined, AnyNextChunk,
-	  State }.
+	{ decoded, command_processed, _MaybeDiscoverOrigin=undefined,
+	  _MaybeDevice=undefined, AnyNextChunk, State }.
 
 
 
@@ -4148,7 +4228,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 	end,
 
-	{ NewDeviceTable, Now, MaybePrevLastSeen, MaybeDiscoverOrigin,
+	{ NewDeviceTable, NewDevice, Now, MaybePrevLastSeen, MaybeDiscoverOrigin,
 	  MaybeDeviceName, MaybeEepId } =
 		record_device_success( SenderEurid, DeviceTable ),
 
@@ -4183,7 +4263,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 		learn_activated=LearnActivated,
 		contact=ContactStatus },
 
-	{ decoded, Event, MaybeDiscoverOrigin, AnyNextChunk, NewState }.
+	{ decoded, Event, MaybeDiscoverOrigin, NewDevice, AnyNextChunk, NewState }.
 
 
 
@@ -4220,9 +4300,9 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 		key_not_found ->
 
-			{ NewDeviceTable, _Now, _MaybePrevLastSeen, _MaybeDiscoverOrigin,
-			  _MaybeDeviceName, _MaybeEepId } =
-					record_device_failure( SenderEurid, DeviceTable ),
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, _MaybeDeviceName, _MaybeEepId } =
+				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device first time seen:
 			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
@@ -4237,8 +4317,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 		% Knowing the actual EEP is needed in order to decode:
 		{ value, _Device=#enocean_device{ eep=undefined } } ->
 
-			{ NewDeviceTable, _Now, _MaybePrevLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _MaybeEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -4258,8 +4338,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
-			{ NewDeviceTable, _Now, _MaybePrevLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _UnsupportedEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _UnsupportedEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -4302,7 +4382,8 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 			undefined;
 
 		false ->
-			round( ScaledTemperature / 250.0 * 40 )
+			%round( ScaledTemperature / 250.0 * 40 )
+			ScaledTemperature / 250.0 * 40
 
 	end,
 
@@ -4360,7 +4441,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 								 learn_activated=LearnActivated },
 
-	{ decoded, Event, UndefinedDiscoverOrigin, AnyNextChunk, NewState }.
+	{ decoded, Event, UndefinedDiscoverOrigin, Device, AnyNextChunk, NewState }.
 
 
 
@@ -4447,8 +4528,8 @@ decode_ute_packet(
 
 	InitiatorEep = { RORG, Func, Type },
 
-	{ NewDeviceTable, #enocean_device{ name=MaybeName,
-									   eep=MaybeEepId }, Now } =
+	{ NewDeviceTable, Device=#enocean_device{ name=MaybeName,
+											  eep=MaybeEepId }, Now } =
 		declare_device_from_teach_in( InitiatorEurid, InitiatorEep,
 									  DeviceTable ),
 
@@ -4509,7 +4590,8 @@ decode_ute_packet(
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-	{ decoded, Event, _DiscoverOrigin=teaching, AnyNextChunk, NewState }.
+	{ decoded, Event, _DiscoverOrigin=teaching, Device, AnyNextChunk,
+	  NewState }.
 
 
 
@@ -4556,8 +4638,8 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _ListeningDiscoverOrigin,
-			  _UndefinedDeviceName, _MaybeEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _ListeningDiscoverOrigin, _UndefinedDeviceName, _MaybeEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
@@ -4574,8 +4656,8 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _UndefinedEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _UndefinedEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -4602,8 +4684,8 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			% Not trying to decode optional data then.
 
-			{ NewDeviceTable, _Now, _MaybeLastSeen, _MaybeDiscoverOrigin,
-			  MaybeDeviceName, _UnsupportedEepId } =
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, MaybeDeviceName, _UnsupportedEepId } =
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
@@ -4662,7 +4744,8 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 	%Event = to_do,
 
-	%{ decoded, Event, AnyNextChunk, UndefinedDiscoverOrigin, NewState }.
+	%{ decoded, Event, AnyNextChunk, UndefinedDiscoverOrigin, Device,
+	%  NewState }.
 
 	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
 
@@ -4708,7 +4791,8 @@ decode_vld_smart_plug_with_metering_packet(
 
 	%Event = to_do,
 
-	%{ decoded, Event, UndefinedDiscoverOrigin, AnyNextChunk, NewState }.
+	%{ decoded, Event, UndefinedDiscoverOrigin, Device, AnyNextChunk,
+	%  NewState }.
 
 	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
 
@@ -4718,13 +4802,13 @@ decode_vld_smart_plug_with_metering_packet(
 % @doc Returns a textual description of the specified temperature.
 -spec temperature_to_string( celsius() ) -> ustring().
 temperature_to_string( Temp ) ->
-	text_utils:format( "temperature of ~B°C", [ Temp ] ).
+	text_utils:format( "temperature of ~.1f°C", [ Temp ] ).
 
 
 % @doc Returns a textual description of the specified relative humidity.
 -spec relative_humidity_to_string( percent() ) -> ustring().
 relative_humidity_to_string( HPerCent ) ->
-	text_utils:format( "relative humidity of ~B%", [ HPerCent ] ).
+	text_utils:format( "relative humidity of ~.1f%", [ HPerCent ] ).
 
 
 
@@ -4837,8 +4921,9 @@ record_device_success( Eurid, DeviceTable ) ->
 			% Necessarily new:
 			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
 
-			{ NewDeviceTable, Now, _MaybePrevLastSeen=undefined, DiscoverOrigin,
-			  _MaybeDeviceName=undefined, _MaybeEEPId=undefined };
+			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
+			  DiscoverOrigin, _MaybeDeviceName=undefined,
+			  _MaybeEEPId=undefined };
 
 
 		{ value, Device } ->
@@ -4865,13 +4950,14 @@ record_known_device_success( Device=#enocean_device{
 
 	Now = time_utils:get_timestamp(),
 
-	NewFirstSeen = case MaybeFirstSeen of
+	% Report discovery only once, initially:
+	{ NewFirstSeen, ReportedDiscoverOrigin } = case MaybeFirstSeen of
 
 		undefined ->
-			Now;
+			{ Now, Device#enocean_device.discovered_through };
 
 		FirstSeen ->
-			FirstSeen
+			{ FirstSeen, _MaybeDiscoverOrigin=undefined }
 
 	end,
 
@@ -4894,7 +4980,7 @@ record_known_device_success( Device=#enocean_device{
 	% discover origin to avoid that the more generic caller has to reassemble
 	% this tuple)
 	%
-	{ NewDeviceTable, Now, MaybeLastSeen, _MaybeDiscoverOrigin=undefined,
+	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
 	  MaybeDeviceName, MaybeEepId }.
 
 
@@ -4931,8 +5017,9 @@ record_device_failure( Eurid, DeviceTable ) ->
 			% Necessarily new:
 			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
 
-			{ NewDeviceTable, Now, _MaybePrevLastSeen=undefined, DiscoverOrigin,
-			  _MaybeDeviceName=undefined, _MaybeEEPId=undefined };
+			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
+			  DiscoverOrigin, _MaybeDeviceName=undefined,
+			  _MaybeEEPId=undefined };
 
 
 		{ value, Device } ->
@@ -4959,13 +5046,14 @@ record_known_device_failure( Device=#enocean_device{
 
 	Now = time_utils:get_timestamp(),
 
-	NewFirstSeen = case MaybeFirstSeen of
+	% Report discovery only once, initially:
+	{ NewFirstSeen, ReportedDiscoverOrigin } = case MaybeFirstSeen of
 
 		undefined ->
-			Now;
+			{ Now, Device#enocean_device.discovered_through };
 
 		FirstSeen ->
-			FirstSeen
+			{ FirstSeen, _MaybeDiscoverOrigin=undefined }
 
 	end,
 
@@ -4988,7 +5076,7 @@ record_known_device_failure( Device=#enocean_device{
 	% discover origin to avoid that the more generic caller has to reassemble
 	% this tuple)
 	%
-	{ NewDeviceTable, Now, MaybeLastSeen, _MaybeDiscoverOrigin=undefined,
+	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
 	  MaybeDeviceName, MaybeEepId }.
 
 
@@ -6365,6 +6453,13 @@ device_to_string( #enocean_device{ eurid=Eurid,
 		text_utils:format( "~ts applying ~ts; it has been ~ts~ts~ts~ts; ~ts",
 			[ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr,
 			  PeriodStr ] ).
+
+
+
+% @doc Returns a description of the specified device, as seen from Oceanic.
+-spec get_device_description( enocean_device() ) -> device_description().
+get_device_description( Device ) ->
+	text_utils:string_to_binary( device_to_string( Device ) ).
 
 
 
