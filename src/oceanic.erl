@@ -5158,23 +5158,7 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 
 	stop_any_timer( MaybeActTimer ),
 
-	% Adding a 40% margin to hopefully avoid most of the false alarms (most
-	% devices are pretty irregular):
-	%
-	SeenDurationMs = 1400 * time_utils:get_duration( FirstSeen, Now ),
-
-	SeenCount = TeleCount + ErrCount,
-
-	NextDelayMs = case SeenCount of
-
-		% No possible evaluation yet, starting with a larger default duration:
-		0 ->
-			2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
-
-		_ ->
-			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
-
-	end,
+	NextDelayMs = compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ),
 
 	TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
 
@@ -5213,6 +5197,30 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
 
 	end.
 
+
+
+% @doc Determines the next auto time-out for the specified parameters.
+-spec compute_next_timeout( timestamp(), count(), count(), timestamp() ) ->
+											milliseconds().
+compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
+
+	% Adding a 40% margin to hopefully avoid most of the false alarms (most
+	% devices are pretty irregular):
+	%
+	SeenDurationMs = 1400 * time_utils:get_duration( FirstSeen, Now ),
+
+	SeenCount = TeleCount + ErrCount,
+
+	case SeenCount of
+
+		% No possible evaluation yet, starting with a larger default duration:
+		0 ->
+			2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
+
+		_ ->
+			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
+
+	end.
 
 
 stop_any_timer( _MaybeTimer=undefined ) ->
@@ -6530,6 +6538,21 @@ device_to_string( #enocean_device{ eurid=Eurid,
 			"no activity monitoring of this device";
 
 		auto ->
+			ExpectPeriodStr = case MaybeFirstTimestamp of
+
+				undefined ->
+					"its expected periodicity cannot be determined yet "
+					"(device never seen)";
+
+				FirstSeen ->
+					NextDelayMs = compute_next_timeout( FirstSeen, TeleCount,
+						ErrCount, _Now=time_utils:get_timestamp() ),
+					text_utils:format( "its currently expected periodicity "
+						"would be ~ts",
+						[ time_utils:duration_to_string( NextDelayMs ) ] )
+
+			end,
+
 			"the activity of this device is monitored ("
 				++ case MaybeActTimer of
 
@@ -6542,7 +6565,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 							%                   [ ActTimer ] )
 							"activity timer set"
 
-				   end ++ ")";
+				   end ++ ") and " ++ ExpectPeriodStr;
 
 		Milliseconds ->
 			text_utils:format( "its activity is monitored, and expected "
