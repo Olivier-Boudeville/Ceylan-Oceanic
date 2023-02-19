@@ -80,6 +80,9 @@
 	% The timestamp (if any) at which this device was last seen:
 	last_seen = undefined :: maybe( time_utils:timestamp() ),
 
+	% Tells whether this device is considered by Oceanic to be online or lost:
+	availability :: maybe( oceanic:availability_status() ),
+
 	% The number of full telegrams successfully decoded for this device:
 	telegram_count = 0 :: basic_utils:count(),
 
