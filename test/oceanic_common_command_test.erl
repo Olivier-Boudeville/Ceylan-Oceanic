@@ -54,7 +54,7 @@ receive_event() ->
 
 	receive
 
-		{ onEnoceanDeviceEvent, [ Event, _OcSrvPid ] } ->
+		{ onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, _OcSrvPid ] } ->
 
 			test_facilities:display( "Received at ~ts event ~ts.",
 				[ time_utils:get_textual_timestamp(),

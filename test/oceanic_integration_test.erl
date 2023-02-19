@@ -86,7 +86,7 @@ wait_for_test_events( Count, OcSrvPid ) ->
 
 	receive
 
-		{ onEnoceanDeviceEvent, [ Event, OcSrvPid ] } ->
+		{ onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, OcSrvPid ] } ->
 
 			test_facilities:display( "Test received at ~ts the following "
 				"device event: ~ts.",

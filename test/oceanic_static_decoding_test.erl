@@ -60,8 +60,8 @@ decode_telegrams( _Telegrams=[ Tele | T ], Count ) ->
 
 	case oceanic:test_decode( Tele ) of
 
-		{ decoded, Event, _MaybeDiscoverOrigin, _MaybeNextChunk=undefined,
-		  _NewState } ->
+		{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+		  _MaybeNextChunk=undefined, _NewState } ->
 
 			test_facilities:display( "Decoded event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),

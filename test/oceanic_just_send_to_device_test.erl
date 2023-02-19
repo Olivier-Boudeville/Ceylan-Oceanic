@@ -366,9 +366,9 @@ emit_forged_telegrams_for_green_switch( SerialPid ) ->
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
 	% Trying to decode the telegram we just forged:
-	%{ decoded, Event, _MaybeDiscoverOrigin, _AnyNextChunk, _NewState } =
-	%   oceanic:try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined,
-	%                                Telegram, InitialTestState ),
+	%{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+	%  _AnyNextChunk, _NewState } = oceanic:try_integrate_chunk( _ToSkipLen=0,
+	%       _MaybeAccChunk=undefined, Telegram, InitialTestState ),
 
 	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
 	%                         [ oceanic:device_event_to_string( Event ) ] ),

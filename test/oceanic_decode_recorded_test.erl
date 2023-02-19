@@ -112,7 +112,8 @@ decode_all( _Telegrams=[ Tl | T ], ToSkipLen, MaybeAccChunk, AccEvents,
 
 	case oceanic:try_integrate_chunk( ToSkipLen, MaybeAccChunk, Tl, State ) of
 
-		{ decoded, Event, _MaybeDiscoverOrigin, AnyNextChunk, NewState } ->
+		{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+		  AnyNextChunk, NewState } ->
 
 			test_facilities:display( "Test decoded following event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),
