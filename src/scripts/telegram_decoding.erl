@@ -136,14 +136,14 @@ decode_telegram( TelegramHexStr ) ->
 			case oceanic:try_integrate_chunk( _ToSkipLen=0,
 						_MaybeAccChunk=undefined, Telegram, BogusState ) of
 
-				{ decoded, Event, _MaybeDiscoverOrigin,
-				  _MaybeNextChunk=undefined, _NewState } ->
+				{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
+				  _MaybeDevice, _MaybeNextChunk=undefined, _NewState } ->
 					io:format( "Decoded as ~ts.",
 						[ oceanic:device_event_to_string( Event ) ] ),
 					basic_utils:stop( _ErrorCode=0 );
 
-				{ decoded, Event, _MaybeDiscoverOrigin, NextChunk,
-				  _NewState } ->
+				{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
+				  _MaybeDevice, NextChunk, _NewState } ->
 					io:format( "Decoded as ~ts, with following extra chunk "
 						"of ~B bytes: ~ts.",
 						[ oceanic:device_event_to_string( Event ),
