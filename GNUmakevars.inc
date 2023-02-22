@@ -132,7 +132,7 @@ endif
 # The uniquely-defined version of this layer, for all uses (including rebar and
 # hex):
 #
-OCEANIC_VERSION := 0.0.2
+OCEANIC_VERSION := 1.4.1
 
 
 # PROJECT_VERSION should be defined on a per-project basis.
