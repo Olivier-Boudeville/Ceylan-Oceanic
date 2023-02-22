@@ -5204,14 +5204,18 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
 											milliseconds().
 compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
 
-	% Adding a 40% margin to hopefully avoid most of the false alarms (most
-	% devices are pretty irregular):
+	% Adding a fixed and a 120% margin to hopefully avoid most of the false
+	% alarms (many devices are *very* irregular, possibly related to their state
+	% of charge):
 	%
-	SeenDurationMs = 1400 * time_utils:get_duration( FirstSeen, Now ),
+	SeenDurationMs = 2200 * time_utils:get_duration( FirstSeen, Now ),
 
 	SeenCount = TeleCount + ErrCount,
 
-	case SeenCount of
+	% A fixed (10 minute) margin can only help:
+	FixedMarginMs = 10 * 60 * 1000,
+
+	FixedMarginMs + case SeenCount of
 
 		% No possible evaluation yet, starting with a larger default duration:
 		0 ->
@@ -5221,6 +5225,7 @@ compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
 			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
 
 	end.
+
 
 
 stop_any_timer( _MaybeTimer=undefined ) ->
@@ -6545,8 +6550,14 @@ device_to_string( #enocean_device{ eurid=Eurid,
 					"(device never seen)";
 
 				FirstSeen ->
+
 					NextDelayMs = compute_next_timeout( FirstSeen, TeleCount,
 						ErrCount, _Now=time_utils:get_timestamp() ),
+
+					% Initially may be misleading as the first duration is
+					% determined differently (whereas min_activity_timeout can
+					% be displayed here):
+					%
 					text_utils:format( "its currently expected periodicity "
 						"would be ~ts",
 						[ time_utils:duration_to_string( NextDelayMs ) ] )
