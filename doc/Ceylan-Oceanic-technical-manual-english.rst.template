@@ -392,6 +392,8 @@ Oceanic can be configured thanks to a set of key/value pairs:
 
 These configuration information can be provided either thanks to the Ceylan-Myriad preferences system (see the ``preferences`` module; this usually boils down to an `ETF file <https://myriad.esperide.org/#etf>`_, by default ``~/.ceylan-settings.etf``) and/or programmatically (see the ``oceanic:add_configuration_settings/2``; in which case these settings would take priority over any set preferences).
 
+Note that, should a device have a repeater ability activated, Oceanic may detect also the Enocean gateway it is using (as it may receive back its own sendings).
+
 
 
 Testing Oceanic
@@ -899,7 +901,7 @@ To check and solve:
  /dev/ttyUSB2:        91437
 
  $ ps -edf | grep 91437
-bond+   91437   91408  0 Jan08 ttyUSB2  00:00:00 /home/bond/Software/erlang-serial/erlang/lib/serial-1.1/priv/bin/serial -erlang
+ bond+   91437   91408  0 Jan08 ttyUSB2  00:00:00 /home/bond/Software/erlang-serial/erlang/lib/serial-1.1/priv/bin/serial -erlang
 
  $ kill 91437
 
@@ -923,13 +925,6 @@ Additional Information
 - use ``make sync-sources-to-server`` if needing to update directly Oceanic' sources on a remote server that hosts an appropriate USB dongle
 
 - refer to `EnOcean in Practice <http://tvaira.free.fr/projets/activites/enocean.html>`_ (very clear information, in French)
-
-
-
-Credits
-=======
-
-Many thanks to David Alberto for `his kind sharing in terms of computation of latitude-based daylight durations <https://www.astrolabe-science.fr/duree-du-jour-et-latitude/>`_ (in French).
 
 
 
