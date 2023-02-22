@@ -27,9 +27,10 @@
 <p><tt>any_string() = <a href="text_utils.html#type-any_string">text_utils:any_string()</a></tt></p>
 
 
-<h3 class="typedecl"><a name="type-availability_outcome">availability_outcome()</a></h3>
-<p><tt>availability_outcome() = {true, SerialRootDir::<a href="#type-directory_path">directory_path()</a>} | {false, Reason::<a href="#type-ustring">ustring()</a>, <a href="basic_utils.html#type-error_term">basic_utils:error_term()</a>}</tt></p>
-<p> The outcome of an availability check for Oceanic.</p>
+<h3 class="typedecl"><a name="type-back_online_info">back_online_info()</a></h3>
+<p><tt>back_online_info() = <a href="#type-maybe">maybe</a>(<a href="#type-device_description">device_description()</a>)</tt></p>
+<p> Information sent to notify (if not set to 'undefined') that a lost device is
+ back online.</p>
 
 <h3 class="typedecl"><a name="type-bin_string">bin_string()</a></h3>
 <p><tt>bin_string() = <a href="text_utils.html#type-bin_string">text_utils:bin_string()</a></tt></p>
@@ -121,6 +122,10 @@ milliwatt (mW), of all received subtelegrams.</p>
 
  Of course only applies when receiving telegrams (not sending).</p>
 
+<h3 class="typedecl"><a name="type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a></h3>
+<p><tt>declared_device_activity_periodicity() = <a href="#type-dhms_duration">dhms_duration()</a> | none | default | auto</tt></p>
+
+
 <h3 class="typedecl"><a name="type-decoded_optional_data">decoded_optional_data()</a></h3>
 <p><tt>decoded_optional_data() = {<a href="#type-subtelegram_count">subtelegram_count()</a>, <a href="#type-eurid">eurid()</a>, <a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>), <a href="#type-maybe">maybe</a>(<a href="#type-security_level">security_level()</a>)}</tt></p>
 <p><p> The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1) 
@@ -133,11 +138,8 @@ telegrams.</p>
 
 
 <h3 class="typedecl"><a name="type-decoding_outcome">decoding_outcome()</a></h3>
-<p><tt>decoding_outcome() = {<a href="#type-decoding_error">decoding_error()</a>, ToSkipLen::<a href="#type-count">count()</a>, NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>} | {decoded, <a href="#type-maybe">maybe</a>(<a href="#type-device_event">device_event()</a> | command_processed), NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>}</tt></p>
-<p><p> The outcome of an attempt of integrating / decoding a telegram chunk.</p>
+<p><tt>decoding_outcome() = {decoded, <a href="#type-maybe">maybe</a>(<a href="#type-device_event">device_event()</a> | command_processed), MaybeDiscoverOrigin::<a href="#type-maybe">maybe</a>(<a href="#type-discovery_origin">discovery_origin()</a>), IsBackOnline::boolean(), MaybeDevice::<a href="#type-maybe">maybe</a>(<a href="#type-enocean_device">enocean_device()</a>), NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>} | {<a href="#type-decoding_error">decoding_error()</a>, ToSkipLen::<a href="#type-count">count()</a>, NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>}</tt></p>
 
- A maybe-event is returned, as for example a common command response received
- whereas no request was sent shall be discarded.</p>
 
 <h3 class="typedecl"><a name="type-decoding_result">decoding_result()</a></h3>
 <p><tt>decoding_result() = <a href="#type-decoding_error">decoding_error()</a> | <a href="#type-device_event">device_event()</a></tt></p>
@@ -148,13 +150,17 @@ telegrams.</p>
 <p> A user-defined device name, a lot more convenient than a EURID.</p>
 
 <h3 class="typedecl"><a name="type-device_config">device_config()</a></h3>
-<p><tt>device_config() = {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, Comment::<a href="#type-ustring">ustring()</a>}</tt></p>
-<p> An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
- describe a given device.</p>
+<p><tt>device_config() = {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, <a href="#type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, <a href="#type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a>, Comment::<a href="#type-ustring">ustring()</a>}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-device_description">device_description()</a></h3>
+<p><tt>device_description() = <a href="#type-bin_string">bin_string()</a></tt></p>
+<p> The description of a device, as known and returned by Oceanic.</p>
 
 <h3 class="typedecl"><a name="type-device_designator">device_designator()</a></h3>
 <p><tt>device_designator() = <a href="#type-eurid">eurid()</a> | <a href="#type-device_any_name">device_any_name()</a></tt></p>
-
+<p> An element designating a device, either thanks to an EURID (as an integer), or
+ thanks to a user-defined name (as any kind of string).</p>
 
 <h3 class="typedecl"><a name="type-device_event">device_event()</a></h3>
 <p><tt>device_event() = <a href="#type-thermo_hygro_event">thermo_hygro_event()</a> | <a href="#type-single_input_contact_event">single_input_contact_event()</a> | <a href="#type-push_button_event">push_button_event()</a> | <a href="#type-double_rocker_switch_event">double_rocker_switch_event()</a> | <a href="#type-double_rocker_multipress_event">double_rocker_multipress_event()</a> | <a href="#type-teach_request">teach_request()</a> | <a href="#type-command_response">command_response()</a></tt></p>
@@ -176,19 +182,27 @@ telegrams.</p>
 <p><tt>device_table() = <a href="#type-table">table</a>(<a href="#type-eurid">eurid()</a>, <a href="#type-enocean_device">enocean_device()</a>)</tt></p>
 <p> A table recording information regarding Enocean devices.</p>
 
+<h3 class="typedecl"><a name="type-dhms_duration">dhms_duration()</a></h3>
+<p><tt>dhms_duration() = <a href="time_utils.html#type-dhms_duration">time_utils:dhms_duration()</a></tt></p>
+<p>-type seconds() :: time_utils:seconds().</p>
+
 <h3 class="typedecl"><a name="type-directory_path">directory_path()</a></h3>
 <p><tt>directory_path() = <a href="file_utils.html#type-directory_path">file_utils:directory_path()</a></tt></p>
 
 
+<h3 class="typedecl"><a name="type-discovery_origin">discovery_origin()</a></h3>
+<p><tt>discovery_origin() = configuration | listening | teaching</tt></p>
+
+
 <h3 class="typedecl"><a name="type-double_rocker_multipress_event">double_rocker_multipress_event()</a></h3>
-<p><tt>double_rocker_multipress_event() = #double_rocker_multipress_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), button_counting = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-button_counting">oceanic:button_counting()</a>), energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</tt></p>
+<p><tt>double_rocker_multipress_event() = #double_rocker_multipress_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), button_counting = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-button_counting">oceanic:button_counting()</a>), energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</tt></p>
 <p><p> Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
 Application Style 1"), for T21=1 and NU=0.</p>
 
  Refer to [EEP-spec] p.16 for further details.</p>
 
 <h3 class="typedecl"><a name="type-double_rocker_switch_event">double_rocker_switch_event()</a></h3>
-<p><tt>double_rocker_switch_event() = #double_rocker_switch_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), first_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>, second_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, second_action_valid = boolean()}</tt></p>
+<p><tt>double_rocker_switch_event() = #double_rocker_switch_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), first_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>, second_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, second_action_valid = boolean()}</tt></p>
 <p><p> Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
 Application Style 1"), for T21=1.</p>
 
@@ -208,7 +222,7 @@ Application Style 1"), for T21=1.</p>
 <p> An EEP defined as a string (e.g. "D5-00-01").</p>
 
 <h3 class="typedecl"><a name="type-enocean_device">enocean_device()</a></h3>
-<p><tt>enocean_device() = #enocean_device{eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), discovered_through = <a href="oceanic.html#type-discovery_origin">oceanic:discovery_origin()</a>, first_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), telegram_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>, error_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>}</tt></p>
+<p><tt>enocean_device() = #enocean_device{eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), discovered_through = <a href="oceanic.html#type-discovery_origin">oceanic:discovery_origin()</a>, first_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), availability = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-availability_status">oceanic:availability_status()</a>), telegram_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>, error_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>, expected_periodicity = <a href="oceanic.html#type-expected_periodicity">oceanic:expected_periodicity()</a>, activity_timer = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-timer_ref">oceanic:timer_ref()</a>)}</tt></p>
 <p> Information regarding an Enocean device, as known by the Oceanic server.</p>
 
 <h3 class="typedecl"><a name="type-enocean_version">enocean_version()</a></h3>
@@ -220,6 +234,10 @@ Application Style 1"), for T21=1.</p>
 <h3 class="typedecl"><a name="type-entry_type">entry_type()</a></h3>
 <p><tt>entry_type() = <a href="file_utils.html#type-entry_type">file_utils:entry_type()</a></tt></p>
 
+
+<h3 class="typedecl"><a name="type-enum">enum()</a></h3>
+<p><tt>enum() = integer()</tt></p>
+<p> An enumeration specified in the protocol.</p>
 
 <h3 class="typedecl"><a name="type-esp3_packet">esp3_packet()</a></h3>
 <p><tt>esp3_packet() = binary()</tt></p>
@@ -245,6 +263,12 @@ on devices.</p>
  denotes a broadcast transmission (as opposed to an Addressed Transmission,
  ADT).</p>
 
+<h3 class="typedecl"><a name="type-eurid_bin_string">eurid_bin_string()</a></h3>
+<p><tt>eurid_bin_string() = <a href="#type-bin_string">bin_string()</a></tt></p>
+<p><p> An EURID, expressed as a binary string.</p>
+
+ For example: <code>&lt;&lt;"B50533EC"&gt;&gt;</code>.</p>
+
 <h3 class="typedecl"><a name="type-eurid_string">eurid_string()</a></h3>
 <p><tt>eurid_string() = <a href="#type-ustring">ustring()</a></tt></p>
 <p><p> An EURID, expressed as a string.</p>
@@ -256,9 +280,17 @@ on devices.</p>
 <p> The PID of any process registered to an Oceanic server as a listener of
  Enocean events.</p>
 
+<h3 class="typedecl"><a name="type-expected_periodicity">expected_periodicity()</a></h3>
+<p><tt>expected_periodicity() = <a href="#type-milliseconds">milliseconds()</a> | none | auto</tt></p>
+
+
 <h3 class="typedecl"><a name="type-func">func()</a></h3>
 <p><tt>func() = <a href="#type-uint8">uint8()</a></tt></p>
 <p> Describes the basic functionality of the data content.</p>
+
+<h3 class="typedecl"><a name="type-list_table">list_table()</a></h3>
+<p><tt>list_table() = <a href="list_table.html#type-list_table">list_table:list_table()</a></tt></p>
+
 
 <h3 class="typedecl"><a name="type-log_counter">log_counter()</a></h3>
 <p><tt>log_counter() = <a href="type_utils.html#type-uint8">type_utils:uint8()</a></tt></p>
@@ -272,16 +304,29 @@ on devices.</p>
 <p><tt>manufacturer_id() = <a href="#type-uint8">uint8()</a></tt></p>
 <p> Identifier of device manufacturer.</p>
 
+<h3 class="typedecl"><a name="type-milliseconds">milliseconds()</a></h3>
+<p><tt>milliseconds() = <a href="unit_utils.html#type-milliseconds">unit_utils:milliseconds()</a></tt></p>
+
+
 <h3 class="typedecl"><a name="type-nu_message_type">nu_message_type()</a></h3>
 <p><tt>nu_message_type() = normal | unassigned | unknown_type_2 | unknown_type_3</tt></p>
 <p> "Nu" Message type, as defined in RPS packets.</p>
+
+<h3 class="typedecl"><a name="type-oceanic_availability_outcome">oceanic_availability_outcome()</a></h3>
+<p><tt>oceanic_availability_outcome() = {true, SerialRootDir::<a href="#type-directory_path">directory_path()</a>} | {false, Reason::<a href="#type-ustring">ustring()</a>, <a href="basic_utils.html#type-error_term">basic_utils:error_term()</a>}</tt></p>
+<p> The outcome of an availability check for Oceanic itself, as a whole (at least
+ a suitable gateway is needed).</p>
 
 <h3 class="typedecl"><a name="type-oceanic_server_pid">oceanic_server_pid()</a></h3>
 <p><tt>oceanic_server_pid() = pid()</tt></p>
 <p> The PID of an Oceanic server.</p>
 
+<h3 class="typedecl"><a name="type-oceanic_settings">oceanic_settings()</a></h3>
+<p><tt>oceanic_settings() = <a href="#type-list_table">list_table()</a></tt></p>
+
+
 <h3 class="typedecl"><a name="type-oceanic_state">oceanic_state()</a></h3>
-<p><tt>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid">serial_server_pid()</a>, emitter_eurid = <a href="#type-eurid">eurid()</a>, device_table = <a href="#type-device_table">device_table()</a>, command_queue = <a href="#type-command_queue">command_queue()</a>, waited_command_info = <a href="#type-maybe">maybe</a>(<a href="#type-waited_command_info">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out">time_utils:time_out()</a>, command_count = <a href="#type-count">count()</a>, sent_count = <a href="#type-count">count()</a>, discarded_count = <a href="#type-count">count()</a>, traffic_level = <a href="#type-bytes_per_second">bytes_per_second()</a>, last_traffic_seen = <a href="#type-timestamp">timestamp()</a>, jamming_threshold = <a href="#type-bytes_per_second">bytes_per_second()</a>, event_listener_pid = <a href="#type-maybe">maybe</a>(<a href="#type-event_listener_pid">event_listener_pid()</a>)}</tt></p>
+<p><tt>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid">serial_server_pid()</a>, emitter_eurid = <a href="#type-eurid">eurid()</a>, device_table = <a href="#type-device_table">device_table()</a>, command_queue = <a href="#type-command_queue">command_queue()</a>, waited_command_info = <a href="#type-maybe">maybe</a>(<a href="#type-waited_command_info">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out">time_utils:time_out()</a>, command_count = <a href="#type-count">count()</a>, sent_count = <a href="#type-count">count()</a>, discarded_count = <a href="#type-count">count()</a>, traffic_level = <a href="#type-bytes_per_second">bytes_per_second()</a>, last_traffic_seen = <a href="#type-timestamp">timestamp()</a>, jamming_threshold = <a href="#type-bytes_per_second">bytes_per_second()</a>, event_listeners = [<a href="#type-event_listener_pid">event_listener_pid()</a>]}</tt></p>
 <p> An Oceanic state, including configuration typically loaded from an ETF file.</p>
 
 <h3 class="typedecl"><a name="type-packet">packet()</a></h3>
@@ -314,7 +359,7 @@ the "optional data" one) found after the R-ORG one.</p>
  The types of PTM switch modules (radio emitter), as defined in RPS packets.</p>
 
 <h3 class="typedecl"><a name="type-push_button_event">push_button_event()</a></h3>
-<p><tt>push_button_event() = #push_button_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), transition = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</tt></p>
+<p><tt>push_button_event() = #push_button_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), transition = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</tt></p>
 <p><p> Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").</p>
 
  Refer to [EEP-spec] p.15 for further details.</p>
@@ -376,7 +421,7 @@ Oceanic focuses primarily on newer, richer, ESP3.</p>
  (USB dongle).</p>
 
 <h3 class="typedecl"><a name="type-single_input_contact_event">single_input_contact_event()</a></h3>
-<p><tt>single_input_contact_event() = #single_input_contact_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), learn_activated = boolean(), contact = <a href="oceanic.html#type-contact_status">oceanic:contact_status()</a>}</tt></p>
+<p><tt>single_input_contact_event() = #single_input_contact_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), learn_activated = boolean(), contact = <a href="oceanic.html#type-contact_status">oceanic:contact_status()</a>}</tt></p>
 <p><p> Event sent by EEP D5-00-01: Single Input Contact.</p>
 
  <p>D5-00 corresponds to Contacts and Switches.</p>
@@ -401,7 +446,7 @@ presumably to help overcoming any message loss.</p>
 
 
 <h3 class="typedecl"><a name="type-teach_request">teach_request()</a></h3>
-<p><tt>teach_request() = #teach_request{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), comm_direction = <a href="oceanic.html#type-communication_direction">oceanic:communication_direction()</a>, response_expected = boolean(), request_type = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-teach_request_type">oceanic:teach_request_type()</a>), channel_taught = <a href="oceanic.html#type-channel_taught">oceanic:channel_taught()</a>, manufacturer_id = <a href="oceanic.html#type-manufacturer_id">oceanic:manufacturer_id()</a>, echo_content = binary()}</tt></p>
+<p><tt>teach_request() = #teach_request{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), comm_direction = <a href="oceanic.html#type-communication_direction">oceanic:communication_direction()</a>, response_expected = boolean(), request_type = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-teach_request_type">oceanic:teach_request_type()</a>), channel_taught = <a href="oceanic.html#type-channel_taught">oceanic:channel_taught()</a>, manufacturer_id = <a href="oceanic.html#type-manufacturer_id">oceanic:manufacturer_id()</a>, echo_content = binary()}</tt></p>
 <p><p> Message (hence not an event per se) corresponding to the receiving a R-ORG 
 telegram for an universal Teach-in request, EEP based (UTE), one way of 
 pairing devices.</p>
@@ -450,7 +495,7 @@ complement/extend the base data.</p>
  The range of a temperature sensor.</p>
 
 <h3 class="typedecl"><a name="type-thermo_hygro_event">thermo_hygro_event()</a></h3>
-<p><tt>thermo_hygro_event() = #thermo_hygro_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), relative_humidity = <a href="math_utils.html#type-percent">math_utils:percent()</a>, temperature = <a href="#type-maybe">maybe</a>(<a href="unit_utils.html#type-celsius">unit_utils:celsius()</a>), temperature_range = <a href="oceanic.html#type-temperature_range">oceanic:temperature_range()</a>, learn_activated = boolean()}</tt></p>
+<p><tt>thermo_hygro_event() = #thermo_hygro_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), relative_humidity = <a href="math_utils.html#type-percent">math_utils:percent()</a>, temperature = <a href="#type-maybe">maybe</a>(<a href="unit_utils.html#type-celsius">unit_utils:celsius()</a>), temperature_range = <a href="oceanic.html#type-temperature_range">oceanic:temperature_range()</a>, learn_activated = boolean()}</tt></p>
 <p><p> Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any 
 range).</p>
 
@@ -512,10 +557,16 @@ of the first byte of the payload (hence 16 possible values).</p>
 (successful) teach response.</td></tr>
 <tr><td valign="top"><a href="#acknowledge_teach_request-3">acknowledge_teach_request/3</a></td><td>Acknowledges the specified teach-in request, by sending the specified 
 teach-in response.</td></tr>
+<tr><td valign="top"><a href="#add_configuration_settings-2">add_configuration_settings/2</a></td><td>Registers the specified additional Oceanic configuration in the specified 
+Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#decode_telegram-2">decode_telegram/2</a></td><td>Returns, if possible, the specified telegram once decoded as an event, 
 using the specified Oceanic server for that.</td></tr>
-<tr><td valign="top"><a href="#device_event_to_string-1">device_event_to_string/1</a></td><td>Returns a textual description of the specified device event.</td></tr>
-<tr><td valign="top"><a href="#device_table_to_string-1">device_table_to_string/1</a></td><td>Returns a textual description of the specified device table.</td></tr>
+<tr><td valign="top"><a href="#device_event_to_short_string-1">device_event_to_short_string/1</a></td><td>Returns a short textual description of the specified device event,
+ designed for user-friendly reporting.</td></tr>
+<tr><td valign="top"><a href="#device_event_to_string-1">device_event_to_string/1</a></td><td>Returns a (rather complete) textual description of the specified device
+ event.</td></tr>
+<tr><td valign="top"><a href="#device_triggered-1">device_triggered/1</a></td><td>Tells whether the specified device event indicates that this device can
+ be interpreted as being triggered by the user.</td></tr>
 <tr><td valign="top"><a href="#encode_common_command-2">encode_common_command/2</a></td><td>Encodes a common command, based on the specified data and optional data.</td></tr>
 <tr><td valign="top"><a href="#encode_double_rocker_multipress_telegram-4">encode_double_rocker_multipress_telegram/4</a></td><td>Encodes a double-rocker multipress telegram, from the specified device to 
 the specified one (if any), reporting the specified transition for the 
@@ -529,27 +580,48 @@ button.</td></tr>
  EURID.</td></tr>
 <tr><td valign="top"><a href="#eurid_to_bin_string-2">eurid_to_bin_string/2</a></td><td>Returns a (binary) textual description of the specified EURID, possibly
  translated to a user-friendly device name if any is known for that device.</td></tr>
+<tr><td valign="top"><a href="#eurid_to_short_string-1">eurid_to_short_string/1</a></td><td>Returns a short, raw, (plain) textual description of the specified EURID.</td></tr>
 <tr><td valign="top"><a href="#eurid_to_string-1">eurid_to_string/1</a></td><td>Returns a raw, (plain) textual description of the specified EURID.</td></tr>
 <tr><td valign="top"><a href="#execute_command-2">execute_command/2</a></td><td>Executes synchronously the specified command, specified as an opaque,
  already-encoded telegram, that is supposed to be acknowledged next by the
  recipient device, with a response telegram.</td></tr>
 <tr><td valign="top"><a href="#generate_support_modules-0">generate_support_modules/0</a></td><td>To be called by the 'oceanic_generated.beam' automatic make target in
  order to generate, here, a (single) module to share the Oceanic constants.</td></tr>
+<tr><td valign="top"><a href="#get_best_device_name_from-1">get_best_device_name_from/1</a></td><td>Returns the best name found for the emitting device stored in the
+ specified device event.</td></tr>
 <tr><td valign="top"><a href="#get_best_naming-2">get_best_naming/2</a></td><td>Returns the best naming for a device, as any kind of string, depending on
  the available information.</td></tr>
 <tr><td valign="top"><a href="#get_broadcast_eurid-0">get_broadcast_eurid/0</a></td><td>Returns the broadcast EURID, suitable to target all devices in range.</td></tr>
 <tr><td valign="top"><a href="#get_default_tty_path-0">get_default_tty_path/0</a></td><td>Returns the path to the default TTY allocated to the USB Enocean gateway,
  according to our conventions.</td></tr>
+<tr><td valign="top"><a href="#get_device_description-2">get_device_description/2</a></td><td>Returns the best textual description found for the device specified from
+ its EURID.</td></tr>
 <tr><td valign="top"><a href="#get_device_table-1">get_device_table/1</a></td><td>Returns the device state in the specified state; only useful for some
  tests.</td></tr>
+<tr><td valign="top"><a href="#get_last_seen_info-1">get_last_seen_info/1</a></td><td>Returns the timestamp corresponding to any previously seen telegram from 
+that device.</td></tr>
+<tr><td valign="top"><a href="#get_maybe_dbm-1">get_maybe_dbm/1</a></td><td>Returns the best RSSI value (if any) stored in the specified device
+ event.</td></tr>
+<tr><td valign="top"><a href="#get_maybe_destination_eurid-1">get_maybe_destination_eurid/1</a></td><td>Returns the EURID of the target of this transmission (addressed or
+ broadcast), if any, stored in the specified device event.</td></tr>
+<tr><td valign="top"><a href="#get_maybe_device_name-1">get_maybe_device_name/1</a></td><td>Returns the emitting device name (if any) stored in the specified device
+ event.</td></tr>
+<tr><td valign="top"><a href="#get_maybe_eep-1">get_maybe_eep/1</a></td><td>Returns the EEP (if any is defined and registered) stored in the
+ specified device event.</td></tr>
+<tr><td valign="top"><a href="#get_maybe_security_level-1">get_maybe_security_level/1</a></td><td>Returns the stored in the specified device event.</td></tr>
 <tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td>Returns the current (emitter) EURID used by Oceanic for the local USB 
 gateway, notably as default source base identifier when generating telegrams.</td></tr>
 <tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td>Returns the PID of the (supposedly-existing) Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td>Returns the registration name of the Oceanic server.</td></tr>
+<tr><td valign="top"><a href="#get_source_eurid-1">get_source_eurid/1</a></td><td>Returns the EURID of the emitting device stored in the specified device
+ event.</td></tr>
+<tr><td valign="top"><a href="#get_subtelegram_count-1">get_subtelegram_count/1</a></td><td>Returns the number (if any) of subtelegrams stored in the specified
+ device event.</td></tr>
 <tr><td valign="top"><a href="#get_test_state-0">get_test_state/0</a></td><td>Returns a pseudo-state, loaded from default configuration; only useful 
 for some tests.</td></tr>
 <tr><td valign="top"><a href="#get_test_state-1">get_test_state/1</a></td><td>Returns a pseudo-state, based on the specified device table; only useful
  for some tests.</td></tr>
+<tr><td valign="top"><a href="#get_timestamp-1">get_timestamp/1</a></td><td>Returns the timestamp stored in the specified device event.</td></tr>
 <tr><td valign="top"><a href="#has_tty-0">has_tty/0</a></td><td>Tells whether the default TTY exists and is a device.</td></tr>
 <tr><td valign="top"><a href="#has_tty-1">has_tty/1</a></td><td>Tells whether the specified TTY exists and is a device, together with any 
 failure reason.</td></tr>
@@ -565,6 +637,8 @@ specified ETF file, and returns a corresponding updated state.</td></tr>
  data, otherwise from the corresponding raw data.</td></tr>
 <tr><td valign="top"><a href="#nu_message_type_to_string-1">nu_message_type_to_string/1</a></td><td>Returns a textual description of the specified "Nu" Message type, as
  defined in RPS packets.</td></tr>
+<tr><td valign="top"><a href="#optional_data_to_short_string-2">optional_data_to_short_string/2</a></td><td>Returns a short textual description of the specified decoded optional
+ data, designed for user-friendly reporting.</td></tr>
 <tr><td valign="top"><a href="#optional_data_to_string-1">optional_data_to_string/1</a></td><td></td></tr>
 <tr><td valign="top"><a href="#ptm_module_to_string-1">ptm_module_to_string/1</a></td><td>Returns a textual description of the specified PTM switch module.</td></tr>
 <tr><td valign="top"><a href="#read_base_id_info-1">read_base_id_info/1</a></td><td>Returns the information held by the USB gateway about its base ID, thanks
@@ -580,28 +654,28 @@ specified ETF file, and returns a corresponding updated state.</td></tr>
 <tr><td valign="top"><a href="#send-2">send/2</a></td><td>Sends the specified telegram, through the specified Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#start-0">start/0</a></td><td>Starts the Enocean support, based on our default conventions regarding 
 the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as its Enocean event 
-listener (but did not link to it).</td></tr>
+Oceanic server, which registered the calling process as one of its Enocean 
+event listeners (but did not link to it).</td></tr>
 <tr><td valign="top"><a href="#start-1">start/1</a></td><td>Starts the Enocean support, based on the specified device path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as its Enocean event listener 
-(but did not link to it).</td></tr>
+server, which registered the calling process as one of its Enocean event 
+listeners (but did not link to it).</td></tr>
 <tr><td valign="top"><a href="#start-2">start/2</a></td><td>Starts the Enocean support, based on the specified path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
 server (which is not linked to the calling process), registering the specified 
-listener process for Enocean events.</td></tr>
+listener processes for Enocean events.</td></tr>
 <tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td>Starts the Enocean support, based on our default conventions regarding 
 the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as its Enocean event 
-listener and linked to it.</td></tr>
+Oceanic server, which registered the calling process as one of its Enocean 
+event listeners, and linked to it.</td></tr>
 <tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td>Starts the Enocean support, based on the specified device path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as its Enocean event listener and 
-linked to it.</td></tr>
+server, which registered the calling process as one of its Enocean event 
+listeners, and linked to it.</td></tr>
 <tr><td valign="top"><a href="#start_link-2">start_link/2</a></td><td>Starts the Enocean support, based on the specified path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which is linked to the calling process and registers the specified 
-listener process for Enocean events.</td></tr>
+server, which registered the calling process as one of its Enocean event 
+listeners, and linked to it.</td></tr>
 <tr><td valign="top"><a href="#state_to_string-1">state_to_string/1</a></td><td>Returns a textual description of the specified state of the Oceanic
  server.</td></tr>
 <tr><td valign="top"><a href="#stop-0">stop/0</a></td><td>Stops and terminates (asynchronously) the supposedly-existing Oceanic
@@ -641,6 +715,16 @@ teach-in response.</p>
  See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen] p.26.
 </p>
 
+<h3 class="function"><a name="add_configuration_settings-2">add_configuration_settings/2</a></h3>
+<div class="spec">
+<p><tt>add_configuration_settings(OcSettings::<a href="#type-oceanic_settings">oceanic_settings()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></tt><br></p>
+<p> </p>
+</div><p><p>Registers the specified additional Oceanic configuration in the specified 
+Oceanic server.</p>
+
+ Refer to load_configuration/2 for key information.
+</p>
+
 <h3 class="function"><a name="decode_telegram-2">decode_telegram/2</a></h3>
 <div class="spec">
 <p><tt>decode_telegram(Telegram::<a href="#type-telegram">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-decoding_result">decoding_result()</a></tt><br></p>
@@ -651,17 +735,29 @@ using the specified Oceanic server for that.</p>
  Mostly useful for testing purpose.
 </p>
 
+<h3 class="function"><a name="device_event_to_short_string-1">device_event_to_short_string/1</a></h3>
+<div class="spec">
+<p><tt>device_event_to_short_string(Thermo_hygro_event::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a short textual description of the specified device event,
+ designed for user-friendly reporting.
+</p>
+
 <h3 class="function"><a name="device_event_to_string-1">device_event_to_string/1</a></h3>
 <div class="spec">
 <p><tt>device_event_to_string(Thermo_hygro_event::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified device event.</p>
+</div><p>Returns a (rather complete) textual description of the specified device
+ event.
+</p>
 
-<h3 class="function"><a name="device_table_to_string-1">device_table_to_string/1</a></h3>
+<h3 class="function"><a name="device_triggered-1">device_triggered/1</a></h3>
 <div class="spec">
-<p><tt>device_table_to_string(DeviceTable::<a href="#type-device_table">device_table()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p><tt>device_triggered(Push_button_event::<a href="#type-device_event">device_event()</a>) -&gt; boolean()</tt><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified device table.</p>
+</div><p>Tells whether the specified device event indicates that this device can
+ be interpreted as being triggered by the user.
+</p>
 
 <h3 class="function"><a name="encode_common_command-2">encode_common_command/2</a></h3>
 <div class="spec">
@@ -718,7 +814,7 @@ radio packet encapsulated into an ESP3 one.</p>
 
 <h3 class="function"><a name="encode_esp3_packet-3">encode_esp3_packet/3</a></h3>
 <div class="spec">
-<p><tt>encode_esp3_packet(PacketType::<a href="#type-packet_type">packet_type()</a>, Data::<a href="#type-telegram_data">telegram_data()</a>, OptData::<a href="#type-telegram_opt_data">telegram_opt_data()</a>) -&gt; <a href="#type-telegram">telegram()</a></tt><br></p>
+<p><tt>encode_esp3_packet(PacketType::<a href="#type-packet_type">packet_type()</a>, Data::<a href="#type-telegram_data">telegram_data()</a>, MaybeOptData::<a href="#type-maybe">maybe</a>(<a href="#type-telegram_opt_data">telegram_opt_data()</a>)) -&gt; <a href="#type-telegram">telegram()</a></tt><br></p>
 <p> </p>
 </div><p>Encodes an ESP3 packet from its packet type, base and optional data.</p>
 
@@ -737,6 +833,12 @@ radio packet encapsulated into an ESP3 one.</p>
 </div><p>Returns a (binary) textual description of the specified EURID, possibly
  translated to a user-friendly device name if any is known for that device.
 </p>
+
+<h3 class="function"><a name="eurid_to_short_string-1">eurid_to_short_string/1</a></h3>
+<div class="spec">
+<p><tt>eurid_to_short_string(Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a short, raw, (plain) textual description of the specified EURID.</p>
 
 <h3 class="function"><a name="eurid_to_string-1">eurid_to_string/1</a></h3>
 <div class="spec">
@@ -761,6 +863,14 @@ radio packet encapsulated into an ESP3 one.</p>
  order to generate, here, a (single) module to share the Oceanic constants.
 </p>
 
+<h3 class="function"><a name="get_best_device_name_from-1">get_best_device_name_from/1</a></h3>
+<div class="spec">
+<p><tt>get_best_device_name_from(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-device_name">device_name()</a></tt><br></p>
+<p> </p>
+</div><p>Returns the best name found for the emitting device stored in the
+ specified device event.
+</p>
+
 <h3 class="function"><a name="get_best_naming-2">get_best_naming/2</a></h3>
 <div class="spec">
 <p><tt>get_best_naming(MaybeDevName::<a href="#type-maybe">maybe</a>(<a href="#type-device_name">device_name()</a>), Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-any_string">any_string()</a></tt><br></p>
@@ -783,6 +893,14 @@ radio packet encapsulated into an ESP3 one.</p>
  according to our conventions.
 </p>
 
+<h3 class="function"><a name="get_device_description-2">get_device_description/2</a></h3>
+<div class="spec">
+<p><tt>get_device_description(Eurid::<a href="#type-eurid">eurid()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-device_description">device_description()</a></tt><br></p>
+<p> </p>
+</div><p>Returns the best textual description found for the device specified from
+ its EURID.
+</p>
+
 <h3 class="function"><a name="get_device_table-1">get_device_table/1</a></h3>
 <div class="spec">
 <p><tt>get_device_table(Oceanic_state::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-device_table">device_table()</a></tt><br></p>
@@ -790,6 +908,54 @@ radio packet encapsulated into an ESP3 one.</p>
 </div><p>Returns the device state in the specified state; only useful for some
  tests.
 </p>
+
+<h3 class="function"><a name="get_last_seen_info-1">get_last_seen_info/1</a></h3>
+<div class="spec">
+<p><tt>get_last_seen_info(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-timestamp">timestamp()</a>)</tt><br></p>
+<p> </p>
+</div><p><p>Returns the timestamp corresponding to any previously seen telegram from 
+that device.</p>
+
+ Also useful to determine whether an event corresponds to a device discovery.
+</p>
+
+<h3 class="function"><a name="get_maybe_dbm-1">get_maybe_dbm/1</a></h3>
+<div class="spec">
+<p><tt>get_maybe_dbm(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the best RSSI value (if any) stored in the specified device
+ event.
+</p>
+
+<h3 class="function"><a name="get_maybe_destination_eurid-1">get_maybe_destination_eurid/1</a></h3>
+<div class="spec">
+<p><tt>get_maybe_destination_eurid(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-eurid">eurid()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the EURID of the target of this transmission (addressed or
+ broadcast), if any, stored in the specified device event.
+</p>
+
+<h3 class="function"><a name="get_maybe_device_name-1">get_maybe_device_name/1</a></h3>
+<div class="spec">
+<p><tt>get_maybe_device_name(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-device_name">device_name()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the emitting device name (if any) stored in the specified device
+ event.
+</p>
+
+<h3 class="function"><a name="get_maybe_eep-1">get_maybe_eep/1</a></h3>
+<div class="spec">
+<p><tt>get_maybe_eep(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-eep_id">eep_id()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the EEP (if any is defined and registered) stored in the
+ specified device event.
+</p>
+
+<h3 class="function"><a name="get_maybe_security_level-1">get_maybe_security_level/1</a></h3>
+<div class="spec">
+<p><tt>get_maybe_security_level(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-security_level">security_level()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the stored in the specified device event.</p>
 
 <h3 class="function"><a name="get_oceanic_eurid-1">get_oceanic_eurid/1</a></h3>
 <div class="spec">
@@ -813,6 +979,22 @@ gateway, notably as default source base identifier when generating telegrams.</p
 <p> </p>
 </div><p>Returns the registration name of the Oceanic server.</p>
 
+<h3 class="function"><a name="get_source_eurid-1">get_source_eurid/1</a></h3>
+<div class="spec">
+<p><tt>get_source_eurid(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-eurid">eurid()</a></tt><br></p>
+<p> </p>
+</div><p>Returns the EURID of the emitting device stored in the specified device
+ event.
+</p>
+
+<h3 class="function"><a name="get_subtelegram_count-1">get_subtelegram_count/1</a></h3>
+<div class="spec">
+<p><tt>get_subtelegram_count(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-subtelegram_count">subtelegram_count()</a>)</tt><br></p>
+<p> </p>
+</div><p>Returns the number (if any) of subtelegrams stored in the specified
+ device event.
+</p>
+
 <h3 class="function"><a name="get_test_state-0">get_test_state/0</a></h3>
 <div class="spec">
 <p><tt>get_test_state() -&gt; <a href="#type-oceanic_state">oceanic_state()</a></tt><br></p>
@@ -835,6 +1017,12 @@ incorrect state (no real base ID, no relevant serial server).</p>
 </div><p>Returns a pseudo-state, based on the specified device table; only useful
  for some tests.
 </p>
+
+<h3 class="function"><a name="get_timestamp-1">get_timestamp/1</a></h3>
+<div class="spec">
+<p><tt>get_timestamp(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-timestamp">timestamp()</a></tt><br></p>
+<p> </p>
+</div><p>Returns the timestamp stored in the specified device event.</p>
 
 <h3 class="function"><a name="has_tty-0">has_tty/0</a></h3>
 <div class="spec">
@@ -866,7 +1054,7 @@ failure reason.</p>
 
 <h3 class="function"><a name="is_available-1">is_available/1</a></h3>
 <div class="spec">
-<p><tt>is_available(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-availability_outcome">availability_outcome()</a></tt><br></p>
+<p><tt>is_available(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-oceanic_availability_outcome">oceanic_availability_outcome()</a></tt><br></p>
 <p> </p>
 </div><p><p>Tells whether Oceanic should be available, that is if all its 
 prerequisites seem to be met.</p>
@@ -882,7 +1070,9 @@ prerequisites seem to be met.</p>
 preferences file, if any, otherwise returns a state with an empty device 
 table.</p>
 
- See the 'preferences' module.
+ <p>Refer to load_configuration/2 for key information.</p>
+
+ See also the 'preferences' Myriad module.
 </p>
 
 <h3 class="function"><a name="load_configuration-2">load_configuration/2</a></h3>
@@ -899,7 +1089,10 @@ following keys (atoms):</p>
 sent by Oceanic (note that USB gateways have already their own base EURID that 
 shall be preferred; refer to the co_rd_idbase common command)</p>
 
- - oceanic_config: to declare the known devices
+ <p>- oceanic_jamming_threshold: to set a non-default threshold</p>
+
+ - oceanic_devices: to declare the known devices; a given device shall never be
+ declared more than once
 </p>
 
 <h3 class="function"><a name="maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></h3>
@@ -916,6 +1109,14 @@ shall be preferred; refer to the co_rd_idbase common command)</p>
 <p> </p>
 </div><p>Returns a textual description of the specified "Nu" Message type, as
  defined in RPS packets.
+</p>
+
+<h3 class="function"><a name="optional_data_to_short_string-2">optional_data_to_short_string/2</a></h3>
+<div class="spec">
+<p><tt>optional_data_to_short_string(DestinationEurid::<a href="#type-eurid">eurid()</a>, MaybeDBm::<a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>)) -&gt; <a href="#type-ustring">ustring()</a></tt><br></p>
+<p> </p>
+</div><p>Returns a short textual description of the specified decoded optional
+ data, designed for user-friendly reporting.
 </p>
 
 <h3 class="function"><a name="optional_data_to_string-1">optional_data_to_string/1</a></h3>
@@ -986,8 +1187,8 @@ shall be preferred; refer to the co_rd_idbase common command)</p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on our default conventions regarding 
 the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as its Enocean event 
-listener (but did not link to it).</p>
+Oceanic server, which registered the calling process as one of its Enocean 
+event listeners (but did not link to it).</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
@@ -998,20 +1199,20 @@ listener (but did not link to it).</p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on the specified device path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as its Enocean event listener 
-(but did not link to it).</p>
+server, which registered the calling process as one of its Enocean event 
+listeners (but did not link to it).</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
 
 <h3 class="function"><a name="start-2">start/2</a></h3>
 <div class="spec">
-<p><tt>start(TtyPath::<a href="#type-device_path">device_path()</a>, EventListenerPid::<a href="#type-event_listener_pid">event_listener_pid()</a>) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></tt><br></p>
+<p><tt>start(TtyPath::<a href="#type-device_path">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></tt><br></p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on the specified path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
 server (which is not linked to the calling process), registering the specified 
-listener process for Enocean events.</p>
+listener processes for Enocean events.</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
@@ -1022,8 +1223,8 @@ listener process for Enocean events.</p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on our default conventions regarding 
 the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as its Enocean event 
-listener and linked to it.</p>
+Oceanic server, which registered the calling process as one of its Enocean 
+event listeners, and linked to it.</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
@@ -1034,20 +1235,20 @@ listener and linked to it.</p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on the specified device path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as its Enocean event listener and 
-linked to it.</p>
+server, which registered the calling process as one of its Enocean event 
+listeners, and linked to it.</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
 
 <h3 class="function"><a name="start_link-2">start_link/2</a></h3>
 <div class="spec">
-<p><tt>start_link(TtyPath::<a href="#type-device_path">device_path()</a>, EventListenerPid::<a href="#type-event_listener_pid">event_listener_pid()</a>) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></tt><br></p>
+<p><tt>start_link(TtyPath::<a href="#type-device_path">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></tt><br></p>
 <p> </p>
 </div><p><p>Starts the Enocean support, based on the specified path to the TTY 
 allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which is linked to the calling process and registers the specified 
-listener process for Enocean events.</p>
+server, which registered the calling process as one of its Enocean event 
+listeners, and linked to it.</p>
 
  Throws an exception if no relevant TTY can be used.
 </p>
@@ -1089,7 +1290,7 @@ listener process for Enocean events.</p>
 </div><p><p>Returns the actual EURID corresponding to the specified (plain) EURID 
 string.</p>
 
- Ex: 3076502 = oceanic:string_to_eurid("002ef196")
+ For example 3076502 = oceanic:string_to_eurid("002ef196")
 </p>
 
 <h3 class="function"><a name="synchronous_stop-1">synchronous_stop/1</a></h3>
