@@ -2737,11 +2737,11 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 						[ eurid_to_string( Eurid ) ] );
 
 				{ value, #enocean_device{ name=undefined } } ->
-					text_utils:format( "unnamed device of EURID ~ts",
+					text_utils:bin_format( "unnamed device of EURID ~ts",
 						[ eurid_to_string( Eurid ) ] );
 
 				{ value, #enocean_device{ name=BinName } } ->
-					text_utils:format( "device '~ts' of EURID ~ts",
+					text_utils:bin_format( "device '~ts' of EURID ~ts",
 						[ BinName, eurid_to_string( Eurid ) ] )
 
 			end,
