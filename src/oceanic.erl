@@ -72,6 +72,8 @@
 
 	decode_telegram/2,
 
+	restart_serial_interface/1,
+
 	stop/0, stop/1, synchronous_stop/1,
 
 	eurid_to_string/1, eurid_to_short_string/1,
@@ -1036,6 +1038,11 @@
 	%
 	serial_server_pid :: serial_server_pid(),
 
+	% The (binary) path to the Enocean gateway (USB dongle), kept so that the
+	% serial link can be reset if needed:
+	%
+	device_path :: bin_device_path(),
+
 	% To identify the pseudo-device emitter of any telegram to be sent by
 	% Oceanic; by default this will be the actual base ID advertised by the
 	% local USB gateway, as obtained thanks to the co_rd_idbase common command.
@@ -1125,7 +1132,10 @@
 
 -type any_file_path() :: file_utils:any_file_path().
 -type directory_path() :: file_utils:directory_path().
+-type any_directory_path() :: file_utils:any_directory_path().
 -type device_path() :: file_utils:device_path().
+-type bin_device_path() :: file_utils:bin_device_path().
+-type any_device_path() :: file_utils:any_device_path().
 -type entry_type() :: file_utils:entry_type().
 
 -type ustring() :: text_utils:ustring().
@@ -1348,13 +1358,13 @@ has_tty() ->
 %
 % Useful at least for testing.
 %
--spec has_tty( device_path() ) -> tty_detection_outcome().
-has_tty( TtyPath ) ->
+-spec has_tty( any_device_path() ) -> tty_detection_outcome().
+has_tty( AnyTtyPath ) ->
 
-	case file_utils:exists( TtyPath ) of
+	case file_utils:exists( AnyTtyPath ) of
 
 		true ->
-			case file_utils:resolve_type_of( TtyPath ) of
+			case file_utils:resolve_type_of( AnyTtyPath ) of
 
 				device ->
 					true;
@@ -1429,6 +1439,7 @@ oceanic_start( TtyPath, EventListeners ) ->
 	naming_utils:register_as( ?oceanic_server_reg_name, _RegScope=local_only ),
 
 	InitialState = LoadedState#oceanic_state{
+		device_path=text_utils:string_to_binary( TtyPath ),
 		event_listeners=type_utils:check_pids( EventListeners ) },
 
 	oceanic_loop( _SkipLen=0, _MaybeAccChunk=undefined, InitialState ).
@@ -2467,6 +2478,28 @@ decode_telegram( Telegram, OcSrvPid ) ->
 
 
 
+% @doc Restarts the serial USB interface used internally.
+%
+% Might be useful to avoid an USB freeze that may happen after a few weeks.
+%
+-spec restart_serial_interface( oceanic_server_pid() ) -> void().
+restart_serial_interface( OcSrvPid ) ->
+
+	cond_utils:if_defined( oceanic_debug_tty,
+		trace_bridge:debug( "Triggering a restart of the serial interface." ) ),
+
+	OcSrvPid ! { restartSerialInterface, [], self() },
+	receive
+
+		serial_restarted ->
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug( "Serial interface restarted." ) ),
+			ok
+
+	end.
+
+
+
 % Main loop of the Oceanic server.
 %
 % There may be:
@@ -2840,6 +2873,42 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 		% Mostly useful for testing purpose:
 		{ sendOceanic, Telegram } ->
 			NewState = send_raw_telegram( Telegram, State ),
+			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+
+
+		{ restartSerialInterface, [], SenderPid } ->
+
+			BinSerialPath = State#oceanic_state.device_path,
+			SerialPid = State#oceanic_state.serial_server_pid,
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:info_fmt( "Restarting serial interface '~ts' "
+					"(was ~w).", [ BinSerialPath, SerialPid ] ) ),
+
+			SerialPid ! { stop, self() },
+
+			% Warning, might freeze the Oceanic server:
+			receive
+
+				serial_stopped ->
+					ok
+
+			end,
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:info_fmt( "Past serial interface ~w successfully "
+					"stopped, starting a new one.", [ SerialPid ] ) ),
+
+			NewSerialPid = secure_tty( BinSerialPath ),
+
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:info_fmt( "Started again, now using serial "
+					"interface ~w. ", [ NewSerialPid ] ) ),
+
+			NewState = State#oceanic_state{ serial_server_pid=NewSerialPid },
+
+			SenderPid ! serial_restarted,
+
 			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
 
 
@@ -6666,8 +6735,8 @@ get_crc_array() ->
 % @doc Secures the usability of (our fork of) erlang-serial, typically from an
 % (e)script.
 %
--spec secure_serial( directory_path() ) -> void().
-secure_serial( _OceanicRootDir ) ->
+-spec secure_serial( any_directory_path() ) -> void().
+secure_serial( _AnyOceanicRootDir ) ->
 
 	SerialRootDir = file_utils:join( system_utils:get_software_base_directory(),
 									 "erlang-serial" ),
