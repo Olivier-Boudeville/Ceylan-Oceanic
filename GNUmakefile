@@ -1,7 +1,7 @@
 OCEANIC_TOP = .
 
 
-.PHONY: help help-intro help-oceanic                                       \
+.PHONY: help help-oceanic                                                  \
 		all register-version-in-header register-oceanic list-beam-dirs     \
 		sync                                                               \
 		add-prerequisite-plts link-plt                                     \
@@ -27,11 +27,6 @@ OCEANIC_RELEASES = $(OCEANIC_RELEASE_ARCHIVE_BZ2) \
 
 # First target for default:
 help: help-intro help-oceanic
-
-
-help-intro:
-	@echo " Following main make targets are available for package $(PACKAGE_NAME):"
-
 
 help-oceanic:
 	@cd $(MYRIAD_TOP) && $(MAKE) -s help-myriad
