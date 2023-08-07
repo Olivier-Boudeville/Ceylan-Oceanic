@@ -2480,7 +2480,12 @@ decode_telegram( Telegram, OcSrvPid ) ->
 
 % @doc Restarts the serial USB interface used internally.
 %
-% Might be useful to avoid an USB freeze that may happen after a few weeks.
+% Such a reset might be useful to avoid an USB freeze that may happen after a
+% few weeks. However then a second phenomenon may happen (e.g. after a duration
+% of 10 days): despite these resets, serial does not seem then to receive
+% telegrams anymore, whereas the TTY seems to propagate them properly (based on
+% 'od -x < /dev/ttyUSBEnOcean') and our server and Oceanic remain fully
+% responsive.
 %
 -spec restart_serial_interface( oceanic_server_pid() ) -> void().
 restart_serial_interface( OcSrvPid ) ->
@@ -2558,12 +2563,15 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			NewChunkSize = size( NewChunk ),
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Received a telegram chunk "
+			% Currently monitoring all receiving to investigate the loss of
+			% communication after a long time:
+
+			%cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:notice_fmt( "Received a telegram chunk "
 					"of ~B bytes: ~w, corresponding to hexadecimal ~ts "
 					"(whereas there are ~B bytes to skip).",
 					[ NewChunkSize, NewChunk,
-					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ) ),
+					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ),% ),
 
 			JamState = monitor_jamming( NewChunkSize, State ),
 
@@ -2897,7 +2905,11 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			cond_utils:if_defined( oceanic_debug_tty,
 				trace_bridge:info_fmt( "Past serial interface ~w successfully "
-					"stopped, starting a new one.", [ SerialPid ] ) ),
+					"stopped, starting a new one after a short delay.",
+					[ SerialPid ] ) ),
+
+			% If ever that helped:
+			timer:sleep( 1000 ),
 
 			NewSerialPid = secure_tty( BinSerialPath ),
 
