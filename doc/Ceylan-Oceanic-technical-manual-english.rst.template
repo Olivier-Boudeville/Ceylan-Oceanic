@@ -274,6 +274,14 @@ To test this erlang-serial installation (whether or not any dongle is connected)
 
 Perfect!
 
+However we noticed repeatedly that after a few days the communication seemed to freeze bilaterally. Resetting serial once a day (e.g. at midnight) seemed to solve that problem.
+
+However, after longer durations (e.g. 10 days), another issue happened: serial was still able to send telegrams, but not to receive any of them anymore - despite being restarted (indeed its PID was different each day as expected) and the TTY receiving the corresponding telegrams (as shown by ``od -x < /dev/ttyUSBEnOcean``).
+
+So we believe there is a defect in serial, but we could not figure out where. Ideas and contributions welcome!
+
+
+
 
 
 Ceylan-Myriad
