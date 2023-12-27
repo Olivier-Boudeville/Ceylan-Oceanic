@@ -192,6 +192,10 @@ ERLANG_SERIAL_USER_BASE := $(ERLANG_SERIAL_USER_ROOT)/erlang/lib/serial-$(ERLANG
 ERLANG_SERIAL_USER_BEAM_DIR := $(ERLANG_SERIAL_USER_BASE)/ebin
 
 
+# Otherwise rebar3 will consider the modules there as missing:
+BEAM_DIRS += $(OCEANIC_TOP)/src/scripts
+
+
 ifneq "$(wildcard $(ERLANG_SERIAL_EMBEDDED_BEAM_DIR))" ""
 
 	BEAM_DIRS += $(ERLANG_SERIAL_EMBEDDED_BEAM_DIR)
