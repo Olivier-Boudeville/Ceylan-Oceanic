@@ -2,6 +2,8 @@ OCEANIC_TOP = ..
 
 .PHONY: all real-clean
 
+MODULES_DIRS = scripts
+
 # As this module must be generated to share Oceanic constants:
 #
 # (see the oceanic_constants module and the %_generated.beam target in Myriad's
