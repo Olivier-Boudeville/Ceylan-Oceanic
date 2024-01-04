@@ -2484,7 +2484,7 @@ decode_telegram( Telegram, OcSrvPid ) ->
 % few weeks. However then a second phenomenon may happen (e.g. after a duration
 % of 10 days): despite these resets, serial does not seem then to receive
 % telegrams anymore, whereas the TTY seems to propagate them properly (based on
-% 'od -x < /dev/ttyUSBEnOcean') and our server and Oceanic remain fully
+% `od -x < /dev/ttyUSBEnOcean'), whereas our server and Oceanic do remain fully
 % responsive.
 %
 -spec restart_serial_interface( oceanic_server_pid() ) -> void().
@@ -2498,8 +2498,8 @@ restart_serial_interface( OcSrvPid ) ->
 
 		serial_restarted ->
 			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug( "Serial interface restarted." ) ),
-			ok
+				trace_bridge:debug( "Serial interface restarted." ),
+			ok )
 
 	end.
 
