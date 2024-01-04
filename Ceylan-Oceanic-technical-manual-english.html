@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<title>Welcome to the Ceylan-Oceanic documentation</title>
+<meta name="generator" content="Docutils 0.20.1: https://docutils.sourceforge.io/" />
 <meta content="Oceanic, Enocean, home automation, Erlang" name="keywords" />
+<title>Welcome to the Ceylan-Oceanic documentation</title>
 <link rel="stylesheet" href="pygments-default.css" type="text/css" />
 <link rel="stylesheet" href="oceanic.css" type="text/css" />
 <link href="oceanic-icon.png" rel="icon">
@@ -23,15 +23,15 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Organisation:</th><td class="field-body">Copyright (C) 2022-2023 Olivier Boudeville</td>
+<tr class="field"><th class="field-name">Organisation:</th><td class="field-body">Copyright (C) 2022-2024 Olivier Boudeville</td>
 </tr>
 <tr class="field"><th class="field-name">Contact:</th><td class="field-body">about (dash) oceanic (at) esperide (dot) com</td>
 </tr>
 <tr class="field"><th class="field-name">Creation date:</th><td class="field-body">Wednesday, September 7, 2022</td>
 </tr>
-<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Wednesday, February 22, 2023</td>
+<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Thursday, January 4, 2024</td>
 </tr>
-<tr class="field"><th class="field-name">Version:</th><td class="field-body">0.1.4</td>
+<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.3</td>
 </tr>
 <tr class="field"><th class="field-name">Status:</th><td class="field-body">In development</td>
 </tr>
@@ -236,6 +236,9 @@ $<span class="w"> </span>erl<span class="w"> </span>-pa<span class="w"> </span><
 </span>&lt;<span class="m">0</span>.82.0&gt;
 </pre>
 <p>Perfect!</p>
+<p>However we noticed repeatedly that after a few days the communication seemed to freeze bilaterally. Resetting serial once a day (e.g. at midnight) seemed to solve that problem.</p>
+<p>However, after longer durations (e.g. 10 days), another issue happened: serial was still able to send telegrams, but not to receive any of them anymore - despite being restarted (indeed its PID was different each day as expected) and the TTY receiving the corresponding telegrams (as shown by <tt class="docutils literal">od <span class="pre">-x</span> &lt; /dev/ttyUSBEnOcean</tt>).</p>
+<p>So we believe there is a defect in serial, but we could not figure out where. Ideas and contributions welcome!</p>
 </div>
 <div class="section" id="ceylan-myriad-2">
 <h2><a class="toc-backref" href="#toc-entry-11">Ceylan-Myriad</a></h2>
