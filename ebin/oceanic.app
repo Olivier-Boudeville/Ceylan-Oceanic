@@ -10,7 +10,7 @@
 % ./ebin/oceanic.app
 % ./src/oceanic.app.src -> ../ebin/oceanic.app
 %
-% For more information see the Ceylan-Myriad 'rebar3-create-app-file' make
+% For more information see the Ceylan-Myriad 'create-app-file' make
 % target and its associated comments.
 
 
@@ -21,7 +21,7 @@
 
 {application, oceanic,
  [{description, "Ceylan-Oceanic, a library for the support of the Enocean building automation system, as an OTP application library here (see http://oceanic.esperide.org)"},
-  {vsn, "1.4.3"},
+  {vsn, "1.4.4"},
 
   % No process registered:
   {registered, []},
