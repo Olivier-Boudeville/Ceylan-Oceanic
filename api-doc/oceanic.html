@@ -513,6 +513,10 @@ range).</p>
 
  Refer to [EEP-spec] p.35 for further details.</p>
 
+<h3 class="typedecl"><a name="type-three_digit_version">three_digit_version()</a></h3>
+<p><code>three_digit_version() = <a href="basic_utils.html#type-three_digit_version">basic_utils:three_digit_version()</a></code></p>
+
+
 <h3 class="typedecl"><a name="type-timer_ref">timer_ref()</a></h3>
 <p><code>timer_ref() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/timer.html#type-tref">timer:tref()</a></code></p>
 
@@ -623,6 +627,8 @@ that device.</td></tr>
 <tr><td valign="top"><a href="#get_maybe_security_level-1">get_maybe_security_level/1</a></td><td>Returns the stored in the specified device event.</td></tr>
 <tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td>Returns the current (emitter) EURID used by Oceanic for the local USB 
 gateway, notably as default source base identifier when generating telegrams.</td></tr>
+<tr><td valign="top"><a href="#get_oceanic_version-0">get_oceanic_version/0</a></td><td>Returns the version of the Oceanic library being used.</td></tr>
+<tr><td valign="top"><a href="#get_oceanic_version_string-0">get_oceanic_version_string/0</a></td><td>Returns the version of the Oceanic library being used, as a string.</td></tr>
 <tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td>Returns the PID of the (supposedly-existing) Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td>Returns the registration name of the Oceanic server.</td></tr>
 <tr><td valign="top"><a href="#get_source_eurid-1">get_source_eurid/1</a></td><td>Returns the EURID of the emitting device stored in the specified device
@@ -979,6 +985,18 @@ gateway, notably as default source base identifier when generating telegrams.</p
 
  Useful when encoding telegrams.
 </p>
+
+<h3 class="function"><a name="get_oceanic_version-0">get_oceanic_version/0</a></h3>
+<div class="spec">
+<p><code>get_oceanic_version() -&gt; <a href="#type-three_digit_version">three_digit_version()</a></code><br></p>
+<p> </p>
+</div><p>Returns the version of the Oceanic library being used.</p>
+
+<h3 class="function"><a name="get_oceanic_version_string-0">get_oceanic_version_string/0</a></h3>
+<div class="spec">
+<p><code>get_oceanic_version_string() -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p> </p>
+</div><p>Returns the version of the Oceanic library being used, as a string.</p>
 
 <h3 class="function"><a name="get_server_pid-0">get_server_pid/0</a></h3>
 <div class="spec">
