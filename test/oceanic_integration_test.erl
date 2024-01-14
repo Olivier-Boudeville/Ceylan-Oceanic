@@ -114,6 +114,10 @@ run() ->
 
 	test_facilities:start( ?MODULE ),
 
+	test_facilities:display( "The version of this currently tested Oceanic "
+		"library is ~ts (i.e. ~w).", [ oceanic:get_oceanic_version_string(),
+									   oceanic:get_oceanic_version() ] ),
+
 	TtyPath = oceanic:get_default_tty_path(),
 
 	case oceanic:has_tty( TtyPath ) of

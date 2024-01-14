@@ -95,8 +95,9 @@ endif
 # be ellipsed (typically if relying on an advanced logger able to cope with
 # longer traces, such as Ceylan-Traces).
 
-ERLANG_COMPILER_OPT_BASE += $(OCEANIC_DEBUG_FLAGS)               \
-							$(OCEANIC_CHECK_FLAGS)               \
+ERLANG_COMPILER_OPT_BASE += -Doceanic_version=\"$(OCEANIC_VERSION)\" \
+							$(OCEANIC_DEBUG_FLAGS)                   \
+							$(OCEANIC_CHECK_FLAGS)                   \
 							$(OCEANIC_UNELLIPSED_TRACES_OPT)
 
 
@@ -129,8 +130,8 @@ ifndef PROJECT_NAME_FOR_OTP
 endif
 
 
-# The uniquely-defined version of this layer, for all uses (including rebar and
-# hex):
+# The uniquely-defined version of this layer, for all uses (including rebar, hex
+# and the code itself, see oceanic:get_oceanic_version{_string,}/0):
 #
 OCEANIC_VERSION := 1.4.4
 

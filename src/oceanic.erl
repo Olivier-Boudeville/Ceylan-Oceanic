@@ -35,6 +35,9 @@
 % Base API:
 -export([
 
+	% Version-related functions.
+	get_oceanic_version/0, get_oceanic_version_string/0,
+
 	get_default_tty_path/0, has_tty/0, has_tty/1,
 
 	is_available/1,
@@ -1129,6 +1132,7 @@
 
 -type count() :: basic_utils:count().
 -type version_number() :: basic_utils:version_number().
+-type three_digit_version() :: basic_utils:three_digit_version().
 
 -type any_file_path() :: file_utils:any_file_path().
 -type directory_path() :: file_utils:directory_path().
@@ -1164,6 +1168,22 @@
 
 % For myriad_spawn*:
 -include_lib("myriad/include/spawn_utils.hrl").
+
+
+
+% Version-related functions.
+
+% @doc Returns the version of the Oceanic library being used.
+-spec get_oceanic_version() -> three_digit_version().
+get_oceanic_version() ->
+	basic_utils:parse_version( get_oceanic_version_string() ).
+
+
+% @doc Returns the version of the Oceanic library being used, as a string.
+-spec get_oceanic_version_string() -> ustring().
+get_oceanic_version_string() ->
+	% As defined (uniquely) in GNUmakevars.inc:
+	?oceanic_version.
 
 
 
