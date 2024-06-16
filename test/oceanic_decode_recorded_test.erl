@@ -25,30 +25,30 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Monday, September 26, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>decoding from in-file recorded
-% datagrams</b>.
-%
-% No specific need here for the various hardware (Enocean USB dongle) and
-% software (Myriad, Erlang-serial) Oceanic prerequisites.
-%
-% Reads a file typically produced by the oceanic_record_device_test module. Run
-% it first with 'make oceanic_record_device_run' and ensure that at least a few
-% Enocean telegrams are received and stored, before trying to decode them here.
-%
 -module(oceanic_decode_recorded_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic **decoding from in-file recorded datagrams**.
+
+No specific need here for the various hardware (Enocean USB dongle) and software
+(Myriad, Erlang-serial) Oceanic prerequisites.
+
+Reads a file typically produced by the oceanic_record_device_test module. Run it
+first with 'make oceanic_record_device_run' and ensure that at least a few
+Enocean telegrams are received and stored, before trying to decode them here.
+""".
 
 
 -export([ run/0 ]).
 
 
-% Shorthand:
+% Type shorthand:
 
 -type file_path() :: file_utils:file_path().
 
 
 
-% @doc Decodes the (timestamped) telegrams stored in the specified ETF file.
+-doc "Decodes the (timestamped) telegrams stored in the specified ETF file.".
 -spec decode_file( file_path() ) -> void().
 decode_file( RecordPath ) ->
 
@@ -83,10 +83,10 @@ decode_file( RecordPath ) ->
 
 
 
-
-% @doc Decodes in turn all specified telegrams, relying on the specified
-% decoding context.
-%
+-doc """
+Decodes in turn all specified telegrams, relying on the specified decoding
+context.
+""".
 decode_all( _Telegrams=[], ToSkipLen, MaybeAccChunk, AccEvents, State ) ->
 
 	ToSkipLen =:= 0 orelse test_facilities:display(

@@ -25,11 +25,13 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Friday, November 11, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic management of Enocean <b>Common
-% Commands</b>, to interact directly with the local USB (Enocean) gateway.
-%
 -module(oceanic_common_command_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic management of Enocean **Common Commands**, to
+interact directly with the local USB (Enocean) gateway.
+""".
+
 
 
 -export([ run/0 ]).
@@ -41,13 +43,13 @@
 -include("oceanic.hrl").
 
 
-% Shorthands:
+% Type shorthand:
 
 -type device_path() :: file_utils:device_path().
 
 
 
-% @doc Receives a (single) event.
+-doc "Receives a (single) event.".
 receive_event() ->
 
 	test_facilities:display( "(waiting for any incoming event)" ),
@@ -69,7 +71,7 @@ receive_event() ->
 
 
 
-% Triggered iff a suitable environment is believed to be available.
+-doc "Triggered iff a suitable environment is believed to be available.".
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 

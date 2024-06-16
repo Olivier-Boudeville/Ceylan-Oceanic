@@ -5,13 +5,14 @@
 % Released as LGPL software.
 % Creation date: Sunday, November 20, 2022.
 
-
-% @doc Actual module in charge of the Oceanic <b>telegram decoding</b>.
-%
-% Better here than in `decode-telegram.escript' in order to benefit from a more
-% user-friendly debugging.
-%
 -module(telegram_decoding).
+
+-moduledoc """
+Actual module in charge of the Oceanic <b>telegram decoding</b>.
+
+Better here than in `decode-telegram.escript` in order to benefit from a more
+user-friendly debugging.
+""".
 
 
 -define( exec_name, "decode-telegram.escript" ).
@@ -23,13 +24,14 @@
 -export([ decode_telegram/1 ]).
 
 
-% Shorthands:
+
+% Type shorthand:
 
 -type ustring() :: text_utils:ustring().
 
 
 
-% @doc Typically for testing.
+-doc "Typically for testing.".
 -spec run() -> void().
 run() ->
 	ArgTable = shell_utils:get_argument_table(),
@@ -38,7 +40,7 @@ run() ->
 
 
 
-% @doc Returns the usage information of the corresponding application.
+-doc "Returns the usage information of the corresponding application.".
 -spec get_usage() -> void().
 get_usage() ->
 	text_utils:format( "Usage: ~ts TELEGRAM_STRING [-h|--help]~n"
@@ -48,9 +50,10 @@ get_usage() ->
 
 
 
-% @doc Sole entry point for this decoding service, either triggered by `run/0'
-% or by the associated escript.
-%
+-doc """
+Sole entry point for this decoding service, either triggered by `run/0' or by
+the associated escript.
+""".
 -spec main( shell_utils:argument_table() ) -> void().
 main( ArgTable ) ->
 
@@ -107,10 +110,11 @@ main( ArgTable ) ->
 
 
 
-% @doc Displays the usage of this service, and stops (with no error).
+-doc "Displays the usage of this service, and stops (with no error).".
 display_usage() ->
 	io:format( get_usage(), [] ),
 	basic_utils:stop( _ErrorCode=0 ).
+
 
 
 -spec decode_telegram( ustring() ) -> void().
@@ -134,7 +138,7 @@ decode_telegram( TelegramHexStr ) ->
 			BogusState = oceanic:get_test_state(),
 
 			case oceanic:try_integrate_chunk( _ToSkipLen=0,
-						_MaybeAccChunk=undefined, Telegram, BogusState ) of
+					_MaybeAccChunk=undefined, Telegram, BogusState ) of
 
 				{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
 				  _MaybeDevice, _MaybeNextChunk=undefined, _NewState } ->

@@ -25,11 +25,13 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Wednesday, September 7, 2022.
 
-
-% @doc Main module of Ceylan-Oceanic, in order to <b>drive Enocean
-% communications through an Oceanic server</b>.
-%
 -module(oceanic).
+
+-moduledoc """
+Main module of Ceylan-Oceanic, in order to **drive Enocean communications
+through an Oceanic server**.
+""".
+
 
 
 % Base API:
@@ -131,46 +133,73 @@
 		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
 
 
+
+-doc """
+The outcome of an availability check for Oceanic itself, as a whole (at least a
+suitable gateway is needed).
+""".
 -type oceanic_availability_outcome() ::
 	{ 'true', SerialRootDir :: directory_path() }
   | { 'false', Reason :: ustring(), basic_utils:error_term() }.
-% The outcome of an availability check for Oceanic itself, as a whole (at least
-% a suitable gateway is needed).
 
 
+
+-doc "The PID of an Oceanic server.".
 -type oceanic_server_pid() :: pid().
-% The PID of an Oceanic server.
 
 
+
+-doc """
+The PID of a process in charge of a serial connection to the Enocean gateway
+(USB dongle).
+""".
 -type serial_server_pid() :: pid().
-% The PID of a process in charge of a serial connection to the Enocean gateway
-% (USB dongle).
 
+
+
+-doc """
+The PID of any process registered to an Oceanic server as a listener of Enocean
+events.
+""".
 -type event_listener_pid() :: pid().
-% The PID of any process registered to an Oceanic server as a listener of
-% Enocean events.
 
 
+
+-doc """
+The PID of the requester of a common command, or the 'internal' atom to tell
+that this is a request emitted by Oceanic for its own economy.
+""".
 -type requester() :: pid() | 'internal'.
-% The PID of the requester of a common command, or the 'internal' atom to tell
-% that this is a request emitted by Oceanic for its own economy.
 
 
+
+-doc "A user-defined device name, a lot more convenient than a EURID.".
 -type device_name() :: bin_string().
-% A user-defined device name, a lot more convenient than a EURID.
 
+
+
+-doc "A user-defined device name, a lot more convenient than a EURID.".
 -type device_plain_name() :: ustring().
-% A user-defined device name, a lot more convenient than a EURID.
 
+
+
+-doc "A user-defined device name, a lot more convenient than a EURID.".
 -type device_any_name() :: any_string().
-% A user-defined device name, a lot more convenient than a EURID.
 
 
+
+-doc """
+An element designating a device, either thanks to an EURID (as an integer), or
+thanks to a user-defined name (as any kind of string).
+""".
 -type device_designator() :: eurid() | device_any_name().
-% An element designating a device, either thanks to an EURID (as an integer), or
-% thanks to a user-defined name (as any kind of string).
 
 
+
+-doc """
+A user-declared activity periodicity regarding a device (expected rhythm of
+telegram sending).
+""".
 -type declared_device_activity_periodicity() ::
 
 	dhms_duration()
@@ -184,41 +213,54 @@
   | 'auto'.   % To be automatically determined by Oceanic; based on any known
 			  % EEP, either no periodical state report will be expected, or one
 			  % will be learnt through experience.
-% A user-declared activity periodicity regarding a device (expected rhythm of
-% telegram sending).
 
 
+
+-doc "An expected periodicity of events.".
 -type expected_periodicity() ::
 	milliseconds() % Typically an upper bound
   | 'none'         % Typically if no state feedback or no monitoring wanted
   | 'auto'.        % To be managed by Oceanic
 
 
+
+-doc """
+Tells whether a given device is considered by Oceanic to be online or lost.
+""".
 -type availability_status() :: 'online' | 'lost'.
-% Tells whether a given device is considered by Oceanic to be online or lost.
 
 
+
+-doc """
+Specification of Oceanic settings, as key/values pairs, as read from a
+configuration file or transmitted by other services.
+""".
 -type oceanic_settings() :: list_table().
-% Specification of Oceanic settings, as key/values pairs, as read from a
-% configuration file or transmitted by other services.
 
 
 % For the device-related records:
 -include("oceanic.hrl").
 
 
+-doc "Information regarding an Enocean device, as known by the Oceanic server.".
 -type enocean_device() :: #enocean_device{}.
-% Information regarding an Enocean device, as known by the Oceanic server.
 
 
+
+-doc "A table recording information regarding Enocean devices.".
 -type device_table() :: table( eurid(), enocean_device() ).
-% A table recording information regarding Enocean devices.
 
 
+
+-doc "A (FIFO) queue of command requests, to be sent in turn next.".
 -type command_queue() :: queue:queue( command_request() ).
-% A (FIFO) queue of command requests, to be sent in turn next.
 
 
+
+-doc """
+An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
+describe a given device.
+""".
 -type device_config() ::
 
 	% Then the activity periodicity will be learnt, if appropriate (e.g. contact
@@ -233,95 +275,129 @@
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
 	  EEP :: ustring(), declared_device_activity_periodicity(),
 	  Comment :: ustring() }.
-% An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
-% describe a given device.
 
 
+
+-doc "The outcome of an attempt of TTY detection.".
 -type tty_detection_outcome() ::
 	'true' | { 'false', 'non_existing' | { 'not_device', entry_type() } }.
-% The outcome of an attempt of TTY detection.
 
 
+
+-doc """
+Defines the serial, bidirectional communication between a host and EnOcean
+modules.
+
+There are two Enocean serial protocols: ESP2 and ESP3.
+
+Oceanic focuses primarily on newer, richer, ESP3.
+
+The physical interface between a host and an EnOcean RF module (UART) is a
+3-wire connection (Rx, Tx, GND / software handshake / full-duplex), modelled on
+RS-232 serial interfaces.
+""".
 -type serial_protocol() :: 'esp2' | 'esp3'.
-% Defines the serial, bidirectional communication between a host and EnOcean
-% modules.
-%
-% There are two Enocean serial protocols: ESP2 and ESP3.
-% Oceanic focuses primarily on newer, richer, ESP3.
-%
-% The physical interface between a host and an EnOcean RF module (UART) is a
-% 3-wire connection (Rx, Tx, GND / software handshake / full-duplex), modelled
-% on RS-232 serial interfaces.
 
 
+
+-doc """
+A telegram is a raw (non-decoded) series of bytes that have been received or are
+to be sent. Ideally a telegram would correspond to a full, unitary radio ESP3
+packet typically received from an Enocean gateway.
+
+E.g. '<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
+'<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
+'<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>'.
+""".
 -type telegram() :: binary().
-% A telegram is a raw (non-decoded) series of bytes that have been received or
-% are to be sent. Ideally a telegram would correspond to a full, unitary radio
-% ESP3 packet typically received from an Enocean gateway.
-%
-% E.g. `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
-% `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>' or
-% `<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>'.
 
 
+
+-doc "A telegram chunk is a partial telegram, possibly a full ESP3 packet.".
 -type telegram_chunk() :: binary().
-% A telegram chunk is a partial telegram, possibly a full ESP3 packet.
 
 
+
+-doc """
+The part of a telegram with the base, normalised, stable data (corresponding to
+the actual payload of an ESP3 packet, which can be for example an ERP1 radio
+packet), possibly to be complemented with optional data.
+""".
 -type telegram_data() :: telegram_chunk().
-% The part of a telegram with the base, normalised, stable data (corresponding
-% to the actual payload of an ESP3 packet, which can be for example an ERP1
-% radio packet), possibly to be complemented with optional data.
 
 
+
+-doc """
+A base, normalised, stable data of a telegram once its initial byte (typically
+R-ORG or Return Code) has already been chopped.
+""".
 -type telegram_data_tail() :: telegram_chunk().
-% A base, normalised, stable data of a telegram once its initial byte (typically
-% R-ORG or Return Code) has already been chopped.
 
 
+
+-doc """
+The (encoded) part of a telegram with the optional data that may
+complement/extend the base data.
+
+See also decoded_optional_data/0.
+""".
 -type telegram_opt_data() :: telegram_chunk().
-% The (encoded) part of a telegram with the optional data that may
-% complement/extend the base data.
-%
-% See also decoded_optional_data/0.
 
 
--type decoded_optional_data() :: { subtelegram_count(), eurid(), maybe( dbm() ),
-								   maybe( security_level() ) }.
-% The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
-% telegrams.
-%
-% See also telegram_opt_data/0.
+
+-doc """
+The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
+telegrams.
+
+See also telegram_opt_data/0.
+""".
+-type decoded_optional_data() :: { subtelegram_count(), eurid(),
+	option( dbm() ), option( security_level() ) }.
 
 
+
+-doc "A number of subtelegrams.".
 -type subtelegram_count() :: count().
-% A number of subtelegrams.
 
 
+
+-doc """
+The best RSSI value, expressed in decibels (dB) with reference to one milliwatt
+(mW), of all received subtelegrams.
+
+Here a negative value, like -6 dBm.
+
+Of course only applies when receiving telegrams (not sending).
+""".
 -type dbm() :: integer().
-% The best RSSI value, expressed in decibels (dB) with reference to one
-% milliwatt (mW), of all received subtelegrams.
-%
-% Here a negative value, like -6 dBm.
-%
-% Of course only applies when receiving telegrams (not sending).
 
 
+
+-doc """
+The level of security of a received telegram.
+
+Only applies when receiving telegrams (when sending, security is selected by
+link table entries).
+""".
 -type security_level() :: 'not_processed'
 						| 'obsolete' % A deprecated security concept
 						| 'decrypted'
 						| 'authenticated'
 						| 'decrypted_and_authenticated'.
-% The level of security of a received telegram.
-%
-% Only applies when receiving telegrams (when sending, security is selected by
-% link table entries).
 
 
+
+-doc "A direction of communication.".
 -type communication_direction() :: 'unidirectional' | 'bidirectional'.
 
+
+
+-doc "A type of teach request.".
 -type teach_request_type() :: 'teach_in' | 'teach_out'.
 
+
+
+-doc "Outcome of a teach requests.".
 -type teach_outcome() ::
 	'teach_refused'          % "General reason"
   | 'teach_in_accepted'      % Addition success
@@ -329,33 +405,55 @@
   | 'teach_eep_unsupported'. % EEP not supported
 
 
+
+-doc "Tells which channel(s) should be taught.".
 -type channel_taught() :: uint8() | 'all'.
-% Tells which channel(s) should be taught.
 
 
+
+-doc "Identifier of device manufacturer.".
 -type manufacturer_id () :: uint8().
-% Identifier of device manufacturer.
+
 
 
 % Since EEP 3.0:
 
+
+-doc """
+Radio ORG (organization number / Radio-telegram types grouped ORGanizationally);
+describes the ERP radio telegram type, as an identifier. Equivalent of "Choice".
+""".
 -type rorg() :: uint8().
-% Radio ORG (organization number / Radio-telegram types grouped
-% ORGanizationally); describes the ERP radio telegram type, as an
-% identifier. Equivalent of "Choice".
 
+
+
+-doc "Describes the basic functionality of the data content.".
 -type func() :: uint8().
-% Describes the basic functionality of the data content.
 
+
+
+-doc "Describes the type of device in its individual characteristics.".
 -type type() :: uint8().
-% Describes the type of device in its individual characteristics.
 
 
+
+-doc """
+An EEP defines the coding of the data to be exchanged, so that two devices
+complying to the same EEP can be interchanged.
+""".
 -type eep() :: { rorg(), func(), type() }.
-% An EEP defines the coding of the data to be exchanged, so that two devices
-% complying to the same EEP can be interchanged.
 
 
+
+-doc """
+The (atom) identifier of an EnOcean Equipment Profile, corresponding to
+(R-ORG)-(FUNC)-(TYPE) triplet.
+
+For example the 'single_input_contact' EEP identifier corresponds to EEP
+D5-00-01.
+
+Refer to get_eep_topic_specs/0 for further details.
+""".
 -type eep_id() ::
 	'thermo_hygro_low'
   | 'thermo_hygro_mid'
@@ -370,76 +468,103 @@
   | 'single_channel_module'
   | 'double_channel_module'
   | atom().
-% The (atom) identifier of an EnOcean Equipment Profile, corresponding to
-% (R-ORG)-(FUNC)-(TYPE) triplet.
-%
-% For example the 'single_input_contact' EEP identifier corresponds to EEP
-% D5-00-01.
-%
-% Refer to get_eep_topic_specs/0 for further details.
 
 
+
+-doc """
+An EEP defined as a string (e.g. "D5-00-01").
+""".
 -type eep_string() :: ustring().
-% An EEP defined as a string (e.g. "D5-00-01").
 
 
+
+-doc """
+Tells how a device was discovered (first seen) by Oceanic.
+
+Discovery shall be understood here as (first-time) detection (even if the device
+was already known through configuration).
+""".
 -type discovery_origin() ::
 	'configuration'  % Loaded from Oceanic's user-defined configuration
   | 'listening'      % Passively listened from trafic
   | 'teaching'.      % Through a teach-in mechanism
-% Tells how a device was discovered (first seen) by Oceanic.
-%
-% Discovery shall be understood here as (first-time) detection (even if the
-% device was already known through configuration).
 
 
+
+-doc "An enumeration specified in the protocol.".
 -type enum() :: integer().
-% An enumeration specified in the protocol.
 
 
+
+-doc """
+Designates a button corresponding to a A or B channel.
+
+A given ocker behaves as two buttons (e.g. AI/AO).
+
+In application style 1, the O position is the top/up one, while the I position
+is the bottom/down one.
+""".
 -type button_designator() ::
 	'button_ai'  % Switch light on / Dim light down / Move blind closed
   | 'button_ao'  % Switch light off / Dim light up / Move blind open
   | 'button_bi'  % Switch light on / Dim light down / Move blind closed
   | 'button_bo'. % Switch light off / Dim light up / Move blind open
-% Designates a button corresponding to a A or B channel.
-%
-% A given ocker behaves as two buttons (e.g. AI/AO).
-%
-% In application style 1, the O position is the top/up one, while the I position
-% is the bottom/down one.
 
 
+
+-doc "Tells whether a button has been pressed (and held) or released.".
 -type button_transition() :: 'pressed' | 'released'.
-% Tells whether a button has been pressed (and held) or released.
 
 
+
+-doc """
+A "number" of buttons, typically involved in a multipress event.
+""".
 -type button_counting() :: 'none' | 'three_or_four'.
-% A "number" of buttons, typically involved in a multipress event.
 
 
+
+-doc "Tells whether a contact is open or closed.".
 -type contact_status() :: 'open' | 'closed'.
-% Tells whether a contact is open or closed.
 
 
--type ptm_switch_module_type() :: 'ptm1xx' % synonymous for module PTM1xx
+
+-doc """
+The types of PTM switch modules (radio emitter), as defined in RPS packets.
+""".
+-type ptm_switch_module_type() :: 'ptm1xx'  % synonymous for module PTM1xx
 								| 'ptm2xx'. % synonymous for module PTM2xx
-% The types of PTM switch modules (radio emitter), as defined in RPS packets.
 
 
+
+-doc """
+"Nu" Message type, as defined in RPS packets.
+""".
 -type nu_message_type() :: 'normal' | 'unassigned'
 						 | 'unknown_type_2' | 'unknown_type_3'.
-% "Nu" Message type, as defined in RPS packets.
 
+
+
+-doc "A number of repetitions, typically in a RPS packet.".
 -type repetition_count() :: count().
-% A number of repetitions, typically in a RPS packet.
 
 
+
+-doc "The range of a temperature sensor.".
 -type temperature_range() :: 'low'   % 0°C to +40°C (A5-04-01)
 						   | 'high'. % -20°C to +60°C (A5-04-02)
-% The range of a temperature sensor.
 
 
+
+-doc """
+The type of a VLD message, in the context of the D2-00 EEPs: "Room Control Panel
+(RCP)".
+
+It is also designated by the MI field of these VLD telegrams, the 3 last bits of
+the first byte of the payload (hence 8 possible values).
+
+Described in [EEP-spec] p.127.
+""".
 -type vld_rcp_message_type() ::
 	'a'  % ID 01
   | 'b'  % ID 02
@@ -449,15 +574,20 @@
   | 'f'  % ID 06 (non-existing)
   | 'g'  % ID 07 (non-existing)
   | 'h'. % ID 08 (non-existing)
-% The type of a VLD message, in the context of the D2-00 EEPs: "Room Control
-% Panel (RCP)".
-%
-% It is also designated by the MI field of these VLD telegrams, the 3 last bits
-% of the first byte of the payload (hence 8 possible values).
-%
-% Described in [EEP-spec] p.127.
 
 
+
+-doc """
+The type of a VLD message, in the context of the D2-01 EEPs: "Electronic
+switches and dimmers with Energy Measurement and Local Control".
+
+Refer to the 'vld_d2_00_cmd' topic.
+
+It is also designated by the CMD field of these VLD telegrams, the 4 last bits
+of the first byte of the payload (hence 16 possible values).
+
+Described in [EEP-spec] p.131.
+""".
 -type vld_d2_00_cmd() ::
 	'actuator_set_output'
   | 'actuator_set_local'
@@ -472,32 +602,25 @@
   | 'actuator_set_external_interface_settings'
   | 'actuator_external_interface_settings_query'
   | 'actuator_external_interface_settings_response'.
-% The type of a VLD message, in the context of the D2-01 EEPs: "Electronic
-% switches and dimmers with Energy Measurement and Local Control".
-%
-% Refer to the 'vld_d2_00_cmd' topic.
-%
-% It is also designated by the CMD field of these VLD telegrams, the 4 last bits
-% of the first byte of the payload (hence 16 possible values).
-%
-% Described in [EEP-spec] p.131.
 
 
 
+-doc "The various kinds of errors that may happen when decoding.".
 -type decoding_error() ::
 	'not_reached'   % Beginning of next packet still ahead
   | 'incomplete'    % Truncated packet (end of packet still ahead)
   | 'invalid'       % Corrupted packet
   | 'unsupported'   % Type of packet (currently) unsupported by Oceanic
   | 'unconfigured'. % Device not configure (typically EEP not known)
-% The various kinds of errors that may happen when decoding.
 
 
+
+-doc "The outcome of a decoding.".
 -type decoding_outcome() ::
 
-	{ 'decoded', maybe( device_event() | 'command_processed' ),
-	  MaybeDiscoverOrigin :: maybe( discovery_origin() ),
-	  IsBackOnline :: boolean(), MaybeDevice :: maybe( enocean_device() ),
+	{ 'decoded', option( device_event() | 'command_processed' ),
+	  MaybeDiscoverOrigin :: option( discovery_origin() ),
+	  IsBackOnline :: boolean(), MaybeDevice :: option( enocean_device() ),
 	  NextChunk :: telegram_chunk(), oceanic_state() }
 
   | { decoding_error(), ToSkipLen :: count(), NextChunk :: telegram_chunk(),
@@ -516,229 +639,309 @@
 
 
 
+-doc "The result of a decoding request.".
 -type decoding_result() :: decoding_error() | device_event().
-% The result of a decoding request.
 
 
--type eurid() :: type_utils:uint32(). % Previously `<<_:32>>'.
-% EURID (EnOcean Unique Radio Identifier) is a unique and non-changeable
-% identification number (as a 32-bit value) assigned to every EnOcean
-% transmitter during its production process.
-%
-% The EURID corresponds to the hexadecimal identifier typically labelled at the
-% back of devices (e.g. "ID: B50533EC").
-%
-% Our EURIDs are defined and stored in uppercase, as they are generally written
-% on devices.
-%
-% A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
-% denotes a broadcast transmission (as opposed to an Addressed Transmission,
-% ADT).
+
+-doc """
+EURID (EnOcean Unique Radio Identifier) is a unique and non-changeable
+identification number (as a 32-bit value) assigned to every EnOcean transmitter
+during its production process.
+
+The EURID corresponds to the hexadecimal identifier typically labelled at the
+back of devices (e.g. "ID: B50533EC").
+
+Our EURIDs are defined and stored in uppercase, as they are generally written on
+devices.
+
+A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
+denotes a broadcast transmission (as opposed to an Addressed Transmission, ADT).
+""".
+-type eurid() :: type_utils:uint32(). % Previously `<<_:32>>`.
 
 
+
+-doc """
+An EURID, expressed as a string.
+
+For example: "B50533EC".
+""".
 -type eurid_string() :: ustring().
-% An EURID, expressed as a string.
-%
-% For example: "B50533EC".
 
 
+
+-doc """
+An EURID, expressed as a binary string.
+
+For example: `<<"B50533EC">>`.
+""".
 -type eurid_bin_string() :: bin_string().
-% An EURID, expressed as a binary string.
-%
-% For example: `<<"B50533EC">>'.
 
 
+
+-doc "An ESP-level data unit.".
 -type packet() :: binary().
-% An ESP-level data unit.
 
 
+
+-doc """
+The CRC (Cyclic Redundancy Check) or polynomial code checksum of a
+sub-telegram/packet can be computed.
+
+Remainder on 8 bits of the modulo 2 division of the G(x) = x^8 + x^2 + x^1 + x^0
+polynom.
+""".
 -type crc() :: byte().
-% The CRC (Cyclic Redundancy Check) or polynomial code checksum of a
-% sub-telegram/packet can be computed.
-%
-% Remainder on 8 bits of the modulo 2 division of the G(x) = x^8 + x^2 + x^1 +
-% x^0 polynom.
 
 
+
+-doc """
+An ESP3 data unit, consisting of Header, Data and Optional Data.
+
+The semantics of the optional data is defined by the packet type, it can be used
+to extend an existing ESP3 packet.
+""".
 -type esp3_packet() :: binary().
-% An ESP3 data unit, consisting of Header, Data and Optional Data.
-%
-% The semantics of the optional data is defined by the packet type, it can be
-% used to extend an existing ESP3 packet.
 
 
+
+-doc """
+The type of a (typically ESP3) packet.
+
+Refer to [ESP3] p.12.
+
+After a radio_erp1, radio_sub_tel or remote_man_command packet, a response
+packet is expected.
+
+See also the 'packet_type' topic in the oceanic_generated module.
+""".
 -type packet_type() ::
 	  'reserved' | 'radio_erp1' | 'response'
 	| 'radio_sub_tel' | 'event' | 'common_command'
 	| 'smart_ack_command' | 'remote_man_command'
 	| 'radio_message' | 'radio_erp2' | 'radio_802_15_4'
 	| 'command_2_4'.
-% The type of a (typically ESP3) packet.
-%
-% Refer to [ESP3] p.12.
-%
-% After a radio_erp1, radio_sub_tel or remote_man_command packet, a response
-% packet is expected.
-%
-% See also the 'packet_type' topic in the oceanic_generated module.
 
 
+
+-doc """
+The payload of a (typically ESP3) packet, a sequence of bytes sometimes
+designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to
+the "optional data" one) found after the R-ORG one.
+
+Such a payload corresponds to a packet of a given type (e.g. an ERP1 radio
+packet, encapsulated in an ESP3 packet).
+""".
 -type payload() :: binary().
-% The payload of a (typically ESP3) packet, a sequence of bytes sometimes
-% designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to
-% the "optional data" one) found after the R-ORG one.
-%
-% Such a payload corresponds to a packet of a given type (e.g. an ERP1 radio
-% packet, encapsulated in an ESP3 packet).
 
 
+
+-doc """
+The actual payload of a VLD (D2) packet.
+
+VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
+their design.
+""".
 -type vld_payload() :: binary().
-% The actual payload of a VLD (D2) packet.
-%
-% VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
-% their design.
 
 
 
-%-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
+% Unused:
+-doc "A decoding result.".
+-type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
 
 
-%-type read_outcome() ::
-%    { ReadMessage :: device_event(), AnyNextChunk :: telegram_chunk() }.
-% Outcome of a (blocking) request of telegram reading.
-%
-% Exactly one event will be read (any remainding chunk returned), possibly
-% waiting for it indefinitely.
-%
-% No content can remain to be skipped here, as by design we ended when having
-% read a new event, returning any next chunk as it is.
+
+% Unused:
+-doc """
+Outcome of a (blocking) request of telegram reading.
+
+Exactly one event will be read (any remainding chunk returned), possibly waiting
+for it indefinitely.
+
+No content can remain to be skipped here, as by design we ended when having read
+a new event, returning any next chunk as it is.
+""".
+-type read_outcome() ::
+	{ ReadMessage :: device_event(), AnyNextChunk :: telegram_chunk() }.
 
 
+
+-doc """
+The version of an EnOcean application or API.
+
+This is a basic_utils:four_digit_version().
+""".
 -type enocean_version() :: { Main :: version_number(), Beta :: version_number(),
 	Alpha :: version_number(), Build :: version_number() }.
-% The version of an EnOcean application or API.
-%
-% This is a basic_utils:four_digit_version().
 
 
+
+-doc "A log counter, starting from 255 downward.".
 -type log_counter() :: type_utils:uint8().
-% A log counter, starting from 255 downward.
 
 
+
+-doc "A series of log entries of an USB gateway.".
 -type log_counters() :: [ log_counter() ].
-% A series of log entries of an USB gateway.
 
 
+
+-doc "Type information regarding a command.".
 -type command_type() :: 'device_command' | common_command().
-% Type information regarding a command.
 
+
+
+-doc "Allows to keep track of an ongoing command request.".
 -type command_request() :: #command_request{}.
-% Allows to keep track of an ongoing command request.
 
+
+
+-doc "The (synchronous) outcome of a sent command.".
 -type command_outcome() :: command_response() | 'time_out'.
-% The (synchronous) outcome of a sent command.
 
 
--type waited_command_info() :: { command_request(), maybe( timer_ref() ) }.
-% Tracking information regarding a currently pending command.
-%
-% A timer is used for most commands, except typically internally-triggered
-% common commands.
+
+-doc """
+Tracking information regarding a currently pending command.
+
+A timer is used for most commands, except typically internally-triggered common
+commands.
+""".
+-type waited_command_info() :: { command_request(), option( timer_ref() ) }.
 
 
+
+-doc "The description of a device, as known and returned by Oceanic.".
 -type device_description() :: bin_string().
-% The description of a device, as known and returned by Oceanic.
 
--type back_online_info() :: maybe( device_description() ).
-% Information sent to notify (if not set to 'undefined') that a lost device is
-% back online.
+
+
+-doc """
+Information sent to notify (if not set to 'undefined') that a lost device is
+back online.
+""".
+-type back_online_info() :: option( device_description() ).
+
+
+
 
 
 % Event types ordered here as well by increasing EEP:
 
 
+-doc """
+Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any range).
+
+Refer to [EEP-spec] p.35 for further details.
+""".
 -type thermo_hygro_event() :: #thermo_hygro_event{}.
-% Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any
-% range).
-%
-% Refer to [EEP-spec] p.35 for further details.
 
 
 
+-doc """
+Event sent by EEP D5-00-01: Single Input Contact.
+
+D5-00 corresponds to Contacts and Switches.
+
+Refer to [EEP-spec] p.27 for further details.
+
+Note that, at least by default, most if not all opening detectors not only
+report state transitions (between closed and opened), they also notify regularly
+(e.g. every 5-30 minutes, on average often 15 minutes) and spontaneously their
+current state (even if no specific transition happened), presumably to help
+overcoming any message loss.
+
+So any listener of these events shall store their current state, to be able to
+detect the actual transitions (even if they are late).
+""".
 -type single_input_contact_event() :: #single_input_contact_event{}.
-% Event sent by EEP D5-00-01: Single Input Contact.
-%
-% D5-00 corresponds to Contacts and Switches.
-%
-% Refer to [EEP-spec] p.27 for further details.
-%
-% Note that, at least by default, most if not all opening detectors not only
-% report state transitions (between closed and opened), they also notify
-% regularly (e.g. every 5-30 minutes, on average often 15 minutes) and
-% spontaneously their current state (even if no specific transition happened),
-% presumably to help overcoming any message loss.
-%
-% So any listener of these events shall store their current state, to be able to
-% detect the actual transitions (even if they are late).
 
 
+
+-doc """
+Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
+
+Refer to [EEP-spec] p.15 for further details.
+""".
 -type push_button_event() :: #push_button_event{}.
-% Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
-%
-% Refer to [EEP-spec] p.15 for further details.
 
 
+
+%-doc "Event regarding rocker switches.".
 %-type rocker_switch_event() :: #rocker_switch_event{}.
 
 
+
+-doc """
+Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+Application Style 1"), for T21=1.
+
+Refer to [EEP-spec] p.16 for further details.
+""".
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
-% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1.
-%
-% Refer to [EEP-spec] p.16 for further details.
 
 
+
+-doc """
+Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+Application Style 1"), for T21=1 and NU=0.
+
+Refer to [EEP-spec] p.16 for further details.
+""".
 -type double_rocker_multipress_event() :: #double_rocker_multipress_event{}.
-% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1 and NU=0.
-%
-% Refer to [EEP-spec] p.16 for further details.
 
 
+
+%-doc "Event regarding position switches.".
 %-type position_switch_event() :: #position_switch_event{}.
 
 
+
+-doc """
+Message (hence not an event per se) corresponding to the receiving a R-ORG
+telegram for an universal Teach-in request, EEP based (UTE), one way of pairing
+devices.
+
+Refer to [EEP-gen] p.17 for further details.
+""".
 -type teach_request() :: #teach_request{}.
-% Message (hence not an event per se) corresponding to the receiving a R-ORG
-% telegram for an universal Teach-in request, EEP based (UTE), one way of
-% pairing devices.
-%
-% Refer to [EEP-gen] p.17 for further details.
 
 
 
+-doc "Response to a successful 'read version' common command request.".
 -type read_version_response() :: #read_version_response{}.
-% Response to a successful 'read version' common command request.
 
+
+
+-doc "Response to a successful 'read logs' common command request.".
 -type read_logs_response() :: #read_logs_response{}.
-% Response to a successful 'read logs' common command request.
 
+
+
+-doc """
+Response to a successful 'read base ID information' (CO_RD_IDBASE) common
+command request.
+""".
 -type read_base_id_info_response() :: #read_base_id_info_response{}.
-% Response to a successful 'read base ID information' (CO_RD_IDBASE) common
-% command request.
 
 
+
+-doc "Designates a response to a common command request".
 -type common_command_response() :: read_version_response()
 								 | read_logs_response()
 								 | read_base_id_info_response()
 								 | common_command_failure().
-% Designates a response to a common command request.
 
 
+
+-doc "The response to a command, as sent back to the user.".
 -type command_response() :: 'command_processed' | common_command_response().
-% The response to a command, as sent back to the user.
 
 
+
+-doc "Any event notified by an EnOcean device.".
 -type device_event() ::
 	% Device events:
 	thermo_hygro_event()
@@ -750,27 +953,33 @@
 	% Other events:
   | teach_request()
   | command_response().
-% Any event notified by an EnOcean device.
 
 
+
+-doc """
+Designates an ESP3 command, like co_wr_sleep or co_rd_repeater.
+
+Refer to oceanic_generated:get_common_command_topic_spec/0 for further
+information.
+""".
 -type common_command() :: 'co_rd_version' | 'co_rd_sys_log'
 						| 'co_rd_idbase' | atom().
-% Designates an ESP3 command, like co_wr_sleep or co_rd_repeater.
-%
-% Refer to oceanic_generated:get_common_command_topic_spec/0 for further
-% information.
 
 
+
+-doc """
+Generic causes of failure for a common command request.
+
+See also oceanic_generated:get_return_code_topic_spec/0.
+""".
 -type common_command_failure() :: 'error_return'
 								| 'not_supported_return'
 								| 'wrong_parameter_return'
 								| 'operation_denied'
 								| 'time_out'.
-% Generic causes of failure for a common command request.
-%
-% See also oceanic_generated:get_return_code_topic_spec/0.
 
 
+-doc "A timer reference.".
 -type timer_ref() :: timer:tref().
 
 
@@ -806,7 +1015,8 @@
 			   decoding_outcome/0,
 
 			   eurid/0, eurid_string/0, eurid_bin_string/0,
-			   packet/0, crc/0, esp3_packet/0, packet_type/0, payload/0,
+			   packet/0, crc/0, esp3_packet/0, packet_type/0,
+			   payload/0, vld_payload/0, decode_result/0, read_outcome/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
 			   command_type/0, command_request/0, command_outcome/0,
 
@@ -860,15 +1070,17 @@
 
 % Local types:
 
+-doc "32-bit; could have been `type_utils:uint32()`.".
 -type esp3_header() :: <<_:32>>.
-% 32-bit; could have been ``type_utils:uint32()''.
 
 
+
+-doc "Information about a recording of a device event.".
 -type recording_info() ::
 	{ device_table(), NewDevice :: enocean_device(), Now :: timestamp(),
-	  MaybeLastSeen :: maybe( timestamp() ), maybe( discovery_origin() ),
-	  IsBackOnline :: boolean(), maybe( device_name() ), maybe( eep_id() ) }.
-% Information about a recording of a device event.
+	  MaybeLastSeen :: option( timestamp() ), option( discovery_origin() ),
+	  IsBackOnline :: boolean(), option( device_name() ), option( eep_id() ) }.
+
 
 
 
@@ -1081,7 +1293,7 @@
 	% RESPONSE message"); in this case this information should be registered in
 	% their enocean_device() record.
 	%
-	waited_command_info :: maybe( waited_command_info() ),
+	waited_command_info :: option( waited_command_info() ),
 
 
 	% The maximum waiting duration for a pending command, sent yet not
@@ -1123,12 +1335,14 @@
 	event_listeners = [] :: [ event_listener_pid() ] } ).
 
 
+-doc """
+An Oceanic state, including configuration, typically loaded from an ETF file.
+""".
 -type oceanic_state() :: #oceanic_state{}.
-% An Oceanic state, including configuration typically loaded from an ETF file.
 
 
 
-% Shorthands:
+% Type shorthands:
 
 -type count() :: basic_utils:count().
 -type version_number() :: basic_utils:version_number().
@@ -1173,13 +1387,15 @@
 
 % Version-related functions.
 
-% @doc Returns the version of the Oceanic library being used.
+
+-doc "Returns the version of the Oceanic library being used.".
 -spec get_oceanic_version() -> three_digit_version().
 get_oceanic_version() ->
 	basic_utils:parse_version( get_oceanic_version_string() ).
 
 
-% @doc Returns the version of the Oceanic library being used, as a string.
+
+-doc "Returns the version of the Oceanic library being used, as a string.".
 -spec get_oceanic_version_string() -> ustring().
 get_oceanic_version_string() ->
 	% As defined (uniquely) in GNUmakevars.inc:
@@ -1187,11 +1403,12 @@ get_oceanic_version_string() ->
 
 
 
-% @doc Tells whether Oceanic should be available, that is if all its
-% prerequisites seem to be met.
-%
-% Useful to de-risk a future launch thereof and factor code.
-%
+-doc """
+Tells whether Oceanic should be available, that is if all its prerequisites seem
+to be met.
+
+Useful to de-risk a future launch thereof and factor code.
+""".
 -spec is_available( device_path() ) -> oceanic_availability_outcome().
 is_available( TtyPath ) ->
 
@@ -1264,39 +1481,42 @@ is_available( TtyPath ) ->
 % Start subsection, with no link.
 
 
-% @doc Starts the Enocean support, based on our default conventions regarding
-% the TTY allocated to the USB Enocean gateway; returns the PID of the launched
-% Oceanic server, which registered the calling process as one of its Enocean
-% event listeners (but did not link to it).
-%
-% Throws an exception if no relevant TTY can be used.
-%
+-doc """
+Starts the Enocean support, based on our default conventions regarding the TTY
+allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
+server, which registered the calling process as one of its Enocean event
+listeners (but did not link to it).
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start() -> oceanic_server_pid().
 start() ->
 	start( get_default_tty_path() ).
 
 
 
-% @doc Starts the Enocean support, based on the specified device path to the TTY
-% allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which registered the calling process as one of its Enocean event
-% listeners (but did not link to it).
-%
-% Throws an exception if no relevant TTY can be used.
-%
+-doc """
+Starts the Enocean support, based on the specified device path to the TTY
+allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
+server, which registered the calling process as one of its Enocean event
+listeners (but did not link to it).
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start( device_path() ) -> oceanic_server_pid().
 start( TtyPath ) ->
 	start( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
-% @doc Starts the Enocean support, based on the specified path to the TTY
-% allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server (which is not linked to the calling process), registering the specified
-% listener processes for Enocean events.
-%
-% Throws an exception if no relevant TTY can be used.
-%
+-doc """
+Starts the Enocean support, based on the specified path to the TTY allocated to
+the USB Enocean gateway; returns the PID of the launched Oceanic server (which
+is not linked to the calling process), registering the specified listener
+processes for Enocean events.
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start( device_path(), [ event_listener_pid() ] ) -> oceanic_server_pid().
 start( TtyPath, EventListeners ) ->
 	?myriad_spawn( fun() -> oceanic_start( TtyPath, EventListeners ) end ).
@@ -1307,38 +1527,42 @@ start( TtyPath, EventListeners ) ->
 % Start subsection, with link.
 
 
-% @doc Starts the Enocean support, based on our default conventions regarding
-% the TTY allocated to the USB Enocean gateway; returns the PID of the launched
-% Oceanic server, which registered the calling process as one of its Enocean
-% event listeners, and linked to it.
-%
-% Throws an exception if no relevant TTY can be used.
-%
+-doc """
+Starts the Enocean support, based on our default conventions regarding the TTY
+allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
+server, which registered the calling process as one of its Enocean event
+listeners, and linked to it.
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start_link() -> oceanic_server_pid().
 start_link() ->
 	start_link( get_default_tty_path() ).
 
 
-% @doc Starts the Enocean support, based on the specified device path to the TTY
-% allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which registered the calling process as one of its Enocean event
-% listeners, and linked to it.
-%
-% Throws an exception if no relevant TTY can be used.
-%
+
+-doc """
+Starts the Enocean support, based on the specified device path to the TTY
+allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
+server, which registered the calling process as one of its Enocean event
+listeners, and linked to it.
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start_link( device_path() ) -> oceanic_server_pid().
 start_link( TtyPath ) ->
 	start_link( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
-% @doc Starts the Enocean support, based on the specified path to the TTY
-% allocated to the USB Enocean gateway; returns the PID of the launched Oceanic
-% server, which registered the calling process as one of its Enocean event
-% listeners, and linked to it.
-%
-% Throws an exception if no relevant TTY can be used.
-%
+-doc """
+Starts the Enocean support, based on the specified path to the TTY allocated to
+the USB Enocean gateway; returns the PID of the launched Oceanic server, which
+registered the calling process as one of its Enocean event listeners, and linked
+to it.
+
+Throws an exception if no relevant TTY can be used.
+""".
 -spec start_link( device_path(), [ event_listener_pid() ] ) ->
 											oceanic_server_pid().
 start_link( TtyPath, EventListeners ) ->
@@ -1351,9 +1575,10 @@ start_link( TtyPath, EventListeners ) ->
 % TTY subsection.
 
 
-% @doc Returns the path to the default TTY allocated to the USB Enocean gateway,
-% according to our conventions.
-%
+-doc """
+Returns the path to the default TTY allocated to the USB Enocean gateway,
+according to our conventions.
+""".
 -spec get_default_tty_path() -> device_path().
 get_default_tty_path() ->
 
@@ -1363,21 +1588,24 @@ get_default_tty_path() ->
 	"/dev/ttyUSBEnOcean".
 
 
-% @doc Tells whether the default TTY exists and is a device.
-%
-% Useful at least for testing.
-%
+
+-doc """
+Tells whether the default TTY exists and is a device.
+
+Useful at least for testing.
+""".
 -spec has_tty() -> tty_detection_outcome().
 has_tty() ->
 	has_tty( get_default_tty_path() ).
 
 
 
-% @doc Tells whether the specified TTY exists and is a device, together with any
-% failure reason.
-%
-% Useful at least for testing.
-%
+-doc """
+Tells whether the specified TTY exists and is a device, together with any
+failure reason.
+
+Useful at least for testing.
+""".
 -spec has_tty( any_device_path() ) -> tty_detection_outcome().
 has_tty( AnyTtyPath ) ->
 
@@ -1401,7 +1629,7 @@ has_tty( AnyTtyPath ) ->
 
 
 
-% @doc Secures the TTY connection to the Enocean gateway.
+-doc "Secures the TTY connection to the Enocean gateway.".
 -spec secure_tty( device_path() ) -> serial_server_pid().
 secure_tty( TtyPath ) ->
 
@@ -1443,10 +1671,11 @@ secure_tty( TtyPath ) ->
 
 
 
+
 % Oceanic server process subsection.
 
 
-% @doc Executes the start procedure of the spawned Oceanic server process.
+-doc "Executes the start procedure of the spawned Oceanic server process.".
 -spec oceanic_start( device_path(), [ event_listener_pid() ] ) -> no_return().
 oceanic_start( TtyPath, EventListeners ) ->
 
@@ -1466,7 +1695,7 @@ oceanic_start( TtyPath, EventListeners ) ->
 
 
 
-% @doc Returns a base, blank yet initialised, Oceanic state.
+-doc "Returns a base, blank yet initialised, Oceanic state.".
 -spec get_base_state( serial_server_pid() ) -> oceanic_state().
 get_base_state( SerialServerPid ) ->
 
@@ -1501,9 +1730,10 @@ get_base_state( SerialServerPid ) ->
 
 
 
-% @doc Returns an initialised, Oceanic state, once the initial base ID request
-% has been properly answered.
-%
+-doc """
+Returns an initialised, Oceanic state, once the initial base ID request has been
+properly answered.
+""".
 -spec wait_initial_base_request( count(), telegram_chunk(),
 								 oceanic_state() ) -> oceanic_state().
 wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
@@ -1570,15 +1800,14 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 
 
 
+-doc """
+Loads Oceanic configuration information from the default Ceylan preferences
+file, if any, otherwise returns a state with an empty device table.
 
-% @doc Loads Oceanic configuration information from the default Ceylan
-% preferences file, if any, otherwise returns a state with an empty device
-% table.
-%
-% Refer to load_configuration/2 for key information.
-%
-% See also the 'preferences' Myriad module.
-%
+Refer to load_configuration/2 for key information.
+
+See also the 'preferences' Myriad module.
+""".
 -spec load_configuration( oceanic_state() ) -> oceanic_state().
 load_configuration( State ) ->
 	case preferences:is_preferences_default_file_available() of
@@ -1604,21 +1833,22 @@ load_configuration( State ) ->
 
 
 
-% @doc Loads Oceanic configuration information in the specified state from the
-% specified ETF file, and returns a corresponding updated state.
-%
-% The configuration information is expected to contain up to one entry for the
-% following keys (atoms):
-%
-% - oceanic_emitter: to specify the pseudo-device emitting any telegram to be
-% sent by Oceanic (note that USB gateways have already their own base EURID that
-% shall be preferred; refer to the co_rd_idbase common command)
-%
-% - oceanic_jamming_threshold: to set a non-default threshold
-%
-% - oceanic_devices: to declare the known devices; a given device shall never be
-% declared more than once
-%
+-doc """
+Loads Oceanic configuration information in the specified state from the
+specified ETF file, and returns a corresponding updated state.
+
+The configuration information is expected to contain up to one entry for the
+following keys (atoms):
+
+- oceanic_emitter: to specify the pseudo-device emitting any telegram to be sent
+by Oceanic (note that USB gateways have already their own base EURID that shall
+be preferred; refer to the co_rd_idbase common command)
+
+- oceanic_jamming_threshold: to set a non-default threshold
+
+- oceanic_devices: to declare the known devices; a given device shall never be
+declared more than once
+""".
 -spec load_configuration( any_file_path(), oceanic_state() ) -> oceanic_state().
 load_configuration( ConfFilePath, State ) ->
 
@@ -1637,20 +1867,23 @@ load_configuration( ConfFilePath, State ) ->
 
 
 
-% @doc Registers the specified additional Oceanic configuration in the specified
-% Oceanic server.
-%
-% Refer to load_configuration/2 for key information.
-%
+-doc """
+Registers the specified additional Oceanic configuration in the specified
+Oceanic server.
+
+Refer to load_configuration/2 for key information.
+""".
 -spec add_configuration_settings( oceanic_settings(), oceanic_server_pid() ) ->
 		void().
 add_configuration_settings( OcSettings, OcSrvPid ) ->
 	OcSrvPid ! { addConfigurationSettings, OcSettings }.
 
 
-% @doc Registers internally the specified Oceanic configuration, overriding any
-% prior settings, and returns a corresponding updated state.
-%
+
+-doc """
+Registers internally the specified Oceanic configuration, overriding any prior
+settings, and returns a corresponding updated state.
+""".
 -spec apply_conf_settings( oceanic_settings(), oceanic_state() ) ->
 								oceanic_state().
 apply_conf_settings( OcSettings, State ) ->
@@ -1722,7 +1955,7 @@ extract_settings( Other, Acc, State ) ->
 
 
 
-% @doc Adds the specified devices in the specified device table.
+-doc "Adds the specified devices in the specified device table.".
 -spec declare_devices( [ device_config() ], device_table() ) -> device_table().
 declare_devices( _DeviceCfgs=[], DeviceTable ) ->
 	DeviceTable;
@@ -1828,19 +2061,20 @@ declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
 
 
 
-% @doc Decides whether an 'auto' activity periodicity mode can be retained,
-% based on the specified EEP (if any).
-%
-% We consider that devices implementing some EEPs do not send periodical state
-% updates.
-%
-% For example contact switches shall not be left on 'auto', otherwise they are
-% likely to be considered lost after some time.
-%
-% If the choice made here is not relevant for a given device, declare for it an
-% explicit (non-auto) periodicity.
-%
--spec decide_auto_periodicity( maybe( eep_id() ) ) -> expected_periodicity().
+-doc """
+Decides whether an 'auto' activity periodicity mode can be retained, based on
+the specified EEP (if any).
+
+We consider that devices implementing some EEPs do not send periodical state
+updates.
+
+For example contact switches shall not be left on 'auto', otherwise they are
+likely to be considered lost after some time.
+
+If the choice made here is not relevant for a given device, declare for it an
+explicit (non-auto) periodicity.
+""".
+-spec decide_auto_periodicity( option( eep_id() ) ) -> expected_periodicity().
 decide_auto_periodicity( _MaybeEEPId=undefined ) ->
 	% Not known, supposed not talkative:
 	none;
@@ -1878,7 +2112,7 @@ decide_auto_periodicity( _OtherEEPId ) ->
 
 
 
-% @doc Declares the specifed taught-in device.
+-doc "Declares the specifed taught-in device.".
 -spec declare_device_from_teach_in( eurid(), eep(), device_table() ) ->
 						{ device_table(), enocean_device(), timestamp() }.
 declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
@@ -1937,19 +2171,20 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
 
 
-% @doc Sends the specified telegram, through the specified Oceanic server.
+-doc "Sends the specified telegram, through the specified Oceanic server.".
 -spec send( telegram(), oceanic_server_pid() ) -> void().
 send( Telegram, OcSrvPid ) ->
 	OcSrvPid ! { sendOceanic, Telegram }.
 
 
 
-% @doc Acknowledges (accepts) the specified teach request, by sending a
-% (successful) teach response.
-%
-% See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen]
-% p.26.
-%
+-doc """
+Acknowledges (accepts) the specified teach request, by sending a (successful)
+teach response.
+
+See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen]
+p.26.
+""".
 -spec acknowledge_teach_request( teach_request(), oceanic_server_pid() ) ->
 													void().
 acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_in },
@@ -1964,11 +2199,12 @@ acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_out },
 
 
 
-% @doc Acknowledges the specified teach-in request, by sending the specified
-% teach-in response.
-%
-% See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen] p.26.
-%
+-doc """
+Acknowledges the specified teach-in request, by sending the specified teach-in
+response.
+
+See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen] p.26.
+""".
 -spec acknowledge_teach_request( teach_request(), teach_outcome(),
 								 oceanic_server_pid() ) -> void().
 acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
@@ -2028,25 +2264,26 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 % Finer section for the RPS telegrams, which include only the F6-* EEPs.
 
 
-% @doc Encodes a double-rocker switch telegram, from the specified device to the
-% specified one (if any), reporting the specified transition for the specified
-% button.
-%
-% As this encoding is done exclusively on the caller side (the Oceanic server
-% not being involved), it is up to the caller to specify the source EURID. We
-% recommend at the caller fetches from the Oceanic server its EURID (see
-% get_oceanic_eurid/1) once for all, and use it afterwards.
-%
-% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
-% radio packet encapsulated into an ESP3 one.
-%
-% See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
-%
-% Depending on how Oceanic was learnt by the target actuator, it will be seen
-% either as a rocker (recommended) or as push-button(s).
-%
--spec encode_double_rocker_switch_telegram( eurid(), maybe( eurid() ),
+-doc """
+Encodes a double-rocker switch telegram, from the specified device to the
+specified one (if any), reporting the specified transition for the specified
+button.
+
+As this encoding is done exclusively on the caller side (the Oceanic server not
+being involved), it is up to the caller to specify the source EURID. We
+recommend at the caller fetches from the Oceanic server its EURID (see
+get_oceanic_eurid/1) once for all, and use it afterwards.
+
+Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
+radio packet encapsulated into an ESP3 one.
+
+See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+
+Depending on how Oceanic was learnt by the target actuator, it will be seen
+either as a rocker (recommended) or as push-button(s).
+""".
+-spec encode_double_rocker_switch_telegram( eurid(), option( eurid() ),
 		button_designator(), button_transition() ) -> telegram().
 encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 									  ButtonDesignator, ButtonTransition ) ->
@@ -2132,17 +2369,18 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 
 
 
-% @doc Encodes a double-rocker multipress telegram, from the specified device to
-% the specified one (if any), reporting the specified transition for the
-% specified button.
-%
-% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
-% radio packet encapsulated into an ESP3 one.
-%
-% See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
-%
--spec encode_double_rocker_multipress_telegram( eurid(), maybe( eurid() ),
+-doc """
+Encodes a double-rocker multipress telegram, from the specified device to the
+specified one (if any), reporting the specified transition for the specified
+button.
+
+Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
+radio packet encapsulated into an ESP3 one.
+
+See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+""".
+-spec encode_double_rocker_multipress_telegram( eurid(), option( eurid() ),
 		button_counting(), button_transition() ) -> telegram().
 encode_double_rocker_multipress_telegram( SourceEurid, MaybeTargetEurid,
 										  ButtonCounting, ButtonTransition ) ->
@@ -2215,11 +2453,10 @@ encode_double_rocker_multipress_telegram( SourceEurid, MaybeTargetEurid,
 
 
 
-
-% @doc Returns the optional data suitable for sending to the specified device
-% (if any).
-%
--spec get_optional_data_for_sending( maybe( eurid() ) ) -> telegram_opt_data().
+-doc """
+Returns the optional data suitable for sending to the specified device (if any).
+""".
+-spec get_optional_data_for_sending( option( eurid() ) ) -> telegram_opt_data().
 get_optional_data_for_sending( _MaybeTargetEurid=undefined ) ->
 	<<>>;
 
@@ -2235,11 +2472,11 @@ get_optional_data_for_sending( TargetEurid ) ->
 
 
 
-
-% @doc Executes synchronously the specified command, specified as an opaque,
-% already-encoded telegram, that is supposed to be acknowledged next by the
-% recipient device, with a response telegram.
-%
+-doc """
+Executes synchronously the specified command, specified as an opaque,
+already-encoded telegram, that is supposed to be acknowledged next by the
+recipient device, with a response telegram.
+""".
 -spec execute_command( telegram(), oceanic_server_pid() ) -> command_outcome().
 execute_command( CmdTelegram, OcSrvPid ) ->
 
@@ -2265,11 +2502,12 @@ execute_command( CmdTelegram, OcSrvPid ) ->
 
 
 
-% @doc Returns the current (emitter) EURID used by Oceanic for the local USB
-% gateway, notably as default source base identifier when generating telegrams.
-%
-% Useful when encoding telegrams.
-%
+-doc """
+Returns the current (emitter) EURID used by Oceanic for the local USB gateway,
+notably as default source base identifier when generating telegrams.
+
+Useful when encoding telegrams.
+""".
 -spec get_oceanic_eurid( oceanic_server_pid() ) -> eurid().
 get_oceanic_eurid( OcSrvPid ) ->
 	OcSrvPid ! { getOceanicEurid, self() },
@@ -2283,9 +2521,10 @@ get_oceanic_eurid( OcSrvPid ) ->
 
 
 
-% @doc Returns the best textual description found for the device specified from
-% its EURID.
-%
+-doc """
+Returns the best textual description found for the device specified from its
+EURID.
+""".
 -spec get_device_description( eurid(), oceanic_server_pid() ) ->
 												device_description().
 get_device_description( Eurid, OcSrvPid ) ->
@@ -2303,9 +2542,10 @@ get_device_description( Eurid, OcSrvPid ) ->
 % Section for common commands.
 
 
-% @doc Returns the version information held by the USB gateway, thanks to a
-% (local) common command.
-%
+-doc """
+Returns the version information held by the USB gateway, thanks to a (local)
+common command.
+""".
 -spec read_version( oceanic_server_pid() ) ->
 						read_version_response() | common_command_failure().
 read_version( OcSrvPid ) ->
@@ -2313,18 +2553,21 @@ read_version( OcSrvPid ) ->
 
 
 
-% @doc Returns the log information held by the USB gateway, thanks to a
-% (local) common command.
-%
+-doc """
+Returns the log information held by the USB gateway, thanks to a (local) common
+command.
+""".
 -spec read_logs( oceanic_server_pid() ) ->
 						read_logs_response() | common_command_failure().
 read_logs( OcSrvPid ) ->
 	send_common_command( _Cmd=co_rd_sys_log, OcSrvPid ).
 
 
-% @doc Returns the information held by the USB gateway about its base ID, thanks
-% to a (local) common command.
-%
+
+-doc """
+Returns the information held by the USB gateway about its base ID, thanks to a
+(local) common command.
+""".
 -spec read_base_id_info( oceanic_server_pid() ) ->
 						read_base_id_info_response() | common_command_failure().
 read_base_id_info( OcSrvPid ) ->
@@ -2332,7 +2575,7 @@ read_base_id_info( OcSrvPid ) ->
 
 
 
-% @doc Sends the specified common command and returns its outcome.
+-doc "Sends the specified common command and returns its outcome.".
 -spec send_common_command( common_command(), oceanic_server_pid() ) ->
 			common_command_response() | common_command_failure().
 send_common_command( CommonCmd, OcSrvPid ) ->
@@ -2352,9 +2595,9 @@ send_common_command( CommonCmd, OcSrvPid ) ->
 
 
 
-% @doc Encodes the specified common command request, to be executed by the USB
-% gateway.
-%
+-doc """
+Encodes the specified common command request, to be executed by the USB gateway.
+""".
 -spec encode_common_command_request( common_command() ) -> telegram().
 % Future commands may have to be special-cased (e.g. if having parameters):
 encode_common_command_request( _Cmd=co_rd_version ) ->
@@ -2371,12 +2614,13 @@ encode_common_command_request( Cmd ) ->
 
 
 
-% @doc Encodes a common command request of type 'CO_RD_VERSION', to read version
-% information from the USB gateway.
-%
-% See its actual specification in [ESP3], p.36, and the decode_response_tail/5
-% for WaitedCmd=co_rd_version.
-%
+-doc """
+Encodes a common command request of type 'CO_RD_VERSION', to read version
+information from the USB gateway.
+
+See its actual specification in [ESP3], p.36, and the decode_response_tail/5 for
+WaitedCmd=co_rd_version.
+""".
 -spec encode_read_version_request() -> telegram().
 encode_read_version_request() ->
 	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_version ),
@@ -2384,12 +2628,14 @@ encode_read_version_request() ->
 	encode_common_command( Data ).
 
 
-% @doc Encodes a common command request of type 'CO_RD_SYS_LOG', to read logs
-% from the USB gateway.
-%
-% See its actual specification in [ESP3], p.37, and the decode_response_tail/5
-% for WaitedCmd=co_rd_sys_log.
-%
+
+-doc """
+Encodes a common command request of type 'CO_RD_SYS_LOG', to read logs from the
+USB gateway.
+
+See its actual specification in [ESP3], p.37, and the decode_response_tail/5 for
+WaitedCmd=co_rd_sys_log.
+""".
 -spec encode_read_logs_request() -> telegram().
 encode_read_logs_request() ->
 	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_sys_log ),
@@ -2398,12 +2644,13 @@ encode_read_logs_request() ->
 
 
 
-% @doc Encodes a common command request of type 'CO_RD_IDBASE', to read base ID
-% information from the USB gateway.
-%
-% See its actual specification in [ESP3], p.40, and the decode_response_tail/5
-% for WaitedCmd=co_rd_idbase.
-%
+-doc """
+Encodes a common command request of type 'CO_RD_IDBASE', to read base ID
+information from the USB gateway.
+
+See its actual specification in [ESP3], p.40, and the decode_response_tail/5 for
+WaitedCmd=co_rd_idbase.
+""".
 -spec encode_base_id_info_request() -> telegram().
 encode_base_id_info_request() ->
 	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_idbase ),
@@ -2412,21 +2659,23 @@ encode_base_id_info_request() ->
 
 
 
+-doc """
+Encodes a common command request, based on the specified data (and with no
+optional data defined).
 
-% @doc Encodes a common command request, based on the specified data (and with
-% no optional data defined).
-%
-% The actual specification of common commands starts at p.32 of [ESP3].
-%
+The actual specification of common commands starts at p.32 of [ESP3].
+""".
 -spec encode_common_command( telegram_data() ) -> telegram().
 encode_common_command( Data ) ->
 	encode_esp3_packet( _PacketType=common_command_type, Data ).
 
 
-% @doc Encodes a common command, based on the specified data and optional data.
-%
-% The actual specification of common commands starts at p.32 of [ESP3].
-%
+
+-doc """
+Encodes a common command, based on the specified data and optional data.
+
+The actual specification of common commands starts at p.32 of [ESP3].
+""".
 -spec encode_common_command( telegram_data(), telegram_opt_data() ) ->
 												telegram().
 encode_common_command( Data, OptData ) ->
@@ -2434,16 +2683,20 @@ encode_common_command( Data, OptData ) ->
 
 
 
-% @doc Encodes an ESP3 packet from its packet type and base data.
+-doc """
+Encodes an ESP3 packet from its packet type and base data.
+""".
 -spec encode_esp3_packet( packet_type(), telegram_data() ) -> telegram().
 encode_esp3_packet( PacketType, Data ) ->
 	encode_esp3_packet( PacketType, Data, _OptData= <<>> ).
 
 
 
-% @doc Encodes an ESP3 packet from its packet type, base and optional data.
+-doc """
+Encodes an ESP3 packet from its packet type, base and optional data.
+""".
 -spec encode_esp3_packet( packet_type(), telegram_data(),
-						  maybe( telegram_opt_data() ) ) -> telegram().
+						  option( telegram_opt_data() ) ) -> telegram().
 encode_esp3_packet( PacketType, Data, MaybeOptData ) ->
 
 	DataLen = size( Data ),
@@ -2480,12 +2733,12 @@ encode_esp3_packet( PacketType, Data, MaybeOptData ) ->
 
 
 
+-doc """
+Returns, if possible, the specified telegram once decoded as an event, using the
+specified Oceanic server for that.
 
-% @doc Returns, if possible, the specified telegram once decoded as an event,
-% using the specified Oceanic server for that.
-%
-% Mostly useful for testing purpose.
-%
+Mostly useful for testing purpose.
+""".
 -spec decode_telegram( telegram(), oceanic_server_pid() ) -> decoding_result().
 decode_telegram( Telegram, OcSrvPid ) ->
 	OcSrvPid ! { decodeOceanic, Telegram, self() },
@@ -2498,15 +2751,15 @@ decode_telegram( Telegram, OcSrvPid ) ->
 
 
 
-% @doc Restarts the serial USB interface used internally.
-%
-% Such a reset might be useful to avoid an USB freeze that may happen after a
-% few weeks. However then a second phenomenon may happen (e.g. after a duration
-% of 10 days): despite these resets, serial does not seem then to receive
-% telegrams anymore, whereas the TTY seems to propagate them properly (based on
-% `od -x < /dev/ttyUSBEnOcean'), whereas our server and Oceanic do remain fully
-% responsive.
-%
+-doc """
+Restarts the serial USB interface used internally.
+
+Such a reset might be useful to avoid an USB freeze that may happen after a few
+weeks. However then a second phenomenon may happen (e.g. after a duration of 10
+days): despite these resets, serial does not seem then to receive telegrams
+anymore, whereas the TTY seems to propagate them properly (based on `od -x <
+/dev/ttyUSBEnOcean`), whereas our server and Oceanic do remain fully responsive.
+""".
 -spec restart_serial_interface( oceanic_server_pid() ) -> void().
 restart_serial_interface( OcSrvPid ) ->
 
@@ -2519,24 +2772,27 @@ restart_serial_interface( OcSrvPid ) ->
 		serial_restarted ->
 			cond_utils:if_defined( oceanic_debug_tty,
 				trace_bridge:debug( "Serial interface restarted." ),
-			ok )
+				ok )
 
 	end.
 
 
 
-% Main loop of the Oceanic server.
-%
-% There may be:
-% - remaining content from past, unsupported packet types that is still to be
-% skipped (hence ToSkipLen; finer than only searching for start bytes)
-% - any already-received beginning of the current telegram to be taken into
-% account (hence MaybeAccChunk - which never includes the starting byte); we
-% have to discriminate the value of MaybeAccChunk between "nothing already read"
-% (then it is equal to undefined) and "only the start byte was read (and
-% chopped)" (then it is equal to <<>>)
-%
--spec oceanic_loop( count(), maybe( telegram_chunk() ), oceanic_state() ) ->
+-doc """
+Main loop of the Oceanic server.
+
+There may be:
+
+- remaining content from past, unsupported packet types that is still to be
+skipped (hence ToSkipLen; finer than only searching for start bytes)
+
+- any already-received beginning of the current telegram to be taken into
+account (hence MaybeAccChunk - which never includes the starting byte); we have
+to discriminate the value of MaybeAccChunk between "nothing already read" (then
+it is equal to undefined) and "only the start byte was read (and chopped)" (then
+it is equal to <<>>)
+""".
+-spec oceanic_loop( count(), option( telegram_chunk() ), oceanic_state() ) ->
 											no_return().
 oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
@@ -3030,7 +3286,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 
 
-% @doc Detects and notifies any suspected jamming attempt.
+-doc "Detects and notifies any suspected jamming attempt.".
 -spec monitor_jamming( byte_size(), oceanic_state() ) -> oceanic_state().
 monitor_jamming( ChunkSize,
 				 State=#oceanic_state{ traffic_level=TrafficLvl,
@@ -3075,7 +3331,9 @@ monitor_jamming( ChunkSize,
 
 
 
-% @doc Requests to execute the specified telegram-based command, by queueing it.
+-doc """
+Requests to execute the specified telegram-based command, by queueing it.
+""".
 -spec execute_command_helper( command_type(), telegram(), requester(),
 							  oceanic_state() ) -> oceanic_state().
 execute_command_helper( CmdType, CmdTelegram, RequesterPid,
@@ -3091,9 +3349,10 @@ execute_command_helper( CmdType, CmdTelegram, RequesterPid,
 
 
 
-% @doc Handles, if appropriate, the sending of the next command, using the
-% specified queue for that.
-%
+-doc """
+Handles, if appropriate, the sending of the next command, using the specified
+queue for that.
+""".
 -spec handle_next_command( command_queue(), oceanic_state() ) ->
 										oceanic_state().
 
@@ -3138,14 +3397,13 @@ handle_next_command( CurrentQueue, State=#oceanic_state{
 
 	end;
 
-
 % Here there is already a waited command, we just update the queue:
 handle_next_command( CurrentQueue, State ) ->
 	State#oceanic_state{ command_queue=CurrentQueue }.
 
 
 
-% @doc Sends from the Oceanic server the specified telegram.
+-doc "Sends from the Oceanic server the specified telegram.".
 -spec send_raw_telegram( telegram(), oceanic_state() ) -> oceanic_state().
 send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 												   sent_count=SentCount } ) ->
@@ -3166,7 +3424,7 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 
 
 
-% @doc Helper introduced only to make the decoding logic available for tests.
+-doc "Helper introduced only to make the decoding logic available for tests.".
 -spec test_decode( telegram_chunk() ) -> decoding_outcome().
 test_decode( Chunk ) ->
 	try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, Chunk,
@@ -3174,16 +3432,17 @@ test_decode( Chunk ) ->
 
 
 
-% @doc Returns a pseudo-state, loaded from default configuration; only useful
-% for some tests.
-%
-% Note that, in order that an encoding or decoding (non-sending, non-receiving)
-% test can work without any actual device, we create here a type-correct yet
-% incorrect state (no real base ID, no relevant serial server).
-%
-% So thise resulting state, which does not need an actual USB gateway to be
-% available, is mostly bogus.
-%
+-doc """
+Returns a pseudo-state, loaded from default configuration; only useful for some
+tests.
+
+Note that, in order that an encoding or decoding (non-sending, non-receiving)
+test can work without any actual device, we create here a type-correct yet
+incorrect state (no real base ID, no relevant serial server).
+
+So thise resulting state, which does not need an actual USB gateway to be
+available, is mostly bogus.
+""".
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
 
@@ -3198,9 +3457,10 @@ get_test_state() ->
 
 
 
-% @doc Returns a pseudo-state, based on the specified device table; only useful
-% for some tests.
-%
+-doc """
+Returns a pseudo-state, based on the specified device table; only useful for
+some tests.
+""".
 -spec get_test_state( device_table() ) -> oceanic_state().
 get_test_state( DeviceTable ) ->
 
@@ -3211,20 +3471,21 @@ get_test_state( DeviceTable ) ->
 
 
 
-% @doc Returns the device state in the specified state; only useful for some
-% tests.
-%
+-doc """
+Returns the device state in the specified state; only useful for some tests.
+""".
 -spec get_device_table( oceanic_state() ) -> device_table().
 get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
 	DeviceTable.
 
 
 
-% @doc Tries to integrate a new telegram chunk, that is to decode an ESP3 packet
-% from the specified chunk.
-%
--spec try_integrate_chunk( count(), maybe( telegram_chunk() ), telegram_chunk(),
-						   oceanic_state() ) -> decoding_outcome().
+-doc """
+Tries to integrate a new telegram chunk, that is to decode an ESP3 packet from
+the specified chunk.
+""".
+-spec try_integrate_chunk( count(), option( telegram_chunk() ),
+			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 
 try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 
@@ -3261,15 +3522,14 @@ try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk, State ) ->
 
 
 
+-doc """
+Tries to decode the specified telegram chunk (any needed skipping having already
+taken place), and returns the outcome.
 
-
-% @doc Tries to decode the specified telegram chunk (any needed skipping having
-% already taken place), and returns the outcome.
-%
-% Incomplete chunks may be completed later, by next receivings (hence are kept,
-% from their first start byte included), whereas invalid ones are dropped (until
-% any start byte found).
-%
+Incomplete chunks may be completed later, by next receivings (hence are kept,
+from their first start byte included), whereas invalid ones are dropped (until
+any start byte found).
+""".
 -spec try_decode_chunk( telegram_chunk(), oceanic_state() ) ->
 								decoding_outcome().
 try_decode_chunk( TelegramChunk, State ) ->
@@ -3317,9 +3577,10 @@ try_decode_chunk( TelegramChunk, State ) ->
 
 
 
-% @doc Scans the specified chunk, knowing that it used to begin with a start
-% byte (which has already been chopped).
-%
+-doc """
+Scans the specified chunk, knowing that it used to begin with a start byte
+(which has already been chopped).
+""".
 scan_past_start( NewTelegramChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
@@ -3347,14 +3608,14 @@ scan_past_start( NewTelegramChunk, State ) ->
 
 
 
+-doc """
+Extracts the content from the specified telegram chunk, returning a chunk that
+is beginning just after any start byte (which is 0x55, i.e. 85), if any.
 
-% @doc Extracts the content from the specified telegram chunk, returning a chunk
-% that is beginning just after any start byte (which is 0x55, i.e. 85), if any.
-%
-% Generally there are no leading bytes to be dropped.
-%
-% Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
-%
+Generally there are no leading bytes to be dropped.
+
+Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
+""".
 -spec scan_for_packet_start( telegram_chunk() ) ->
 				{ telegram_chunk() | 'no_content', DropCount :: count() }.
 scan_for_packet_start( TelegramChunk ) ->
@@ -3377,7 +3638,7 @@ scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
 
 
 
-% @doc Checks the telegram header and decodes it.
+-doc "Checks the telegram header and decodes it.".
 -spec examine_header( esp3_header(), crc(), telegram_chunk(), telegram_chunk(),
 					  oceanic_state() ) -> decoding_outcome().
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
@@ -3528,7 +3789,7 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 
 
-% @doc Further checks and decodes a telegram now that its type is known.
+-doc "Further checks and decodes a telegram now that its type is known.".
 -spec examine_full_data( telegram_chunk(), crc(), telegram_data(),
 	telegram_opt_data(), packet_type(), telegram_chunk(), telegram_chunk(),
 	oceanic_state() ) -> decoding_outcome().
@@ -3565,10 +3826,11 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 
 
 
-% @doc Decodes the specified packet, based on the specified data elements.
-%
-% Data corresponds to the actual packet payload of the specified type.
-%
+-doc """
+Decodes the specified packet, based on the specified data elements.
+
+Data corresponds to the actual packet payload of the specified type.
+""".
 -spec decode_packet( packet_type(), telegram_data(), telegram_opt_data(),
 					 telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 % Clause only for ERP1 packets (e.g. not covering responses):
@@ -3624,7 +3886,6 @@ decode_packet( _PacketType=radio_erp1_type,
 			{ unsupported, _ToSkipLen=0, AnyNextChunk, State }
 
 	end;
-
 
 
 % Here a response is received whereas no request was sent:
@@ -3716,34 +3977,37 @@ decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
 
 
 
-% @doc Decodes a rorg_rps (F6, "Repeated Switch Communication") packet.
-%
-% If the RORG value (here "F6", RPS) is specified in the packet, FUNC and TYPES
-% are not, hence the full, precise EEP of the packet cannot be determined from
-% the telegram; extra device information must thus be available (typically
-% specified out of band, in a configuration file) is order to decode it.
-%
-% Supported:
-% - F6-01 corresponds to simple "Switch Buttons" (with no rocker, hence with
-% punctual press/release events), described here as "push buttons"
-%
-% - F6-02: Rocker Switch, 2 Rocker: each rocker (A or B) has a top and a bottom
-% button; pressing one sends a double_rocker_switch_event() telling that a given
-% button (possibly both) is/are being pressed, and releasing it/them sends a
-% double_rocker_multipress_event() telling "no button released simultaneously"
-%
-% Support to be added:
-% - F6-03: Rocker Switch, 4 Rocker
-% - F6-04: Position Switch, Home and Office Application
-% - F6-05: Detectors
-% - F6-10: Mechanical Handle
-%
-% Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-% [EEP-spec] p.11.
-%
-% See decode_1bs_packet/3 for more information.
-%
-% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+-doc """
+Decodes a rorg_rps (F6, "Repeated Switch Communication") packet.
+
+If the RORG value (here "F6", RPS) is specified in the packet, FUNC and TYPES
+are not, hence the full, precise EEP of the packet cannot be determined from the
+telegram; extra device information must thus be available (typically specified
+out of band, in a configuration file) is order to decode it.
+
+Supported:
+
+- F6-01 corresponds to simple "Switch Buttons" (with no rocker, hence with
+punctual press/release events), described here as "push buttons"
+
+- F6-02: Rocker Switch, 2 Rocker: each rocker (A or B) has a top and a bottom
+button; pressing one sends a double_rocker_switch_event() telling that a given
+button (possibly both) is/are being pressed, and releasing it/them sends a
+double_rocker_multipress_event() telling "no button released simultaneously"
+
+Support to be added:
+- F6-03: Rocker Switch, 4 Rocker
+- F6-04: Position Switch, Home and Office Application
+- F6-05: Detectors
+- F6-10: Mechanical Handle
+
+Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+[EEP-spec] p.11.
+
+See decode_1bs_packet/3 for more information.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
 -spec decode_rps_packet( telegram_data_tail(), telegram_opt_data(),
 		telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
@@ -3826,15 +4090,16 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 
 
-% @doc Decodes a rorg_rps single_input_contact (F6-01, simple "Switch Buttons")
-% packet; in practice, only "F6-01-01" ("Push Button") exists.
-%
-% This corresponds to simple "Switch Buttons" (with no rocker, hence with
-% punctual press/release events).
-%
-% Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-% [EEP-spec] p.15.
-%
+-doc """
+Decodes a rorg_rps single_input_contact (F6-01, simple "Switch Buttons") packet;
+in practice, only "F6-01-01" ("Push Button") exists.
+
+This corresponds to simple "Switch Buttons" (with no rocker, hence with punctual
+press/release events).
+
+Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+[EEP-spec] p.15.
+""".
 -spec decode_rps_single_input_contact_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
@@ -3901,14 +4166,15 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 
 
-% @doc Decodes a rorg_rps F6-02-01, "Light and Blind Control -
-% Application Style 1" packet (switch or multipress).
-%
-% It contains 2 actions.
-%
-% Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-% [EEP-spec] p.15.
-%
+-doc """
+Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1"
+packet (switch or multipress).
+
+It contains 2 actions.
+
+Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+[EEP-spec] p.15.
+""".
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
@@ -4041,14 +4307,15 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 
 
-% @doc Actual decoding of responses to pending common commands.
-%
-% Note that the return code has already been extracted, and corresponds to a
-% success.
-%
-% The actual waiting information is expected to have been already cleared by the
-% caller.
-%
+-doc """
+Actual decoding of responses to pending common commands.
+
+Note that the return code has already been extracted, and corresponds to a
+success.
+
+The actual waiting information is expected to have been already cleared by the
+caller.
+""".
 -spec decode_response_tail( command_request(), telegram_data_tail(),
 							telegram_opt_data(), telegram_chunk(),
 							oceanic_state() ) -> decoding_outcome().
@@ -4156,9 +4423,10 @@ decode_response_tail( OtherCmdReq, DataTail, OptData, AnyNextChunk, State ) ->
 
 
 
-% @doc Notifies the specified requester of the success response regarding the
-% current common command.
-%
+-doc """
+Notifies the specified requester of the success response regarding the current
+common command.
+""".
 -spec notify_requester( command_response(), requester(), telegram_chunk(),
 						oceanic_state() ) -> decoding_outcome().
 notify_requester( Response, _Requester=internal, AnyNextChunk, State ) ->
@@ -4189,9 +4457,10 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 
 % Section for decoding helpers.
 
+
 % Could be a bijective topic as well:
 
-% @doc Returns the button designated by the specified enumeration.
+-doc "Returns the button designated by the specified enumeration.".
 -spec get_button_designator( enum() ) -> button_designator().
 get_button_designator( _Enum=0 ) ->
 	button_ai; % Button A, bottom
@@ -4206,7 +4475,8 @@ get_button_designator( _Enum=3 ) ->
 	button_bo. % Button B, top
 
 
-% @doc Returns the enumeration of the designated button.
+
+-doc "Returns the enumeration of the designated button.".
 -spec get_designated_button_enum( button_designator() ) -> enum().
 get_designated_button_enum( _Des=button_ai ) ->
 	0; % Button A, bottom
@@ -4222,7 +4492,7 @@ get_designated_button_enum( _Des=button_bo ) ->
 
 
 
-% @doc Returns a textual description of the designated button.
+-doc "Returns a textual description of the designated button.".
 -spec button_designator_to_string( button_designator() ) -> ustring().
 button_designator_to_string( button_ai ) ->
 	"bottom A button";
@@ -4241,7 +4511,7 @@ button_designator_to_string( button_bo ) ->
 % Could be a bijective topic as well:
 
 
-% @doc Returns the button transition corresponding to the specified energy bow.
+-doc "Returns the button transition corresponding to the specified energy bow.".
 -spec get_button_transition( enum() ) -> button_transition().
 get_button_transition( _EnergyBow=0 ) ->
 	released;
@@ -4250,7 +4520,8 @@ get_button_transition( _EnergyBow=1 ) ->
 	pressed.
 
 
-% @doc Returns the enumeration of the specified button transition.
+
+-doc "Returns the enumeration of the specified button transition.".
 -spec get_button_transition_enum( button_transition() ) -> enum().
 get_button_transition_enum( released ) ->
 	_EnergyBow=0;
@@ -4260,10 +4531,11 @@ get_button_transition_enum( pressed ) ->
 
 
 
-% @doc Decodes the RPS status byte, common to many RPS telegrams.
-%
-% Refer to [EEP-spec] p.11 for further details.
-%
+-doc """
+Decodes the RPS status byte, common to many RPS telegrams.
+
+Refer to [EEP-spec] p.11 for further details.
+""".
 -spec get_rps_status_info( telegram_chunk() ) ->
 		{ ptm_switch_module_type(), nu_message_type(), repetition_count() }.
 get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
@@ -4301,7 +4573,7 @@ get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
 
 
 
-% @doc Returns a textual description of the specified PTM switch module.
+-doc "Returns a textual description of the specified PTM switch module.".
 -spec ptm_module_to_string( ptm_switch_module_type() ) -> ustring().
 ptm_module_to_string( _ModType=ptm1xx ) ->
 	% E.g. "PTM210 DB":
@@ -4312,9 +4584,10 @@ ptm_module_to_string( _ModType=ptm2xx ) ->
 
 
 
-% @doc Returns a textual description of the specified "Nu" Message type, as
-% defined in RPS packets.
-%
+-doc """
+Returns a textual description of the specified "Nu" Message type, as defined in
+RPS packets.
+""".
 -spec nu_message_type_to_string( nu_message_type() ) ->  ustring().
 nu_message_type_to_string( _Nu=normal ) ->
 	"normal-message";
@@ -4330,11 +4603,13 @@ nu_message_type_to_string( _Nu=unknown_type_3 ) ->
 
 
 
-% @doc Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
-%
-% Discussed in [EEP-spec] p.27.
-%
-% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+-doc """
+Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
+
+Discussed in [EEP-spec] p.27.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
 -spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
@@ -4410,11 +4685,13 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 
 
-% @doc Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
-%
-% Discussed in [EEP-spec] p.12.
-%
-% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+-doc """
+Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
+
+Discussed in [EEP-spec] p.12.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
 -spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
@@ -4502,12 +4779,12 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 
 
-% @doc Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
-% "Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100%
-% (01).
-%
-% Refer to [EEP-spec] p.35.
-%
+-doc """
+Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
+"Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100% (01).
+
+Refer to [EEP-spec] p.35.
+""".
 -spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
 		eurid(), telegram_opt_data(), telegram_chunk(), enocean_device(),
 		oceanic_state() ) -> decoding_outcome().
@@ -4590,11 +4867,12 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 
 
-% @doc Decodes a rorg_ute (D4) packet, that is a R-ORG telegram for Universal
-% Teach-in/out, EEP based (UTE), one way of pairing devices.
-%
-% Discussed in [EEP-gen] p.17; p.25 for the query and p.26 for the response.
-%
+-doc """
+Decodes a rorg_ute (D4) packet, that is a R-ORG telegram for Universal
+Teach-in/out, EEP based (UTE), one way of pairing devices.
+
+Discussed in [EEP-gen] p.17; p.25 for the query and p.26 for the response.
+""".
 -spec decode_ute_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 % This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
@@ -4741,23 +5019,23 @@ decode_ute_packet(
 
 
 
+-doc """
+Decodes a rorg_vld (D2) packet, that is a R-ORG telegram containing Variable
+Length Data.
 
-% @doc Decodes a rorg_vld (D2) packet, that is a R-ORG telegram containing
-% Variable Length Data.
-%
-% VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
-% their design.
-%
-% Discussed in [EEP-gen] p.12.
-%
-% Various packet types exist, in both directions (from/to sensor/actuator), and
-% depend on the actual EEP (hence on its FUNC and TYPE) implemented by the
-% emitter device.
-%
-% Yet only the RORG (namely D2) is specified on such telegrams, therefore their
-% interpretation depends on the extra FUNC and TYPE information supposed to be
-% known a priori by the receiver.
-%
+VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
+their design.
+
+Discussed in [EEP-gen] p.12.
+
+Various packet types exist, in both directions (from/to sensor/actuator), and
+depend on the actual EEP (hence on its FUNC and TYPE) implemented by the emitter
+device.
+
+Yet only the RORG (namely D2) is specified on such telegrams, therefore their
+interpretation depends on the extra FUNC and TYPE information supposed to be
+known a priori by the receiver.
+""".
 -spec decode_vld_packet( telegram_data_tail(), telegram_opt_data(),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 decode_vld_packet( DataTail, OptData, AnyNextChunk,
@@ -4852,14 +5130,15 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 
 
-% @doc Decodes a rorg_vld smart_plug (D2-01-0A, an "Electronic switches and
-% dimmers with Energy Measurement and Local Control" of type 0A) packet.
-%
-% This corresponds to basic smart, non-metering plugs bidirectional actuators
-% that control (switch on/off) most electrical load (e.g. appliances).
-%
-% Discussed in [EEP-spec] p.143.
-%
+-doc """
+Decodes a rorg_vld smart_plug (D2-01-0A, an "Electronic switches and dimmers
+with Energy Measurement and Local Control" of type 0A) packet.
+
+This corresponds to basic smart, non-metering plugs bidirectional actuators that
+control (switch on/off) most electrical load (e.g. appliances).
+
+Discussed in [EEP-spec] p.143.
+""".
 -spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
 		telegram_opt_data(), telegram_chunk(), enocean_device(),
 		oceanic_state() ) -> decoding_outcome().
@@ -4899,15 +5178,15 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 
 
-% @doc Decodes a rorg_vld smart_plug_with_metering (D2-01-0B, an "Electronic
-% switches and dimmers with Energy Measurement and Local Control" of type 0B)
-% packet.
-%
-% This corresponds to smart, metering plugs bidirectional actuators that control
-% (switch on/off) most electrical load (e.g. appliances) and may report it.
-%
-% Discussed in [EEP-spec] p.143.
-%
+-doc """
+Decodes a rorg_vld smart_plug_with_metering (D2-01-0B, an "Electronic switches
+and dimmers with Energy Measurement and Local Control" of type 0B) packet.
+
+This corresponds to smart, metering plugs bidirectional actuators that control
+(switch on/off) most electrical load (e.g. appliances) and may report it.
+
+Discussed in [EEP-spec] p.143.
+""".
 decode_vld_smart_plug_with_metering_packet(
 		_Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 		SenderEurid, _Status, OptData, AnyNextChunk, Device,
@@ -4946,21 +5225,21 @@ decode_vld_smart_plug_with_metering_packet(
 
 
 
-
-% @doc Returns a textual description of the specified temperature.
+-doc "Returns a textual description of the specified temperature.".
 -spec temperature_to_string( celsius() ) -> ustring().
 temperature_to_string( Temp ) ->
 	text_utils:format( "temperature of ~.1f°C", [ Temp ] ).
 
 
-% @doc Returns a textual description of the specified relative humidity.
+
+-doc "Returns a textual description of the specified relative humidity.".
 -spec relative_humidity_to_string( percent() ) -> ustring().
 relative_humidity_to_string( HPerCent ) ->
 	text_utils:format( "relative humidity of ~.1f%", [ HPerCent ] ).
 
 
 
-% @doc Returns a textual description of the specified learning status.
+-doc "Returns a textual description of the specified learning status.".
 -spec learn_to_string( boolean() ) -> ustring().
 learn_to_string( _LearnActivated=true ) ->
 	" whereas device learning is activated";
@@ -4970,15 +5249,16 @@ learn_to_string( _LearnActivated=false ) ->
 
 
 
-% @doc Decodes the specified optional data, if any.
-%
-% Refer to [ESP3] p.18 for its description.
-%
-% The CRC for the overall full data (base+optional) is expected to have been
-% checked beforehand.
-%
+-doc """
+Decodes the specified optional data, if any.
+
+Refer to [ESP3] p.18 for its description.
+
+The CRC for the overall full data (base+optional) is expected to have been
+checked beforehand.
+""".
 -spec decode_optional_data( telegram_opt_data() ) ->
-										maybe( decoded_optional_data() ).
+										option( decoded_optional_data() ).
 decode_optional_data( _OptData= <<SubTelNum:8, DestinationEurid:32, DBm:8,
 								  SecurityLevel:8>> ) ->
 	{ SubTelNum, DestinationEurid, decode_maybe_dbm( DBm ),
@@ -4994,8 +5274,8 @@ decode_optional_data( Other ) ->
 
 
 
-% @doc Decodes specified byte as a dBm measurement.
--spec decode_maybe_dbm( uint8() ) -> maybe( dbm() ).
+-doc "Decodes specified byte as a dBm measurement.".
+-spec decode_maybe_dbm( uint8() ) -> option( dbm() ).
 decode_maybe_dbm( 16#ff ) ->
 	% Should be a sending:
 	undefined;
@@ -5004,8 +5284,9 @@ decode_maybe_dbm( V ) ->
 	-V.
 
 
-% @doc Decodes specified byte as a security level.
--spec decode_maybe_security_level( uint8() ) -> maybe( security_level() ).
+
+-doc "Decodes specified byte as a security level.".
+-spec decode_maybe_security_level( uint8() ) -> option( security_level() ).
 decode_maybe_security_level( 0 ) ->
 	not_processed;
 
@@ -5028,10 +5309,10 @@ decode_maybe_security_level( Other ) ->
 
 
 
-% @doc Helper to resolve correctly elements (if any) of optional data.
--spec resolve_maybe_decoded_data( maybe( decoded_optional_data() ) ) ->
-		{ maybe( subtelegram_count() ), maybe( eurid() ), maybe( dbm() ),
-		  maybe( security_level() ) }.
+-doc "Helper to resolve correctly elements (if any) of optional data.".
+-spec resolve_maybe_decoded_data( option( decoded_optional_data() ) ) ->
+		{ option( subtelegram_count() ), option( eurid() ), option( dbm() ),
+		  option( security_level() ) }.
 resolve_maybe_decoded_data( _MaybeDecodedOptData=undefined ) ->
 	{ undefined, undefined, undefined, undefined };
 
@@ -5040,9 +5321,10 @@ resolve_maybe_decoded_data( DecodedOptData ) ->
 
 
 
-% @doc Records that a telegram could be successfully decoded for the specified
-% device, registering it if it was not already.
-%
+-doc """
+Records that a telegram could be successfully decoded for the specified device,
+registering it if it was not already.
+""".
 -spec record_device_success( eurid(), device_table() ) -> recording_info().
 record_device_success( Eurid, DeviceTable ) ->
 
@@ -5082,9 +5364,10 @@ record_device_success( Eurid, DeviceTable ) ->
 
 
 
-% @doc Records that a telegram could be successfully decoded for the specified
-% already-known device.
-%
+-doc """
+Records that a telegram could be successfully decoded for the specified
+already-known device.
+""".
 -spec record_known_device_success( enocean_device(), device_table() ) ->
 											recording_info().
 record_known_device_success( Device=#enocean_device{
@@ -5140,11 +5423,12 @@ record_known_device_success( Device=#enocean_device{
 
 
 
-% @doc Records that a telegram could not be successfully decoded for the
-% specified device, registering it if it was not already.
-%
-% Note that many failures do not even allow identifying the emitting device.
-%
+-doc """
+Records that a telegram could not be successfully decoded for the specified
+device, registering it if it was not already.
+
+Note that many failures do not even allow identifying the emitting device.
+""".
 -spec record_device_failure( eurid(), device_table() ) -> recording_info().
 record_device_failure( Eurid, DeviceTable ) ->
 
@@ -5185,9 +5469,10 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 
 
-% @doc Records that a telegram could not be successfully decoded for the
-% specified already-known device.
-%
+-doc """
+Records that a telegram could not be successfully decoded for the specified
+already-known device.
+""".
 -spec record_known_device_failure( enocean_device(), device_table() ) ->
 											recording_info().
 record_known_device_failure( Device=#enocean_device{
@@ -5243,9 +5528,9 @@ record_known_device_failure( Device=#enocean_device{
 
 
 
-% @doc Resets any needed activity timer.
--spec reset_timer( maybe( timer_ref() ), eurid(), expected_periodicity(),
-		timestamp(), count(), count(), timestamp() ) -> maybe( timer_ref() ).
+-doc "Resets any needed activity timer.".
+-spec reset_timer( option( timer_ref() ), eurid(), expected_periodicity(),
+		timestamp(), count(), count(), timestamp() ) -> option( timer_ref() ).
 % No periodicity:
 reset_timer( MaybeActTimer, _Eurid, _Periodicity=none, _FirstSeen,
 			 _TeleCount, _ErrCount, _Now ) ->
@@ -5300,7 +5585,7 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
 
 
 
-% @doc Determines the next auto time-out for the specified parameters.
+-doc "Determines the next auto time-out for the specified parameters.".
 -spec compute_next_timeout( timestamp(), count(), count(), timestamp() ) ->
 											milliseconds().
 compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
@@ -5329,6 +5614,7 @@ compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
 
 
 
+% (helper)
 stop_any_timer( _MaybeTimer=undefined ) ->
 	ok;
 
@@ -5337,14 +5623,16 @@ stop_any_timer( TimerRef ) ->
 
 
 
-% @doc Stops and terminates (asynchronously) the supposedly-existing Oceanic
-% server.
+-doc """
+Stops and terminates (asynchronously) the supposedly-existing Oceanic server.
+""".
 -spec stop() -> void().
 stop() ->
 	stop( get_server_pid() ).
 
 
-% @doc Stops and terminates (asynchronously) the specified Oceanic server.
+
+-doc "Stops and terminates (asynchronously) the specified Oceanic server.".
 -spec stop( oceanic_server_pid() ) -> void().
 stop( SrvPid ) ->
 	trace_bridge:debug_fmt( "Stopping the Oceanic server ~w.", [ SrvPid ] ),
@@ -5352,7 +5640,7 @@ stop( SrvPid ) ->
 
 
 
-% @doc Stops and terminates synchronously the specified Oceanic server.
+-doc "Stops and terminates synchronously the specified Oceanic server.".
 -spec synchronous_stop( oceanic_server_pid() ) -> void().
 synchronous_stop( SrvPid ) ->
 	SrvPid ! { terminateSynchronously, self() },
@@ -5369,23 +5657,25 @@ synchronous_stop( SrvPid ) ->
 
 
 
-% @doc Returns the Oceanic identifier (if any) corresponding to the specified
-% packet type.
-%
--spec get_packet_type( enum() ) -> maybe( packet_type() ).
+-doc """
+Returns the Oceanic identifier (if any) corresponding to the specified packet
+type.
+""".
+-spec get_packet_type( enum() ) -> option( packet_type() ).
 get_packet_type( PacketTypeNum ) ->
 	% Topic defined by the module that Oceanic generates:
 	oceanic_generated:get_maybe_first_for_packet_type( PacketTypeNum ).
 
 
 
-% @doc Returns the registration name of the Oceanic server.
+-doc "Returns the registration name of the Oceanic server.".
 -spec get_server_registration_name() -> registration_name().
 get_server_registration_name() ->
 	?oceanic_server_reg_name.
 
 
-% @doc Returns the PID of the (supposedly-existing) Oceanic server.
+
+-doc "Returns the PID of the (supposedly-existing) Oceanic server.".
 -spec get_server_pid() -> oceanic_server_pid().
 get_server_pid() ->
 	% Local otherwise global scope:
@@ -5393,7 +5683,7 @@ get_server_pid() ->
 
 
 
-% @doc Returns a textual description of the specified telegram.
+-doc "Returns a textual description of the specified telegram.".
 -spec telegram_to_string( telegram() ) -> ustring().
 telegram_to_string( Telegram ) ->
 	text_utils:format( "telegram ~w of size ~B bytes "
@@ -5401,30 +5691,34 @@ telegram_to_string( Telegram ) ->
 		[ Telegram, size( Telegram ), telegram_to_hexastring( Telegram ) ] ).
 
 
-% @doc Returns an hexadecimal string corresponding to the specified telegram.
-%
-% Useful for testing with serial clients like cutecom.
-%
+
+-doc """
+Returns an hexadecimal string corresponding to the specified telegram.
+
+Useful for testing with serial clients like cutecom.
+""".
 -spec telegram_to_hexastring( telegram() ) -> ustring().
 telegram_to_hexastring( Telegram ) ->
 	text_utils:binary_to_hexastring( Telegram ).
 
 
-% @doc Returns an hexadecimal string corresponding to the specified telegram.
-%
-% Useful for testing with serial clients like cutecom.
-%
+
+-doc """
+Returns an hexadecimal string corresponding to the specified telegram.
+
+Useful for testing with serial clients like cutecom.
+""".
 -spec hexastring_to_telegram( ustring() ) -> telegram().
 hexastring_to_telegram( HexaStr ) ->
 	text_utils:hexastring_to_binary( HexaStr ).
 
 
 
-
-% @doc Resolves the specified EEP triplet into a proper EEP identifier (atom),
-% if possible.
-%
--spec resolve_eep( eep() ) -> maybe( eep_id() ).
+-doc """
+Resolves the specified EEP triplet into a proper EEP identifier (atom), if
+possible.
+""".
+-spec resolve_eep( eep() ) -> option( eep_id() ).
 resolve_eep( EepTriplet ) ->
 	case oceanic_generated:get_maybe_first_for_eep_triplets( EepTriplet ) of
 
@@ -5440,7 +5734,7 @@ resolve_eep( EepTriplet ) ->
 
 
 
-% @doc Returns a raw, (plain) textual description of the specified EURID.
+-doc "Returns a raw, (plain) textual description of the specified EURID.".
 -spec eurid_to_string( eurid() ) -> ustring().
 eurid_to_string( _Eurid=?eurid_broadcast ) ->
 	"the address for broadcast transmission";
@@ -5459,7 +5753,9 @@ eurid_to_string( Eurid ) ->
 
 
 
-% @doc Returns a short, raw, (plain) textual description of the specified EURID.
+-doc """
+Returns a short, raw, (plain) textual description of the specified EURID.
+""".
 -spec eurid_to_short_string( eurid() ) -> ustring().
 eurid_to_short_string( _Eurid=?eurid_broadcast ) ->
 	"broadcast";
@@ -5478,33 +5774,38 @@ eurid_to_short_string( Eurid ) ->
 
 
 
-% @doc Returns the actual EURID corresponding to the specified (plain) EURID
-% string.
-%
-% For example 3076502 = oceanic:string_to_eurid("002ef196")
-%
+-doc """
+Returns the actual EURID corresponding to the specified (plain) EURID string.
+
+For example `3076502 = oceanic:string_to_eurid("002ef196")`.
+
+""".
 -spec string_to_eurid( ustring() ) -> eurid().
 string_to_eurid( EuridStr ) ->
 	text_utils:hexastring_to_integer( EuridStr ).
 
 
-% @doc Returns the broadcast EURID, suitable to target all devices in range.
+
+-doc "Returns the broadcast EURID, suitable to target all devices in range.".
 -spec get_broadcast_eurid() -> eurid().
 get_broadcast_eurid() ->
 	?eurid_broadcast.
 
 
-% @doc Returns a raw, direct (binary) textual description of the specified
-% EURID.
-%
+
+-doc """
+Returns a raw, direct (binary) textual description of the specified EURID.
+""".
 -spec eurid_to_bin_string( eurid() ) -> bin_string().
 eurid_to_bin_string( Eurid ) ->
 	text_utils:string_to_binary( eurid_to_string( Eurid ) ).
 
 
-% @doc Returns a (binary) textual description of the specified EURID, possibly
-% translated to a user-friendly device name if any is known for that device.
-%
+
+-doc """
+Returns a (binary) textual description of the specified EURID, possibly
+translated to a user-friendly device name if any is known for that device.
+""".
 -spec eurid_to_bin_string( eurid(), oceanic_state() ) -> bin_string().
 eurid_to_bin_string( Eurid=?eurid_broadcast, _OceanicState ) ->
 	eurid_to_bin_string( Eurid );
@@ -5523,10 +5824,11 @@ eurid_to_bin_string( Eurid, #oceanic_state{ device_table=DeviceTable } ) ->
 
 
 
-% @doc Returns the best naming for a device, as any kind of string, depending on
-% the available information.
-%
--spec get_best_naming( maybe( device_name() ), eurid() ) -> any_string().
+-doc """
+Returns the best naming for a device, as any kind of string, depending on the
+available information.
+""".
+-spec get_best_naming( option( device_name() ), eurid() ) -> any_string().
 get_best_naming( _MaybeDevName=undefined, Eurid ) ->
 	eurid_to_string( Eurid );
 
@@ -5534,10 +5836,12 @@ get_best_naming( BinDevName, _Eurid ) ->
 	text_utils:bin_format( "'~ts'", [ BinDevName ] ).
 
 
-% @doc Returns the best naming for a device, as a binary, depending on the
-% available information.
-%
--spec get_best_bin_naming( maybe( device_name() ), eurid() ) -> bin_string().
+
+-doc """
+Returns the best naming for a device, as a binary, depending on the available
+information.
+""".
+-spec get_best_bin_naming( option( device_name() ), eurid() ) -> bin_string().
 get_best_bin_naming( _MaybeDevName=undefined, Eurid ) ->
 	eurid_to_bin_string( Eurid );
 
@@ -5546,10 +5850,11 @@ get_best_bin_naming( BinDevName, _Eurid ) ->
 
 
 
-% @doc Converts an EEP described as a string into its internal form.
-%
-% Input example: "D5-00-01".
-%
+-doc """
+Converts an EEP described as a string into its internal form.
+
+Input example: "D5-00-01".
+""".
 -spec string_to_eep( ustring() ) -> eep().
 string_to_eep( Str ) ->
 
@@ -5577,25 +5882,28 @@ string_to_eep( Str ) ->
 % are uniform.
 
 
-% @doc Returns the EURID of the emitting device stored in the specified device
-% event.
-%
+-doc """
+Returns the EURID of the emitting device stored in the specified device event.
+""".
 -spec get_source_eurid( device_event() ) -> eurid().
 get_source_eurid( DevEventTuple ) ->
 	erlang:element( _PosIdx=2, DevEventTuple ).
 
 
-% @doc Returns the emitting device name (if any) stored in the specified device
-% event.
-%
--spec get_maybe_device_name( device_event() ) -> maybe( device_name() ).
+
+-doc """
+Returns the emitting device name (if any) stored in the specified device event.
+""".
+-spec get_maybe_device_name( device_event() ) -> option( device_name() ).
 get_maybe_device_name( DevEventTuple ) ->
 	erlang:element( _PosIdx=3, DevEventTuple ).
 
 
-% @doc Returns the best name found for the emitting device stored in the
-% specified device event.
-%
+
+-doc """
+Returns the best name found for the emitting device stored in the specified
+device event.
+""".
 -spec get_best_device_name_from( device_event() ) -> device_name().
 get_best_device_name_from( DevEventTuple ) ->
 	case get_maybe_device_name( DevEventTuple ) of
@@ -5610,64 +5918,75 @@ get_best_device_name_from( DevEventTuple ) ->
 	end.
 
 
-% @doc Returns the EEP (if any is defined and registered) stored in the
-% specified device event.
-%
--spec get_maybe_eep( device_event() ) -> maybe( eep_id() ).
+
+-doc """
+Returns the EEP (if any is defined and registered) stored in the specified
+device event.
+""".
+-spec get_maybe_eep( device_event() ) -> option( eep_id() ).
 get_maybe_eep( DevEventTuple ) ->
 	erlang:element( _PosIdx=4, DevEventTuple ).
 
 
-% @doc Returns the timestamp stored in the specified device event.
+
+-doc "Returns the timestamp stored in the specified device event.".
 -spec get_timestamp( device_event() ) -> timestamp().
 get_timestamp( DevEventTuple ) ->
 	erlang:element( _PosIdx=5, DevEventTuple ).
 
 
-% @doc Returns the timestamp corresponding to any previously seen telegram from
-% that device.
-%
-% Also useful to determine whether an event corresponds to a device discovery.
-%
--spec get_last_seen_info( device_event() ) -> maybe( timestamp() ).
+-doc """
+Returns the timestamp corresponding to any previously seen telegram from that
+device.
+
+Also useful to determine whether an event corresponds to a device discovery.
+""".
+-spec get_last_seen_info( device_event() ) -> option( timestamp() ).
 get_last_seen_info( DevEventTuple ) ->
 	erlang:element( _PosIdx=6, DevEventTuple ).
 
 
-% @doc Returns the number (if any) of subtelegrams stored in the specified
-% device event.
-%
--spec get_subtelegram_count( device_event() ) -> maybe( subtelegram_count() ).
+
+-doc """
+Returns the number (if any) of subtelegrams stored in the specified device
+event.
+""".
+-spec get_subtelegram_count( device_event() ) -> option( subtelegram_count() ).
 get_subtelegram_count( DevEventTuple ) ->
 	erlang:element( _PosIdx=6, DevEventTuple ).
 
 
-% @doc Returns the EURID of the target of this transmission (addressed or
-% broadcast), if any, stored in the specified device event.
-%
--spec get_maybe_destination_eurid( device_event() ) -> maybe( eurid() ).
+
+-doc """
+Returns the EURID of the target of this transmission (addressed or broadcast),
+if any, stored in the specified device event.
+""".
+-spec get_maybe_destination_eurid( device_event() ) -> option( eurid() ).
 get_maybe_destination_eurid( DevEventTuple ) ->
 	erlang:element( _PosIdx=7, DevEventTuple ).
 
 
-% @doc Returns the best RSSI value (if any) stored in the specified device
-% event.
-%
--spec get_maybe_dbm( device_event() ) -> maybe( dbm() ).
+
+-doc """
+Returns the best RSSI value (if any) stored in the specified device event.
+""".
+-spec get_maybe_dbm( device_event() ) -> option( dbm() ).
 get_maybe_dbm( DevEventTuple ) ->
 	erlang:element( _PosIdx=8, DevEventTuple ).
 
 
-% @doc Returns the stored in the specified device event.
--spec get_maybe_security_level( device_event() ) -> maybe( security_level() ).
+
+-doc "Returns the stored in the specified device event.".
+-spec get_maybe_security_level( device_event() ) -> option( security_level() ).
 get_maybe_security_level( DevEventTuple ) ->
 	erlang:element( _PosIdx=9, DevEventTuple ).
 
 
 
-% @doc Tells whether the specified device event indicates that this device can
-% be interpreted as being triggered by the user.
-%
+-doc """
+Tells whether the specified device event indicates that this device can be
+interpreted as being triggered by the user.
+""".
 -spec device_triggered( device_event() ) -> boolean().
 device_triggered( #push_button_event{ transition=pressed } ) ->
 	true;
@@ -5682,8 +6001,10 @@ device_triggered( _DevEventTuple ) ->
 	false.
 
 
+
 % Other string-related conversions:
 
+-doc "Returns a textual description of the specified optional data.".
 -spec optional_data_to_string( decoded_optional_data() ) -> ustring().
 optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 									MaybeSecurityLevel } ) ->
@@ -5691,9 +6012,10 @@ optional_data_to_string( _OptData={ SubTelNum, DestinationEurid, MaybeDBm,
 							 MaybeSecurityLevel ).
 
 
-% @doc Returns a textual description of the specified decoded optional data.
--spec optional_data_to_string( subtelegram_count(), eurid(), maybe( dbm() ),
-							   maybe( security_level() ) ) -> ustring().
+
+-doc "Returns a textual description of the specified decoded optional data.".
+-spec optional_data_to_string( subtelegram_count(), eurid(), option( dbm() ),
+							   option( security_level() ) ) -> ustring().
 optional_data_to_string( _SubTelNum=undefined, _DestinationEurid=undefined,
 						 _MaybeDBm=undefined, _MaybeSecurityLevel=undefined ) ->
 	" (with no optional data)";
@@ -5741,10 +6063,11 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 
 
 
-% @doc Returns a short textual description of the specified decoded optional
-% data, designed for user-friendly reporting.
-%
--spec optional_data_to_short_string( eurid(), maybe( dbm() ) ) -> ustring().
+-doc """
+Returns a short textual description of the specified decoded optional data,
+designed for user-friendly reporting.
+""".
+-spec optional_data_to_short_string( eurid(), option( dbm() ) ) -> ustring().
 optional_data_to_short_string( _DestinationEurid=undefined,
 							   _MaybeDBm=undefined ) ->
 	"";
@@ -5766,10 +6089,11 @@ optional_data_to_short_string( DestinationEurid, MaybeDBm ) ->
 
 
 
-% @doc Returns a textual description of the specified decoded maybe-optional
-% data, otherwise from the corresponding raw data.
-%
--spec maybe_optional_data_to_string( maybe( decoded_optional_data() ),
+-doc """
+Returns a textual description of the specified decoded maybe-optional data,
+otherwise from the corresponding raw data.
+""".
+-spec maybe_optional_data_to_string( option( decoded_optional_data() ),
 									 telegram_opt_data() ) -> ustring().
 maybe_optional_data_to_string( _MaybeDecodedOptData=undefined, OptData ) ->
 	text_utils:format( ", with optional data of ~B bytes that could not "
@@ -5780,7 +6104,7 @@ maybe_optional_data_to_string( DecodedOptData, _OptData ) ->
 
 
 
-% @doc Returns a textual description of the specified security level.
+-doc "Returns a textual description of the specified security level.".
 -spec security_level_to_string( security_level() ) -> ustring().
 security_level_to_string( not_processed ) ->
 	"telegram not processed";
@@ -5798,7 +6122,7 @@ security_level_to_string( decrypted_and_authenticated ) ->
 
 
 
-% @doc Returns a textual description of the specified repeater count.
+-doc "Returns a textual description of the specified repeater count.".
 -spec repeater_count_to_string( count() ) -> ustring().
 repeater_count_to_string( _RC=0 ) ->
 	"with no repeating done";
@@ -5811,9 +6135,9 @@ repeater_count_to_string( RC ) ->
 
 
 
-% @doc Returns a (rather complete) textual description of the specified device
-% event.
-%
+-doc """
+Returns a (rather complete) textual description of the specified device event.
+""".
 -spec device_event_to_string( device_event() ) -> ustring().
 device_event_to_string( #thermo_hygro_event{
 		source_eurid=Eurid,
@@ -6054,10 +6378,11 @@ device_event_to_string( OtherEvent ) ->
 
 
 
-% @doc Returns a textual description of the specified last_seen field of a
-% device event.
-%
--spec last_seen_to_string( maybe( timestamp() ) ) -> ustring().
+-doc """
+Returns a textual description of the specified last_seen field of a device
+event.
+""".
+-spec last_seen_to_string( option( timestamp() ) ) -> ustring().
 last_seen_to_string( _MaybeLastSeenTimestamp=undefined ) ->
 	"this device has just been discovered";
 
@@ -6068,9 +6393,10 @@ last_seen_to_string( LastSeenTimestamp ) ->
 
 
 
-% @doc Returns a short textual description of the specified device event,
-% designed for user-friendly reporting.
-%
+-doc """
+Returns a short textual description of the specified device event, designed for
+user-friendly reporting.
+""".
 -spec device_event_to_short_string( device_event() ) -> ustring().
 device_event_to_short_string( #thermo_hygro_event{
 		source_eurid=Eurid,
@@ -6269,7 +6595,7 @@ device_event_to_short_string( OtherEvent ) ->
 
 
 
-% @doc Returns a textual description of the specified command request.
+-doc "Returns a textual description of the specified command request.".
 -spec command_request_to_string( command_request() ) -> ustring().
 % Requester is either PID or 'internal':
 command_request_to_string( #command_request{ command_type=undefined,
@@ -6287,8 +6613,8 @@ command_request_to_string( #command_request{ command_type=CmdType,
 
 
 
-% @doc Returns a textual description of the specified device name.
--spec get_name_description( maybe( device_name() ), eurid() ) -> ustring().
+-doc "Returns a textual description of the specified device name.".
+-spec get_name_description( option( device_name() ), eurid() ) -> ustring().
 get_name_description( _MaybeName=undefined, Eurid ) ->
 	text_utils:format( "of EURID ~ts", [ eurid_to_string( Eurid ) ] );
 
@@ -6298,7 +6624,7 @@ get_name_description( Name, Eurid ) ->
 
 
 
-% @doc Returns a textual description of the specified button transition.
+-doc "Returns a textual description of the specified button transition.".
 -spec get_button_transition_description( button_transition() ) -> ustring().
 get_button_transition_description( _Button=pressed ) ->
 	"pressed";
@@ -6308,7 +6634,7 @@ get_button_transition_description( _ContactStatus=released ) ->
 
 
 
-% @doc Returns a textual description of the specified contact status.
+-doc "Returns a textual description of the specified contact status.".
 -spec get_contact_status_description( contact_status() ) -> ustring().
 get_contact_status_description( _ContactStatus=open ) ->
 	"opened";
@@ -6317,8 +6643,9 @@ get_contact_status_description( _ContactStatus=closed ) ->
 	"closed".
 
 
-% @doc Returns a textual description of the specified EEP (if any).
--spec get_eep_description( maybe( eep_id() ) ) -> ustring().
+
+-doc "Returns a textual description of the specified EEP (if any).".
+-spec get_eep_description( option( eep_id() ) ) -> ustring().
 get_eep_description( _MaybeEepId=undefined ) ->
 	"its EEP is not known";
 
@@ -6328,10 +6655,10 @@ get_eep_description( EepId ) ->
 
 
 
-% @doc Returns a textual description of the specified EEP (if any), with a
-% default.
-%
--spec get_eep_description( maybe( eep_id() ), ustring() ) -> ustring().
+-doc """
+Returns a textual description of the specified EEP (if any), with a default.
+""".
+-spec get_eep_description( option( eep_id() ), ustring() ) -> ustring().
 get_eep_description( _MaybeEepId=undefined, DefaultDesc ) ->
 	text_utils:format( "its EEP is not known (supposing ~ts)",
 					   [ DefaultDesc ] );
@@ -6340,8 +6667,9 @@ get_eep_description( EepId, _DefaultDesc ) ->
 	get_eep_description( EepId ).
 
 
-% @doc Returns a short textual description of the specified EEP (if any).
--spec get_eep_short_description( maybe( eep_id() ) ) -> ustring().
+
+-doc "Returns a short textual description of the specified EEP (if any).".
+-spec get_eep_short_description( option( eep_id() ) ) -> ustring().
 get_eep_short_description( _MaybeEepId=undefined ) ->
 	"unknown";
 
@@ -6351,10 +6679,10 @@ get_eep_short_description( EepId ) ->
 
 
 
-% @doc Returns a textual description of the specified EEP (if any), with a
-% default.
-%
--spec get_eep_short_description( maybe( eep_id() ), ustring() ) -> ustring().
+-doc """
+Returns a textual description of the specified EEP (if any), with a default.
+""".
+-spec get_eep_short_description( option( eep_id() ), ustring() ) -> ustring().
 get_eep_short_description( _MaybeEepId=undefined, DefaultDesc ) ->
 	text_utils:format( "unknown (supposing ~ts)",
 					   [ DefaultDesc ] );
@@ -6363,9 +6691,10 @@ get_eep_short_description( EepId, _DefaultDesc ) ->
 	get_eep_short_description( EepId ).
 
 
-% @doc Returns a textual description of the specified state of the Oceanic
-% server.
-%
+
+-doc """
+Returns a textual description of the specified state of the Oceanic server.
+""".
 -spec state_to_string( oceanic_state() ) -> ustring().
 state_to_string( #oceanic_state{
 		serial_server_pid=SerialServerPid,
@@ -6478,7 +6807,7 @@ state_to_string( #oceanic_state{
 
 
 
-% @doc Returns a textual description of the specified device table.
+-doc "Returns a textual description of the specified device table.".
 -spec device_table_to_string( device_table() ) -> ustring().
 device_table_to_string( DeviceTable ) ->
 
@@ -6500,7 +6829,7 @@ device_table_to_string( DeviceTable ) ->
 
 
 
-% @doc Returns a textual description of the specified Enocean device.
+-doc "Returns a textual description of the specified Enocean device.".
 -spec device_to_string( enocean_device() ) -> ustring().
 device_to_string( #enocean_device{ eurid=Eurid,
 								   name=MaybeName,
@@ -6692,7 +7021,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 
 
-% @doc Returns a description of the specified device, as seen from Oceanic.
+-doc "Returns a description of the specified device, as seen from Oceanic.".
 -spec get_device_description( enocean_device() ) -> device_description().
 get_device_description( Device ) ->
 	text_utils:string_to_binary( device_to_string( Device ) ).
@@ -6701,7 +7030,8 @@ get_device_description( Device ) ->
 
 % CRC subsection.
 
-% @doc Returns the CRC code corresponding to the specified binary.
+
+-doc "Returns the CRC code corresponding to the specified binary.".
 -spec compute_crc( binary() ) -> crc().
 compute_crc( Bin ) ->
 	compute_crc( Bin, get_crc_array(), _Checksum=0 ).
@@ -6719,7 +7049,7 @@ compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
 
 
 
-% @doc Returns the array used to code/decode CRC.
+-doc "Returns the array used to code/decode CRC.".
 -spec get_crc_array() -> type_utils:tuple( type_utils:uint8() ).
 get_crc_array() ->
 
@@ -6764,9 +7094,10 @@ get_crc_array() ->
 % See also oceanic_script_include.hrl .
 
 
-% @doc Secures the usability of (our fork of) erlang-serial, typically from an
-% (e)script.
-%
+-doc """
+Secures the usability of (our fork of) erlang-serial, typically from an
+(e)script.
+""".
 -spec secure_serial( any_directory_path() ) -> void().
 secure_serial( _AnyOceanicRootDir ) ->
 
@@ -6793,9 +7124,10 @@ secure_serial( _AnyOceanicRootDir ) ->
 % Section for the build-time generation of support modules.
 
 
-% @doc To be called by the 'oceanic_generated.beam' automatic make target in
-% order to generate, here, a (single) module to share the Oceanic constants.
-%
+-doc """
+To be called by the 'oceanic_generated.beam' automatic make target in order to
+generate, here, a (single) module to share the Oceanic constants.
+""".
 -spec generate_support_modules() -> no_return().
 generate_support_modules() ->
 

@@ -133,7 +133,7 @@ endif
 # The uniquely-defined version of this layer, for all uses (including rebar, hex
 # and the code itself, see oceanic:get_oceanic_version{_string,}/0):
 #
-OCEANIC_VERSION := 1.4.4
+OCEANIC_VERSION := 1.4.5
 
 
 # PROJECT_VERSION should be defined on a per-project basis.

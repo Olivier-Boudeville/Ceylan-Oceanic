@@ -25,21 +25,22 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Wednesday, September 7, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>reading from actual devices and
-% recording the corresponding telegrams in file</b>.
-%
-% The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
-% prerequisites shall be already available.
-%
-% This test mostly does not depend on Oceanic, it just focuses on raw recording,
-% and performs no actual decoding.
-%
-% When running this test, ensure that at least a few Enocean telegrams are
-% received, so that they can be stored; see the oceanic_decode_recorded_test
-% module for the decoding of the file recorded by the current test.
-%
 -module(oceanic_just_record_device_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic **reading from actual devices and recording the
+corresponding telegrams in file**.
+
+The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
+prerequisites shall be already available.
+
+This test mostly does not depend on Oceanic, it just focuses on raw recording,
+and performs no actual decoding.
+
+When running this test, ensure that at least a few Enocean telegrams are
+received, so that they can be stored; see the oceanic_decode_recorded_test
+module for the decoding of the file recorded by the current test.
+""".
 
 
 % For oceanic_decode_recorded_test:
@@ -47,15 +48,15 @@
 
 
 
-% Shorthands:
+% Type shorthands:
 
 -type device_path() :: file_utils:device_path().
 -type file_path() :: file_utils:file_path().
 
 
 
-% Triggered iff a suitable environment is believed to be available.
--spec actual_test( device_path(), maybe( file_path() ) ) -> void().
+-doc "Triggered iff a suitable environment is believed to be available.".
+-spec actual_test( device_path(), option( file_path() ) ) -> void().
 actual_test( TtyPath, MaybeRecordFilePath ) ->
 
 	test_facilities:display( "Starting the Enocean recording test based on the "
@@ -88,7 +89,7 @@ actual_test( TtyPath, MaybeRecordFilePath ) ->
 
 
 
-% @doc Listens endlessly.
+-doc "Listens endlessly.".
 listen( MaybeFile ) ->
 
 	Hint = " (hit CTRL-C to stop)...",
@@ -115,7 +116,7 @@ listen( MaybeFile ) ->
 
 
 
-% @doc Returns the path to the file used for recording.
+-doc "Returns the path to the file used for recording.".
 -spec get_record_file_path() -> file_path().
 get_record_file_path() ->
 	"enocean-test-recording.etf".

@@ -25,11 +25,12 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Saturday, October 22, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>sending and encoding of statically
-% defined telegrams</b>.
-%
 -module(oceanic_static_sending_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic **sending and encoding of statically defined
+telegrams**.
+""".
 
 
 -export([ run/0 ]).
@@ -41,13 +42,13 @@
 -include("oceanic.hrl").
 
 
-% Shorthands:
+% Type shorthand:
 
 -type device_path() :: file_utils:device_path().
 
 
 
-% @doc Receives a (single) event, if any is received at short term.
+-doc "Receives a (single) event, if any is received at short term.".
 receive_event() ->
 
 	test_facilities:display( "(waiting for any incoming event)" ),
@@ -73,7 +74,7 @@ receive_event() ->
 
 
 
-% Triggered iff a suitable environment is believed to be available.
+-doc "Triggered iff a suitable environment is believed to be available.".
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 

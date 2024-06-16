@@ -25,17 +25,17 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Monday, September 19, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>decoding of static (pre-recorded)
-% telegrams/b>.
-%
 -module(oceanic_static_decoding_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic **decoding of static (pre-recorded) telegrams**.
+""".
 
 
 -export([ run/0 ]).
 
 
-% Shorthands:
+% Type shorthands:
 
 -type count() :: basic_utils:count().
 
@@ -43,7 +43,7 @@
 
 
 
-% @doc Attempts to decode the specified telegrams in turn.
+-doc "Attempts to decode the specified telegrams in turn.".
 -spec decode_telegrams( [ telegram() ], count() ) -> count().
 decode_telegrams( _Telegrams=[], Count ) ->
 	Count;

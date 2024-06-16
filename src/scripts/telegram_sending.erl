@@ -5,13 +5,15 @@
 % Released as LGPL software.
 % Creation date: Sunday, November 20, 2022.
 
-
-% @doc Actual module in charge of the Oceanic <b>telegram sending</b>.
-%
-% Better here than in `send-telegram.escript' in order to benefit from a more
-% user-friendly debugging.
-%
 -module(telegram_sending).
+
+-moduledoc """
+Actual module in charge of the Oceanic <b>telegram sending</b>.
+
+Better here than in `send-telegram.escript' in order to benefit from a more
+user-friendly debugging.
+""".
+
 
 
 -define( exec_name, "send-telegram.escript" ).
@@ -23,13 +25,13 @@
 -export([ send_telegram/1 ]).
 
 
-% Shorthands:
+% Type shorthand:
 
 -type ustring() :: text_utils:ustring().
 
 
 
-% @doc Typically for testing.
+-doc "Typically for testing.".
 -spec run() -> void().
 run() ->
 	ArgTable = shell_utils:get_argument_table(),
@@ -37,8 +39,7 @@ run() ->
 
 
 
-
-% @doc Returns the usage information of the corresponding application.
+-doc "Returns the usage information of the corresponding application.".
 -spec get_usage() -> void().
 get_usage() ->
 	text_utils:format( "Usage: ~ts TELEGRAM_STRING [-h|--help]~n"
@@ -48,9 +49,10 @@ get_usage() ->
 
 
 
-% @doc Sole entry point for this sending service, either triggered by `run/0'
-% or by the associated escript.
-%
+-doc """
+Sole entry point for this sending service, either triggered by `run/0' or by the
+associated escript.
+""".
 -spec main( shell_utils:argument_table() ) -> void().
 main( ArgTable ) ->
 
@@ -60,8 +62,8 @@ main( ArgTable ) ->
 	HelpRefKey = '-help',
 
 	% Standardises command-line options:
-	MergedTable = list_table:merge_in_keys( [
-		{ HelpRefKey, [ 'h' ] } ], ArgTable ),
+	MergedTable = list_table:merge_in_keys( [ { HelpRefKey, [ 'h' ] } ], 
+											ArgTable ),
 
 	%trace_utils:debug_fmt( "Canonicalized script-specific arguments: ~ts",
 	%   [ shell_utils:argument_table_to_string( MergedTable ) ] ),
@@ -107,10 +109,11 @@ main( ArgTable ) ->
 
 
 
-% @doc Displays the usage of this service, and stops (with no error).
+-doc "Displays the usage of this service, and stops (with no error).".
 display_usage() ->
 	io:format( get_usage(), [] ),
 	basic_utils:stop( _ErrorCode=0 ).
+
 
 
 -spec send_telegram( ustring() ) -> void().

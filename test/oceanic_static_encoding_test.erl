@@ -25,9 +25,11 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Friday, November 18, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>encoding of static telegrams/b>.
 -module(oceanic_static_encoding_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic <b>encoding of static telegrams/b>.
+""".
 
 
 -export([ run/0 ]).

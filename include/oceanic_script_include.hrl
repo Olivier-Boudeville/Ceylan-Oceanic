@@ -14,16 +14,14 @@
 %-export([ secure_from_escript/1 ]).
 
 
-% @doc Secures the usability of Oceanic, typically from an (e)script, from the
-% specified root of Myriad.
-%
-% Returns the Oceanic root directory.
-%
-% This code cannot be located in an Oceanic module, as they are not available
-% yet.
-%
-% @private
-%
+-doc """
+Secures the usability of Oceanic, typically from an (e)script, from the
+specified root of Myriad.
+
+Returns the Oceanic root directory.
+
+This code cannot be located in an Oceanic module, as they are not available yet.
+""".
 -spec secure_from_escript( file_utils:directory_path() ) ->
 								file_utils:directory_path().
 secure_from_escript( MyriadRootDir ) ->

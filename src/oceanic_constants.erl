@@ -25,12 +25,13 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Wednesday, October 26, 2022.
 
-
-% @doc Module defining the Oceanic constants.
-%
-% Called by oceanic:generate_support_modules/0.
-%
 -module(oceanic_constants).
+
+-moduledoc """
+Module defining the Oceanic constants.
+
+Called by oceanic:generate_support_modules/0.
+""".
 
 
 
@@ -48,15 +49,14 @@
 % by specifying an element that is not referenced there.
 
 
-% Shorthands:
+% Type shorthand:
 
 -type topic_spec() :: const_bijective_topics:topic_spec().
 
-%-type bijective_table( F, S ) :: bijective_table:bijective_table( F, S ).
 
 
 
-% @doc Returns the specification for the 'packet_type' topic.
+-doc "Returns the specification for the 'packet_type' topic.".
 -spec get_maybe_packet_type_topic_spec() -> topic_spec().
 get_maybe_packet_type_topic_spec() ->
 
@@ -79,14 +79,15 @@ get_maybe_packet_type_topic_spec() ->
 		{ radio_802_15_4_type,     16#10 },
 		{ command_2_4_type,        16#11 } ],
 
-	{ packet_type, Entries, _ElemLookup=maybe }.
+	{ packet_type, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'return_code' topic.
+-doc """
+Returns the specification for the 'return_code' topic.
 
-% For return codes, as defined in [ESP3].
-%
+For return codes, as defined in [ESP3].
+""".
 -spec get_maybe_return_code_topic_spec() -> topic_spec().
 get_maybe_return_code_topic_spec() ->
 
@@ -97,14 +98,15 @@ get_maybe_return_code_topic_spec() ->
 		{ wrong_parameter_return, 16#03 },
 		{ operation_denied,       16#04 } ],
 
-	{ return_code, Entries, _ElemLookup=maybe }.
+	{ return_code, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'event_code' topic.
-%
-% For event codes, as defined in [ESP3].
-%
+-doc """
+Returns the specification for the 'event_code' topic.
+
+For event codes, as defined in [ESP3].
+""".
 -spec get_maybe_event_code_topic_spec() -> topic_spec().
 get_maybe_event_code_topic_spec() ->
 
@@ -116,14 +118,15 @@ get_maybe_event_code_topic_spec() ->
 		{ co_ready,                16#04 },
 		{ co_event_secure_devices, 16#05 } ],
 
-	{ event_code, Entries, _ElemLookup=maybe }.
+	{ event_code, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'rorg' topic.
-%
-% For the RORG field of an ERP radio telegram type, as defined in [EEP] p.14.
-%
+-doc """
+Returns the specification for the 'rorg' topic.
+
+For the RORG field of an ERP radio telegram type, as defined in [EEP] p.14.
+""".
 -spec get_maybe_rorg_topic_spec() -> topic_spec().
 get_maybe_rorg_topic_spec() ->
 
@@ -145,11 +148,11 @@ get_maybe_rorg_topic_spec() ->
 		{ rorg_signal,     16#D0 },
 		{ rorg_ute,        16#D4 } ],
 
-	{ rorg, Entries, _ElemLookup=maybe }.
+	{ rorg, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'rorg_description' topic.
+-doc "Returns the specification for the 'rorg_description' topic.".
 -spec get_maybe_rorg_description_topic_spec() -> topic_spec().
 get_maybe_rorg_description_topic_spec() ->
 
@@ -172,14 +175,15 @@ get_maybe_rorg_description_topic_spec() ->
 		{ rorg_signal,     <<"SIGNAL (Signal telegram)">> },
 		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
 
-	{ rorg_description, Entries, _ElemLookup=maybe }.
+	{ rorg_description, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'common_command' topic.
-%
-% First elements are function codes, second ones are function names.
-%
+-doc """
+Returns the specification for the 'common_command' topic.
+
+First elements are function codes, second ones are function names.
+""".
 -spec get_maybe_common_command_topic_spec() -> topic_spec().
 get_maybe_common_command_topic_spec() ->
 
@@ -288,20 +292,21 @@ get_maybe_common_command_topic_spec() ->
 		{ 65, co_rd_tx_only_mode }    % Read the state of the TX only mode.
 			  ],
 
-	{ common_command, Entries, _ElemLookup=maybe }.
+	{ common_command, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'vld_d2_00_cmd' topic.
-%
-% First elements are VLD D2-00 command identifiers, designated by the CMD field
-% of these VLD telegrams, the 4 last bits of the first byte of the payload
-% (hence 16 possible values)
+-doc """
+Returns the specification for the 'vld_d2_00_cmd' topic.
 
-% Second elements are their higher-level command names.
-%
-% Described in [EEP-spec] p.131.
-%
+First elements are VLD D2-00 command identifiers, designated by the CMD field of
+these VLD telegrams, the 4 last bits of the first byte of the payload (hence 16
+possible values)
+
+Second elements are their higher-level command names.
+
+Described in [EEP-spec] p.131.
+""".
 -spec get_maybe_vld_d2_00_cmd_topic_spec() -> topic_spec().
 get_maybe_vld_d2_00_cmd_topic_spec() ->
 
@@ -320,11 +325,11 @@ get_maybe_vld_d2_00_cmd_topic_spec() ->
 		{ 16#0C, actuator_external_interface_settings_query },
 		{ 16#0D, actuator_external_interface_settings_response } ],
 
-	{ vld_d2_00_cmd, Entries, _ElemLookup=maybe }.
+	{ vld_d2_00_cmd, Entries, _ElemLookup='maybe' }.
 
 
 
-% @doc Returns the specification for the 'eep' topics.
+-doc "Returns the specification for the 'eep' topics.".
 -spec get_maybe_eep_topic_specs() -> [ topic_spec() ].
 get_maybe_eep_topic_specs() ->
 

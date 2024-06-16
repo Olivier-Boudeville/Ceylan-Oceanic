@@ -25,27 +25,28 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Sunday, October 9, 2022.
 
-
-% @doc <b>Integration test</b> of Ceylan-Oceanic, representative of its actual
-% use.
-%
-% The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
-% prerequisites shall be already available.
-%
 -module(oceanic_integration_test).
+
+-moduledoc """
+
+**Integration test** of Ceylan-Oceanic, representative of its actual use.
+
+The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
+prerequisites shall be already available.
+""".
 
 
 -export([ run/0, wait_for_test_events/2 ]).
 
 
-% Shorthands:
+% Type shorthands:
 
 -type count() :: basic_utils:count().
 -type device_path() :: file_utils:device_path().
 
 
 
-% Triggered iff a suitable environment is believed to be available.
+-doc "Triggered iff a suitable environment is believed to be available.".
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 
@@ -62,10 +63,11 @@ actual_test( TtyPath ) ->
 
 
 
-% @doc Waits for actual test telegrams to be received.
-%
-% The PID of the Oceanic server is just for test purpose.
-%
+-doc """
+Waits for actual test telegrams to be received.
+
+The PID of the Oceanic server is just for test purpose.
+""".
 -spec wait_for_test_events( count(), oceanic:oceanic_server_pid() ) -> void().
 wait_for_test_events( _Count=0, _OcSrvPid ) ->
 	test_facilities:display( "(all intended events received)" );

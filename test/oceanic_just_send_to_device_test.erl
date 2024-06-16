@@ -25,16 +25,17 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 % Creation date: Thursday, October 20, 2022.
 
-
-% @doc Testing of the Ceylan-Oceanic <b>sending to actual devices telegrams</b>.
-%
-% The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
-% prerequisites shall be already available.
-%
-% This test mostly does not depend on Oceanic, it just focuses on raw sending,
-% and performs no actual encoding.
-%
 -module(oceanic_just_send_to_device_test).
+
+-moduledoc """
+Testing of the Ceylan-Oceanic **sending to actual devices telegrams**.
+
+The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)
+prerequisites shall be already available.
+
+This test mostly does not depend on Oceanic, it just focuses on raw sending, and
+performs no actual encoding.
+""".
 
 
 % For oceanic_decode_recorded_test:
@@ -53,7 +54,7 @@
 -include("oceanic.hrl").
 
 
-% Shorthands:
+% Type shorthands:
 
 -type device_path() :: file_utils:device_path().
 
@@ -65,9 +66,9 @@
 
 
 
-% @doc These telegrams were captured verbatim by
-% oceanic_just_record_device_test.
-%
+-doc """
+These telegrams were captured verbatim by oceanic_just_record_device_test.
+""".
 -spec replay_telegrams( pid() ) -> void().
 replay_telegrams( SerialPid ) ->
 	replay_telegrams_for_green_switch( SerialPid ).
@@ -75,7 +76,7 @@ replay_telegrams( SerialPid ) ->
 
 
 
-% @doc Replays telegrams for the green switch.
+-doc "Replays telegrams for the green switch.".
 -spec replay_telegrams_for_green_switch( pid() ) -> void().
 replay_telegrams_for_green_switch( SerialPid ) ->
 
@@ -190,9 +191,10 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 
 
 
-% @doc Replays telegrams for the white switch, once its left rocker has
-% been learnt by the Eltako smart plug by pressing (once) its top button.
-%
+-doc """
+Replays telegrams for the white switch, once its left rocker has been learnt by
+the Eltako smart plug by pressing (once) its top button.
+""".
 -spec replay_telegrams_for_white_switch( pid() ) -> void().
 replay_telegrams_for_white_switch( SerialPid ) ->
 

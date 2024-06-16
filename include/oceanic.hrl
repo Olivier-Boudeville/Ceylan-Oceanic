@@ -44,7 +44,7 @@
 %
 % (this hexadecimal pun never gets old)
 %
-% Translates to ``<<222,173,190,239>>''.
+% Translates to `<<222,173,190,239>>`.
 %
 % Note that now by default the base identifier of the USB gateway is used
 % instead, as soon as it is determined (as read thanks to a co_rd_idbase common
@@ -66,22 +66,22 @@
 	eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) for that device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of this device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% Tells how this device was discovered:
 	discovered_through :: oceanic:discovery_origin(),
 
 	% The timestamp (if any) at which this device was first seen:
-	first_seen = undefined :: maybe( time_utils:timestamp() ),
+	first_seen = undefined :: option( time_utils:timestamp() ),
 
 	% The timestamp (if any) at which this device was last seen:
-	last_seen = undefined :: maybe( time_utils:timestamp() ),
+	last_seen = undefined :: option( time_utils:timestamp() ),
 
 	% Tells whether this device is considered by Oceanic to be online or lost:
-	availability :: maybe( oceanic:availability_status() ),
+	availability :: option( oceanic:availability_status() ),
 
 	% The number of full telegrams successfully decoded for this device:
 	telegram_count = 0 :: basic_utils:count(),
@@ -97,7 +97,7 @@
 	% A timer, if any, set to detect whether this device vanished (ceased being
 	% active), possibly being sabotaged, running out of energy, etc.:
 	%
-	activity_timer = undefined :: maybe( oceanic:timer_ref() ) } ).
+	activity_timer = undefined :: option( oceanic:timer_ref() ) } ).
 
 
 
@@ -138,34 +138,34 @@
 %           source_eurid :: oceanic:eurid()
 %
 % - the user-specified name (if any) for the emitting device:
-%           name :: maybe( oceanic:device_name() )
+%           name :: option( oceanic:device_name() )
 %
 % - the EEP (if any is defined and registered) of the emitting device:
-%           eep :: maybe( oceanic:eep_id() )
+%           eep :: option( oceanic:eep_id() )
 %
 % - the timestamp at which this event was triggered:
 %           timestamp :: time_utils:timestamp()
 %
 % - the last timestamp (if any) at which a telegram from that device was
 % intercepted before; mostly an informative way of reporting device discovery
-%           last_seen :: maybe( time_utils:timestamp() )
+%           last_seen :: option( time_utils:timestamp() )
 %
 % From here, the four next following fields, still common to all events, are
 % maybe-values, as they are read from optional data:
 %
 % - the number of subtelegrams, if any:
-%           subtelegram_count :: maybe( oceanic:subtelegram_count() )
+%           subtelegram_count :: option( oceanic:subtelegram_count() )
 %
 % - the EURID of the target of this transmission (addressed or broadcast), if
 % any:
-%           destination_eurid :: maybe( oceanic:eurid() )
+%           destination_eurid :: option( oceanic:eurid() )
 %
 % - the best RSSI value (if any), expressed in decibels (dB) with reference to
 % one milliwatt (mW), of all received subtelegrams:
-%           dbm :: maybe( oceanic:dbm() )
+%           dbm :: option( oceanic:dbm() )
 %
 % - the level of security (if any) of the received telegram:
-%           security_level :: maybe( oceanic:security_level() )
+%           security_level :: option( oceanic:security_level() )
 
 
 
@@ -181,10 +181,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -193,23 +193,23 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
@@ -217,7 +217,7 @@
 	% The percentage of relative humidity reported:
 	relative_humidity :: math_utils:percent(),
 
-	temperature :: maybe( unit_utils:celsius() ),
+	temperature :: option( unit_utils:celsius() ),
 
 	% The range of the temperature sensor:
 	temperature_range :: oceanic:temperature_range(),
@@ -251,10 +251,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -263,23 +263,23 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
@@ -304,10 +304,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -316,23 +316,23 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
@@ -363,10 +363,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -375,23 +375,23 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
@@ -426,10 +426,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -438,29 +438,29 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
 
 	% Specifies (very roughly) the number of buttons involved:
-	button_counting :: maybe( oceanic:button_counting() ),
+	button_counting :: option( oceanic:button_counting() ),
 
 	% Whether the buttons referenced by the counting are pressed or released:
 	energy_bow :: oceanic:button_transition() } ).
@@ -481,10 +481,10 @@
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
-	name :: maybe( oceanic:device_name() ),
+	name :: option( oceanic:device_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: maybe( oceanic:eep_id() ),
+	eep :: option( oceanic:eep_id() ),
 
 	% The timestamp at which this event was triggered:
 	timestamp :: time_utils:timestamp(),
@@ -493,23 +493,23 @@
 	% intercepted before; mostly an informative way of reporting whether this
 	% device was just discovered
 	%
-	last_seen :: maybe( time_utils:timestamp() ),
+	last_seen :: option( time_utils:timestamp() ),
 
 	% The number of subtelegrams, if any:
-	subtelegram_count :: maybe( oceanic:subtelegram_count() ),
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
 
 	% The EURID of the target of this transmission (addressed or broadcast), if
 	% any:
 	%
-	destination_eurid :: maybe( oceanic:eurid() ),
+	destination_eurid :: option( oceanic:eurid() ),
 
 	% The best RSSI value (if any), expressed in decibels (dB) with reference to
 	% one milliwatt (mW), of all received subtelegrams:
 	%
-	dbm :: maybe( oceanic:dbm() ),
+	dbm :: option( oceanic:dbm() ),
 
 	% The level of security (if any) of the received telegram:
-	security_level :: maybe( oceanic:security_level() ),
+	security_level :: option( oceanic:security_level() ),
 
 
 	% Section specific to these events:
@@ -518,7 +518,7 @@
 
 	response_expected :: boolean(),
 
-	request_type :: maybe( oceanic:teach_request_type() ),
+	request_type :: option( oceanic:teach_request_type() ),
 
 	channel_taught :: oceanic:channel_taught(),
 

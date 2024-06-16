@@ -6,14 +6,13 @@
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 %
 % Released as LGPL software.
+% Creation date: 2022.
 
-
-% @doc An Oceanic application to <b>send Enocean telegrams from the
-% command-line</b>.
-%
-% @hidden Not useful to list in API.
-%
 -module(send_telegram_app).
+
+-moduledoc """
+An Oceanic application to **send Enocean telegrams from the command-line**.
+""".
 
 
 -export([ exec/0 ]).
@@ -24,7 +23,7 @@
 
 
 
-% @doc Executes this telegram-sending application.
+-doc "Executes this telegram-sending application.".
 -spec exec() -> void().
 exec() ->
 
