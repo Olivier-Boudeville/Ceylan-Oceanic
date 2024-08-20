@@ -34,7 +34,7 @@ user-friendly debugging.
 -doc "Typically for testing.".
 -spec run() -> void().
 run() ->
-	ArgTable = shell_utils:get_argument_table(),
+	ArgTable = cmd_line_utils:get_argument_table(),
 	main( ArgTable ).
 
 
@@ -54,11 +54,11 @@ get_usage() ->
 Sole entry point for this decoding service, either triggered by `run/0' or by
 the associated escript.
 """.
--spec main( shell_utils:argument_table() ) -> void().
+-spec main( cmd_line_utils:argument_table() ) -> void().
 main( ArgTable ) ->
 
 	%trace_utils:debug_fmt( "Original script-specific arguments: ~ts",
-	%   [ shell_utils:argument_table_to_string( ArgTable ) ] ),
+	%   [ cmd_line_utils:argument_table_to_string( ArgTable ) ] ),
 
 	HelpRefKey = '-help',
 
@@ -67,12 +67,12 @@ main( ArgTable ) ->
 		{ HelpRefKey, [ 'h' ] } ], ArgTable ),
 
 	%trace_utils:debug_fmt( "Canonicalized script-specific arguments: ~ts",
-	%   [ shell_utils:argument_table_to_string( MergedTable ) ] ),
+	%   [ cmd_line_utils:argument_table_to_string( MergedTable ) ] ),
 
 	list_table:has_entry( HelpRefKey, MergedTable ) andalso display_usage(),
 
 	{ MaybeArgs, ShrunkArgTable } =
-		shell_utils:extract_optionless_command_arguments( MergedTable ),
+		cmd_line_utils:extract_optionless_command_arguments( MergedTable ),
 
 	case list_table:keys( ShrunkArgTable ) of
 
@@ -80,8 +80,8 @@ main( ArgTable ) ->
 			ok;
 
 		_UnexpectedOpts ->
-			shell_utils:error_fmt( 10, "unexpected user input, ~ts~n~ts",
-				[ shell_utils:argument_table_to_string( ShrunkArgTable ),
+			cmd_line_utils:error_fmt( 10, "unexpected user input, ~ts~n~ts",
+				[ cmd_line_utils:argument_table_to_string( ShrunkArgTable ),
 				  get_usage() ] )
 			%throw( { unexpected_command_line_options, UnexpectedOpts } )
 
@@ -93,8 +93,8 @@ main( ArgTable ) ->
 	case MaybeArgs of
 
 		undefined ->
-			shell_utils:error_fmt( 15, "no argument specified.~n~ts",
-								   [ get_usage() ] );
+			cmd_line_utils:error_fmt( 15, "no argument specified.~n~ts",
+									  [ get_usage() ] );
 			%exit( no_argument_specified );
 
 		_SingleArg=[ TelegramStr ] ->
@@ -102,7 +102,7 @@ main( ArgTable ) ->
 			basic_utils:stop( _ErrorCode=0 );
 
 		Args ->
-			shell_utils:error_fmt( 20,
+			cmd_line_utils:error_fmt( 20,
 				"extra argument(s) specified, got ~ts.~n~ts",
 				[ text_utils:strings_to_listed_string( Args ), get_usage() ] )
 
@@ -156,7 +156,7 @@ decode_telegram( TelegramHexStr ) ->
 					basic_utils:stop( _ErrorCode=0 );
 
 				{ Unsuccessful, _NewToSkipLen, _NewAccChunk, _NewState } ->
-					shell_utils:error_fmt( 10, "Unable to decode telegram: "
+					cmd_line_utils:error_fmt( 10, "Unable to decode telegram: "
 						"~ts.", [ Unsuccessful ] )
 
 			end,
@@ -165,7 +165,7 @@ decode_telegram( TelegramHexStr ) ->
 			timer:sleep( 500 );
 
 		{ false, Reason } ->
-			shell_utils:error_fmt( 25, "no suitable TTY environment found "
+			cmd_line_utils:error_fmt( 25, "no suitable TTY environment found "
 				"(cause: ~p; searched for device '~ts'), no decoding done.",
 				[ Reason, TtyPath ] )
 			%exit( { no_tty_available, TtyPath } )
