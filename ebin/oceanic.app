@@ -21,7 +21,7 @@
 
 {application, oceanic,
  [{description, "Ceylan-Oceanic, a library for the support of the Enocean building automation system, as an OTP application library here (see http://oceanic.esperide.org)"},
-  {vsn, "1.4.4"},
+  {vsn, "1.4.5"},
 
   % No process registered:
   {registered, []},
