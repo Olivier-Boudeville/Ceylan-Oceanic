@@ -49,12 +49,13 @@ run() ->
 
 	SourceEurid = oceanic:string_to_eurid( "0109d970" ),
 
-	Tele = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
-		_MaybeTargetEurid=undefined, _ButtonDesignator=button_ai,
-		_ButtonTransition=released ),
+	% Hence never released:
+	Telegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
+		_SourceAppStyle=1, _ButtonChannel=1, _ButtonPos=up,
+		_ButtonTransition=pressed, _MaybeTargetEurid=undefined ),
 
 	test_facilities:display( "Generated following telegram for double-rocker: "
-							 "~ts.", [ oceanic:telegram_to_string( Tele ) ] ),
+		"~ts.", [ oceanic:telegram_to_string( Telegram ) ] ),
 
 	% Not relevant here: oceanic:stop( OceanicServerPid ),
 
