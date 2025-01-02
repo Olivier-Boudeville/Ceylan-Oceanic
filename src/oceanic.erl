@@ -5779,7 +5779,7 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
 	cond_utils:if_defined( oceanic_debug_activity,
 		trace_bridge:debug_fmt( "Setting a fixed timer for ~ts, "
 			"for a duration of ~ts.", [ eurid_to_string( Eurid ),
-				timer_utils:duration_to_string( PeriodicityMs ) ] ) ),
+				time_utils:duration_to_string( PeriodicityMs ) ] ) ),
 
 	case timer:send_after( PeriodicityMs, TimedMsg ) of
 
