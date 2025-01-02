@@ -59,7 +59,7 @@ through an Oceanic server**.
 	% For lower-level operation/testing:
 	encode_esp3_packet/2, encode_esp3_packet/3,
 
-	encode_double_rocker_switch_telegram/4,
+	encode_double_rocker_switch_telegram/5,
 	encode_double_rocker_multipress_telegram/4,
 
 	% For any kind of (already-encoded) command:
@@ -69,7 +69,7 @@ through an Oceanic server**.
 	get_oceanic_eurid/1,
 
 	% General-purpose:
-	get_device_description/2,
+	get_device_description/2, get_button_ref_description/2,
 
 	% For common commands:
 	read_version/1, read_logs/1, read_base_id_info/1,
@@ -81,15 +81,16 @@ through an Oceanic server**.
 
 	stop/0, stop/1, synchronous_stop/1,
 
+	get_app_style_from_eep/1,
+
+	button_designator_to_string/1, button_locator_to_string/1,
+
 	eurid_to_string/1, eurid_to_short_string/1,
 	eurid_to_bin_string/1, eurid_to_bin_string/2,
 	string_to_eurid/1, get_broadcast_eurid/0,
 
-	get_best_naming/2,
-
-	get_device_table/1,
-
-	string_to_eep/1 ] ).
+	button_ref_to_string/1, get_best_naming/2,
+	get_device_table/1, string_to_eep/1 ] ).
 
 
 
@@ -127,7 +128,8 @@ through an Oceanic server**.
 
 
 % Silencing (depending on the tokens defined):
--export([ encode_common_command/2, ptm_module_to_string/1,
+-export([ get_located_button_enum/2, get_designated_button_enum/2,
+		  encode_common_command/2, ptm_module_to_string/1,
 		  nu_message_type_to_string/1,
 		  optional_data_to_string/1, optional_data_to_short_string/2,
 		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
@@ -406,8 +408,27 @@ link table entries).
 
 
 
+-doc """
+Describes a channel (e.g. for a double rocker having channel A as first row, and
+channel B as second row).
+
+Instead of a letter, channels are designated here with an integer, so 1
+corresponds to channel A, 2 to channel B, etc.
+
+A single rocker uses only a channel, A.
+""".
+-type channel() :: uint8().
+
+
 -doc "Tells which channel(s) should be taught.".
--type channel_taught() :: uint8() | 'all'.
+-type channel_taught() :: channel() | 'all'.
+
+
+-doc """
+Identifier of a button, from the EURID of its device (e.g. a double rocker) and
+its own channel (e.g. 2 to designate any "button B").
+""".
+-type button_ref() :: { eurid(), channel() }.
 
 
 
@@ -461,7 +482,8 @@ Refer to get_eep_topic_specs/0 for further details.
   | 'push_button'
 
   % They include the simple rocker ones:
-  | 'double_rocker_switch'
+  | 'double_rocker_switch_style_1'
+  | 'double_rocker_switch_style_2'
   | 'double_rocker_multipress'
 
   | 'single_input_contact'   % Typically opening detectors
@@ -495,21 +517,49 @@ was already known through configuration).
 -type enum() :: integer().
 
 
+-doc """
+Designates an application style (generally 1 or 2, for variations A or B).
+""".
+-type application_style() :: count().
+
+
 
 -doc """
 Designates a button corresponding to a A or B channel.
 
-A given ocker behaves as two buttons (e.g. AI/AO).
+A given rocker behaves as two buttons (e.g. AI/AO).
 
 In application style 1, the O position is the top/up one, while the I position
-is the bottom/down one.
+is the bottom/down one, whereas the opposite holds for application style 2.
+
+We prefer designating button based on their channel and position.
 """.
 -type button_designator() ::
-	'button_ai'  % Switch light on / Dim light down / Move blind closed
-  | 'button_ao'  % Switch light off / Dim light up / Move blind open
-  | 'button_bi'  % Switch light on / Dim light down / Move blind closed
-  | 'button_bo'. % Switch light off / Dim light up / Move blind open
+				 % Comments apply to application style 1:
+	'button_ai'  % Switch light on  / Dim light down / Move blind closed
+  | 'button_ao'  % Switch light off / Dim light up   / Move blind open
+  | 'button_bi'  % Switch light on  / Dim light down / Move blind closed
+  | 'button_bo'. % Switch light off / Dim light up   / Move blind open
 
+
+-doc """
+Instead of relying on the relatively unclear AI/AO/BI/BO naming that depends on
+EEP/application style, one may just reason on the channel of this button (e.g. A
+or B, translated as 1 or 2) and, here, on its actual position on the device (top
+or bottom).
+
+Then, depending on the application style/EEP of the device, this may be
+translated in terms of AI, AO, etc.
+""".
+-type button_position() :: 'top' | 'bottom'.
+
+
+-doc """
+Our best way of identifying a button.
+
+For example: {2, bottom}.
+""".
+-type button_locator() :: { channel(), button_position() }.
 
 
 -doc "Tells whether a button has been pressed (and held) or released.".
@@ -817,6 +867,9 @@ commands.
 -type device_description() :: bin_string().
 
 
+-doc "The description of a button reference, as known and returned by Oceanic.".
+-type button_ref_description() :: bin_string().
+
 
 -doc """
 Information sent to notify (if not set to 'undefined') that a lost device is
@@ -875,8 +928,8 @@ Refer to [EEP-spec] p.15 for further details.
 
 
 -doc """
-Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-Application Style 1"), for T21=1.
+Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
+- Application Style 1 or 2"), for T21=1.
 
 Refer to [EEP-spec] p.16 for further details.
 """.
@@ -885,8 +938,8 @@ Refer to [EEP-spec] p.16 for further details.
 
 
 -doc """
-Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-Application Style 1"), for T21=1 and NU=0.
+Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
+- Application Style 1 or 2"), for T21=1 and NU=0.
 
 Refer to [EEP-spec] p.16 for further details.
 """.
@@ -1001,12 +1054,14 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   subtelegram_count/0, dbm/0, security_level/0,
 			   communication_direction/0, teach_request_type/0, teach_outcome/0,
-			   channel_taught/0, manufacturer_id/0,
+			   channel/0, channel_taught/0, button_ref/0, manufacturer_id/0,
 
 			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
 			   discovery_origin/0, enum/0,
 
-			   button_designator/0, button_transition/0, button_counting/0,
+			   application_style/0, button_designator/0,
+			   button_position/0, button_locator/0,
+			   button_transition/0, button_counting/0,
 
 			   contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
@@ -2091,7 +2146,10 @@ decide_auto_periodicity( _EEPId=thermo_hygro_high ) ->
 decide_auto_periodicity( _EEPId=push_button ) ->
 	none;
 
-decide_auto_periodicity( _EEPId=double_rocker_switch ) ->
+decide_auto_periodicity( _EEPId=double_rocker_switch_style_1 ) ->
+	none;
+
+decide_auto_periodicity( _EEPId=double_rocker_switch_style_2 ) ->
 	none;
 
 decide_auto_periodicity( _EEPId=double_rocker_multipress ) ->
@@ -2265,28 +2323,33 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 
 
 -doc """
-Encodes a double-rocker switch telegram, from the specified device to the
-specified one (if any), reporting the specified transition for the specified
-button.
+Encodes a double-rocker switch telegram, from the specified device (of the
+specified application style) to the specified one (if any), regarding a
+transition of the single specified button (located based on channel and
+position).
 
 As this encoding is done exclusively on the caller side (the Oceanic server not
-being involved), it is up to the caller to specify the source EURID. We
-recommend at the caller fetches from the Oceanic server its EURID (see
-get_oceanic_eurid/1) once for all, and use it afterwards.
+being involved), it is up to the caller to specify the source EURID (and
+application style). We recommend that the caller fetches from the Oceanic server
+its EURID (see get_oceanic_eurid/1) once for all, and use it afterwards.
 
-Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
-radio packet encapsulated into an ESP3 one.
+Event sent in the context of EEP F6-02-01 or EEP F6-02-02 ("Light and Blind
+Control - Application Style 1 or 2"), for T21=1. It results thus in a RPS
+telegram, an ERP1 radio packet encapsulated into an ESP3 one.
 
 See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 
 Depending on how Oceanic was learnt by the target actuator, it will be seen
 either as a rocker (recommended) or as push-button(s).
+
+In the future, the encoding of two buttons transitions (second action) could be
+added (not that useful).
 """.
--spec encode_double_rocker_switch_telegram( eurid(), option( eurid() ),
-		button_designator(), button_transition() ) -> telegram().
-encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
-									  ButtonDesignator, ButtonTransition ) ->
+-spec encode_double_rocker_switch_telegram( eurid(), application_style(),
+		button_locator(), button_transition(), option( eurid() ) ) ->
+											telegram().
+encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
+		ButtonLocator, ButtonTransition, MaybeTargetEurid ) ->
 
 	% No EEP to be determined from double_rocker_switch (implicit in packet).
 
@@ -2296,21 +2359,29 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 
 	% Must be defined to F6 here:
 	RorgNum = oceanic_generated:get_maybe_second_for_rorg( _Rorg=rorg_rps ),
-	RorgNum = 16#f6,
+	%RorgNum = 16#f6,
 
-	R1Enum = get_designated_button_enum( ButtonDesignator ),
+	R1Enum = get_located_button_enum( ButtonLocator, SourceAppStyle ),
 
 	EB = get_button_transition_enum( ButtonTransition ),
 
 	IsSecondActionValid = false,
 
-	% Semantics R2Enum/SA unclear; we thought R2 was meaningless if second
-	% action was invalid, but visibly it matters:
+	% Semantics of R2Enum/SA unclear; we thought R2 was meaningless if SA
+	% (second action) was invalid, but visibly it matters:
 
 	%R2Enum = R1Enum,
 
-	% Test:
-	R2Enum = get_designated_button_enum( button_ai ),
+	% Test, about a button that should be ignored:
+
+	% This results in enum = 2, and the telegram had no effect:
+	%R2Enum = get_designated_button_enum( button_bi, SourceAppStyle ),
+
+	% This results in enum = 1, and the telegram had no effect:
+	%R2Enum = R1Enum,
+
+	% enum = 0 works on our test for some reason:
+	R2Enum = 0,
 
 	SA = case IsSecondActionValid of
 
@@ -2321,6 +2392,9 @@ encode_double_rocker_switch_telegram( SourceEurid, MaybeTargetEurid,
 			0
 
 	end,
+
+	trace_utils:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
+							" R2Enum = ~B.", [ R1Enum, R2Enum ] ),
 
 	% No LRN (Learn) bit for RPS, which can only send data and has no special
 	% telegram modification to teach-in the device. Therefore, the teach-in
@@ -2374,16 +2448,16 @@ Encodes a double-rocker multipress telegram, from the specified device to the
 specified one (if any), reporting the specified transition for the specified
 button.
 
-Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1
-radio packet encapsulated into an ESP3 one.
+Event sent in the context of EEP F6-02-01 or F6-02-02 ("Light and Blind Control
+- Application Style 1 or 2"), for T21=1. It results thus in a RPS telegram, an
+ERP1 radio packet encapsulated into an ESP3 one.
 
 See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 """.
 -spec encode_double_rocker_multipress_telegram( eurid(), option( eurid() ),
 		button_counting(), button_transition() ) -> telegram().
-encode_double_rocker_multipress_telegram( SourceEurid, MaybeTargetEurid,
-										  ButtonCounting, ButtonTransition ) ->
+encode_double_rocker_multipress_telegram( SourceEurid, ButtonCounting,
+		ButtonTransition, MaybeTargetEurid ) ->
 
 	% No EEP to be determined from double_rocker_multipress (implicit in
 	% packet).
@@ -2394,7 +2468,7 @@ encode_double_rocker_multipress_telegram( SourceEurid, MaybeTargetEurid,
 
 	% Must be F6 here:
 	RorgNum = oceanic_generated:get_second_for_rorg( _Rorg=rorg_rps ),
-	RorgNum = 16#f6,
+	%RorgNum = 16#f6,
 
 	CountEnum = case ButtonCounting of
 
@@ -2536,6 +2610,18 @@ get_device_description( Eurid, OcSrvPid ) ->
 			BinDesc
 
 	end.
+
+
+
+-doc """
+Returns the best textual description found for the specified button reference,
+as seen from Oceanic.
+""".
+-spec get_button_ref_description( button_ref(), oceanic_server_pid() ) ->
+											button_ref_description().
+get_button_ref_description( _ButRef={ Eurid, Channel }, OcSrvPid ) ->
+	text_utils:bin_format( "button ~B of ~ts",
+		[ Channel, get_device_description( Eurid, OcSrvPid ) ] ).
 
 
 
@@ -2820,12 +2906,13 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 					"just the start byte";
 
 				AccChunk ->
-					 text_utils:format( "a chunk of ~B bytes (~p) after "
+					text_utils:format( "a chunk of ~B bytes (~p) after "
 						"the start byte", [ size( AccChunk ), AccChunk ] )
 
 			end,
 
-			trace_bridge:debug_fmt( "Waiting for any message "
+			% To denote a limit between processings:
+			trace_bridge:info_fmt( "### Waiting for any message "
 				"including a telegram chunk, whereas having ~ts to skip, "
 				"and having accumulated ~ts.", [ SkipStr, ChunkStr ] )
 
@@ -2859,6 +2946,11 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 				%
 				{ decoded, _Event=command_processed, _MaybeDiscoverOrigin,
 				  _IsBackOnline, _MaybeDevice, AnyNextMaybeChunk, NewState } ->
+
+					cond_utils:if_defined( oceanic_debug_decoding,
+						trace_bridge:debug(
+							"Decoded command_processed event." ) ),
+
 					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
 
 				% Then just an event, possibly listened to:
@@ -2866,10 +2958,23 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 				  MaybeDevice, AnyNextMaybeChunk, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_decoding,
-						trace_bridge:debug_fmt( "Decoded following event "
-							"(discover origin: ~ts): ~ts.",
-							[ MaybeDiscoverOrigin,
-							  device_event_to_string( Event ) ] ) ),
+						begin
+							DiscStr = case MaybeDiscoverOrigin of
+
+								undefined ->
+									"";
+
+								Origin ->
+									text_utils:format(
+										" (discover origin: ~ts)",
+										[ Origin ] )
+
+							end,
+							trace_bridge:debug_fmt( "Decoded following "
+								"event~ts: ~ts.",
+								[ DiscStr, device_event_to_string( Event ) ] )
+
+						end ),
 
 					DeviceMsg = case MaybeDiscoverOrigin of
 
@@ -4061,7 +4166,12 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 			decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status,
 				OptData, AnyNextChunk, Device, State );
 
-		{ value, Device=#enocean_device{ eep=double_rocker_switch } } ->
+		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_1 } } ->
+			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
+				OptData, AnyNextChunk, Device, State );
+
+		% Same as previous:
+		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_2 } } ->
 			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
 				OptData, AnyNextChunk, Device, State );
 
@@ -4167,10 +4277,10 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 
 -doc """
-Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1"
-packet (switch or multipress).
+Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1 or
+2" packet (switch or multipress).
 
-It contains 2 actions.
+It may contain 2 actions.
 
 Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 [EEP-spec] p.15.
@@ -4181,8 +4291,10 @@ Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
 		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
-		AnyNextChunk, Device,
+		AnyNextChunk, Device=#enocean_device{ eep=EepId },
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	AppStyle = get_app_style_from_eep( EepId ),
 
 	case { T21, NU } of
 
@@ -4190,11 +4302,11 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			<<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
 
-			FirstButtonDesignator = get_button_designator( R1Enum ),
+			FirstButtonLocator = get_button_locator( R1Enum, AppStyle ),
 
 			ButtonTransition = get_button_transition( EB ),
 
-			SecondButtonDesignator = get_button_designator( R2Enum ),
+			SecondButtonLocator = get_button_locator( R2Enum, AppStyle ),
 
 			IsSecondActionValid = case SA of
 
@@ -4228,9 +4340,9 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				destination_eurid=MaybeDestEurid,
 				dbm=MaybeDBm,
 				security_level=MaybeSecLvl,
-				first_action_button=FirstButtonDesignator,
+				first_action_button=FirstButtonLocator,
 				energy_bow=ButtonTransition,
-				second_action_button=SecondButtonDesignator,
+				second_action_button=SecondButtonLocator,
 				second_action_valid=IsSecondActionValid },
 
 			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
@@ -4296,8 +4408,10 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
-				"for ~ts and EEP F6-02-01, as T21=~B and NU=~B.",
-				[ eurid_to_string( SenderEurid ), T21, NU ] ),
+				"for ~ts and EEP ~ts (~ts), as T21=~B and NU=~B.",
+				[ eurid_to_string( SenderEurid ), EepId,
+				  oceanic_generated:get_maybe_second_for_eep_strings( EepId ),
+				  T21, NU ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -4460,35 +4574,115 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 
 % Could be a bijective topic as well:
 
--doc "Returns the button designated by the specified enumeration.".
--spec get_button_designator( enum() ) -> button_designator().
-get_button_designator( _Enum=0 ) ->
-	button_ai; % Button A, bottom
 
-get_button_designator( _Enum=1 ) ->
-	button_ao; % Button A, top
+-doc """
+Returns the button designated by the specified enumeration, in the context of
+the specified application style.
+""".
+-spec get_button_locator( enum(), application_style() ) -> button_locator().
+% Application style 1:
+get_button_locator( _Enum=0, _AppStyle=1 ) ->
+	% button_ai / button A, bottom
+	{ _Channel=1, _Pos=bottom };
 
-get_button_designator( _Enum=2 ) ->
-	button_bi; % Button B, bottom
+get_button_locator( _Enum=1, _AppStyle=1 ) ->
+	% button_ao / button A, top
+	{ _Channel=1, _Pos=top };
 
-get_button_designator( _Enum=3 ) ->
-	button_bo. % Button B, top
+get_button_locator( _Enum=2, _AppStyle=1 ) ->
+	% button_bi / button B, bottom
+	{ _Channel=2, _Pos=bottom };
+
+get_button_locator( _Enum=3, _AppStyle=1 ) ->
+	% button_bo / button B, top
+	{ _Channel=2, _Pos=top };
+
+
+% Application style 2; checked from the actual readings from a Nodon CRC-2-6-04
+% (EEP F6-02-02):
+%
+get_button_locator( _Enum=0, _AppStyle=2 ) ->
+	% button_ai / button A, top
+	%{ _Channel=1, _Pos=top };
+	{ _Channel=2, _Pos=bottom };
+
+get_button_locator( _Enum=1, _AppStyle=2 ) ->
+	% button_ao / button A, bottom
+	%{ _Channel=1, _Pos=bottom };
+	{ _Channel=2, _Pos=top };
+
+get_button_locator( _Enum=2, _AppStyle=2 ) ->
+	% button_bi / button B, top
+	%{ _Channel=2, _Pos=top };
+	{ _Channel=1, _Pos=bottom };
+
+get_button_locator( _Enum=3, _AppStyle=2 ) ->
+	% button_bo / button B, bottom
+	%{ _Channel=2, _Pos=bottom }.
+	{ _Channel=1, _Pos=top }.
 
 
 
 -doc "Returns the enumeration of the designated button.".
--spec get_designated_button_enum( button_designator() ) -> enum().
-get_designated_button_enum( _Des=button_ai ) ->
+-spec get_designated_button_enum( button_designator(), application_style() ) ->
+										enum().
+get_designated_button_enum( _Des=button_ai, _AppStyle=1 ) ->
 	0; % Button A, bottom
 
-get_designated_button_enum( _Des=button_ao ) ->
+get_designated_button_enum( _Des=button_ao, _AppStyle=1 ) ->
 	1; % Button A, top
 
-get_designated_button_enum( _Des=button_bi ) ->
+get_designated_button_enum( _Des=button_bi, _AppStyle=1 ) ->
 	2; % Button B, bottom
 
-get_designated_button_enum( _Des=button_bo ) ->
+get_designated_button_enum( _Des=button_bo, _AppStyle=1 ) ->
+	3; % Button B, top
+
+get_designated_button_enum( _Des=button_ao, _AppStyle=2 ) ->
+	0; % Button A, bottom
+
+get_designated_button_enum( _Des=button_ai, _AppStyle=2 ) ->
+	1; % Button A, top
+
+get_designated_button_enum( _Des=button_bo, _AppStyle=2 ) ->
+	2; % Button B, bottom
+
+get_designated_button_enum( _Des=button_bi, _AppStyle=2 ) ->
 	3. % Button B, top
+
+
+
+-doc "Returns the enumeration corresponding to the specified button.".
+-spec get_located_button_enum( button_locator(), application_style() ) ->
+													enum().
+% Application Style 1: O is top.
+get_located_button_enum( _Loc={ _Channel=1, _Pos=top }, _AppStyle=1 ) ->
+	1;
+
+get_located_button_enum( _Loc={ _Channel=1, _Pos=bottom }, _AppStyle=1 ) ->
+	0;
+
+get_located_button_enum( _Loc={ _Channel=2, _Pos=top },  _AppStyle=1 ) ->
+	3;
+
+get_located_button_enum( _Loc={ _Channel=2, _Pos=bottom }, _AppStyle=1 ) ->
+	2;
+
+% Application Style 2: I is bottom.
+%
+% Updated after the actual readings from a Nodon CRC-2-6-04:
+get_located_button_enum( _Loc={ _Channel=1, _Pos=top }, _AppStyle=2 ) ->
+	0;
+
+get_located_button_enum( _Loc={ _Channel=1, _Pos=bottom }, _AppStyle=2 ) ->
+	1;
+
+get_located_button_enum( _Loc={ _Channel=2, _Pos=top }, _AppStyle=2 ) ->
+	2;
+
+get_located_button_enum( _Loc={ _Channel=2, _Pos=bottom }, _AppStyle=2 ) ->
+	3.
+
 
 
 
@@ -4504,6 +4698,22 @@ button_designator_to_string( button_bi ) ->
 	"bottom B button";
 
 button_designator_to_string( button_bo ) ->
+	"top B button".
+
+
+
+-doc "Returns a textual description of the located button.".
+-spec button_locator_to_string( button_locator() ) -> ustring().
+button_locator_to_string( { _Channel=1, _Pos=bottom } ) ->
+	"bottom A button";
+
+button_locator_to_string( { _Channel=1, _Pos=top } ) ->
+	"top A button";
+
+button_locator_to_string( { _Channel=2, _Pos=bottom } ) ->
+	"bottom B button";
+
+button_locator_to_string( { _Channel=2, _Pos=top } ) ->
 	"top B button".
 
 
@@ -5207,7 +5417,8 @@ decode_vld_smart_plug_with_metering_packet(
 		trace_bridge:debug_fmt(
 			"Decoding a VLD smart plug with metering packet "
 			"for command '~ts' (~B); sender is ~ts, ~ts.",
-			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
+			[ MaybeCmd, CmdAsInt,
+			  get_best_naming( MaybeDeviceName, SenderEurid ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 			] ),
 		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
@@ -5551,7 +5762,7 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 	cond_utils:if_defined( oceanic_debug_activity,
 		trace_bridge:debug_fmt( "Setting an automatic timer for ~ts, "
 			"for a duration of ~ts.", [ eurid_to_string( Eurid ),
-				timer_utils:duration_to_string( NextDelayMs ) ] ) ),
+				time_utils:duration_to_string( NextDelayMs ) ] ) ),
 
 	{ ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
 	TimerRef;
@@ -5733,6 +5944,15 @@ resolve_eep( EepTriplet ) ->
 	end.
 
 
+-doc "Returns the application style corresponding to the specified EEP.".
+-spec get_app_style_from_eep( eep_id() ) -> application_style().
+get_app_style_from_eep( _EEPId=double_rocker_switch_style_1 ) ->
+	1;
+
+get_app_style_from_eep( _EEPId=double_rocker_switch_style_2 ) ->
+	2.
+
+
 
 -doc "Returns a raw, (plain) textual description of the specified EURID.".
 -spec eurid_to_string( eurid() ) -> ustring().
@@ -5821,6 +6041,14 @@ eurid_to_bin_string( Eurid, #oceanic_state{ device_table=DeviceTable } ) ->
 			get_best_bin_naming( MaybeName, Eurid )
 
 	end.
+
+
+
+-doc "Returns a textual description of the specified button reference.".
+-spec button_ref_to_string( button_ref() ) -> ustring().
+button_ref_to_string( _ButRef={ Eurid, Channel } ) ->
+	text_utils:format( "button #~B of device of EURID ~ts",
+					   [ Channel, eurid_to_string( Eurid ) ] ).
 
 
 
@@ -6241,16 +6469,16 @@ device_event_to_string( #double_rocker_switch_event{
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
 		security_level=MaybeSecLvl,
-		first_action_button=FirstButtonDesignator,
+		first_action_button=FirstButtonLocator,
 		energy_bow=ButtonTransition,
-		second_action_button=SecondButtonDesignator,
+		second_action_button=SecondButtonLocator,
 		second_action_valid=IsValid } ) ->
 
 	%% SecondStr = case IsValid of
 
 	%%	true ->
 	%%		text_utils:format( " and its ~ts",
-	%%			[ button_designator_to_string( SecondButtonDesignator ) ] );
+	%%			[ button_locator_to_string( SecondButtonLocator ) ] );
 
 	%%	false ->
 	%%		""
@@ -6268,12 +6496,12 @@ device_event_to_string( #double_rocker_switch_event{
 				"not "
 
 		   end ++ "valid",
-				[ button_designator_to_string( SecondButtonDesignator ) ] ),
+				[ button_locator_to_string( SecondButtonLocator ) ] ),
 
 	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
 		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
-		  button_designator_to_string( FirstButtonDesignator ),
+		  button_locator_to_string( FirstButtonLocator ),
 		  get_button_transition_description( ButtonTransition ),
 		  SecondStr,
 		  time_utils:timestamp_to_string( Timestamp ),
@@ -6302,7 +6530,10 @@ device_event_to_string( #double_rocker_multipress_event{
 			"an unknown number of buttons (abnormal)";
 
 		none ->
-			"no button";
+			% According to the spec: "no button"; yet in practice, clearer
+			% (notably when they are released):
+			%
+			"all buttons";
 
 		three_or_four ->
 			"3 or 4 buttons"
@@ -6468,16 +6699,16 @@ device_event_to_short_string( #double_rocker_switch_event{
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
-		first_action_button=FirstButtonDesignator,
+		first_action_button=FirstButtonLocator,
 		energy_bow=ButtonTransition,
-		second_action_button=SecondButtonDesignator,
+		second_action_button=SecondButtonLocator,
 		second_action_valid=IsValid } ) ->
 
 	%% SecondStr = case IsValid of
 
 	%%	true ->
 	%%		text_utils:format( " and its ~ts",
-	%%			[ button_designator_to_string( SecondButtonDesignator ) ] );
+	%%			[ button_locator_to_string( SecondButtonLocator ) ] );
 
 	%%	false ->
 	%%		""
@@ -6495,12 +6726,12 @@ device_event_to_short_string( #double_rocker_switch_event{
 				"not "
 
 		   end ++ "valid",
-				[ button_designator_to_string( SecondButtonDesignator ) ] ),
+				[ button_locator_to_string( SecondButtonLocator ) ] ),
 
 	text_utils:format( "The double-rocker device ~ts has its ~ts ~ts, "
 		"whereas its second action ~ts; ~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ),
-		  button_designator_to_string( FirstButtonDesignator ),
+		  button_locator_to_string( FirstButtonLocator ),
 		  get_button_transition_description( ButtonTransition ),
 		  SecondStr,
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -7025,6 +7256,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
 -spec get_device_description( enocean_device() ) -> device_description().
 get_device_description( Device ) ->
 	text_utils:string_to_binary( device_to_string( Device ) ).
+
 
 
 
