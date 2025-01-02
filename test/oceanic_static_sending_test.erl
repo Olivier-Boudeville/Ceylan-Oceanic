@@ -115,6 +115,7 @@ actual_test( TtyPath ) ->
 	%SourceEurid = oceanic:string_to_eurid( "ffa2df00" ),
 	%SourceEurid = oceanic:string_to_eurid( "fea2df00" ),
 
+	SourceAppStyle = 1,
 
 	% We create a device for the source, so that we can decode by ourselves the
 	% telegram that we will forge (in order to check its generation):
@@ -136,10 +137,10 @@ actual_test( TtyPath ) ->
 	% Any given target device, typically a smart plug, must have already learnt
 	% the Oceanic gateway for this test to act on it. Note that two kinds of
 	% learnings may have been done: either as a simple button or as a double
-	% rocker (we recommend that setting); depending on that the telegrams sent
+	% rocker (we recommend that setting); depending on that, the telegrams sent
 	% by Oceanic will be interpreted differently (e.g. in the former case,
 	% either run of this test will toggle the plug, whereas in the latter case
-	% the plug will be switched on then off at each test execution.
+	% the plug will be switched on then off at each test execution).
 
 	% These two buttons are actually considered independently, and for a test
 	% where the emitter is registered only by pressing one of the buttons
@@ -147,8 +148,13 @@ actual_test( TtyPath ) ->
 	% rocker), the "on" one has no special interest, only the "off" one is taken
 	% account by the target device, a (double-rocker) switch.
 
-	SwitchOnButton = button_ao,
-	SwitchOffButton = button_ai,
+	ButtonChannel = 1,
+
+	SwitchOnButtonPos = top,
+	SwitchOffButtonPos = bottom,
+
+	SwitchOnButtonLoc = { ButtonChannel, SwitchOnButtonPos },
+	SwitchOffButtonLoc = { ButtonChannel, SwitchOffButtonPos },
 
 	% We first encode all telegrams of interest, so that we can send them
 	% afterwards as wanted and in any order:
@@ -164,22 +170,27 @@ actual_test( TtyPath ) ->
 	% broadcast transmission); its EEP is double_rocker_switch (F6-02-01):
 	%
 	PressOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, MaybeTargetEurid, SwitchOnButton, pressed ),
+		SourceEurid, SourceAppStyle, SwitchOnButtonLoc, pressed,
+		MaybeTargetEurid ),
+
 
 	ReleaseOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, MaybeTargetEurid, SwitchOnButton, released ),
+		SourceEurid, SourceAppStyle, SwitchOnButtonLoc, released,
+		MaybeTargetEurid ),
 
 
 	PressOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, MaybeTargetEurid, SwitchOffButton, pressed ),
+		SourceEurid, SourceAppStyle, SwitchOffButtonLoc, pressed,
+		MaybeTargetEurid ),
 
 	ReleaseOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, MaybeTargetEurid, SwitchOffButton, released ),
+		SourceEurid, SourceAppStyle, SwitchOffButtonLoc,
+		released, MaybeTargetEurid ),
 
 	SwitchTelegrams = [ PressOnButtonTelegram, ReleaseOnButtonTelegram,
 						PressOffButtonTelegram, ReleaseOffButtonTelegram ],
 
-	basic_utils:ignore_unused( SwitchTelegrams ),
+	basic_utils:ignore_unused( [ SourceAppStyle, SwitchTelegrams ] ),
 
 	DecodeStr = case oceanic:decode_telegram( PressOffButtonTelegram,
 											  OcSrvPid ) of
@@ -220,8 +231,9 @@ actual_test( TtyPath ) ->
 	% switch it on temporarily (for one second); we have to:
 
 	test_facilities:display( "First we press (and then also release) the "
-		"'switch on' button, '~ts' (which must have already been learnt), "
-		"typically in order to switch on a lamp.", [ SwitchOnButton ] ),
+		"channel ~B 'switch on' button, '~ts' "
+		"(which must have already been learnt), typically in order "
+		"to switch on a lamp.", [ ButtonChannel, SwitchOnButtonPos ] ),
 
 	% The actual switching on depends on both telegrams:
 	oceanic:send( PressOnButtonTelegram, OcSrvPid ),
@@ -230,8 +242,9 @@ actual_test( TtyPath ) ->
 
 
 	test_facilities:display( "Then, after a short waiting, we press "
-		"(and then release) the 'switch off' button, '~ts', typically "
-		"to switch off the lamp.", [ SwitchOffButton ] ),
+		"(and then release) the channel ~B 'switch off' button, '~ts', "
+		"typically to switch off the lamp.",
+		[ ButtonChannel, SwitchOffButtonPos ] ),
 
 	timer:sleep( 1000 ),
 
