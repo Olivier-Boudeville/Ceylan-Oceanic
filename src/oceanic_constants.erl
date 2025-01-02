@@ -357,8 +357,9 @@ get_maybe_eep_topic_specs() ->
 		% Single button:
 		{ push_button, "F6-01-01" },
 
-		% Two rockers:
-		{ double_rocker_switch, "F6-02-01" },
+		% Two rockers (they differ in terms of application style):
+		{ double_rocker_switch_style_1, "F6-02-01" },
+		{ double_rocker_switch_style_2, "F6-02-02" },
 
 		% Contacts:
 		{ single_input_contact, "D5-00-01" },
