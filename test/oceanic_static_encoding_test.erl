@@ -51,7 +51,7 @@ run() ->
 
 	% Hence never released:
 	Telegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
-		_SourceAppStyle=1, _ButtonChannel=1, _ButtonPos=up,
+		_SourceAppStyle=1, _ButtonLoc={ _Channel=1, _ButtonPos=top },
 		_ButtonTransition=pressed, _MaybeTargetEurid=undefined ),
 
 	test_facilities:display( "Generated following telegram for double-rocker: "
