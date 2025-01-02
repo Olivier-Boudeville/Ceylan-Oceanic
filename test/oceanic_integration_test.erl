@@ -88,6 +88,17 @@ wait_for_test_events( Count, OcSrvPid ) ->
 
 	receive
 
+		{ onEnoceanConfiguredDeviceFirstSeen,
+						[ Event, _BackOnlineInfo, OcSrvPid ] } ->
+
+			test_facilities:display( "Test received at ~ts the following "
+				"first-seen device event: ~ts.",
+				[ time_utils:get_textual_timestamp(),
+				  oceanic:device_event_to_string( Event ) ] ),
+
+			wait_for_test_events( Count-1, OcSrvPid );
+
+
 		{ onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, OcSrvPid ] } ->
 
 			test_facilities:display( "Test received at ~ts the following "
@@ -104,6 +115,14 @@ wait_for_test_events( Count, OcSrvPid ) ->
 				"detection from ~w (at ~B bytes per second).",
 				[ time_utils:get_textual_timestamp(), OcSrvPid,
 				  AlertTrafficLevel ] ),
+
+			wait_for_test_events( Count, OcSrvPid );
+
+
+		Other ->
+
+			test_facilities:display( "Received following unexpected (ignored) "
+									 "message:~n ~p", [ Other ] ),
 
 			wait_for_test_events( Count, OcSrvPid )
 
