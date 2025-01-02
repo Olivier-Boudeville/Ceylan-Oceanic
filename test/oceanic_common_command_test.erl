@@ -79,6 +79,10 @@ actual_test( TtyPath ) ->
 
 	OcSrvPid = oceanic:start_link( TtyPath ),
 
+	ReadBaseEurid = oceanic:get_oceanic_eurid( OcSrvPid ),
+	test_facilities:display( "Read (emitter) base EURID: ~ts.",
+							 [ oceanic:eurid_to_string( ReadBaseEurid ) ] ),
+
 	ReadResp = oceanic:read_version( OcSrvPid ),
 	test_facilities:display( "Read version: ~ts.",
 							 [ oceanic:device_event_to_string( ReadResp ) ] ),
