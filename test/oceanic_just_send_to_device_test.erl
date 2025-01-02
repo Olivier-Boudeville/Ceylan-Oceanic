@@ -42,12 +42,11 @@ performs no actual encoding.
 -export([ run/0 ]).
 
 % Silencing if unused:
--export([ replay_telegrams/1, replay_telegrams_for_green_switch/1,
+-export([ replay_telegrams/1, replay_telegrams_for_eltako_smart_plug/1,
 		  replay_telegrams_for_white_switch/1,
 
-		  emit_forged_telegrams_for_green_switch/1
-		  %emit_forged_telegrams_for_white_switch/1
-		]).
+		  emit_forged_telegrams/1,
+		  emit_forged_telegrams_for_eltako_smart_plug/1 ]).
 
 
 % For the enocean_device record:
@@ -59,10 +58,10 @@ performs no actual encoding.
 -type device_path() :: file_utils:device_path().
 
 
-% This Eltako smart plug can learn a new device by pressing a relatively long
-% time (a bit more than 1 second) its left button (fixed LED lights up), then
-% pressing (shortly) its right (LED blinks), until a telegram is received (then
-% LED turns off).
+% The tested Eltako smart plug can learn a new device by pressing a relatively
+% long time (a bit more than 1 second) its left button (fixed LED lights up),
+% then pressing (shortly) its right (LED blinks), until a telegram is received
+% (then LED turns off).
 
 
 
@@ -71,16 +70,20 @@ These telegrams were captured verbatim by oceanic_just_record_device_test.
 """.
 -spec replay_telegrams( pid() ) -> void().
 replay_telegrams( SerialPid ) ->
-	replay_telegrams_for_green_switch( SerialPid ).
+	replay_telegrams_for_eltako_smart_plug( SerialPid ).
 	%replay_telegrams_for_white_switch( SerialPid ).
 
 
 
--doc "Replays telegrams for the green switch.".
--spec replay_telegrams_for_green_switch( pid() ) -> void().
-replay_telegrams_for_green_switch( SerialPid ) ->
+-doc "Replays telegrams for the Eltako smart plug.".
+-spec replay_telegrams_for_eltako_smart_plug( pid() ) -> void().
+replay_telegrams_for_eltako_smart_plug( SerialPid ) ->
 
-	test_facilities:display( "Testing the behaviour of the green switch." ),
+	% Was previously driven by a green (simple) switch, now with the white O2
+	% Line (double) switch.
+
+	test_facilities:display(
+		"Testing the behaviour of the Eltako smart plug." ),
 
 	% Defining first the telegrams to emit of interest:
 	%
@@ -112,8 +115,9 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 		BottomButtonReleasedTelegram ] ),
 
 
-	% What we found out, once this (unique) rocker has been learnt by the Eltako
-	% smart plug (by pressing once its top button when in learn mode):
+	% What we found out, once this (unique) (green switch) rocker has been
+	% learnt by the Eltako smart plug (by pressing once its top button when in
+	% learn mode):
 	%
 	% - from an initially switched off plug:
 	%   * just sending A (any number of times) will not trigger anything
@@ -137,7 +141,7 @@ replay_telegrams_for_green_switch( SerialPid ) ->
 	% sending A then B are sent, then C then D.
 	%
 	% Nevertheless if we play this scenario, we see a different outcome than
-	% with the actuial switch: each run of it will toggle (on/off) the lamp once
+	% with the actual switch: each run of it will toggle (on/off) the lamp once
 	% (not twice, as expected); we also notice that the actual switch trigger
 	% happens when C is processed.
 	%
@@ -227,6 +231,7 @@ replay_telegrams_for_white_switch( SerialPid ) ->
 	%
 	ReleaseTelegram1 =
 		<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,65,0,9>>,
+
 	SerialPid ! { send, ReleaseTelegram1 },
 
 
@@ -250,27 +255,32 @@ replay_telegrams_for_white_switch( SerialPid ) ->
 
 -spec emit_forged_telegrams( pid() ) -> void().
 emit_forged_telegrams( SerialPid ) ->
-	emit_forged_telegrams_for_green_switch( SerialPid ).
+	emit_forged_telegrams_for_eltako_smart_plug( SerialPid ).
 
 
--spec emit_forged_telegrams_for_green_switch( pid() ) -> void().
-emit_forged_telegrams_for_green_switch( SerialPid ) ->
+-spec emit_forged_telegrams_for_eltako_smart_plug( pid() ) -> void().
+emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 
 	% If trying to impersonate directly a device of interest (e.g. my green
 	% switch, expected to have already been learnt by the actuator), despite the
 	% USB dongle having a different base ID (anyway the protocol will not be
 	% fooled only by matching source EURIDs):
 	%
-	%SourceEuridStr = "002ef196",
-	SourceEuridStr = "AAAAAAAA",
+	%SourceEuridStr = "002e0000",
 
 	% If using our true own base EURID (as read from the USB dongle through a
 	% Common Command) - thus requiring the actual actuator to have learnt
 	% specifically that base EURID:
 	%
-	%SourceEuridStr = "...", % edited
+	% Note that if the following bogus EURID is replaced with the actual one of
+	% our Enocean gateway, then the smart plug is expected to be switched on
+	% then off (otherwise, if using a bogus EURID, nothing is expected to
+	% happen):
+	%
+	SourceEuridStr = "ffa20000",
 
 	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
+
 
 	% We create a device for the source, so that we can decode by ourselves the
 	% telegram that we will forge (in order to check its generation):
@@ -286,44 +296,68 @@ emit_forged_telegrams_for_green_switch( SerialPid ) ->
 	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
 	TargetEurid = oceanic:get_broadcast_eurid(),
+	%TargetEurid = oceanic:string_to_eurid( "050E2000" ),
+
 	TargetEuridStr = "all (broadcast)",
 
-	TopButton = button_ao,
-	BottomButton = button_ai,
+	SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
 
-	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr,
-								 TopButton, BottomButton ] ),
+	% We designate the left rocker button:
+	ButtonChannel = 1,
+	%ButtonChannel = 2,
 
-	% Double-rocker device has its top A button
-	% pressed, based on with a single subtelegram, targeted to the address for
-	% broadcast transmission, best RSSI value being -68 dBm; security level:
-	% telegram not processed; its EEP is double_rocker_switch (F6-02-01):
+	% We designate its top button position:
+	FirstButtonPos = top,
+	%FirstButtonPos = bottom,
+
+	FirstButtonLoc = { ButtonChannel, FirstButtonPos },
+
+	SecondButtonPos = bottom,
+	%SecondButtonPos = top,
+
+	SecondButtonLoc = { ButtonChannel, SecondButtonPos },
+
+
+	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr, SourceAppStyle,
+		ButtonChannel, FirstButtonPos, SecondButtonPos,
+		FirstButtonLoc, SecondButtonLoc ] ),
+
+	% Double-rocker device has its top A button pressed, based on with a single
+	% subtelegram, targeted to the address for broadcast transmission, best RSSI
+	% value being -68 dBm; security level: telegram not processed; its EEP is
+	% double_rocker_switch_style_1 (F6-02-01):
 	%
 	TopButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, TargetEurid, TopButton, pressed ),
+		SourceEurid, SourceAppStyle, FirstButtonLoc, pressed, TargetEurid ),
+
 
 	TopButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, TargetEurid, TopButton, released ),
+		SourceEurid, SourceAppStyle, FirstButtonLoc, released, TargetEurid ),
 
+
+	% Now the bottom button:
 	BottomButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, TargetEurid, BottomButton, pressed ),
+		SourceEurid, SourceAppStyle, SecondButtonLoc, pressed, TargetEurid ),
 
 	BottomButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, TargetEurid, BottomButton, released ),
+		SourceEurid, SourceAppStyle, SecondButtonLoc, released,	TargetEurid ),
+
 
 	% Rather than saying that a button was released, we tell that no button is
 	% pressed:
 	%
 	AllButtonReleasedTelegram =
 		oceanic:encode_double_rocker_multipress_telegram( SourceEurid,
-			TargetEurid, _ButtonCounting=none, released ),
+			_ButtonCounting=none, released, TargetEurid ),
+
 
 	basic_utils:ignore_unused( [ TopButtonPressedTelegram,
 		TopButtonReleasedTelegram, BottomButtonPressedTelegram,
 		BottomButtonReleasedTelegram, AllButtonReleasedTelegram ] ),
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker top "
-		"button pressed following ~ts.", [ SourceEuridStr, TargetEuridStr,
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+		"channel ~B ~ts button pressed following ~ts.",
+		[ SourceEuridStr, TargetEuridStr, ButtonChannel, FirstButtonPos,
 			oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),
 	SerialPid ! { send, TopButtonPressedTelegram },
 
@@ -336,7 +370,8 @@ emit_forged_telegrams_for_green_switch( SerialPid ) ->
 	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
 	%SerialPid ! { send, TopButtonReleasedTelegram },
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+		"all buttons released following ~ts.",
 		[ SourceEuridStr, TargetEuridStr,
 		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
 	SerialPid ! { send, AllButtonReleasedTelegram },
