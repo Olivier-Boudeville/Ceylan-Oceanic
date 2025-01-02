@@ -343,13 +343,17 @@
 
 
 
-% Event sent in the context of EEP F6-02-01: "Light and Blind Control -
-% Application Style 1".
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1") and EEP F6-02-02 ("Light and Blind Control - Application
+% Style 2").
 %
-% There are two rockers, A and B, each to be understood as corresponding to two
-% buttons (I and O), altough they cannot be pressed simultaneously.
+% There are two rockers, A and B (channel 1 and 2), each to be understood as
+% corresponding to two buttons (I and O) - although they cannot be pressed
+% simultaneously.
 %
-% Here I corresponds to a bottom position, and O to a top one.
+% For application style:
+%  - 1: I corresponds to a bottom position, and O to a top one
+%  - 2: I corresponds to a top position, and O to a bottom one
 %
 % So there is AI and AO, and BI and BO.
 %
@@ -396,25 +400,28 @@
 
 	% Section specific to these events:
 
+	% Depends on the precise EEP (1 for F6-02-01, 2 for F6-02-02):
+	application_style :: oceanic:application_style(),
+
 	% The button referenced by the first action:
-	first_action_button :: oceanic:button_designator(),
+	first_action_button :: oceanic:button_locator(),
 
 	% Whether the button referenced by the first action is pressed or released:
 	energy_bow :: oceanic:button_transition(),
 
 	% The button referenced by the second action (if any):
-	second_action_button :: oceanic:button_designator(),
+	second_action_button :: oceanic:button_locator(),
 
 	% Whether there is a second action reported:
 	second_action_valid :: boolean() } ).
 
 
 
-% Event sent in the context of EEP F6-02-01: "Light and Blind Control -
-% Application Style 1".
+% Event sent in the context of EEP F6-02-01 or F6-02-02: "Light and Blind
+% Control - Application Style 1 or 2".
 %
-% This event whether or not there are 3 or 4 buttons that are either pressed or
-% released.
+% This event tells whether or not there are 3 or 4 buttons that are either
+% pressed or released.
 %
 % Refer to [EEP-spec] p.16 for further details.
 %
