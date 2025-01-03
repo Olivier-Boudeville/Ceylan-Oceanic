@@ -83,6 +83,8 @@ through an Oceanic server**.
 
 	get_app_style_from_eep/1,
 
+	interpret_button_ref_spec/1, interpret_button_ref_specs/1,
+
 	button_designator_to_string/1, button_locator_to_string/1,
 
 	eurid_to_string/1, eurid_to_short_string/1,
@@ -97,7 +99,7 @@ through an Oceanic server**.
 % Event-related API, to achieve some kind of polymorphism on the corresponding
 % records:
 %
--export([ get_source_eurid/1,
+-export([ get_source_eurid/1, get_channel/1,
 		  get_maybe_device_name/1, get_best_device_name_from/1,
 		  get_maybe_eep/1,
 		  get_timestamp/1, get_last_seen_info/1,
@@ -417,11 +419,20 @@ corresponds to channel A, 2 to channel B, etc.
 
 A single rocker uses only a channel, A.
 """.
--type channel() :: uint8().
+-type channel() :: pos_integer(). % rather than uint8().
 
 
 -doc "Tells which channel(s) should be taught.".
 -type channel_taught() :: channel() | 'all'.
+
+
+
+-doc """
+Specification of the identifier of a button, from the EURID of its device
+(e.g. a double rocker) as a string, and its own channel (e.g. 2 to designate any
+"button B").
+""".
+-type button_ref_spec() :: { eurid_string(), channel() }.
 
 
 -doc """
@@ -1054,7 +1065,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   subtelegram_count/0, dbm/0, security_level/0,
 			   communication_direction/0, teach_request_type/0, teach_outcome/0,
-			   channel/0, channel_taught/0, button_ref/0, manufacturer_id/0,
+			   channel/0, channel_taught/0,
+			   button_ref_spec/0, button_ref/0,
+			   manufacturer_id/0,
 
 			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
 			   discovery_origin/0, enum/0,
@@ -5954,6 +5967,35 @@ get_app_style_from_eep( _EEPId=double_rocker_switch_style_2 ) ->
 
 
 
+-doc """
+Checks that the specified term is the specification of a button reference.
+
+If yes, returns the corresponding button reference.
+If no, throws an exception.
+""".
+-spec interpret_button_ref_spec( term() ) -> button_ref().
+interpret_button_ref_spec( { EuridStr, Channel } ) when is_integer( Channel )
+														andalso Channel > 0 ->
+	{ string_to_eurid( EuridStr ), Channel };
+
+interpret_button_ref_spec( Other ) ->
+	throw( { invalid_button_ref_spec, Other } ).
+
+
+
+-doc """
+Checks that the specified term is a list of specifications of button references.
+
+If yes, returns the corresponding button references (same order).
+If no, throws an exception.
+""".
+-spec interpret_button_ref_specs( term() ) -> [ button_ref() ].
+interpret_button_ref_specs( ButRefSpecs ) ->
+	[ interpret_button_ref_spec( BRS ) || BRS <- ButRefSpecs ].
+
+
+
+
 -doc "Returns a raw, (plain) textual description of the specified EURID.".
 -spec eurid_to_string( eurid() ) -> ustring().
 eurid_to_string( _Eurid=?eurid_broadcast ) ->
@@ -6120,6 +6162,24 @@ get_source_eurid( DevEventTuple ) ->
 
 
 -doc """
+Returns any channel referenced by the emitting device stored in the specified
+device event.
+
+For a single rocker, returns channel 1.
+""".
+-spec get_channel( device_event() ) -> channel().
+get_channel( #push_button_event{} ) ->
+	1;
+
+% For multiple-rockers, only the first button reported is considered:
+get_channel( #double_rocker_switch_event{
+				first_action_button={ Channel, _Pos } } ) ->
+	Channel.
+
+
+
+
+-doc """
 Returns the emitting device name (if any) stored in the specified device event.
 """.
 -spec get_maybe_device_name( device_event() ) -> option( device_name() ).
@@ -6227,6 +6287,7 @@ device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
 
 device_triggered( _DevEventTuple ) ->
 	false.
+
 
 
 
