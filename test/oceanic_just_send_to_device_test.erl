@@ -46,7 +46,8 @@ performs no actual encoding.
 		  replay_telegrams_for_white_switch/1,
 
 		  emit_forged_telegrams/1,
-		  emit_forged_telegrams_for_eltako_smart_plug/1 ]).
+		  emit_forged_telegrams_for_eltako_smart_plug/2,
+		  emit_forged_telegrams_for_nodon_smart_plug/2 ]).
 
 
 % For the enocean_device record:
@@ -56,6 +57,8 @@ performs no actual encoding.
 % Type shorthands:
 
 -type device_path() :: file_utils:device_path().
+
+-type eurid_string() :: oceanic:eurid_string().
 
 
 % The tested Eltako smart plug can learn a new device by pressing a relatively
@@ -255,11 +258,6 @@ replay_telegrams_for_white_switch( SerialPid ) ->
 
 -spec emit_forged_telegrams( pid() ) -> void().
 emit_forged_telegrams( SerialPid ) ->
-	emit_forged_telegrams_for_eltako_smart_plug( SerialPid ).
-
-
--spec emit_forged_telegrams_for_eltako_smart_plug( pid() ) -> void().
-emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 
 	% If trying to impersonate directly a device of interest (e.g. my green
 	% switch, expected to have already been learnt by the actuator), despite the
@@ -277,7 +275,22 @@ emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 	% then off (otherwise, if using a bogus EURID, nothing is expected to
 	% happen):
 	%
+	% WARNING: this EURID is bogus and thus this test, if not modified, will NOT
+	% trigger anything:
+	%
 	SourceEuridStr = "ffa20000",
+
+	emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ).
+	%emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ).
+
+
+
+-spec emit_forged_telegrams_for_eltako_smart_plug( eurid_string(),
+												   pid() ) -> void().
+emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
+
+	test_facilities:display(
+		"Emitting forged telegrams for Eltako smart plug." ),
 
 	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
@@ -296,7 +309,7 @@ emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
 	TargetEurid = oceanic:get_broadcast_eurid(),
-	%TargetEurid = oceanic:string_to_eurid( "050E2000" ),
+	%TargetEurid = oceanic:string_to_eurid( "050e2000" ),
 
 	TargetEuridStr = "all (broadcast)",
 
@@ -340,7 +353,7 @@ emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 		SourceEurid, SourceAppStyle, SecondButtonLoc, pressed, TargetEurid ),
 
 	BottomButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
-		SourceEurid, SourceAppStyle, SecondButtonLoc, released,	TargetEurid ),
+		SourceEurid, SourceAppStyle, SecondButtonLoc, released, TargetEurid ),
 
 
 	% Rather than saying that a button was released, we tell that no button is
@@ -394,6 +407,151 @@ emit_forged_telegrams_for_eltako_smart_plug( SerialPid ) ->
 	%   [ SourceEuridStr, TargetEuridStr,
 	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
 	% SerialPid ! { send, BottomButtonReleasedTelegram }.
+
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+	SerialPid ! { send, AllButtonReleasedTelegram },
+
+	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
+
+	% Trying to decode the telegram we just forged:
+	%{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+	%  _AnyNextChunk, _NewState } = oceanic:try_integrate_chunk( _ToSkipLen=0,
+	%       _MaybeAccChunk=undefined, Telegram, InitialTestState ),
+
+	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
+	%                         [ oceanic:device_event_to_string( Event ) ] ),
+
+	ok.
+
+
+
+
+-spec emit_forged_telegrams_for_nodon_smart_plug( eurid_string(),
+												  pid() ) -> void().
+emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ) ->
+
+	test_facilities:display(
+		"Emitting forged telegrams for Nodon smart plug." ),
+
+	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
+
+
+	% We create a device for the source, so that we can decode by ourselves the
+	% telegram that we will forge (in order to check its generation):
+
+	EepId = oceanic_generated:get_first_for_eep_strings( <<"F6-02-01">> ),
+
+	SourceDeviceRec = #enocean_device{ eurid=SourceEurid,
+									   name= <<"Test Source Device">>,
+									   eep=EepId,
+									   discovered_through=configuration,
+									   expected_periodicity=none },
+
+	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
+
+	%TargetEurid = oceanic:get_broadcast_eurid(),
+	%TargetEuridStr = "all (broadcast)",
+
+	TargetEurid = oceanic:string_to_eurid( "05936eb8" ),
+	TargetEuridStr = "Nodon metering plug",
+
+
+	SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
+
+	% We designate the right rocker button:
+	%ButtonChannel = 1,
+	ButtonChannel = 2,
+
+	% We designate its top button position:
+	FirstButtonPos = top,
+	%FirstButtonPos = bottom,
+
+	FirstButtonLoc = { ButtonChannel, FirstButtonPos },
+
+	SecondButtonPos = bottom,
+	%SecondButtonPos = top,
+
+	SecondButtonLoc = { ButtonChannel, SecondButtonPos },
+
+
+	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr, SourceAppStyle,
+		ButtonChannel, FirstButtonPos, SecondButtonPos,
+		FirstButtonLoc, SecondButtonLoc ] ),
+
+	% Double-rocker device has its top A button pressed, based on with a single
+	% subtelegram, targeted to the address for broadcast transmission, best RSSI
+	% value being -68 dBm; security level: telegram not processed; its EEP is
+	% double_rocker_switch_style_1 (F6-02-01):
+	%
+	TopButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, SourceAppStyle, FirstButtonLoc, pressed, TargetEurid ),
+
+
+	TopButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, SourceAppStyle, FirstButtonLoc, released, TargetEurid ),
+
+
+	% Now the bottom button:
+	BottomButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, SourceAppStyle, SecondButtonLoc, pressed, TargetEurid ),
+
+	BottomButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+		SourceEurid, SourceAppStyle, SecondButtonLoc, released, TargetEurid ),
+
+
+	% Rather than saying that a button was released, we tell that no button is
+	% pressed:
+	%
+	AllButtonReleasedTelegram =
+		oceanic:encode_double_rocker_multipress_telegram( SourceEurid,
+			_ButtonCounting=none, released, TargetEurid ),
+
+
+	basic_utils:ignore_unused( [ TopButtonPressedTelegram,
+		TopButtonReleasedTelegram, BottomButtonPressedTelegram,
+		BottomButtonReleasedTelegram, AllButtonReleasedTelegram ] ),
+
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+		"channel ~B ~ts button pressed following ~ts.",
+		[ SourceEuridStr, TargetEuridStr, ButtonChannel, FirstButtonPos,
+			oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),
+	SerialPid ! { send, TopButtonPressedTelegram },
+
+	% Sheer paranoia:
+	timer:sleep( 200 ),
+
+	%test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+	%   "top button released following ~ts.",
+	%   [ SourceEuridStr, TargetEuridStr,
+	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
+	%SerialPid ! { send, TopButtonReleasedTelegram },
+
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+		"all buttons released following ~ts.",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+	SerialPid ! { send, AllButtonReleasedTelegram },
+
+
+	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
+
+
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker bottom "
+		"button pressed following ~ts.",
+		[ SourceEuridStr, TargetEuridStr,
+		  oceanic:telegram_to_string( BottomButtonPressedTelegram ) ] ),
+	SerialPid ! { send, BottomButtonPressedTelegram },
+
+	% Sheer paranoia:
+	timer:sleep( 200 ),
+
+	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
+	   "bottom button released following ~ts.",
+	   [ SourceEuridStr, TargetEuridStr,
+		 oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
+	SerialPid ! { send, BottomButtonReleasedTelegram },
 
 	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
 		[ SourceEuridStr, TargetEuridStr,
