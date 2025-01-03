@@ -876,7 +876,7 @@ Another approach is to enable and manage state feedback / status return through 
 .. _`main test actuator`:
 
 
-Eltako Socket switching actuator FSSA
+Eltako Socket Switching Actuator FSSA
 _____________________________________
 
 
@@ -894,6 +894,20 @@ In practice, in addition to the documentation, we found clearer to respect the f
 Afterwards, the LED will blink once a telegram of a learnt device is received (whether or not this specified action has been learnt).
 
 As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting" mode.
+
+
+
+Nodon Smart Plug
+________________
+
+
+These are ``ASP-2-1-00`` or ``ASP-2-1-01``.
+
+To learn a new controlling device, the (single) button of that plug shall be pushed for at least 3 seconds (its red LED starts to blink). The receiving of a telegram is supposed to grant the emitting device the right to control that plug.
+
+Note though that, when forging a telegram so that a USB dongle is to control that plug, our tests showed that the incoming telegram will not be taken into account for learning if its target EURID is the one of that plug; only using the broadcast EURID allowed the plug to learn the emitter from these telegrams.
+
+Afterwards, telegrams newly forged by the USB dongle were accepted and processed by the plug, whether they were broadcast or - better - targeting the specified EURID of that plug.
 
 
 
