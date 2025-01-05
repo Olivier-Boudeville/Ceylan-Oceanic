@@ -42,12 +42,12 @@ performs no actual encoding.
 -export([ run/0 ]).
 
 % Silencing if unused:
--export([ replay_telegrams/1, replay_telegrams_for_eltako_smart_plug/1,
-		  replay_telegrams_for_white_switch/1,
+-export([ replay_telegrams/1, replay_telegrams_for_eltako_smart_plug/3,
+		  replay_telegrams_for_white_switch/3,
 
 		  emit_forged_telegrams/1,
-		  emit_forged_telegrams_for_eltako_smart_plug/2,
-		  emit_forged_telegrams_for_nodon_smart_plug/2 ]).
+		  emit_forged_telegrams_for_eltako_smart_plug/5,
+		  emit_forged_telegrams_for_nodon_smart_plug/5 ]).
 
 
 % For the enocean_device record:
@@ -57,6 +57,8 @@ performs no actual encoding.
 % Type shorthands:
 
 -type device_path() :: file_utils:device_path().
+
+-type ms_duration() :: time_utils:ms_duration().
 
 -type eurid_string() :: oceanic:eurid_string().
 
@@ -73,14 +75,26 @@ These telegrams were captured verbatim by oceanic_just_record_device_test.
 """.
 -spec replay_telegrams( pid() ) -> void().
 replay_telegrams( SerialPid ) ->
-	replay_telegrams_for_eltako_smart_plug( SerialPid ).
-	%replay_telegrams_for_white_switch( SerialPid ).
+
+	% Duration between a switch on then off command:
+	InterCommandDuration = 2000,
+
+	% Duration between a press and its release-like telegram:
+	InterPressReleaseDuration = 500,
+
+	replay_telegrams_for_eltako_smart_plug( InterCommandDuration,
+		InterPressReleaseDuration, SerialPid ).
+
+	%replay_telegrams_for_white_switch( InterCommandDuration,
+	%    InterPressReleaseDuration, SerialPid ).
 
 
 
 -doc "Replays telegrams for the Eltako smart plug.".
--spec replay_telegrams_for_eltako_smart_plug( pid() ) -> void().
-replay_telegrams_for_eltako_smart_plug( SerialPid ) ->
+-spec replay_telegrams_for_eltako_smart_plug( ms_duration(), ms_duration(),
+											  pid() ) -> void().
+replay_telegrams_for_eltako_smart_plug( InterCommandDuration,
+		InterPressReleaseDuration, SerialPid ) ->
 
 	% Was previously driven by a green (simple) switch, now with the white O2
 	% Line (double) switch.
@@ -173,21 +187,21 @@ replay_telegrams_for_eltako_smart_plug( SerialPid ) ->
 	%SerialPid ! { send, TopButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
 	%test_facilities:display( "Emulating the top button of the green switch "
 	%  "being released." ),
 	%SerialPid ! { send, TopButtonReleasedTelegram },
 
 
-	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
+	test_facilities:display( "Pausing." ), timer:sleep( InterCommandDuration ),
 
 	test_facilities:display( "Emulating the bottom button of the green switch "
 		"being pressed." ),
 	SerialPid ! { send, BottomButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
 	test_facilities:display( "Emulating the bottom button of the green switch "
 		"being released." ),
@@ -202,8 +216,10 @@ replay_telegrams_for_eltako_smart_plug( SerialPid ) ->
 Replays telegrams for the white switch, once its left rocker has been learnt by
 the Eltako smart plug by pressing (once) its top button.
 """.
--spec replay_telegrams_for_white_switch( pid() ) -> void().
-replay_telegrams_for_white_switch( SerialPid ) ->
+-spec replay_telegrams_for_white_switch( ms_duration(), ms_duration(),
+										 pid() ) -> void().
+replay_telegrams_for_white_switch( InterCommandDuration,
+		_InterPressReleaseDuration, SerialPid ) ->
 
 	% Double-rocker device (whose EURID is 002ef196) has its top A button
 	% pressed, based on with a single subtelegram, targeted to the address for
@@ -224,7 +240,7 @@ replay_telegrams_for_white_switch( SerialPid ) ->
 
 	test_facilities:display( "Sending first release event." ),
 
-	timer:sleep( 1000 ),
+	timer:sleep( InterCommandDuration ),
 
 	% Double-rocker device (whose EURID is 002ef196) has no button released
 	% simultaneously, based on with a single subtelegram, targeted to the
@@ -275,22 +291,55 @@ emit_forged_telegrams( SerialPid ) ->
 	% then off (otherwise, if using a bogus EURID, nothing is expected to
 	% happen):
 	%
-	% WARNING: this EURID is bogus and thus this test, if not modified, will NOT
-	% trigger anything:
 	%
-	SourceEuridStr = "ffa20000",
+	% WARNING, this EURID is bogus and thus this test, if not modified to match
+	% the one of the USB dongle, will NOT trigger anything, on any plug:
+	%
+	%SourceEuridStr = "ffa20000",
+	SourceEuridStr = "ffa2df00",
 
-	emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ).
-	%emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ).
+	% Both seem to work identically:
+	PreferReleaseToMultipress = true,
+	%PreferReleaseToMultipress = false,
+
+	% Duration between a switch on then off command:
+	InterCommandDuration = 2000,
+
+	% Duration between a press and its release-like telegram:
+	%
+	% (does not seem to have an impact; maybe shorter yet non-null is a tad
+	% better)
+	%
+	%InterPressReleaseDuration = 500,
+	InterPressReleaseDuration = 50,
+
+	TargetPlug = eltako,
+	%TargetPlug = nodon,
+
+	case TargetPlug of
+
+		eltako ->
+			emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
+				InterCommandDuration, InterPressReleaseDuration,
+				PreferReleaseToMultipress, SerialPid );
+
+		nodon ->
+			emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr,
+				InterCommandDuration, InterPressReleaseDuration,
+				PreferReleaseToMultipress, SerialPid )
+
+	end.
 
 
 
 -spec emit_forged_telegrams_for_eltako_smart_plug( eurid_string(),
-												   pid() ) -> void().
-emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
+			ms_duration(), ms_duration(), boolean(), pid() ) -> void().
+emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
+		InterCommandDuration, InterPressReleaseDuration,
+		PreferReleaseToMultipress, SerialPid ) ->
 
-	test_facilities:display(
-		"Emitting forged telegrams for Eltako smart plug." ),
+	test_facilities:display( "Emitting forged telegrams for Eltako smart plug, "
+							 "expected to work as a rocker." ),
 
 	SourceEurid = oceanic:string_to_eurid( SourceEuridStr ),
 
@@ -306,12 +355,18 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
 									   discovered_through=configuration,
 									   expected_periodicity=none },
 
-	_InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
+	InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
+
+	% Both next target EURIDs will work the same; however, in some cases, the
+	% operation will systematically dysfunction (switches on, but never off
+	% afterwards):
 
 	TargetEurid = oceanic:get_broadcast_eurid(),
-	%TargetEurid = oceanic:string_to_eurid( "050e2000" ),
-
 	TargetEuridStr = "all (broadcast)",
+
+	%TargetEurid = oceanic:string_to_eurid( "050e2000" ),
+	%TargetEuridStr = "specific, random target",
+
 
 	SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
 
@@ -331,7 +386,8 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
 	SecondButtonLoc = { ButtonChannel, SecondButtonPos },
 
 
-	basic_utils:ignore_unused( [ TargetEurid, TargetEuridStr, SourceAppStyle,
+	basic_utils:ignore_unused( [ InitialDeviceTable,
+		TargetEurid, TargetEuridStr, SourceAppStyle,
 		ButtonChannel, FirstButtonPos, SecondButtonPos,
 		FirstButtonLoc, SecondButtonLoc ] ),
 
@@ -368,29 +424,47 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
 		TopButtonReleasedTelegram, BottomButtonPressedTelegram,
 		BottomButtonReleasedTelegram, AllButtonReleasedTelegram ] ),
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-		"channel ~B ~ts button pressed following ~ts.",
-		[ SourceEuridStr, TargetEuridStr, ButtonChannel, FirstButtonPos,
-			oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),
-	SerialPid ! { send, TopButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
-	%test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	%   "top button released following ~ts.",
-	%   [ SourceEuridStr, TargetEuridStr,
-	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	%SerialPid ! { send, TopButtonReleasedTelegram },
 
 	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-		"all buttons released following ~ts.",
+		"top button released following ~ts.",
 		[ SourceEuridStr, TargetEuridStr,
-		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
-	SerialPid ! { send, AllButtonReleasedTelegram },
+		  oceanic:telegram_to_string( TopButtonPressedTelegram ) ] ),
+
+	SerialPid ! { send, TopButtonPressedTelegram },
+
+	timer:sleep( InterPressReleaseDuration ),
 
 
-	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
+	TopReleaseLikeTelegram = case PreferReleaseToMultipress of
+
+		true ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"top button released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string(
+					TopButtonReleasedTelegram ) ] ),
+
+			TopButtonReleasedTelegram;
+
+		false ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"all buttons released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr,
+				  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+
+			AllButtonReleasedTelegram
+
+	end,
+
+	SerialPid ! { send, TopReleaseLikeTelegram },
+
+
+	test_facilities:display( "Pausing." ), timer:sleep( InterCommandDuration ),
 
 
 	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker bottom "
@@ -400,28 +474,46 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
 	SerialPid ! { send, BottomButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
-	% test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	%   "bottom button released following ~ts.",
-	%   [ SourceEuridStr, TargetEuridStr,
-	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	% SerialPid ! { send, BottomButtonReleasedTelegram }.
+	BottomReleaseLikeTelegram = case PreferReleaseToMultipress of
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
-		[ SourceEuridStr, TargetEuridStr,
-		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
-	SerialPid ! { send, AllButtonReleasedTelegram },
+		true ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"bottom button released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string(
+					BottomButtonReleasedTelegram ) ] ),
+			BottomButtonReleasedTelegram;
 
-	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
+
+		false ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"all buttons released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr,
+				  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+			AllButtonReleasedTelegram
+
+	end,
+
+	SerialPid ! { send, BottomReleaseLikeTelegram },
+
+	basic_utils:ignore_unused(
+		[ TopReleaseLikeTelegram, BottomReleaseLikeTelegram ] ),
+
+	InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
+
+	%TelegramToDecode = TopReleaseLikeTelegram,
+	TelegramToDecode = BottomReleaseLikeTelegram,
 
 	% Trying to decode the telegram we just forged:
-	%{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
-	%  _AnyNextChunk, _NewState } = oceanic:try_integrate_chunk( _ToSkipLen=0,
-	%       _MaybeAccChunk=undefined, Telegram, InitialTestState ),
+	{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+	  _AnyNextChunk, _NewState } = oceanic:try_integrate_chunk( _ToSkipLen=0,
+		   _MaybeAccChunk=undefined, TelegramToDecode, InitialTestState ),
 
-	%test_facilities:display( "Forged telegram corresponding to: ~ts.",
-	%                         [ oceanic:device_event_to_string( Event ) ] ),
+	test_facilities:display( "Forged telegram corresponding to: ~ts.",
+							 [ oceanic:device_event_to_string( Event ) ] ),
 
 	ok.
 
@@ -429,8 +521,10 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr, SerialPid ) ->
 
 
 -spec emit_forged_telegrams_for_nodon_smart_plug( eurid_string(),
-												  pid() ) -> void().
-emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ) ->
+		ms_duration(), ms_duration(), boolean(), pid() ) -> void().
+emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr,
+		InterCommandDuration, InterPressReleaseDuration,
+		PreferReleaseToMultipress, SerialPid ) ->
 
 	test_facilities:display(
 		"Emitting forged telegrams for Nodon smart plug." ),
@@ -520,22 +614,33 @@ emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ) ->
 	SerialPid ! { send, TopButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
-	%test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	%   "top button released following ~ts.",
-	%   [ SourceEuridStr, TargetEuridStr,
-	%     oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	%SerialPid ! { send, TopButtonReleasedTelegram },
+	case PreferReleaseToMultipress of
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-		"all buttons released following ~ts.",
-		[ SourceEuridStr, TargetEuridStr,
-		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
-	SerialPid ! { send, AllButtonReleasedTelegram },
+		true ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"top button released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string(
+					TopButtonReleasedTelegram ) ] ),
+
+			SerialPid ! { send, TopButtonReleasedTelegram };
+
+		false ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"all buttons released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr,
+				  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+
+			SerialPid ! { send, AllButtonReleasedTelegram }
+
+	end,
 
 
-	test_facilities:display( "Pausing." ), timer:sleep( 2000 ),
+
+	test_facilities:display( "Pausing." ), timer:sleep( InterCommandDuration ),
 
 
 	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker bottom "
@@ -545,18 +650,28 @@ emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr, SerialPid ) ->
 	SerialPid ! { send, BottomButtonPressedTelegram },
 
 	% Sheer paranoia:
-	timer:sleep( 200 ),
+	timer:sleep( InterPressReleaseDuration ),
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker "
-	   "bottom button released following ~ts.",
-	   [ SourceEuridStr, TargetEuridStr,
-		 oceanic:telegram_to_string( TopButtonReleasedTelegram ) ] ),
-	SerialPid ! { send, BottomButtonReleasedTelegram },
+	case PreferReleaseToMultipress of
 
-	test_facilities:display( "Sending as ~ts, to ~ts, for double-rocker ~ts",
-		[ SourceEuridStr, TargetEuridStr,
-		  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
-	SerialPid ! { send, AllButtonReleasedTelegram },
+		true ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"bottom button released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr, oceanic:telegram_to_string(
+					BottomButtonReleasedTelegram ) ] ),
+
+			SerialPid ! { send, BottomButtonReleasedTelegram };
+
+		false ->
+			test_facilities:display(
+				"Sending as ~ts, to ~ts, for double-rocker "
+				"all buttons released following ~ts.",
+				[ SourceEuridStr, TargetEuridStr,
+				  oceanic:telegram_to_string( AllButtonReleasedTelegram ) ] ),
+			SerialPid ! { send, AllButtonReleasedTelegram }
+
+	end,
 
 	%InitialTestState = oceanic:get_test_state( InitialDeviceTable ),
 
