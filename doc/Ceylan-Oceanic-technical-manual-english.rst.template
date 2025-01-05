@@ -836,7 +836,7 @@ ________
 
 As mentioned, when using Oceanic as an emitter, it *must* have been paired to the target actuator.
 
-Pairing can be done through teach-in (through an exchange of specific telegrams) or through learning (putting the actuator in a specific mode, and forcing the emitter to send a telegram). Some actuators support both procedures.
+Pairing can be done through teach-in (through an exchange of specific telegrams, triggered by the actuator) or through learning (putting the actuator in a specific mode, and forcing the emitter to send a telegram). Some actuators support both procedures.
 
 As detailed in the next section, some actuators are able to learn a device according to various device types/EEPs (e.g. a rocker as a rocker, or as two push-buttons).
 
@@ -876,8 +876,8 @@ Another approach is to enable and manage state feedback / status return through 
 .. _`main test actuator`:
 
 
-Eltako Socket Switching Actuator FSSA
-_____________________________________
+Regarding the Eltako Socket Switching Actuator FSSA
+___________________________________________________
 
 
 In practice, in addition to the documentation, we found clearer to respect the following procedures:
@@ -888,17 +888,18 @@ In practice, in addition to the documentation, we found clearer to respect the f
 
   - a push-button : press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *once*; the LED will blink once and stay fixed until a telegram is received and learnt: if for example we pressed the top bottom to generate such telegram, this button will act as a on/off toggle, whereas its associated bottom button will have no effect
 
-  - a "direction push-button" (maybe a synonymous of rocker): press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *twice*; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to "set on"), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to "set off"
-
+  - a "direction push-button" (supposedly a synonym of rocker): press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *twice*; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to "set on"), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to "set off"
 
 Afterwards, the LED will blink once a telegram of a learnt device is received (whether or not this specified action has been learnt).
 
 As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting" mode.
 
+We never managed to determine an EURID for that plug, and are not sure it has even one.
 
 
-Nodon Smart Plug
-________________
+
+Regarding the Nodon Smart Plug
+______________________________
 
 
 These are ``ASP-2-1-00`` or ``ASP-2-1-01``.
@@ -908,6 +909,24 @@ To learn a new controlling device, the (single) button of that plug shall be pus
 Note though that, when forging a telegram so that a USB dongle is to control that plug, our tests showed that the incoming telegram will not be taken into account for learning if its target EURID is the one of that plug; only using the broadcast EURID allowed the plug to learn the emitter from these telegrams.
 
 Afterwards, telegrams newly forged by the USB dongle were accepted and processed by the plug, whether they were broadcast or - better - targeting the specified EURID of that plug.
+
+
+
+Reliability
+___________
+
+
+Regardless of the smart plug, the same test (same software - namely ``oceanic_just_send_to_device_test``, on the same hardware) seems either to work flawlessly, or very erratically / unsatisfactorily.
+
+Indeed, in some faulty, unspecified contexts, sending repeatedly a "switch on" order, then pausing, then sending a "switch off" order, results, with the:
+
+- Eltako plug: in systematically switching on, and never off (as if at least most "switching off" telegrams were discarded)
+- Nodon plug: in sometimes performing the expected transitions, sometimes not at all (erratically, as if some telegrams were missed - although as if only the "switching on" were be lost, the plug never remained on)
+
+
+The cause for these abnormal behaviours is unknown, the best interpretation we have is that some telegram may be lost.
+
+As the plugs remain correctly responsive with an actual device, it may be a problem with the USB dongle or its driver.
 
 
 
