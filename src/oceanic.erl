@@ -69,7 +69,8 @@ through an Oceanic server**.
 	get_oceanic_eurid/1,
 
 	% General-purpose:
-	get_device_description/2, get_button_ref_description/2,
+	get_device_description/2,
+	get_button_ref_description/2, get_button_ref_descriptions/2,
 
 	% For common commands:
 	read_version/1, read_logs/1, read_base_id_info/1,
@@ -91,7 +92,7 @@ through an Oceanic server**.
 	eurid_to_bin_string/1, eurid_to_bin_string/2,
 	string_to_eurid/1, get_broadcast_eurid/0,
 
-	button_ref_to_string/1, get_best_naming/2,
+	button_ref_to_string/1, button_refs_to_string/1, get_best_naming/2,
 	get_device_table/1, string_to_eep/1 ] ).
 
 
@@ -99,7 +100,7 @@ through an Oceanic server**.
 % Event-related API, to achieve some kind of polymorphism on the corresponding
 % records:
 %
--export([ get_source_eurid/1, get_channel/1,
+-export([ get_source_eurid/1, get_channel/1, get_button_reference/1,
 		  get_maybe_device_name/1, get_best_device_name_from/1,
 		  get_maybe_eep/1,
 		  get_timestamp/1, get_last_seen_info/1,
@@ -495,7 +496,8 @@ Refer to get_eep_topic_specs/0 for further details.
   % They include the simple rocker ones:
   | 'double_rocker_switch_style_1'
   | 'double_rocker_switch_style_2'
-  | 'double_rocker_multipress'
+  | 'double_rocker_multipress' % Apparently can be an alternative to declare
+							   % that a specific button was released.
 
   | 'single_input_contact'   % Typically opening detectors
   | 'single_channel_module'
@@ -878,7 +880,10 @@ commands.
 -type device_description() :: bin_string().
 
 
--doc "The description of a button reference, as known and returned by Oceanic.".
+-doc """
+The description of at least one button reference, as known and returned by
+Oceanic.
+""".
 -type button_ref_description() :: bin_string().
 
 
@@ -2344,7 +2349,8 @@ position).
 As this encoding is done exclusively on the caller side (the Oceanic server not
 being involved), it is up to the caller to specify the source EURID (and
 application style). We recommend that the caller fetches from the Oceanic server
-its EURID (see get_oceanic_eurid/1) once for all, and use it afterwards.
+its EURID (see get_oceanic_eurid/1) once for all, and uses it afterwards
+(otherwise, no emitted telegram will be taken into account by receivers).
 
 Event sent in the context of EEP F6-02-01 or EEP F6-02-02 ("Light and Blind
 Control - Application Style 1 or 2"), for T21=1. It results thus in a RPS
@@ -2353,10 +2359,12 @@ telegram, an ERP1 radio packet encapsulated into an ESP3 one.
 See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 
 Depending on how Oceanic was learnt by the target actuator, it will be seen
-either as a rocker (recommended) or as push-button(s).
+either as a rocker (recommended) or as push-button(s): refer to
+http://oceanic.esperide.org/#buttons-vs-rocker-transition-vs-state for more
+information.
 
 In the future, the encoding of two buttons transitions (second action) could be
-added (not that useful).
+added (not that useful though).
 """.
 -spec encode_double_rocker_switch_telegram( eurid(), application_style(),
 		button_locator(), button_transition(), option( eurid() ) ) ->
@@ -2406,8 +2414,8 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	end,
 
-	trace_utils:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
-							" R2Enum = ~B.", [ R1Enum, R2Enum ] ),
+	%trace_utils:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
+	%                       " R2Enum = ~B.", [ R1Enum, R2Enum ] ),
 
 	% No LRN (Learn) bit for RPS, which can only send data and has no special
 	% telegram modification to teach-in the device. Therefore, the teach-in
@@ -2628,13 +2636,32 @@ get_device_description( Eurid, OcSrvPid ) ->
 
 -doc """
 Returns the best textual description found for the specified button reference,
-as seen from Oceanic.
+as seen from the specified Oceanic server.
 """.
 -spec get_button_ref_description( button_ref(), oceanic_server_pid() ) ->
 											button_ref_description().
 get_button_ref_description( _ButRef={ Eurid, Channel }, OcSrvPid ) ->
 	text_utils:bin_format( "button ~B of ~ts",
 		[ Channel, get_device_description( Eurid, OcSrvPid ) ] ).
+
+
+-doc """
+Returns the best textual descriptions found for the specified button references,
+as seen from the specified Oceanic server.
+""".
+-spec get_button_ref_descriptions( [ button_ref() ], oceanic_server_pid() ) ->
+											button_ref_description().
+get_button_ref_descriptions( _ButRefs=[], _OcSrvPid ) ->
+	"no button reference set";
+
+get_button_ref_descriptions( _ButRefs=[ ButRef ], OcSrvPid ) ->
+	text_utils:format( "a single button reference set: ~ts",
+					   [ get_button_ref_description( ButRef, OcSrvPid ) ] );
+
+get_button_ref_descriptions( ButRefs, OcSrvPid ) ->
+	Strs = [ get_button_ref_description( BR, OcSrvPid ) || BR <- ButRefs ],
+	text_utils:format( "~B button references set: ~ts",
+		[ length( Strs ), text_utils:strings_to_listed_string( Strs ) ] ).
 
 
 
@@ -5358,7 +5385,7 @@ Decodes a rorg_vld smart_plug (D2-01-0A, an "Electronic switches and dimmers
 with Energy Measurement and Local Control" of type 0A) packet.
 
 This corresponds to basic smart, non-metering plugs bidirectional actuators that
-control (switch on/off) most electrical load (e.g. appliances).
+control (switch on/off) most electrical loads (e.g. appliances).
 
 Discussed in [EEP-spec] p.143.
 """.
@@ -6094,6 +6121,23 @@ button_ref_to_string( _ButRef={ Eurid, Channel } ) ->
 
 
 
+-doc "Returns a textual description of the specified button references.".
+-spec button_refs_to_string( [ button_ref() ] ) -> ustring().
+button_refs_to_string( _ButRefs=[] ) ->
+	"no button reference set";
+
+button_refs_to_string( _ButRefs=[ ButRef ] ) ->
+	text_utils:format( "a single button reference set: ~ts",
+					   [ button_ref_to_string( ButRef ) ] );
+
+button_refs_to_string( ButRefs ) ->
+	Strs = [ button_ref_to_string( BR ) || BR <- ButRefs ],
+	text_utils:format( "~B button references set: ~ts",
+		[ length( Strs ), text_utils:strings_to_listed_string( Strs ) ] ).
+
+
+
+
 -doc """
 Returns the best naming for a device, as any kind of string, depending on the
 available information.
@@ -6165,17 +6209,27 @@ get_source_eurid( DevEventTuple ) ->
 Returns any channel referenced by the emitting device stored in the specified
 device event.
 
-For a single rocker, returns channel 1.
+For events from devices not having multiple channels (e.g. push_button_event,
+single_input_contact_event, thermo_hygro_event), returns channel 1.
 """.
 -spec get_channel( device_event() ) -> channel().
-get_channel( #push_button_event{} ) ->
-	1;
-
 % For multiple-rockers, only the first button reported is considered:
 get_channel( #double_rocker_switch_event{
 				first_action_button={ Channel, _Pos } } ) ->
-	Channel.
+	Channel;
 
+get_channel( _AnyOtherEvent ) ->
+	_Channel=1.
+
+
+
+-doc """
+Returns the button reference of the emitting device stored in the specified
+device event, i.e. its EURID and the channel it used.
+""".
+-spec get_button_reference( device_event() ) -> channel().
+get_button_reference( DevEventTuple ) ->
+	{ get_source_eurid( DevEventTuple ), get_channel( DevEventTuple ) }.
 
 
 
