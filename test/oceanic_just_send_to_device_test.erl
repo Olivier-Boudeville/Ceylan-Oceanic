@@ -299,8 +299,8 @@ emit_forged_telegrams( SerialPid ) ->
 	SourceEuridStr = "ffa2df00",
 
 	% Both seem to work identically:
-	PreferReleaseToMultipress = true,
-	%PreferReleaseToMultipress = false,
+	%PreferReleaseToMultipress = true,
+	PreferReleaseToMultipress = false,
 
 	% Duration between a switch on then off command:
 	InterCommandDuration = 2000,
@@ -361,11 +361,18 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
 	% operation will systematically dysfunction (switches on, but never off
 	% afterwards):
 
-	TargetEurid = oceanic:get_broadcast_eurid(),
-	TargetEuridStr = "all (broadcast)",
+	%PreferBroadcast = true,
+	PreferBroadcast = false,
 
-	%TargetEurid = oceanic:string_to_eurid( "050e2000" ),
-	%TargetEuridStr = "specific, random target",
+	{ TargetEurid, TargetEuridStr } = case PreferBroadcast of
+
+		true ->
+			{ oceanic:get_broadcast_eurid(), "all (broadcast)" };
+
+		false ->
+			{ oceanic:string_to_eurid( "050e2000" ), "specific, random target" }
+
+	end,
 
 
 	SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
@@ -461,6 +468,7 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
 
 	end,
 
+	SerialPid ! { send, TopReleaseLikeTelegram },
 	SerialPid ! { send, TopReleaseLikeTelegram },
 
 
