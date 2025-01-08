@@ -894,7 +894,25 @@ Afterwards, the LED will blink once a telegram of a learnt device is received (w
 
 As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting" mode.
 
-We never managed to determine an EURID for that plug, and are not sure it has even one.
+We never managed to determine an EURID for that plug, and are not sure it has even one; same applies for any EEP.
+
+
+In terms of behaviour:
+
+- two options exist to control this plug: either with a broadcast telegram, or with a telegram targeting any (thus arbitrary) EURID (as mentioned, no EURID is known for that plug - and it will process a telegram regardless of the target EURID it comprises); we recommend the second, more selective approach, and to assign this plug a pseudo-EURID (not used by any other device), to better discriminate them
+- when issuing a command (e.g switch on or switch off), generally we do our best to send a first telegram to denote the press of a rocker-like trigger, then, shortly after, a second one to denote the release of that trigger; however:
+
+  - we first had better results in sending multipress events (telling that no button is then pressed) rather than release (reciprocal of press) ones (as at least some push buttons/rockers do)
+  - then we observed that the release-like events are not necessary (e.g. with an emulated rocker, sending a "top button pressed" then a "bottom button pressed" event - hence with no release-like event for either - is sufficient to switch on then off that plug)
+
+- when a switch on then switch off operation fails (it happens quite frequently):
+
+  - the plug is almost always activated (e.g. a lamp is lit): only the switch off command fails
+  - sending the switch off command multiple times seems then the best course of action
+
+So the best course of action we determined could be (hence with a bogus, non-broadcast target EURID, and multipress rather than release event)::
+
+ for e in top top bottom bottom bottom bottom; do m ${e}_press_eltako_run; done
 
 
 
@@ -910,6 +928,16 @@ Note though that, when forging a telegram so that a USB dongle is to control tha
 
 Afterwards, telegrams newly forged by the USB dongle were accepted and processed by the plug, whether they were broadcast or - better - targeting the specified EURID of that plug.
 
+
+In terms of behaviour, this plug is simpler/clearer/more reliable:
+
+- it can/should be targeted based on its EURID (better than using broadcast)
+- we retained a multipress release (although a standard release might be as relevant)
+- a smaller yet non-null probability of missing a telegram exists, and it does not seem to happen more for "switch off" than for "switch on"
+
+So the best course of action we determined could be::
+
+ for e in top top top bottom bottom bottom; do m ${e}_press_nodon_run; done
 
 
 Reliability
