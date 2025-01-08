@@ -78,7 +78,7 @@ through an Oceanic server**.
 
 	decode_telegram/2,
 
-	restart_serial_interface/1,
+	is_serial_available/1, restart_serial_interface/1,
 
 	stop/0, stop/1, synchronous_stop/1,
 
@@ -1798,6 +1798,7 @@ get_base_state( SerialServerPid ) ->
 
 	SentState = send_raw_telegram( CmdTelegram, InitialState ),
 
+	% Blank start:
 	wait_initial_base_request( _ToSkipLen=0, _MaybeAccChunk=undefined,
 							   SentState ).
 
@@ -1867,7 +1868,11 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 					wait_initial_base_request( NewToSkipLen, NewAccChunk,
 											   NewState )
 
-			end
+			end;
+
+		{ onSerialMessage, Msg } ->
+			trace_utils:warning( Msg ),
+			wait_initial_base_request( ToSkipLen, AccChunk, State )
 
 	end.
 
@@ -2039,9 +2044,17 @@ declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 						 _MaybeActPeriodicity=auto } | T ],
 					 DeviceTable );
 
+% Main clause; any config comment (as last element) dropped by the next clause:
 declare_devices( _DeviceCfgs=[
-					{ NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
+					DC={ NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
 				 DeviceTable ) ->
+
+	text_utils:is_string( NameStr ) orelse
+		begin
+			trace_bridge:error_fmt( "Invalid device name ('~p') "
+				"in configuration ~p.", [ NameStr, DC ] ),
+			throw( { invalid_device_configured_name, NameStr, DC } )
+		end,
 
 	Eurid = try text_utils:hexastring_to_integer(
 		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
@@ -2053,11 +2066,18 @@ declare_devices( _DeviceCfgs=[
 		catch _:E ->
 			trace_bridge:error_fmt( "Invalid EURID ('~ts') "
 				"for device named '~ts'.", [ EuridStr, NameStr ] ),
-			throw( { invalid_eurid, EuridStr, E, NameStr } )
+			throw( { invalid_device_configured_eurid, EuridStr, E, NameStr } )
 
 	end,
 
-	EepBinStr = text_utils:ensure_binary( EepStr ),
+	text_utils:is_string( EepStr ) orelse
+		begin
+			trace_bridge:error_fmt( "Invalid device EEP ('~p') "
+				"in configuration ~p.", [ EepStr, DC ] ),
+			throw( { invalid_device_configured_eep, EepStr, DC } )
+		end,
+
+	EepBinStr = text_utils:string_to_binary( EepStr ),
 
 	MaybeEepId = case oceanic_generated:get_maybe_first_for_eep_strings(
 			EepBinStr ) of
@@ -2878,6 +2898,38 @@ decode_telegram( Telegram, OcSrvPid ) ->
 
 
 -doc """
+Tells whether the serial port is deemed available.
+
+Might allow to detect freezes/crashes.
+""".
+-spec is_serial_available( oceanic_server_pid() ) -> boolean().
+is_serial_available( OcSrvPid ) ->
+
+	cond_utils:if_defined( oceanic_debug_tty,
+		trace_bridge:debug( "Testing whether the serial port is available." ) ),
+
+	OcSrvPid ! { testSerialAvailability, [], self() },
+	receive
+
+		onSerialAvailableReport ->
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:debug( "Serial interface reported as available." ),
+				ok ),
+			true;
+
+		onSerialNotAvailableReport ->
+			cond_utils:if_defined( oceanic_debug_tty,
+				trace_bridge:error(
+					"Serial interface reported as not available." ),
+				ok ),
+
+			false
+
+	end.
+
+
+
+-doc """
 Restarts the serial USB interface used internally.
 
 Such a reset might be useful to avoid an USB freeze that may happen after a few
@@ -2959,6 +3011,20 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 		end ),
 
 
+	% Useful to detect any ever-increasing accumulated chunk, which would be the
+	% sign that the decoding logic got stuck for good:
+	%
+	ChunkSizeThreshold = 200,
+
+	MaybeAccChunk =:= undefined orelse
+		begin
+			Size = size( MaybeAccChunk ),
+			Size > ChunkSizeThreshold andalso
+				trace_utils:error_fmt( "Abnormally-long accumulated chunk "
+					"(~B bytes); decoding logic stuck? Chunk: ~n~p",
+					[ Size, MaybeAccChunk ] )
+		end,
+
 	receive
 
 		% Received data from the serial port:
@@ -2966,15 +3032,15 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			NewChunkSize = size( NewChunk ),
 
-			% Currently monitoring all receiving to investigate the loss of
-			% communication after a long time:
-
-			%cond_utils:if_defined( oceanic_debug_tty,
+			% Monitoring of all receivings may be done to investigate any loss
+			% of communication after a long time:
+			%
+			cond_utils:if_defined( oceanic_debug_tty,
 				trace_bridge:notice_fmt( "Received a telegram chunk "
 					"of ~B bytes: ~w, corresponding to hexadecimal ~ts "
 					"(whereas there are ~B bytes to skip).",
 					[ NewChunkSize, NewChunk,
-					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ),% ),
+					  telegram_to_hexastring( NewChunk ), ToSkipLen ] ) ),
 
 			JamState = monitor_jamming( NewChunkSize, State ),
 
@@ -3089,6 +3155,11 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 					oceanic_loop( NewToSkipLen, NewMaybeAccChunk, NewState )
 
 			end;
+
+
+		{ onSerialMessage, Msg } ->
+			trace_bridge:warning( text_utils:ensure_string( Msg ) ),
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
 
 		{ onActivityTimeout, LostEurid, PeriodicityMs } ->
@@ -3303,6 +3374,25 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 		{ sendOceanic, Telegram } ->
 			NewState = send_raw_telegram( Telegram, State ),
 			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+
+
+		{ testSerialAvailability, [], SenderPid } ->
+
+			State#oceanic_state.serial_server_pid ! report,
+
+			RespMsg = receive
+
+				{ onSerialMessage, _Msg= <<"Serial is functional.">> } ->
+					onSerialAvailableReport
+
+				  after 2000 ->
+					onSerialNotAvailableReport
+
+			end,
+
+			SenderPid ! RespMsg,
+
+			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
 
 
 		{ restartSerialInterface, [], SenderPid } ->
@@ -3632,6 +3722,16 @@ the specified chunk.
 -spec try_integrate_chunk( count(), option( telegram_chunk() ),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 
+% Special-casing "nothing left to skip " is clearer; no start byte was already
+% chopped.
+%
+% May happen (at least initially).
+%
+try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, NewChunk,
+					 State ) ->
+	try_decode_chunk( NewChunk, State );
+
+% Still bytes to skip, and still before any start byte is detected and chopped:
 try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 
 	ChunkSize = size( NewChunk ),
@@ -3642,8 +3742,8 @@ try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 		StillToSkip when StillToSkip >= 0 ->
 			{ not_reached, StillToSkip, _NoAccChunk=undefined, State };
 
-		% ChunkSize > ToSkipLen, so next packet already started in this
-		% new chunk.
+		% ChunkSize > ToSkipLen, so the next packet already started in this new
+		% chunk.
 		%
 		% This will start by scanning for any start byte:
 		_ ->
@@ -3652,18 +3752,14 @@ try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 
 	end;
 
-% Special-casing "no skip" is clearer; guard needed to ensure we indeed already
-% chopped a start byte:
+% Here there is already an accumulated chunk, hence a start byte was already
+% detected and chopped:
 %
-% May happen (at least initially):
-try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, NewChunk,
-					 State ) ->
-	scan_past_start( NewChunk, State );
-
-
 try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk, State ) ->
 	% Start byte was already chopped from AccChunk:
-	scan_past_start( <<AccChunk/binary, NewChunk/binary>>, State ).
+	scan_post_start_byte( <<AccChunk/binary, NewChunk/binary>>, State ).
+
+% Not expecting ToSkipLen>0 and MaybeAccChunk =/= undefined...
 
 
 
@@ -3673,7 +3769,7 @@ taken place), and returns the outcome.
 
 Incomplete chunks may be completed later, by next receivings (hence are kept,
 from their first start byte included), whereas invalid ones are dropped (until
-any start byte found).
+any start byte is found).
 """.
 -spec try_decode_chunk( telegram_chunk(), oceanic_state() ) ->
 								decoding_outcome().
@@ -3716,7 +3812,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 					  NewTelegramChunk ] ),
 				basic_utils:ignore_unused( DroppedCount ) ),
 
-			scan_past_start( NewTelegramChunk, State )
+			scan_post_start_byte( NewTelegramChunk, State )
 
 	end.
 
@@ -3726,7 +3822,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 Scans the specified chunk, knowing that it used to begin with a start byte
 (which has already been chopped).
 """.
-scan_past_start( NewTelegramChunk, State ) ->
+scan_post_start_byte( NewTelegramChunk, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Examining now following chunk of ~B bytes: "
@@ -3771,11 +3867,12 @@ scan_for_packet_start( TelegramChunk ) ->
 scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
 	{ no_content, DropCount };
 
-scan_for_packet_start( _Chunk= <<?sync_byte, T/binary>>, DropCount ) ->
+scan_for_packet_start( _Chunk= <<?sync_byte, RemainingChunk/binary>>,
+					   DropCount ) ->
 	% No need to keep/include the start byte: repeated decoding attempts may
 	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
 	%
-	{ T, DropCount };
+	{ RemainingChunk, DropCount };
 
 % Skip all bytes before first start byte:
 scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
