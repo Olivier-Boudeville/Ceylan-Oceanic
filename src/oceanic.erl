@@ -124,7 +124,7 @@ through an Oceanic server**.
 
 % Exported only for testing:
 -export([ get_test_state/0, get_test_state/1,
-		  test_decode/1, secure_tty/1, try_integrate_chunk/4,
+		  test_decode/1, secure_tty/1, try_integrate_next_telegram/4,
 
 		  device_event_to_string/1, device_event_to_short_string/1,
 		  state_to_string/1 ]).
@@ -237,6 +237,29 @@ Tells whether a given device is considered by Oceanic to be online or lost.
 
 
 -doc """
+
+Information about a pending device-level request meant to be acknowledged (hence
+being waited for, with or without success) by the device of the specified EURID,
+through the specified type of event (e.g. smart_plug_status_report_event), with
+any specific event constraint information expected (e.g. power_on), with the
+specified number of new attempts to be performed if the current one times-out.
+
+Allows to detect issues such an emitted yet not (correctly) received telegrams,
+for example if wanting to switch on a smart plug and be sure that it succeeded.
+""".
+-type waited_ack_info() :: { From :: eurid(), device_event_type(),
+							 NextRetries :: count(),
+							 option( reported_event_info() ) }.
+
+
+-doc """
+Extra information to validate a type of device event for an acknowledgement.
+""".
+-type reported_event_info() :: 'power_on' | 'power_off'.
+
+
+
+-doc """
 Specification of Oceanic settings, as key/values pairs, as read from a
 configuration file or transmitted by other services.
 """.
@@ -264,7 +287,7 @@ configuration file or transmitted by other services.
 
 -doc """
 An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
-describe a given device.
+describe a given device of interest.
 """.
 -type device_config() ::
 
@@ -285,7 +308,8 @@ describe a given device.
 
 -doc "The outcome of an attempt of TTY detection.".
 -type tty_detection_outcome() ::
-	'true' | { 'false', 'non_existing' | { 'not_device', entry_type() } }.
+	'true'
+| { 'false', 'non_existing' | { 'not_device', entry_type() } }.
 
 
 
@@ -318,31 +342,46 @@ E.g. '<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>',
 
 
 
--doc "A telegram chunk is a partial telegram, possibly a full ESP3 packet.".
+-doc """
+A telegram chunk is mere data taken from a telegram stream, with no assumption.
+
+So it may contain nothing, or a part of a telegram, or even full ESP3 packets.
+
+So mere data, with no assumption.
+""".
 -type telegram_chunk() :: binary().
 
 
 
 -doc """
-The part of a telegram with the base, normalised, stable data (corresponding to
-the actual payload of an ESP3 packet, which can be for example an ERP1 radio
-packet), possibly to be complemented with optional data.
+The beginning of a telegram once its start byte has already been chopped,
+possibly followed by extra bytes (i.e. the start of any next telegrams).
 """.
--type telegram_data() :: telegram_chunk().
-
+-type telegram_tail() :: telegram_chunk().
 
 
 -doc """
 A base, normalised, stable data of a telegram once its initial byte (typically
-R-ORG or Return Code) has already been chopped.
+R-ORG or Return Code) has already been chopped, possibly followed by extra bytes
+(i.e. the start of any next telegrams).
 """.
 -type telegram_data_tail() :: telegram_chunk().
 
 
 
 -doc """
+The part of a telegram corresponding to the base, normalised, stable data
+(corresponding to the actual payload of an ESP3 packet, which can be for example
+an ERP1 radio packet), a prefix possibly complemented with optional data.
+""".
+-type telegram_data() :: telegram_chunk().
+
+
+
+
+-doc """
 The (encoded) part of a telegram with the optional data that may
-complement/extend the base data.
+complement/extend the base data (see telegram_data()).
 
 See also decoded_optional_data/0.
 """.
@@ -356,8 +395,9 @@ telegrams.
 
 See also telegram_opt_data/0.
 """.
--type decoded_optional_data() :: { subtelegram_count(), eurid(),
-	option( dbm() ), option( security_level() ) }.
+-type decoded_optional_data() ::
+	{ subtelegram_count(), eurid(),	option( dbm() ),
+	  option( security_level() ) }.
 
 
 
@@ -618,6 +658,24 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 						   | 'high'. % -20°C to +60°C (A5-04-02)
 
 
+-doc "A reported hardware status for a device (e.g. smart plug).".
+-type hardware_status() :: 'nominal'
+						 | 'warning'
+						 | 'failure'
+						 | 'not_supported'. % Hence unknown
+
+
+% Curiously triggers a -doc redefinition warning:
+%-doc "The power currently output by a device (e.g. a smart plug).".
+-type power_report() :: 'off'
+					  | pos_integer() % Percentage of max power
+					  | 'not_available'. % Hence unknown
+
+
+-doc "The powering status of a device (e.g. a smart plug).".
+-type power_status() :: 'power_on' | 'power_off'.
+
+
 
 -doc """
 The type of a VLD message, in the context of the D2-00 EEPs: "Room Control Panel
@@ -684,10 +742,10 @@ Described in [EEP-spec] p.131.
 	{ 'decoded', option( device_event() | 'command_processed' ),
 	  MaybeDiscoverOrigin :: option( discovery_origin() ),
 	  IsBackOnline :: boolean(), MaybeDevice :: option( enocean_device() ),
-	  NextChunk :: telegram_chunk(), oceanic_state() }
+	  NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }
 
-  | { decoding_error(), ToSkipLen :: count(), NextChunk :: telegram_chunk(),
-	  oceanic_state() }.
+  | { decoding_error(), ToSkipLen :: count(),
+	  NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }.
 
 
 
@@ -810,26 +868,6 @@ their design.
 
 
 
-% Unused:
--doc "A decoding result.".
--type decode_result() :: 'ok' | 'incomplete' | 'crc_mismatch'.
-
-
-
-% Unused:
--doc """
-Outcome of a (blocking) request of telegram reading.
-
-Exactly one event will be read (any remainding chunk returned), possibly waiting
-for it indefinitely.
-
-No content can remain to be skipped here, as by design we ended when having read
-a new event, returning any next chunk as it is.
-""".
--type read_outcome() ::
-	{ ReadMessage :: device_event(), AnyNextChunk :: telegram_chunk() }.
-
-
 
 -doc """
 The version of an EnOcean application or API.
@@ -938,6 +976,16 @@ Refer to [EEP-spec] p.15 for further details.
 
 
 
+-doc """
+Event sent in the context of EEPs D2-01-* (e.g 0A), corresponding to an Actuator
+Status Response (command 0x4), so that a smart plug reports its current state.
+
+Refer to [EEP-spec] p.135 for further details.
+""".
+-type smart_plug_status_report_event() :: #smart_plug_status_report_event{}.
+
+
+
 %-doc "Event regarding rocker switches.".
 %-type rocker_switch_event() :: #rocker_switch_event{}.
 
@@ -1016,12 +1064,63 @@ command request.
 	thermo_hygro_event()
   | single_input_contact_event()
   | push_button_event()
+  | smart_plug_status_report_event()
   | double_rocker_switch_event()
   | double_rocker_multipress_event()
 
 	% Other events:
   | teach_request()
   | command_response().
+
+
+-doc "Lists the known types of device events.".
+-type device_event_type() ::
+	'thermo_hygro_event'
+  | 'single_input_contact_event'
+  | 'push_button_event'
+  | 'smart_plug_status_report_event'
+  | 'double_rocker_switch_event'
+  | 'double_rocker_multipress_event'
+
+	% Other events:
+  | 'teach_request'
+  | 'command_response'.
+
+
+
+-doc """
+Lists the known types of devices.
+
+Each type of device is to send at least one type of events.
+""".
+-type device_type() ::
+	'thermo_hygro_sensor'
+  | 'single_contact' % Typically opening detectors
+  | 'push_button'
+  | 'smart_plug'
+  | 'double_rocker'.
+
+
+
+-doc "Any kind of device-related information.".
+-type device_info() :: term().
+
+
+-doc """
+Describes information about a device - generally an emitting one - and of an
+intended use thereof (e.g. designates which rocker/channel of which kind of a
+double-rocker would be triggered).
+
+Useful for example to specify information regarding the usage of a device
+(e.g. a double rocker) emulated in order to trigger an actuator (e.g. a smart
+plug).
+
+No (source) EURID is specified, as anyway the one of the base gateway will apply.
+""".
+-type device_usage_spec() ::
+	{ 'double_rocker', { application_style(), channel(), button_position() } }
+	% General form:
+  | { device_type(), tuple( device_info() ) }.
 
 
 
@@ -1059,13 +1158,15 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   device_name/0, device_plain_name/0, device_any_name/0,
 			   device_designator/0, declared_device_activity_periodicity/0,
-			   expected_periodicity/0,
+			   expected_periodicity/0, availability_status/0,
+			   waited_ack_info/0, reported_event_info/0,
 
-			   enocean_device/0, device_table/0, device_config/0,
+			   enocean_device/0, device_table/0, device_info/0,
+			   device_usage_spec/0, device_config/0,
 			   tty_detection_outcome/0, serial_protocol/0,
 
 			   telegram/0, telegram_chunk/0,
-			   telegram_data/0, telegram_data_tail/0,
+			   telegram_data/0, telegram_tail/0, telegram_data_tail/0,
 			   telegram_opt_data/0, decoded_optional_data/0,
 
 			   subtelegram_count/0, dbm/0, security_level/0,
@@ -1084,12 +1185,15 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 			   contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
 			   temperature_range/0,
+
+			   hardware_status/0, power_report/0, power_status/0,
+
 			   vld_rcp_message_type/0, vld_d2_00_cmd/0,
 			   decoding_outcome/0,
 
 			   eurid/0, eurid_string/0, eurid_bin_string/0,
 			   packet/0, crc/0, esp3_packet/0, packet_type/0,
-			   payload/0, vld_payload/0, decode_result/0, read_outcome/0,
+			   payload/0, vld_payload/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
 			   command_type/0, command_request/0, command_outcome/0,
 
@@ -1161,7 +1265,7 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 
 % Each telegram must start with:
--define( sync_byte, 85 ).
+-define( sync_byte, 85 ). % i.e. 0x55
 
 
 % For DB_0 for example, 8 bits:
@@ -1437,6 +1541,7 @@ An Oceanic state, including configuration, typically loaded from an ETF file.
 -type bytes_per_second() :: system_utils:bytes_per_second().
 
 -type uint8() :: type_utils:uint8().
+-type tuple(T) :: type_utils:tuple(T).
 
 -type timestamp() :: time_utils:timestamp().
 -type dhms_duration() :: time_utils:dhms_duration().
@@ -1764,7 +1869,7 @@ oceanic_start( TtyPath, EventListeners ) ->
 		device_path=text_utils:string_to_binary( TtyPath ),
 		event_listeners=type_utils:check_pids( EventListeners ) },
 
-	oceanic_loop( _SkipLen=0, _MaybeAccChunk=undefined, InitialState ).
+	oceanic_loop( _SkipLen=0, _MaybeTelTail=undefined, InitialState ).
 
 
 
@@ -1775,13 +1880,13 @@ get_base_state( SerialServerPid ) ->
 	% We discover from start our base EURID; a direct, ad hoc logic cannot
 	% really be used, as request tracking would be in the way:
 	cond_utils:if_defined( oceanic_debug_tty,
-		trace_utils:debug( "Discovering our base EURID." ) ),
+		trace_bridge:debug( "Discovering our base EURID." ) ),
 
 	CommonCmd = co_rd_idbase,
 
 	CmdTelegram = encode_common_command_request( CommonCmd ),
 
-	% For decoding re-use (try_integrate_chunk/4), we have to have a state
+	% For decoding re-use (try_integrate_next_telegram/4), we have to have a state
 	% anyway:
 
 	InitCmdReq = #command_request{ command_type=CommonCmd,
@@ -1808,13 +1913,14 @@ get_base_state( SerialServerPid ) ->
 Returns an initialised, Oceanic state, once the initial base ID request has been
 properly answered.
 """.
--spec wait_initial_base_request( count(), telegram_chunk(),
+-spec wait_initial_base_request( count(), option( telegram_tail() ),
 								 oceanic_state() ) -> oceanic_state().
-wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
+wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_tty,
-		trace_utils:debug_fmt( "Waiting initial base request "
-			"(ToSkipLen=~B, AccChunk=~w).", [ ToSkipLen, AccChunk ] ) ),
+		trace_bridge:debug_fmt( "Waiting initial base request "
+			"(ToSkipLen=~B, MaybeNextTelTail=~w).",
+			[ ToSkipLen, MaybeNextTelTail ] ) ),
 
 	receive
 
@@ -1822,57 +1928,54 @@ wait_initial_base_request( ToSkipLen, AccChunk, State ) ->
 		{ data, NewChunk } ->
 
 			cond_utils:if_defined( oceanic_debug_tty,
-				trace_utils:debug_fmt( "Read ~ts.",
+				trace_bridge:debug_fmt( "Read ~ts.",
 					[ telegram_to_string( NewChunk ) ] ) ),
 
-			case try_integrate_chunk( ToSkipLen, AccChunk, NewChunk, State ) of
+			case try_integrate_next_telegram( ToSkipLen, MaybeNextTelTail, NewChunk, State ) of
 
 				{ decoded, Event=#read_base_id_info_response{
 							% (not interested here in remaining_write_cycles)
 							base_eurid=BaseEurid }, _MaybeDiscoverOrigin,
-						_IsBackOnline, _MaybeDevice, MaybeAnyNextChunk,
+						_IsBackOnline, _MaybeDevice, MaybeNextTelTail,
 						ReadState } ->
 
 					% Clearer that way:
-					case MaybeAnyNextChunk of
+					case MaybeNextTelTail of
 
 						undefined ->
 							ok;
 
-						<<>> ->
-							ok;
-
 						DroppedChunk ->
-							trace_utils:warning_fmt( "Dropping initially "
+							trace_bridge:warning_fmt( "Dropping initially "
 								"chunk ~ts.",
 								[ telegram_to_string( DroppedChunk ) ] )
 
 					end,
 
 					cond_utils:if_defined( oceanic_debug_tty,
-						trace_utils:debug_fmt( "Successfully ~ts.",
+						trace_bridge:debug_fmt( "Successfully ~ts.",
 							[ device_event_to_string( Event ) ] ),
 						basic_utils:ignore_unused( Event ) ),
 
 					ReadState#oceanic_state{ emitter_eurid=BaseEurid };
 
 
-				{ Unsuccessful, NewToSkipLen, NewAccChunk, NewState } ->
+				{ Unsuccessful, NewToSkipLen, MaybeNextTelTail, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
-						trace_utils:debug_fmt( "Unsuccessful decoding, '~w' "
-							"(whereas NewToSkipLen=~B, NewAccChunk=~w).",
-							[ Unsuccessful, NewToSkipLen, NewAccChunk ] ),
+						trace_bridge:debug_fmt( "Unsuccessful decoding, '~w' "
+							"(whereas NewToSkipLen=~B, MaybeNextTelTail=~w).",
+							[ Unsuccessful, NewToSkipLen, MaybeNextTelTail ] ),
 						basic_utils:ignore_unused( Unsuccessful ) ),
 
-					wait_initial_base_request( NewToSkipLen, NewAccChunk,
+					wait_initial_base_request( NewToSkipLen, MaybeNextTelTail,
 											   NewState )
 
 			end;
 
 		{ onSerialMessage, Msg } ->
-			trace_utils:warning( Msg ),
-			wait_initial_base_request( ToSkipLen, AccChunk, State )
+			trace_bridge:warning( Msg ),
+			wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State )
 
 	end.
 
@@ -2434,7 +2537,7 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	end,
 
-	%trace_utils:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
+	%trace_bridge:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
 	%                       " R2Enum = ~B.", [ R1Enum, R2Enum ] ),
 
 	% No LRN (Learn) bit for RPS, which can only send data and has no special
@@ -2611,7 +2714,7 @@ execute_command( CmdTelegram, OcSrvPid ) ->
 
 		% To debug:
 		%Other ->
-		%   trace_utils:warning_fmt( "Received for command: ~p", [ Other ] )
+		%   trace_bridge:warning_fmt( "Received for command: ~p", [ Other ] )
 
 	end.
 
@@ -2734,7 +2837,7 @@ send_common_command( CommonCmd, OcSrvPid ) ->
 
 		% To debug:
 		%Other ->
-		%   trace_utils:warning_fmt( "Received for common command '~ts': ~p",
+		%   trace_bridge:warning_fmt( "Received for common command '~ts': ~p",
 		%                            [ CommonCmd, Other ] )
 
 	end.
@@ -2965,14 +3068,18 @@ There may be:
 skipped (hence ToSkipLen; finer than only searching for start bytes)
 
 - any already-received beginning of the current telegram to be taken into
-account (hence MaybeAccChunk - which never includes the starting byte); we have
-to discriminate the value of MaybeAccChunk between "nothing already read" (then
-it is equal to undefined) and "only the start byte was read (and chopped)" (then
-it is equal to <<>>)
+account (hence MaybeTelTail - which never includes the starting byte); we have
+to discriminate the value of MaybeTelTail between:
+
+ - "nothing already read" (no start byte already found, no tail) - then it is
+   equal to undefined
+
+ - "only the start byte was read (and chopped)" (empty tail) - then it is equal
+   to <<>>
 """.
--spec oceanic_loop( count(), option( telegram_chunk() ), oceanic_state() ) ->
+-spec oceanic_loop( count(), option( telegram_tail() ), oceanic_state() ) ->
 											no_return().
-oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
+oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
@@ -2989,7 +3096,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			end,
 
-			ChunkStr = case MaybeAccChunk of
+			TelTailStr = case MaybeTelTail of
 
 				undefined ->
 					"no chunk";
@@ -2997,32 +3104,36 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 				<<>> ->
 					"just the start byte";
 
-				AccChunk ->
-					text_utils:format( "a chunk of ~B bytes (~p) after "
-						"the start byte", [ size( AccChunk ), AccChunk ] )
+				TelTail ->
+					text_utils:format( "a tail of ~B bytes (~p) after "
+						"the start byte", [ size( TelTail ), TelTail ] )
 
 			end,
 
-			% To denote a limit between processings:
-			trace_bridge:info_fmt( "### Waiting for any message "
+			% To denote a limit between processings (explicit timestamp added,
+			% to be available also in erlang.log.* files):
+			%
+			trace_bridge:info_fmt( "### Waiting at ~ts for any message "
 				"including a telegram chunk, whereas having ~ts to skip, "
-				"and having accumulated ~ts.", [ SkipStr, ChunkStr ] )
+				"and having accumulated ~ts.",
+				[ time_utils:get_textual_timestamp(), SkipStr,
+				  text_utils:ellipse( TelTailStr, _MaxLen=120 ) ] )
 
 		end ),
 
 
-	% Useful to detect any ever-increasing accumulated chunk, which would be the
+	% Useful to detect any ever-increasing accumulated tail, which would be the
 	% sign that the decoding logic got stuck for good:
 	%
-	ChunkSizeThreshold = 200,
+	TelTailSizeThreshold = 50,
 
-	MaybeAccChunk =:= undefined orelse
+	MaybeTelTail =:= undefined orelse
 		begin
-			Size = size( MaybeAccChunk ),
-			Size > ChunkSizeThreshold andalso
-				trace_utils:error_fmt( "Abnormally-long accumulated chunk "
-					"(~B bytes); decoding logic stuck? Chunk: ~n~p",
-					[ Size, MaybeAccChunk ] )
+			Size = size( MaybeTelTail ),
+			Size > TelTailSizeThreshold andalso
+				trace_bridge:error_fmt( "Abnormally-long accumulated telegram "
+					"tail (~B bytes); decoding logic stuck? Tail: ~n~p",
+					[ Size, MaybeTelTail ] )
 		end,
 
 	receive
@@ -3044,124 +3155,23 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			JamState = monitor_jamming( NewChunkSize, State ),
 
-			case try_integrate_chunk( ToSkipLen, MaybeAccChunk, NewChunk,
-									  JamState ) of
+			% Note that more than one telegram may be stored in a received data
+			% chunk; to avoid any accumulation, each current chunk should be
+			% decoded as much as possible (not just the first telegram):
+			%
+			{ IntegToSkipLen, IntegMaybeTelTail, IntegState } =
+				integrate_all_telegrams( ToSkipLen, MaybeTelTail, NewChunk,
+										 JamState ),
 
-				% Commands have been already answered directly, no response
-				% echoed to any listener:
-				%
-				{ decoded, _Event=command_processed, _MaybeDiscoverOrigin,
-				  _IsBackOnline, _MaybeDevice, AnyNextMaybeChunk, NewState } ->
-
-					cond_utils:if_defined( oceanic_debug_decoding,
-						trace_bridge:debug(
-							"Decoded command_processed event." ) ),
-
-					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
-
-				% Then just an event, possibly listened to:
-				{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline,
-				  MaybeDevice, AnyNextMaybeChunk, NewState } ->
-
-					cond_utils:if_defined( oceanic_debug_decoding,
-						begin
-							DiscStr = case MaybeDiscoverOrigin of
-
-								undefined ->
-									"";
-
-								Origin ->
-									text_utils:format(
-										" (discover origin: ~ts)",
-										[ Origin ] )
-
-							end,
-							trace_bridge:debug_fmt( "Decoded following "
-								"event~ts: ~ts.",
-								[ DiscStr, device_event_to_string( Event ) ] )
-
-						end ),
-
-					DeviceMsg = case MaybeDiscoverOrigin of
-
-						% Most common case (already detected, hence not set):
-						undefined ->
-							BackOnlineInfo = case IsBackOnline of
-
-								true ->
-									case MaybeDevice of
-
-										undefined ->
-											throw( {
-												unexpected_undefined_device,
-												Event } );
-
-										Device ->
-											get_device_description( Device )
-
-									end;
-
-								false ->
-									undefined
-
-							end,
-							{ onEnoceanDeviceEvent,
-								[ Event, BackOnlineInfo, self() ] };
-
-						% Set, hence just detected:
-						DiscoverOrigin ->
-
-							BinDesc = case MaybeDevice of
-
-								undefined ->
-									throw( { unexpected_undefined_device,
-											 Event } );
-
-								Device ->
-									get_device_description( Device )
-
-							end,
-
-							DevMsgType = case DiscoverOrigin of
-
-								configuration ->
-									onEnoceanConfiguredDeviceFirstSeen;
-
-								% Detected, yet not in configuration:
-								listening ->
-									onEnoceanDeviceDiscovery;
-
-								teaching ->
-									onEnoceanDeviceTeachIn
-
-							end,
-
-							{ DevMsgType, [ Event, BinDesc, self() ] }
-
-					end,
-
-					[ LPid ! DeviceMsg
-						|| LPid <- NewState#oceanic_state.event_listeners ],
-
-					oceanic_loop( _SkipLen=0, AnyNextMaybeChunk, NewState );
-
-
-				{ _Unsuccessful, NewToSkipLen, NewMaybeAccChunk, NewState } ->
-					% when Unsuccessful     =:= not_reached
-					%   orelse Unsuccessful =:= incomplete
-					%   orelse Unsuccessful =:= invalid
-					%   orelse Unsuccessful =:= unsupported ->
-					%   orelse Unsuccessful =:= unconfigured ->
-					oceanic_loop( NewToSkipLen, NewMaybeAccChunk, NewState )
-
-			end;
+			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
 
 
 		{ onSerialMessage, Msg } ->
 			trace_bridge:warning( text_utils:ensure_string( Msg ) ),
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
+		% To track lost devices:
 		{ onActivityTimeout, LostEurid, PeriodicityMs } ->
 
 			DeviceTable = State#oceanic_state.device_table,
@@ -3216,7 +3226,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ executeCommand, CmdTelegram, RequesterPid } ->
@@ -3229,7 +3239,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			ExecState = execute_command_helper( _CmdType=device_command,
 				CmdTelegram, RequesterPid, State ),
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, ExecState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
 
 
 		{ executeCommonCommand, CommonCommand, RequesterPid } ->
@@ -3248,14 +3258,14 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			ExecState = execute_command_helper( _CmdType=CommonCommand,
 				CmdTelegram, RequesterPid, State ),
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, ExecState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
 
 
 		{ getOceanicEurid, RequesterPid } ->
 			RequesterPid !
 				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 
@@ -3281,7 +3291,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			RequesterPid ! { oceanic_device_description, BinDesc },
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 		% Sent by the timer associated to the currently pending command, a timer
@@ -3324,7 +3334,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			NewState = handle_next_command(
 				TimeState#oceanic_state.command_queue, TimeState ),
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ addEventListener, ListenerPid } ->
@@ -3336,7 +3346,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			NewState = State#oceanic_state{ event_listeners=NewListeners },
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ removeEventListener, ListenerPid } ->
@@ -3362,18 +3372,28 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			NewState = State#oceanic_state{ event_listeners=NewListeners },
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ addConfigurationSettings, OcSettings } ->
 			NewState = apply_conf_settings( OcSettings, State ),
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+
+
+		% So that the traces emitted by Oceanic thanks to trace_bridge:* are
+		% integrated in a more advanced trace system (typically Ceylan-Traces):
+		%
+		{ registerTraceBridge, BridgeSpec } ->
+			trace_utils:register( BridgeSpec ),
+			trace_util:info_fmt( "Just registered the trace bridge "
+				"specification ~p.", [ BridgeSpec ] ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 		% Mostly useful for testing purpose:
 		{ sendOceanic, Telegram } ->
 			NewState = send_raw_telegram( Telegram, State ),
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ testSerialAvailability, [], SenderPid } ->
@@ -3392,7 +3412,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			SenderPid ! RespMsg,
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 		{ restartSerialInterface, [], SenderPid } ->
@@ -3432,7 +3452,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 
 			SenderPid ! serial_restarted,
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		% Mostly useful for testing purpose:
@@ -3445,14 +3465,14 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			% Not interfering with received bits (current state used for that,
 			% but will not be affected):
 			%
-			Res = case try_integrate_chunk( _ToSkipLen=0,
-					_MaybeAccChunk=undefined, Telegram, State ) of
+			Res = case try_integrate_next_telegram( _ToSkipLen=0,
+					_MaybeTelTail=undefined, Telegram, State ) of
 
 				{ decoded, DeviceEvent, _MaybeDiscoverOrigin, _IsBackOnline,
-				  _MaybeDevice, _NewNextChunk, _NewState } ->
+				  _MaybeDevice, _NewMaybeTelTail, _NewState } ->
 					DeviceEvent;
 
-				{ DecError, _NewToSkipLen, _NewNextChunk, _NewState } ->
+				{ DecError, _NewToSkipLen, _NewMaybeTelTail, _NewState } ->
 					DecError
 
 			end,
@@ -3460,7 +3480,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			SenderPid ! { decoding_result, Res },
 
 			% Strictly unaffected:
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State );
+			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 		% Asynchronous:
@@ -3515,7 +3535,7 @@ oceanic_loop( ToSkipLen, MaybeAccChunk, State ) ->
 			trace_bridge:debug_fmt( "Oceanic server ~w received an unexpected "
 				"message: '~w', ignoring it.", [ self(), UnexpectedMsg ] ),
 
-			oceanic_loop( ToSkipLen, MaybeAccChunk, State )
+			oceanic_loop( ToSkipLen, MaybeTelTail, State )
 
 	end.
 
@@ -3563,6 +3583,139 @@ monitor_jamming( ChunkSize,
 
 	State#oceanic_state{ traffic_level=NewTrafficLvl,
 						 last_traffic_seen=Now }.
+
+
+
+
+-doc """
+Decodes and processes all telegrams found based on any current telegram tail and
+the specified new chunk.
+""".
+-spec integrate_all_telegrams( count(), option( telegram_tail() ),
+			telegram_chunk(), oceanic_state() ) -> oceanic_state().
+integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
+
+	case try_integrate_next_telegram( ToSkipLen, MaybeTelTail, Chunk, State ) of
+
+		% Commands have been already answered directly, no response echoed to
+		% any listener:
+		%
+		{ decoded, _Event=command_processed, _MaybeDiscoverOrigin,
+		  _IsBackOnline, _MaybeDevice, NextMaybeTelTail, NewState } ->
+
+			cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug(
+				"Decoded command_processed event." ) ),
+
+			% Just recurse on this tail (no chunk to append):
+			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+									 _Chunk= <<>>, NewState );
+
+
+		% Then just an event, possibly listened to:
+		{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline, MaybeDevice,
+		  NextMaybeTelTail, NewState } ->
+
+			cond_utils:if_defined( oceanic_debug_decoding,
+				begin
+					DiscStr = case MaybeDiscoverOrigin of
+
+						undefined ->
+									"";
+
+						Origin ->
+							text_utils:format( " (discover origin: ~ts)",
+											   [ Origin ] )
+
+					end,
+					trace_bridge:debug_fmt( "Decoded following event~ts: ~ts.",
+						[ DiscStr, device_event_to_string( Event ) ] )
+
+				end ),
+
+			DeviceMsg = case MaybeDiscoverOrigin of
+
+				% Most common case (already detected, hence not set):
+				undefined ->
+					BackOnlineInfo = case IsBackOnline of
+
+						true ->
+							case MaybeDevice of
+
+								undefined ->
+									throw(
+									  { unexpected_undefined_device, Event } );
+
+								Device ->
+									get_device_description( Device )
+
+							end;
+
+						false ->
+							undefined
+
+					end,
+
+					{ onEnoceanDeviceEvent,	[ Event, BackOnlineInfo, self() ] };
+
+
+				% Set, hence just detected:
+				DiscoverOrigin ->
+
+					BinDesc = case MaybeDevice of
+
+						undefined ->
+							throw( { unexpected_undefined_device, Event } );
+
+						Device ->
+							get_device_description( Device )
+
+					end,
+
+					DevMsgType = case DiscoverOrigin of
+
+						configuration ->
+							onEnoceanConfiguredDeviceFirstSeen;
+
+						% Detected, yet not in configuration:
+						listening ->
+							onEnoceanDeviceDiscovery;
+
+						teaching ->
+							onEnoceanDeviceTeachIn
+
+					end,
+
+					{ DevMsgType, [ Event, BinDesc, self() ] }
+
+			end,
+
+			[ LPid ! DeviceMsg
+				|| LPid <- NewState#oceanic_state.event_listeners ],
+
+			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+									 _Chunk= <<>>,  NewState );
+
+		% Now the unlucky cases; first the ones that may result in extra tail to
+		% decode:
+		%
+		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
+			when DecodingError =:= unsupported
+				 orelse DecodingError =:= unconfigured
+				 orelse DecodingError =:= invalid ->
+			integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
+									 _Chunk= <<>>, NewState );
+
+
+		% Then the others, which are the only possible stops of the ongoing
+		% recursion:
+		%
+		DO={ DecodingError, _NewToSkipLen, _NextMaybeTelTail, _NewState }
+			when DecodingError =:= not_reached
+				 orelse DecodingError =:= incomplete  ->
+			DO
+
+	end.
+
 
 
 
@@ -3662,8 +3815,8 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 -doc "Helper introduced only to make the decoding logic available for tests.".
 -spec test_decode( telegram_chunk() ) -> decoding_outcome().
 test_decode( Chunk ) ->
-	try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, Chunk,
-						 get_test_state() ).
+	try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, Chunk,
+								 get_test_state() ).
 
 
 
@@ -3719,7 +3872,7 @@ get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
 Tries to integrate a new telegram chunk, that is to decode an ESP3 packet from
 the specified chunk.
 """.
--spec try_integrate_chunk( count(), option( telegram_chunk() ),
+-spec try_integrate_next_telegram( count(), option( telegram_chunk() ),
 			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 
 % Special-casing "nothing left to skip " is clearer; no start byte was already
@@ -3727,20 +3880,22 @@ the specified chunk.
 %
 % May happen (at least initially).
 %
-try_integrate_chunk( _ToSkipLen=0, _MaybeAccChunk=undefined, NewChunk,
-					 State ) ->
+try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, NewChunk,
+							 State ) ->
 	try_decode_chunk( NewChunk, State );
 
-% Still bytes to skip, and still before any start byte is detected and chopped:
-try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
+% Still bytes to skip, and therefore still before any start byte is detected and
+% chopped:
+%
+try_integrate_next_telegram( ToSkipLen, _MaybeTelTail=undefined, NewChunk, State ) ->
 
 	ChunkSize = size( NewChunk ),
 
 	case ToSkipLen - ChunkSize of
 
-		% Not having reached a new packet yet:
+		% Not having reached a new relevant packet yet:
 		StillToSkip when StillToSkip >= 0 ->
-			{ not_reached, StillToSkip, _NoAccChunk=undefined, State };
+			{ not_reached, StillToSkip, _NoNextTelTail=undefined, State };
 
 		% ChunkSize > ToSkipLen, so the next packet already started in this new
 		% chunk.
@@ -3752,23 +3907,26 @@ try_integrate_chunk( ToSkipLen, _MaybeAccChunk=undefined, NewChunk, State ) ->
 
 	end;
 
-% Here there is already an accumulated chunk, hence a start byte was already
-% detected and chopped:
+% Here there is already an accumulated chunk as a tail, hence its start byte was
+% already detected and chopped:
 %
-try_integrate_chunk( _ToSkipLen=0, AccChunk, NewChunk, State ) ->
-	% Start byte was already chopped from AccChunk:
-	scan_post_start_byte( <<AccChunk/binary, NewChunk/binary>>, State ).
+try_integrate_next_telegram( _ToSkipLen=0, TelTail, NewChunk, State ) ->
+	% Start byte was already chopped from TelTail:
+	MoreCompleteTelTail = <<TelTail/binary, NewChunk/binary>>,
+	decode_after_start_byte( MoreCompleteTelTail, State ).
 
-% Not expecting ToSkipLen>0 and MaybeAccChunk =/= undefined...
+% Not expecting ToSkipLen>0 and MaybeTelTail =/= undefined (a function clause
+% would be triggered anyway).
 
 
 
 -doc """
-Tries to decode the specified telegram chunk (any needed skipping having already
-taken place), and returns the outcome.
+Tries to decode the specified telegram chunk (any prior byte-skipping needed
+having been already done; no start byte having been already chopped), and
+returns the outcome.
 
-Incomplete chunks may be completed later, by next receivings (hence are kept,
-from their first start byte included), whereas invalid ones are dropped (until
+Incomplete chunks may be completed later by next receivings (hence are kept,
+from their first start byte included, whereas invalid ones are dropped (until
 any start byte is found).
 """.
 -spec try_decode_chunk( telegram_chunk(), oceanic_state() ) ->
@@ -3799,43 +3957,42 @@ try_decode_chunk( TelegramChunk, State ) ->
 					"so dropping its ~B bytes)", [ DroppedCount ] ),
 				basic_utils:ignore_unused( DroppedCount ) ),
 
-			{ invalid, _StillToSkipLen=0, _NoAccChunk=undefined, State };
+			{ invalid, _StillToSkipLen=0, _NoTelTail=undefined, State };
 
 
-		{ NewTelegramChunk, DroppedCount } ->
+		{ NewTelTail, DroppedCount } ->
 
 			cond_utils:if_defined( oceanic_debug_decoding,
 				trace_bridge:debug_fmt( "Start byte found, retaining now "
-					"following chunk (of size ~B bytes; "
+					"following telegram tail (of size ~B bytes; "
 					"after dropping ~B byte(s)):~n  ~p.",
-					[ size( NewTelegramChunk ), DroppedCount,
-					  NewTelegramChunk ] ),
+					[ size( NewTelTail ), DroppedCount, NewTelTail ] ),
 				basic_utils:ignore_unused( DroppedCount ) ),
 
-			scan_post_start_byte( NewTelegramChunk, State )
+			decode_after_start_byte( NewTelTail, State )
 
 	end.
 
 
 
 -doc """
-Scans the specified chunk, knowing that it used to begin with a start byte
-(which has already been chopped).
+Scans the specified telegram tail (knowing that the corresponding chunk used to
+begin with a start byte, which has already been chopped).
 """.
-scan_post_start_byte( NewTelegramChunk, State ) ->
+decode_after_start_byte( NewTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Examining now following chunk of ~B bytes: "
-			"~p.", [ size( NewTelegramChunk ), NewTelegramChunk  ] ) ),
+		trace_bridge:debug_fmt( "Examining now following tail of ~B bytes:~n "
+			"~p.", [ size( NewTelTail ),  NewTelTail ] ) ),
 
-	% This new chunk corresponds to a telegram that is invalid, or unsupported,
-	% or (currently) truncated, or valid (hence decoded):
+	% This tail corresponds to a telegram that is invalid, or unsupported, or
+	% (currently) truncated, or valid (hence decoded):
 	%
-	case NewTelegramChunk of
+	case NewTelTail of
 
-		% First 32 bits:
+		% First 32 bits available:
 		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
-			examine_header( Header, HeaderCRC, Rest, NewTelegramChunk, State );
+			examine_header( Header, HeaderCRC, Rest, NewTelTail, State );
 
 		% So less than 5 bytes (yet), cannot be complete, but is kept:
 		_ ->
@@ -3843,22 +4000,22 @@ scan_post_start_byte( NewTelegramChunk, State ) ->
 				trace_bridge:debug( "(no complete header to decode)" ) ),
 
 			% Waiting to concatenate any additional receiving:
-			{ incomplete, _ToSkipLen=0, NewTelegramChunk, State }
+			{ incomplete, _ToSkipLen=0, NewTelTail, State }
 
 	end.
 
 
 
 -doc """
-Extracts the content from the specified telegram chunk, returning a chunk that
-is beginning just after any start byte (which is 0x55, i.e. 85), if any.
+Extracts the content ib the specified telegram chunk, returning any telegram
+tail beginning just after any start byte (which is 0x55, i.e. 85).
 
-Generally there are no leading bytes to be dropped.
+Often there are no leading bytes to be dropped.
 
 Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
 """.
 -spec scan_for_packet_start( telegram_chunk() ) ->
-				{ telegram_chunk() | 'no_content', DropCount :: count() }.
+				{ telegram_tail() | 'no_content', DropCount :: count() }.
 scan_for_packet_start( TelegramChunk ) ->
 	scan_for_packet_start( TelegramChunk, _DropCount=0 ).
 
@@ -3872,19 +4029,19 @@ scan_for_packet_start( _Chunk= <<?sync_byte, RemainingChunk/binary>>,
 	% No need to keep/include the start byte: repeated decoding attempts may
 	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
 	%
-	{ RemainingChunk, DropCount };
+	{ _NewTelTail=RemainingChunk, DropCount };
 
 % Skip all bytes before first start byte:
-scan_for_packet_start( _Chunk= <<_OtherByte, T/binary>>, DropCount ) ->
+scan_for_packet_start( _Chunk= <<_OtherNonSyncByte, T/binary>>, DropCount ) ->
 	scan_for_packet_start( T, DropCount+1 ).
 
 
 
--doc "Checks the telegram header and decodes it.".
--spec examine_header( esp3_header(), crc(), telegram_chunk(), telegram_chunk(),
+-doc "Checks the telegram header and decodes all next elements accordingly.".
+-spec examine_header( esp3_header(), crc(), telegram_chunk(), telegram_tail(),
 					  oceanic_state() ) -> decoding_outcome().
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
-				HeaderCRC, Rest, FullTelegramChunk, State ) ->
+				HeaderCRC, Rest, FullTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
@@ -3905,6 +4062,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 			case get_packet_type( PacketTypeNum ) of
 
 				undefined ->
+					% Not able to decode, no need to try to decode its content
+					% as a new telegram:
 
 					SkipLen = ExpectedRestSize,
 
@@ -3917,15 +4076,19 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 					case Rest of
 
 						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
-							% We already skipped what was needed:
-							{ unsupported, _SkipLen=0, NextChunk, State };
+							% We already skipped what was needed; we have the
+							% next chunk, but we need any corresponding tail, so:
+							%
+							NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
+
+							{ unsupported, _SkipLen=0, NextMaybeTelTail, State };
 
 						% Rest too short here; so we have to skip more than this
 						% chunk:
 						%
 						_ ->
 							StillToSkip = SkipLen - size( Rest ),
-							{ not_reached, StillToSkip, _NoAccChunk=undefined,
+							{ not_reached, StillToSkip, _NoTelTail=undefined,
 							  State }
 
 					end;
@@ -3941,40 +4104,21 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 					case ActualRestSize < ExpectedRestSize of
 
-						% Not having received enough yet (will be parsed again
+						% Not having received enough yet (will be decoded again,
 						% once at least partially completed next):
 						%
 						true ->
-							{ incomplete, _SkipLen=0, FullTelegramChunk,
-							  State };
+							{ incomplete, _SkipLen=0, FullTelTail, State };
 
-						% We have at least enough:
+						% We have at least enough, let's extract these elements
+						% and separate them from any next bytes:
+						%
 						false ->
 
 							<<Data:DataLen/binary, OptData:OptDataLen/binary,
-							  FullDataCRC:8, NextBin/binary>> = Rest,
+							  FullDataCRC:8, NextChunk/binary>> = Rest,
 
-							MaybeNextChunk = case NextBin of
-
-								<<>> ->
-									undefined;
-
-								% We cannot include NextBin as a chunk, this
-								% would mean it was starting with a start byte;
-								% so:
-								%
-								NonEmptyBin ->
-									case scan_for_packet_start( NonEmptyBin ) of
-
-										{ no_content, _DropCount } ->
-											undefined;
-
-										{ ChoppedChunk, _DropCount } ->
-											ChoppedChunk
-
-									end
-
-							end,
+							% Let's decode first the current packet.
 
 							% This CRC corresponds to the whole FullData, we
 							% extract it (again) rather than concatenating
@@ -3985,15 +4129,14 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 							% May happen; e.g. if two telegrams overlap:
 							case Rest of
 
-								% Post-telegram not lost:
-								<<FullData:FullLen/binary, _>> ->
+								% Post-telegram not to be lost:
+								<<FullData:FullLen/binary, _NextChunk>> ->
 									examine_full_data( FullData, FullDataCRC,
 										Data, OptData, PacketType,
-										FullTelegramChunk, MaybeNextChunk,
-										State );
+										FullTelTail, NextChunk, State );
 
+								% Not expected to *ever* happen:
 								TooShortChunk ->
-
 									cond_utils:if_defined(
 										oceanic_debug_decoding,
 										trace_bridge:debug_fmt(
@@ -4003,8 +4146,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 											TooShortChunk ) ),
 
 									% By design start byte already chopped:
-									{ incomplete, _ToSkipLen=0,
-									  FullTelegramChunk, State }
+									{ incomplete, _ToSkipLen=0, FullTelTail,
+									  State }
 
 
 							end
@@ -4020,12 +4163,16 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 					"dropping this telegram candidate.", [ OtherHeaderCRC ] ),
 				basic_utils:ignore_unused( OtherHeaderCRC ) ),
 
-			% Rather than discarding this chunk as a whole, tries to scavage
-			% (very conservatively) any trailing element by reintroducing a
-			% potentially still valid new chunk - knowing that the past start
-			% byte has already been chopped, so we go for any next one:
+			% Rather than discarding this telegram tail as a whole, tries to
+			% scavage (very conservatively) any trailing element by extracting
+			% from it any potentially valid new telegram tail - knowing that the
+			% prior start byte has already been chopped; so we go here for any
+			% next one (and thus at least one of byte has been consumed in the
+			% process - no infinite decoding loop):
 			%
-			try_decode_chunk( FullTelegramChunk, State )
+			NextMaybeTelTail = get_maybe_next_tail( _NextChunk=FullTelTail ),
+
+			{ invalid, _ToSkipLen=0, NextMaybeTelTail, State }
 
 	end.
 
@@ -4033,10 +4180,10 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 -doc "Further checks and decodes a telegram now that its type is known.".
 -spec examine_full_data( telegram_chunk(), crc(), telegram_data(),
-	telegram_opt_data(), packet_type(), telegram_chunk(), telegram_chunk(),
+	telegram_opt_data(), packet_type(), telegram_tail(), telegram_chunk(),
 	oceanic_state() ) -> decoding_outcome().
 examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
-				   FullTelegramChunk, AnyNextChunk, State ) ->
+				   FullTelTail, NextChunk, State ) ->
 
 	case compute_crc( FullData ) of
 
@@ -4046,7 +4193,10 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 				trace_bridge:debug_fmt( "Full-data CRC validated (~B).",
 										[ ExpectedFullDataCRC ] ) ),
 
-			decode_packet( PacketType, Data, OptData, AnyNextChunk, State );
+			% First point where it can be done once for all:
+			NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
+
+			decode_packet( PacketType, Data, OptData, NextMaybeTelTail, State );
 
 
 		OtherCRC ->
@@ -4058,11 +4208,32 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 
 			% Not expecting being fooled by data accidentally looking like a
 			% legit CRC'ed header, so supposing this is just a valid telegram
-			% that ended up to be corrupted, yet for extra safety we will
-			% restart the decoding at the very first step (we are nevertheless
-			% still progressing - not wanting to recurse infinitely on a chunk):
+			% that ended up being corrupted; yet for extra safety we will
+			% restart the decoding from the very first possible byte, the one
+			% after the last (chopped) start byte, i.e. from the beginning of
+			% this tail (so we are nevertheless still progressing - not wanting
+			% to recurse infinitely on a chunk):
 			%
-			scan_for_packet_start( FullTelegramChunk )
+			% (NextChunk already in that tail)
+			scan_for_packet_start( _Chunk=FullTelTail )
+
+	end.
+
+
+
+-doc """
+Returns the telegram tail (if any) that can be obtained from the specified
+chunk.
+""".
+-spec get_maybe_next_tail( telegram_chunk() ) -> option( telegram_tail() ).
+get_maybe_next_tail( Chunk ) ->
+	case scan_for_packet_start( Chunk ) of
+
+		{ no_content, _DropCount } ->
+			undefined;
+
+		{ TelTail, _DropCount } ->
+			TelTail
 
 	end.
 
@@ -4074,10 +4245,10 @@ Decodes the specified packet, based on the specified data elements.
 Data corresponds to the actual packet payload of the specified type.
 """.
 -spec decode_packet( packet_type(), telegram_data(), telegram_opt_data(),
-					 telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 % Clause only for ERP1 packets (e.g. not covering responses):
 decode_packet( _PacketType=radio_erp1_type,
-			   _Data= <<RorgNum:8, DataTail/binary>>, OptData, AnyNextChunk,
+			   _Data= <<RorgNum:8, DataTail/binary>>, OptData, NextMaybeTelTail,
 			   State ) ->
 
 	MaybeRorg = oceanic_generated:get_maybe_first_for_rorg( RorgNum ),
@@ -4092,19 +4263,19 @@ decode_packet( _PacketType=radio_erp1_type,
 	case MaybeRorg of
 
 		rorg_rps ->
-			decode_rps_packet( DataTail, OptData, AnyNextChunk, State );
+			decode_rps_packet( DataTail, OptData, NextMaybeTelTail, State );
 
 		rorg_1bs ->
-			decode_1bs_packet( DataTail, OptData, AnyNextChunk, State );
+			decode_1bs_packet( DataTail, OptData, NextMaybeTelTail, State );
 
 		rorg_4bs ->
-			decode_4bs_packet( DataTail, OptData, AnyNextChunk, State );
+			decode_4bs_packet( DataTail, OptData, NextMaybeTelTail, State );
 
 		rorg_ute ->
-			decode_ute_packet( DataTail, OptData, AnyNextChunk, State );
+			decode_ute_packet( DataTail, OptData, NextMaybeTelTail, State );
 
 		rorg_vld ->
-			decode_vld_packet( DataTail, OptData, AnyNextChunk, State );
+			decode_vld_packet( DataTail, OptData, NextMaybeTelTail, State );
 
 		undefined ->
 			trace_bridge:warning_fmt( "The RORG ~ts is not known, "
@@ -4113,7 +4284,7 @@ decode_packet( _PacketType=radio_erp1_type,
 
 			% Not even an EURID to track.
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, State };
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State };
 
 		Rorg ->
 			trace_bridge:warning_fmt( "The decoding of ERP1 radio packets "
@@ -4125,13 +4296,13 @@ decode_packet( _PacketType=radio_erp1_type,
 
 			% Not even an EURID to track.
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, State }
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }
 
 	end;
 
 
 % Here a response is received whereas no request was sent:
-decode_packet( _PacketType=response_type, Data, OptData, AnyNextChunk,
+decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 			   State=#oceanic_state{ waited_command_info=undefined,
 									 discarded_count=DiscCount } ) ->
 
@@ -4141,13 +4312,13 @@ decode_packet( _PacketType=response_type, Data, OptData, AnyNextChunk,
 
 	{ decoded, _MaybeDeviceEvent=command_processed,
 	  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
-	  _MaybeDevice=undefined, AnyNextChunk,
+	  _MaybeDevice=undefined, NextMaybeTelTail,
 	  State#oceanic_state{ discarded_count=DiscCount+1 } };
 
 
 % Response received, presumably for this pending (possibly internal) command:
 decode_packet( _PacketType=response_type,
-			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData, AnyNextChunk,
+			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData, NextMaybeTelTail,
 			   State=#oceanic_state{
 					waited_command_info={ WaitedCmdReq, MaybeTimerRef },
 					command_count=CmdCount } ) ->
@@ -4167,12 +4338,12 @@ decode_packet( _PacketType=response_type,
 			trace_bridge:warning_fmt( "Unable to decode response whose return "
 				"code is invalid (~B), dropping packet and pending "
 				"command (#~B).", [ ReturnCode, CmdCount ] ),
-			{ invalid, _ToSkipLen=0, AnyNextChunk, RespState };
+			{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
 
 
 		ok_return ->
 			decode_response_tail( WaitedCmdReq, DataTail, OptData,
-								  AnyNextChunk, RespState );
+								  NextMaybeTelTail, RespState );
 
 		% Not a decoding failure, but more a protocol-level one that shall be
 		% notified to the requester.
@@ -4191,7 +4362,7 @@ decode_packet( _PacketType=response_type,
 			case Requester of
 
 				internal ->
-					{ invalid, _ToSkipLen=0, AnyNextChunk, RespState };
+					{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
 
 				RequesterPid ->
 
@@ -4201,21 +4372,21 @@ decode_packet( _PacketType=response_type,
 					% Waiting information already cleared:
 					{ decoded, command_processed,
 					  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
-					  _MaybeDevice=undefined, AnyNextChunk, RespState }
+					  _MaybeDevice=undefined, NextMaybeTelTail, RespState }
 
 			end
 
 	end;
 
 
-decode_packet( PacketType, _Data, _OptData, AnyNextChunk, State ) ->
+decode_packet( PacketType, _Data, _OptData, NextMaybeTelTail, State ) ->
 
 	trace_bridge:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
 							  [ PacketType ] ),
 
 	% Not even an EURID to track, no real need to go further.
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
+	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
 
 
 
@@ -4251,9 +4422,9 @@ See decode_1bs_packet/3 for more information.
 DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
 -spec decode_rps_packet( telegram_data_tail(), telegram_opt_data(),
-		telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+		option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
-				   Status:1/binary>>, OptData, AnyNextChunk,
+				   Status:1/binary>>, OptData, NextMaybeTelTail,
 				   State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% We have to know the specific EEP of this device in order to decode this
@@ -4276,7 +4447,7 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		% Knowing the actual EEP is needed in order to decode:
@@ -4296,21 +4467,21 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		{ value, Device=#enocean_device{ eep=single_input_contact } } ->
 			decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status,
-				OptData, AnyNextChunk, Device, State );
+				OptData, NextMaybeTelTail, Device, State );
 
 		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_1 } } ->
 			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
-				OptData, AnyNextChunk, Device, State );
+				OptData, NextMaybeTelTail, Device, State );
 
 		% Same as previous:
 		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_2 } } ->
 			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
-				OptData, AnyNextChunk, Device, State );
+				OptData, NextMaybeTelTail, Device, State );
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -4331,7 +4502,7 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
 
 	end.
 
@@ -4348,10 +4519,10 @@ Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 [EEP-spec] p.15.
 """.
 -spec decode_rps_single_input_contact_packet( telegram_chunk(), eurid(),
-		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
-		Status, OptData, AnyNextChunk, Device,
+		Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	ButtonTransition = case DB_0AsInt band ?b4 =:= 0 of
@@ -4409,7 +4580,7 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 								transition=ButtonTransition },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  AnyNextChunk, NewState }.
+	  NextMaybeTelTail, NewState }.
 
 
 
@@ -4423,12 +4594,12 @@ Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 [EEP-spec] p.15.
 """.
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
-		telegram_chunk(), telegram_opt_data(), telegram_chunk(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
 		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
-		AnyNextChunk, Device=#enocean_device{ eep=EepId },
+		NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	AppStyle = get_app_style_from_eep( EepId ),
@@ -4483,7 +4654,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				second_action_valid=IsSecondActionValid },
 
 			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-			  AnyNextChunk, NewState };
+			  NextMaybeTelTail, NewState };
 
 
 		{ _T21=1, _NU=0 } ->
@@ -4536,7 +4707,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				energy_bow=ButtonTransition },
 
 			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-			  AnyNextChunk, NewState };
+			  NextMaybeTelTail, NewState };
 
 
 		_Other ->
@@ -4552,7 +4723,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
 
 	end.
 
@@ -4568,16 +4739,17 @@ The actual waiting information is expected to have been already cleared by the
 caller.
 """.
 -spec decode_response_tail( command_request(), telegram_data_tail(),
-							telegram_opt_data(), telegram_chunk(),
+							telegram_opt_data(), option( telegram_tail() ),
 							oceanic_state() ) -> decoding_outcome().
 % For co_rd_version:
-decode_response_tail( #command_request{ command_type=co_rd_version,
-										requester=Requester },
+decode_response_tail(
+		#command_request{ command_type=co_rd_version,
+						  requester=Requester },
 		_DataTail= <<AppVerMain:8, AppVerBeta:8, AppVerAlpha:8, AppVerBuild:8,
 					 ApiVerMain:8, ApiVerBeta:8, ApiVerAlpha:8, ApiVerBuild:8,
 					 % 16 bytes:
 					 ChipId:32, ChipVer:32, AppDesc:16/binary>>,
-		_OptData= <<>>, AnyNextChunk, State ) ->
+		_OptData= <<>>, NextMaybeTelTail, State ) ->
 
 	Response = #read_version_response{
 		app_version={ AppVerMain, AppVerBeta, AppVerAlpha, AppVerBuild },
@@ -4586,23 +4758,23 @@ decode_response_tail( #command_request{ command_type=co_rd_version,
 		chip_version=ChipVer,
 		app_description=text_utils:buffer_to_binstring( AppDesc ) },
 
-	notify_requester( Response, Requester, AnyNextChunk, State );
+	notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 decode_response_tail( #command_request{ command_type=co_rd_version }, DataTail,
-					  _OptData= <<>>, AnyNextChunk, State ) ->
+					  _OptData= <<>>, NextMaybeTelTail, State ) ->
 
 	trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
 		"common command with an invalid data tail (~ts).",
 		[ DataTail, telegram_to_string( DataTail ) ] ),
 
-	{ invalid, _ToSkipLen=0, AnyNextChunk, State };
+	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };
 
 
 % For co_rd_sys_log:
 decode_response_tail( #command_request{ command_type=co_rd_sys_log,
 										requester=Requester },
-					  DataTail, OptData, AnyNextChunk, State ) ->
+					  DataTail, OptData, NextMaybeTelTail, State ) ->
 
 	% Nope, we have a series of size(OptData) APP log counters (e.g. 6 of them,
 	% each starting initially at 255):
@@ -4619,7 +4791,7 @@ decode_response_tail( #command_request{ command_type=co_rd_sys_log,
 	Response = #read_logs_response{ app_counters=binary_to_list( OptData ),
 									api_counters=binary_to_list( DataTail ) },
 
-	notify_requester( Response, Requester, AnyNextChunk, State );
+	notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 % (apparently no restriction applies to DataTail, no non-matching clause to add)
@@ -4629,7 +4801,7 @@ decode_response_tail( #command_request{ command_type=co_rd_sys_log,
 decode_response_tail( #command_request{ command_type=co_rd_idbase,
 										requester=Requester },
 		_DataTail= <<BaseEurid:32>>,
-		_OptData= <<RemainWrtCyclesNum:8>>, AnyNextChunk, State ) ->
+		_OptData= <<RemainWrtCyclesNum:8>>, NextMaybeTelTail, State ) ->
 
 	RemainWrtCycles = case RemainWrtCyclesNum of
 
@@ -4645,11 +4817,11 @@ decode_response_tail( #command_request{ command_type=co_rd_idbase,
 		base_eurid=BaseEurid,
 		remaining_write_cycles=RemainWrtCycles },
 
-	notify_requester( Response, Requester, AnyNextChunk, State );
+	notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 decode_response_tail( #command_request{ command_type=co_rd_idbase }, DataTail,
-					  OptData, AnyNextChunk, State ) ->
+					  OptData, NextMaybeTelTail, State ) ->
 
 	trace_bridge:error_fmt( "Received a response to a pending co_rd_idbase "
 		"common command with an invalid data tail (~ts) "
@@ -4657,11 +4829,11 @@ decode_response_tail( #command_request{ command_type=co_rd_idbase }, DataTail,
 		[ DataTail, telegram_to_string( DataTail ),
 		  telegram_to_string( OptData ) ] ),
 
-	{ invalid, _ToSkipLen=0, AnyNextChunk, State };
+	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };
 
 
 % Other common commands:
-decode_response_tail( OtherCmdReq, DataTail, OptData, AnyNextChunk, State ) ->
+decode_response_tail( OtherCmdReq, DataTail, OptData, NextMaybeTelTail, State ) ->
 
 	trace_bridge:error_fmt( "Responses to ~ts are currently "
 		"unsupported (dropping response and waited request).",
@@ -4670,7 +4842,7 @@ decode_response_tail( OtherCmdReq, DataTail, OptData, AnyNextChunk, State ) ->
 	trace_bridge:debug_fmt( "Extra information: DataTail=~ts, OptData=~ts.",
 		[ telegram_to_string( DataTail ), telegram_to_string( OptData ) ] ),
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk, State }.
+	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
 
 
 
@@ -4678,9 +4850,9 @@ decode_response_tail( OtherCmdReq, DataTail, OptData, AnyNextChunk, State ) ->
 Notifies the specified requester of the success response regarding the current
 common command.
 """.
--spec notify_requester( command_response(), requester(), telegram_chunk(),
-						oceanic_state() ) -> decoding_outcome().
-notify_requester( Response, _Requester=internal, AnyNextChunk, State ) ->
+-spec notify_requester( command_response(), requester(),
+	option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+notify_requester( Response, _Requester=internal, NextMaybeTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_commands,
 		trace_bridge:debug_fmt(
@@ -4689,9 +4861,10 @@ notify_requester( Response, _Requester=internal, AnyNextChunk, State ) ->
 
 	% We return directly the response event in that case:
 	{ decoded, Response, _MaybeDiscoverOrigin=undefined,
-	  _IsBackOnline=false, _MaybeDevice=undefined, AnyNextChunk, State };
+	  _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State };
 
-notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
+
+notify_requester( Response, RequesterPid, NextMaybeTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_commands,
 		trace_bridge:debug_fmt( "Sending back to requester ~w "
@@ -4701,7 +4874,7 @@ notify_requester( Response, RequesterPid, AnyNextChunk, State ) ->
 	RequesterPid ! { oceanic_command_outcome, Response },
 
 	{ decoded, command_processed, _MaybeDiscoverOrigin=undefined,
-	  _IsBackOnline=false, _MaybeDevice=undefined, AnyNextChunk, State }.
+	  _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State }.
 
 
 
@@ -4958,9 +5131,9 @@ Discussed in [EEP-spec] p.27.
 DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
 -spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
-			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
-		AnyNextChunk, State=#oceanic_state{ device_table=DeviceTable } ) ->
+		NextMaybeTelTail, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% 0xd5 is 213.
 
@@ -5003,7 +5176,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
 			"with a payload of ~B bytes (with DB_0=~w~ts; "
-			"contact is ~ts), sender is ~ts, status is ~w ~ts.",
+			"contact is ~ts), sender is ~ts, status is ~w~ts.",
 			[ size( DataTail ), DB_0, learn_to_string( LearnActivated ),
 			  ContactStatus, get_best_naming( MaybeDeviceName, SenderEurid ),
 			  Status,
@@ -5028,7 +5201,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 		contact=ContactStatus },
 
 	{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline, NewDevice,
-	  AnyNextChunk, NewState }.
+	  NextMaybeTelTail, NewState }.
 
 
 
@@ -5040,10 +5213,10 @@ Discussed in [EEP-spec] p.12.
 DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
 -spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
-			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 		SenderEurid:32, _StatusFirstHalf:4, RC:4>>, OptData,
-		AnyNextChunk, State=#oceanic_state{ device_table=DeviceTable } ) ->
+		NextMaybeTelTail, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% 0xa5 is 165.
 
@@ -5078,7 +5251,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		% Knowing the actual EEP is needed in order to decode:
@@ -5095,12 +5268,12 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		{ value, Device=#enocean_device{ eep=thermo_hygro_low } } ->
 			decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
-				SenderEurid, OptData, AnyNextChunk, Device, State );
+				SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
@@ -5120,7 +5293,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
 
    end.
 
@@ -5133,10 +5306,10 @@ Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
 Refer to [EEP-spec] p.35.
 """.
 -spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
-		eurid(), telegram_opt_data(), telegram_chunk(), enocean_device(),
+		eurid(), telegram_opt_data(), option( telegram_tail() ), enocean_device(),
 		oceanic_state() ) -> decoding_outcome().
 decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
-		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, AnyNextChunk,
+		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
 		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110101 =:= 0 ),
@@ -5180,8 +5353,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 			end,
 
 			trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermo_hygro_low "
-				"packet, reporting a ~ts ~ts~ts; sender is ~ts, "
-				"~ts.",
+				"packet, reporting a ~ts ~ts~ts; sender is ~ts~ts.",
 				[ relative_humidity_to_string( RelativeHumidity ), TempStr,
 				  learn_to_string( LearnActivated ),
 				  get_best_naming( MaybeDeviceName, SenderEurid ),
@@ -5210,7 +5382,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 								 learn_activated=LearnActivated },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  AnyNextChunk, NewState }.
+	  NextMaybeTelTail, NewState }.
 
 
 
@@ -5221,7 +5393,7 @@ Teach-in/out, EEP based (UTE), one way of pairing devices.
 Discussed in [EEP-gen] p.17; p.25 for the query and p.26 for the response.
 """.
 -spec decode_ute_packet( telegram_data_tail(), telegram_opt_data(),
-			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 % This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
 % broadcasting (typically after one of its relevant buttons has been pressed) a
 % request that devices declare to this requester device.
@@ -5237,7 +5409,7 @@ decode_ute_packet(
 					 RORG:8,                                     % = DB_0
 					 InitiatorEurid:32,
 					 Status:8>>,
-		OptData, AnyNextChunk,
+		OptData, NextMaybeTelTail,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	CommDirection= case CommDir of
@@ -5336,8 +5508,8 @@ decode_ute_packet(
 				] )
 
 		end,
-		basic_utils:ignore_unused( [ PTMSwitchModuleType, NuType, RepCount ] )
-						),
+		basic_utils:ignore_unused(
+		  [ PTMSwitchModuleType, NuType, RepCount ] ) ),
 
 	<<_DB_6:8,ToEcho/binary>> = DataTail,
 
@@ -5362,7 +5534,7 @@ decode_ute_packet(
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
 	{ decoded, Event, _DiscoverOrigin=teaching, _IsBackOnline=false, Device,
-	  AnyNextChunk, NewState }.
+	  NextMaybeTelTail, NewState }.
 
 
 
@@ -5384,8 +5556,8 @@ interpretation depends on the extra FUNC and TYPE information supposed to be
 known a priori by the receiver.
 """.
 -spec decode_vld_packet( telegram_data_tail(), telegram_opt_data(),
-			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
-decode_vld_packet( DataTail, OptData, AnyNextChunk,
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 				   State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	% We do not know yet the size of the payload, but we know that DataTail ends
@@ -5419,7 +5591,7 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		% Knowing the actual EEP is needed in order to decode:
@@ -5439,17 +5611,17 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unconfigured, _ToSkipLen=0, AnyNextChunk, NewState };
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
 		{ value, Device=#enocean_device{ eep=smart_plug } } ->
 			decode_vld_smart_plug_packet( Payload, SenderEurid, Status,
-				OptData, AnyNextChunk, Device, State );
+				OptData, NextMaybeTelTail, Device, State );
 
 
 		{ value, Device=#enocean_device{ eep=smart_plug_with_metering } } ->
 			decode_vld_smart_plug_with_metering_packet( Payload,
-				SenderEurid, Status, OptData, AnyNextChunk, Device, State );
+				SenderEurid, Status, OptData, NextMaybeTelTail, Device, State );
 
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
@@ -5471,31 +5643,36 @@ decode_vld_packet( DataTail, OptData, AnyNextChunk,
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
 
 	end.
 
 
 
 -doc """
-Decodes a rorg_vld smart_plug (D2-01-0A, an "Electronic switches and dimmers
-with Energy Measurement and Local Control" of type 0A) packet.
+Decodes a packet emitted by a rorg_vld smart_plug (D2-01-0A, an "Electronic
+switches and dimmers with Energy Measurement and Local Control" device of type
+0A).
 
 This corresponds to basic smart, non-metering plugs bidirectional actuators that
-control (switch on/off) most electrical loads (e.g. appliances).
+control (switch on/off) most electrical loads (e.g. appliances); there do not
+perform metering.
 
-Discussed in [EEP-spec] p.143.
+Discussed in [EEP-spec] p. 132.
+
+Notably, if the command is equal to 0x4 (hence 'actuator_status_response'; see
+[EEP-spec] p. 135), it is an information sent (as a broadcast) by the smart plug
+about its status (either after a status request or after a state change request
+- whether or not it triggered an actual state change), typically to acknowledge
+that a requested switching was indeed triggered).
 """.
 -spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
-		telegram_opt_data(), telegram_chunk(), enocean_device(),
+		telegram_opt_data(), option( telegram_tail() ), enocean_device(),
 		oceanic_state() ) -> decoding_outcome().
 decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
-		SenderEurid, _Status, OptData, AnyNextChunk, Device,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
-
-	% Actually is currently not managed:
 	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
@@ -5504,9 +5681,11 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
+	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
-			"for command '~ts' (~B); sender is ~ts, ~ts.",
+			"for command '~ts' (~B); sender is ~ts~ts.",
 			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
 			] ),
@@ -5518,25 +5697,186 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 	%Event = to_do,
 
-	%{ decoded, Event, AnyNextChunk, UndefinedDiscoverOrigin,
+	%{ decoded, Event, NextMaybeTelTail, UndefinedDiscoverOrigin,
 	%  IsBackOnline, NewDevice, NewState }.
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
+	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }.
 
 
 
 -doc """
-Decodes a rorg_vld smart_plug_with_metering (D2-01-0B, an "Electronic switches
-and dimmers with Energy Measurement and Local Control" of type 0B) packet.
+Decodes a packet emitted by a rorg_vld smart_plug_with_metering (D2-01-0B, an
+"Electronic switches and dimmers with Energy Measurement and Local Control"
+device of type 0B).
 
 This corresponds to smart, metering plugs bidirectional actuators that control
 (switch on/off) most electrical load (e.g. appliances) and may report it.
 
 Discussed in [EEP-spec] p.143.
 """.
+-spec decode_vld_smart_plug_with_metering_packet( vld_payload(), eurid(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
+		enocean_device(), oceanic_state() ) -> decoding_outcome().
+
+% For a packet of type "Actuator Status Response", i.e. with CmdAsInt=16#4 ("CMD
+% 0x4", see [EEP-spec] p.135); such a response is systematically emitted, even
+% if not state changed:
+%
 decode_vld_smart_plug_with_metering_packet(
-		_Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
-		SenderEurid, _Status, OptData, AnyNextChunk, Device,
+		% 3 bytes:
+		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
+					CmdAsInt:4, OverCurrentSwitchOff:1, ErrorLevel:2,
+					_IOChannel:5, LocalControl:1, OutputValue:7>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } )
+					when CmdAsInt =:= 16#4 ->
+
+	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
+			case PowerFailureEnabled of
+
+		0 ->
+			{ false, false };
+
+		1 ->
+			Detect = case PowerFailureDetected of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+			{ true, Detect }
+
+	end,
+
+	IsOverCurrentSwitchOffTrigger = case OverCurrentSwitchOff of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	HardwareStatus = case ErrorLevel of
+
+		0 ->
+			nominal;
+
+		1 ->
+			warning;
+
+		2 ->
+			failure;
+
+		3 ->
+			not_supported
+
+	end,
+
+	% IOChannel not decoded yet.
+
+	IsLocalControlEnabled = case LocalControl of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	MaxLevel = 16#64,
+
+	OutputPower = case OutputValue of
+
+		0 ->
+			off;
+
+		V when V =< MaxLevel ->
+			round( V / MaxLevel * 100.0 );
+
+		% 16#7e: not used.
+
+		16#7f ->
+			not_available
+
+	end,
+
+
+	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	% Actually is currently not managed:
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			PFStr = basic_utils:if_else( IsPowerFailureEnabled,
+				_IfTrue=interpret_power_failure( IsPowerFailureDetected ),
+				_IfNotTrue="" ),
+
+			OCStr =
+				interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
+
+			HardStr = interpret_hardware_status( HardwareStatus ),
+
+			LocCtrlStr = interpret_local_control( IsLocalControlEnabled ),
+
+			PowerStr = interpret_power_report( OutputPower ),
+
+			trace_bridge:debug_fmt(
+				"Decoding a VLD smart plug with metering packet "
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts,"
+				"~ts; this plug is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
+				  HardStr, LocCtrlStr, PowerStr,
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+									 MaybeDecodedOptData ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #smart_plug_status_report_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=OutputPower },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState };
+
+
+% For other, not supported yet, smart plug with metering command packets:
+decode_vld_smart_plug_with_metering_packet(
+		% 3 bytes:
+		_Payload= <<_:4, CmdAsInt:5, _Rest/binary>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
@@ -5550,26 +5890,93 @@ decode_vld_smart_plug_with_metering_packet(
 
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt(
-			"Decoding a VLD smart plug with metering packet "
-			"for command '~ts' (~B); sender is ~ts, ~ts.",
-			[ MaybeCmd, CmdAsInt,
-			  get_best_naming( MaybeDeviceName, SenderEurid ),
-			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ),
+
+		begin
+			trace_bridge:debug_fmt(
+				"Partial decoding a VLD smart plug with metering packet "
+				"for command '~ts' (~B); sender is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  get_best_naming( MaybeDeviceName, SenderEurid ),
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+		end,
+
 		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
 									 MaybeDecodedOptData ] ) ),
 
-	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-	%Event = to_do,
+	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
-	%{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	%  AnyNextChunk, NewState }.
 
-	{ unsupported, _ToSkipLen=0, AnyNextChunk, NewState }.
+
+-doc "Interprets the specified power failure information.".
+-spec interpret_power_failure( boolean() ) -> ustring().
+interpret_power_failure( _IsPowerFailureDetected=true ) ->
+	"a power failure was detected";
+
+interpret_power_failure( _IsPowerFailureDetected=false ) ->
+	"no power failure is detected".
+
+
+
+-doc "Interprets the specified over-current switch off information.".
+-spec interpret_overcurrent_trigger( boolean() ) -> ustring().
+interpret_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=true ) ->
+	"over-current switch was triggered";
+
+interpret_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=false ) ->
+	"no over-current has been detected".
+
+
+
+-doc "Interprets the specified hardware status information.".
+-spec interpret_hardware_status( hardware_status() ) -> ustring().
+interpret_hardware_status( _HStatus=nominal ) ->
+	"hardware status is nominal";
+
+interpret_hardware_status( _HStatus=warning ) ->
+	"hardware status reports a warning";
+
+interpret_hardware_status( _HStatus=failure ) ->
+	"hardware status is failed";
+
+interpret_hardware_status( _HStatus=not_supported ) ->
+	"hardware status is unknown".
+
+
+
+-doc "Interprets the specified local control information.".
+-spec interpret_local_control( boolean() ) -> ustring().
+interpret_local_control( _LocCtrl=true ) ->
+	"local control enabled";
+
+interpret_local_control( _LocCtrl=false ) ->
+	"no local control".
+
+
+-doc "Interprets the specified power report information.".
+-spec interpret_power_report( power_report() ) -> ustring().
+interpret_power_report( _PwReport=off ) ->
+	"is not powering (off)";
+
+interpret_power_report( _PwReport=PInt ) when is_integer( PInt ) ->
+	text_utils:format( "is powering at ~B%", [ PInt ] );
+
+interpret_power_report( _PwReport ) ->
+	"has an unknwon powering status".
+
+
+
+
+-doc "The power currently output by a device (e.g. a smart plug).".
+-type power_report() :: 'off'
+					  | pos_integer() % Percentage of max power
+					  | 'not_available'. % Hence unknown
+
 
 
 
@@ -6098,8 +6505,9 @@ If yes, returns the corresponding button reference.
 If no, throws an exception.
 """.
 -spec interpret_button_ref_spec( term() ) -> button_ref().
-interpret_button_ref_spec( { EuridStr, Channel } ) when is_integer( Channel )
-														andalso Channel > 0 ->
+interpret_button_ref_spec( { EuridStr, Channel } )
+		when is_list( EuridStr )
+			 andalso is_integer( Channel ) andalso Channel > 0 ->
 	{ string_to_eurid( EuridStr ), Channel };
 
 interpret_button_ref_spec( Other ) ->
@@ -6548,6 +6956,7 @@ maybe_optional_data_to_string( DecodedOptData, _OptData ) ->
 -spec security_level_to_string( security_level() ) -> ustring().
 security_level_to_string( not_processed ) ->
 	"telegram not processed";
+
 security_level_to_string( obsolete ) ->
 	"obsolete";
 
@@ -6670,6 +7079,37 @@ device_event_to_string( #push_button_event{
 		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
 
+device_event_to_string( #smart_plug_status_report_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=OutputPower } ) ->
+
+	PFStr = interpret_power_failure( IsPowerFailureDetected ),
+	OCStr = interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
+	HardStr = interpret_hardware_status( HardwareStatus ),
+	LocCtrlStr = interpret_local_control( IsLocalControlEnabled ),
+	PowerStr = interpret_power_report( OutputPower ),
+
+	text_utils:format( "smart plug ~ts reports at ~ts that ~ts, ~ts, ~ts, ~ts; "
+		"this plug ~ts; notified~ts; ~ts, ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  time_utils:timestamp_to_string( Timestamp ),
+		  PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
+		  get_eep_description( MaybeEepId, _DefaultDesc=undefined ) ] );
 
 device_event_to_string( #double_rocker_switch_event{
 		source_eurid=Eurid,
@@ -7558,7 +7998,7 @@ secure_serial( _AnyOceanicRootDir ) ->
 
 		false ->
 			% oceanic:secure_tty/1 will look-up the BEAM later:
-			trace_utils:warning_fmt( "No user 'erlang-serial' installation "
+			trace_bridge:warning_fmt( "No user 'erlang-serial' installation "
 				"found (searched for '~ts').", [ SerialRootDir ] )
 
 	end.
