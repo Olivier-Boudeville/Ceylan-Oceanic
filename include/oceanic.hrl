@@ -343,6 +343,71 @@
 
 
 
+
+% Event sent in the context of EEPs D2-01-* (e.g 0A), corresponding to an
+% Actuator Status Response (command 0x4), so that a smart plug reports its
+% current state.
+%
+% Refer to [EEP-spec] p.135 for further details.
+%
+-record( smart_plug_status_report_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: option( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: option( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: option( time_utils:timestamp() ),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: option( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: option( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: option( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	% Whether a power failure is detected (if supported):
+	power_failure_detected :: boolean(),
+
+	% Whether an over-current triggered an automatic switch-off:
+	overcurrent_triggered :: boolean(),
+
+	% The reported hardware status:
+	hardware_status :: oceanic:hardware_status(),
+
+	% When the local control of the plug is enabled:
+	local_control_enabled :: boolean(),
+
+	% The power currently output by the plug:
+	output_power :: oceanic:power_report() } ).
+
+
+
 % Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
 % Application Style 1") and EEP F6-02-02 ("Light and Blind Control - Application
 % Style 2").
