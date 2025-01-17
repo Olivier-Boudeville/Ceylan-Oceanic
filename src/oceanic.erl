@@ -5655,7 +5655,7 @@ switches and dimmers with Energy Measurement and Local Control" device of type
 0A).
 
 This corresponds to basic smart, non-metering plugs bidirectional actuators that
-control (switch on/off) most electrical loads (e.g. appliances); there do not
+control (switch on/off) most electrical loads (e.g. appliances); they do not
 perform metering.
 
 Discussed in [EEP-spec] p. 132.
@@ -5847,7 +5847,8 @@ decode_vld_smart_plug_with_metering_packet(
 		end,
 
 		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
-									 MaybeDecodedOptData ] ) ),
+			 MaybeDecodedOptData, IsPowerFailureEnabled,
+			 IsPowerFailureDetected ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
