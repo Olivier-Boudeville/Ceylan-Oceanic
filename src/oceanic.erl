@@ -33,6 +33,10 @@ through an Oceanic server**.
 """.
 
 
+%
+% Export section.
+%
+
 
 % Base API:
 -export([
@@ -56,6 +60,8 @@ through an Oceanic server**.
 
 	acknowledge_teach_request/2, acknowledge_teach_request/3,
 
+	trigger_actuator/3,	trigger_actuators/3,
+
 	% For lower-level operation/testing:
 	encode_esp3_packet/2, encode_esp3_packet/3,
 
@@ -74,7 +80,6 @@ through an Oceanic server**.
 
 	% For common commands:
 	read_version/1, read_logs/1, read_base_id_info/1,
-
 
 	decode_telegram/2,
 
@@ -108,6 +113,27 @@ through an Oceanic server**.
 		  get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
 
 
+% Helper API for Oceanic user code:
+-export([ canonicalise_listened_event_specs/1,
+		  canon_listened_event_spec_to_string/1,
+		  canon_listened_event_spec_to_string/2,
+		  canon_listened_event_specs_to_string/1,
+		  canon_listened_event_specs_to_string/2,
+
+		  canonicalise_emitted_event_specs/1,
+		  canon_emitted_event_spec_to_string/1,
+		  canon_emitted_event_spec_to_string/2,
+		  canon_emitted_event_specs_to_string/1,
+		  canon_emitted_event_specs_to_string/2,
+
+		  actuator_info_to_string/1, actuator_info_to_string/2,
+
+		  get_all_device_types/0, is_valid_device_type/1,
+
+		  is_valid_application_style/1, is_valid_channel/1,
+		  is_valid_button_position/1, is_valid_button_transition/1 ]).
+
+
 % String-related functions:
 -export([ telegram_to_string/1,
 		  telegram_to_hexastring/1, hexastring_to_telegram/1 ]).
@@ -137,6 +163,12 @@ through an Oceanic server**.
 		  optional_data_to_string/1, optional_data_to_short_string/2,
 		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
 
+
+
+
+%
+% Type section.
+%
 
 
 -doc """
@@ -235,21 +267,41 @@ Tells whether a given device is considered by Oceanic to be online or lost.
 -type availability_status() :: 'online' | 'lost'.
 
 
+-doc """
+Higher-level description of the status of a device (typically an actuator).
+
+Useful to track trigger acknowledgements.
+""".
+-type device_status() :: 'on' | 'off' % For smart plugs
+					   | term().
+
 
 -doc """
+Tracking information supplied with a trigger request sent to an actuator.
 
-Information about a pending device-level request meant to be acknowledged (hence
-being waited for, with or without success) by the device of the specified EURID,
-through the specified type of event (e.g. smart_plug_status_report_event), with
-any specific event constraint information expected (e.g. power_on), with the
-specified number of new attempts to be performed if the current one times-out.
+For example ``{smart_plug_status_report_event, power_off}``.
+""".
+-type trigger_track_spec() :: { device_event_type(),
+								option( reported_event_info() ) }.
+
+
+-doc """
+Server-internal information about a pending device-level request meant to be
+acknowledged by the actuator of the specified EURID (hence being waited for,
+with or without success), specifying the type of event to wait for
+(e.g. smart_plug_status_report_event) together with any specific event
+information expected (e.g. 'power_on'); the specified number of new attempts to
+be performed if the current one times-out is also specified.
 
 Allows to detect issues such an emitted yet not (correctly) received telegrams,
 for example if wanting to switch on a smart plug and be sure that it succeeded.
 """.
--type waited_ack_info() :: { From :: eurid(), device_event_type(),
-							 NextRetries :: count(),
-							 option( reported_event_info() ) }.
+%
+% A configurable time-out could be added as well.
+-type trigger_track_info() :: { From :: eurid(),
+								device_event_type(),
+								option( reported_event_info() ),
+								NextRetries :: count() }.
 
 
 -doc """
@@ -1087,7 +1139,6 @@ command request.
   | 'command_response'.
 
 
-
 -doc """
 Lists the known types of devices.
 
@@ -1102,25 +1153,241 @@ Each type of device is to send at least one type of events.
 
 
 
--doc "Any kind of device-related information.".
--type device_info() :: term().
+-doc """
+Any kind of information relative to a device.
+
+For example the application style of a rocker.
+""".
+-type device_info() :: application_style() | term().
 
 
 -doc """
-Describes information about a device - generally an emitting one - and of an
-intended use thereof (e.g. designates which rocker/channel of which kind of a
-double-rocker would be triggered).
-
-Useful for example to specify information regarding the usage of a device
-(e.g. a double rocker) emulated in order to trigger an actuator (e.g. a smart
-plug).
-
-No (source) EURID is specified, as anyway the one of the base gateway will apply.
+Information regarding a device (e.g. a double rocker) that is emulated in order
+to forget telegrams that it could send, typically in order to trigger actuators.
 """.
--type device_usage_spec() ::
-	{ 'double_rocker', { application_style(), channel(), button_position() } }
+-type virtual_emitter_info() :: option( tuploid( device_info() ) ).
+
+
+
+-doc """
+Describes an elementary information about the state change of a device.
+
+For example may correspond to Channel(), for a double-rocker change information.
+""".
+-type state_change_info() :: term().
+
+
+-doc """
+Canonical version of double_rocker_state_change_spec().
+
+For example, ``{2, bottom, released}``.
+
+Both a user-level and an internal type.
+""".
+-type canon_double_rocker_state_change_spec() ::
+	{ channel(), button_position(), button_transition() }.
+
+
+-doc "Describes a stage change of a double-rocker.".
+-type double_rocker_state_change_spec() ::
+	canon_double_rocker_state_change_spec()
+  | { channel(), button_position() } % then transition is 'pressed'
+  | channel(). % then position is 'top' and transition is 'pressed'
+
+
+
+-doc """
+Describes a stage change of a device.
+
+Used both for incoming and outgoing telegrams.
+""".
+-type device_state_change_spec() ::
+	double_rocker_state_change_spec()
+  | tuploid( state_change_info() ).
+
+
+-doc "Canonicalised, internal version of device_state_change_spec().".
+-type canon_device_state_change_spec() ::
+	canon_double_rocker_state_change_spec()
+  | tuploid( state_change_info() ).
+
+
+% For incoming, listened events:
+
+-doc """
+Describes how the server can be triggered by a device, by specifying its type
+and the event that it may have sent - which will lead the trigger to be
+validated.
+
+Notably used to decode incoming trigger events.
+
+For example, ``{double_rocker, {2, bottom, released}}.``.
+""".
+-type incoming_trigger_spec() ::
+
+	{ 'double_rocker', double_rocker_state_change_spec() }
+
 	% General form:
-  | { device_type(), tuple( device_info() ) }.
+  | { device_type(), device_state_change_spec() }.
+
+
+-doc """
+Canonicalised, internal version of incoming_trigger_spec().
+
+Abbreviated as CITS.
+""".
+-type canon_incoming_trigger_spec() ::
+	{ device_type(), canon_device_state_change_spec() }.
+
+
+-doc """
+Describes events that may be listened to by this server, either emitted by a
+device specified by its EURID, or broadcast.
+
+Typically useful to react on the triggering events (e.g. of a presence switch,
+and alarm, etc.) of interest.
+
+For example ``{"002b6b24", {double_rocker, 1}}``, which describes that any
+incoming telegram corresponding to a state change of the channel A (i.e. 1) of a
+double-rocker of EURID 002b6b24 shall be interpreted as a trigger (typically if
+the rocker is pressed).
+
+User-level type.
+""".
+-type listened_event_spec() ::
+	{ EmitterDevice :: option( eurid_string() ), incoming_trigger_spec() }.
+
+
+
+-doc """
+Canonicalised, internal version of listened_event_spec().
+
+For example: ``{"25af97a0", {double_rocker, {2, bottom, released}}}``.
+
+Internal type.
+""".
+-type canon_listened_event_spec() ::
+	{ EmitterDevice :: eurid(), canon_incoming_trigger_spec() }.
+
+
+
+% For outgoing, emitted events:
+
+
+-doc """
+Describes how the server can trigger an actuator device: describes a
+corresponding virtual emitting device, notably in order to encode outgoing
+trigger events.
+
+For example: ``{double_rocker, 1, {2, top, pressed}}`` means that the virtual
+emitting device will be a double-rocker of application style 1 whose channel B
+(2; the second rocker) has its top button pressed.
+
+Both a user-level and an internal type.
+""".
+% A difference with the incoming ones is that information regarding the emulated
+% source device (e.g. the application style of such a rocker) may be specified:
+%
+-type outgoing_trigger_spec() ::
+
+	{ 'double_rocker', application_style(), double_rocker_state_change_spec() }
+  | { 'double_rocker', double_rocker_state_change_spec() }
+
+
+	% General forms:
+  | { device_type(), virtual_emitter_info(), device_state_change_spec() }
+
+  | { device_type(), device_state_change_spec() }.
+
+
+-doc """
+Canonical, internal version of outgoing_trigger_spec().
+
+Abbreviated as COTS.
+""".
+-type canon_outgoing_trigger_spec() ::
+	{ device_type(), virtual_emitter_info(), canon_device_state_change_spec() }.
+
+
+
+-doc """
+User-level description of an actuator, typically when emitting an event targeting it.
+
+Specifies the EURID (possibly a broadcast address) to be used in order to reach
+this actuator, and possibly the device type it will be addressed at, i.e. as
+which type of device (e.g. a smart plug) the actuator is expected to react.
+
+For example: ``{"25af97a0", smart_plug}``.
+
+This is typically needed if, once an actuator trigger telegram has been emitted,
+the sender is to register a corresponding waited acknowledgement from that
+actuator: thanks to these information, incoming telegrams can be matched and
+translated into such acknowledgements.
+
+Indeed the target actuator may not be configured (or possibly may implement
+multiple EEPs), whereas detecting acknowledgements requires at least an expected
+EEP and/or a device type (as the incoming telegrams shall be filtered to match
+them with any pending, yet-to-acknowledge, triggered actuator).
+
+For example, if a smart plug is triggered, in order to be sure that the
+operation completed (e.g. that the plug has been switched on), a corresponding
+VLD status response telegram shall be waited for. So incoming telegrams shall be
+inspected in order to detect such a corresponding acknowledgement telegram -
+based on the corresponding actuator information.
+""".
+-type user_actuator_info() :: canon_user_actuator_info()
+						  % No device type specified here:
+						| TargetDevice :: option( eurid_string() ).
+
+
+-doc "Canonical, yet still user-level.".
+-type canon_user_actuator_info() ::
+		{ TargetDevice :: option( eurid_string() ),
+		  TargetAddressedDeviceType :: option( device_type() ) }.
+
+
+-doc """
+Describes an actuator, typically when emitting an event targeting it.
+
+EURID may be a broadcast one.
+
+Internal type.
+""".
+-type actuator_info() :: { eurid(), option( device_type() ) }.
+
+
+
+-doc """
+User-level description of events that may be emitted by this server.
+
+Stores information about a "virtual" emitting device (e.g., if emulating a
+rocker, its application style) to be impersonated by this server and about an
+intended use thereof (e.g. which button is operated), and about the intended
+target action.
+
+For example designates which rocker/channel of which kind of double-rocker would
+be used in order to generate and send a telegram, generally aimed at an actuator
+(e.g. a smart plug) to control.
+
+No (source) EURID is specified, as anyway the one of the base gateway is the one
+that shall be used.
+
+For example ``{{double_rocker,1}, {"05936ef8", smart_plug}}``, which designates
+a telegram to be sent as a double-rocker (of application style 1, and with other
+defaults) in order to trigger an actuator whose EURID is 05936ef8, and which is
+expected to act as a smart plug (and thus is to send back a corresponding
+acknowledgement telegram).
+""".
+-type emitted_event_spec() :: { outgoing_trigger_spec(), user_actuator_info() }.
+
+
+-doc """
+Canonicalised, internal version of emitted_event_spec().
+""".
+-type canon_emitted_event_spec() ::
+	% Internal actuator info, not user one:
+	{ canon_outgoing_trigger_spec(), actuator_info() }.
+
 
 
 
@@ -1158,12 +1425,14 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   device_name/0, device_plain_name/0, device_any_name/0,
 			   device_designator/0, declared_device_activity_periodicity/0,
-			   expected_periodicity/0, availability_status/0,
-			   waited_ack_info/0, reported_event_info/0,
+			   expected_periodicity/0, availability_status/0, device_status/0,
 
-			   enocean_device/0, device_table/0, device_info/0,
-			   device_usage_spec/0, device_config/0,
-			   tty_detection_outcome/0, serial_protocol/0,
+			   trigger_track_spec/0, trigger_track_info/0,
+			   reported_event_info/0,
+
+			   oceanic_settings/0,
+			   enocean_device/0, device_table/0,
+			   device_config/0, tty_detection_outcome/0, serial_protocol/0,
 
 			   telegram/0, telegram_chunk/0,
 			   telegram_data/0, telegram_tail/0, telegram_data_tail/0,
@@ -1202,6 +1471,15 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
 			   device_description/0, back_online_info/0, device_event/0,
+			   device_event_type/0,
+
+			   device_type/0, device_info/0, virtual_emitter_info/0,
+
+			   state_change_info/0, device_state_change_spec/0,
+			   double_rocker_state_change_spec/0,
+
+			   incoming_trigger_spec/0, listened_event_spec/0,
+			   outgoing_trigger_spec/0, emitted_event_spec/0,
 
 			   common_command/0, common_command_failure/0,
 			   timer_ref/0,
@@ -1243,6 +1521,22 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 % others are one-off and may matter quite a lot (e.g. opening detection).
 
 % An Oceanic server could have been a WOOPER instance.
+
+% Section about Command/request acknowledgements
+%
+% A previous system had been start, based on command_queue(). We have to
+% determine whether tracking acknowledgements if of use, depending on the level
+% of telegram losses.
+%
+% If such a system is needed, most probably that the command_queue() shall be
+% replaced with some (global, or per-actuator) tracking information (see
+% trigger_track_{spec,info,...}) where request time-outs would be scheduled, and
+% incoming telegrams (e.g. VLD ones, for smart plugs) would be decoded and would
+% unschedule the corresponding time-out. Having a time-out be triggered would
+% then result in the re-emission of the corresponding telegram, provided that
+% the maximum number of retries is not reached.
+
+
 
 
 % Local types:
@@ -1303,6 +1597,12 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 % To test detection:
 %-define( default_jamming_threshold, 10 ).
+
+
+% The default number of retries until the triggering of an actuator is
+% acknowledged:
+%
+-define( default_trigger_retry_count, 4 ).
 
 
 % The default DHMS expected activity periodicity for a device (hence a telegram
@@ -1437,7 +1737,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 	% To identify the pseudo-device emitter of any telegram to be sent by
 	% Oceanic; by default this will be the actual base ID advertised by the
-	% local USB gateway, as obtained thanks to the co_rd_idbase common command.
+	% local USB gateway, as obtained thanks to the co_rd_idbase common command
+	% (otherwise telegrams are likely not to be processed by the sender or
+	% ignored by the receiver).
 	%
 	emitter_eurid = string_to_eurid( ?default_emitter_eurid ) :: eurid(),
 
@@ -1448,9 +1750,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 	% We enqueue command requests that shall result in an acknowledgement (most
 	% of them; possibly all of them), as such acks, at least generally, just
 	% contain a corresponding return code - nothing else that could be
-	% associated to a sender, a request, etc.; so we ensure that at any time up
-	% to one of such commands is in the air, and store in this queue the next
-	% ones for a later sending thereof in turn.
+	% associated to a sender, a request, etc.; we used to ensure that at any
+	% time up to one of such commands was in the air, and stored in this queue
+	% the next ones for a later sending thereof in turn.
 	%
 	% We could see for example that sending an ERP1 packet for the F6-02-01 EEP
 	% does result in the receiving of a response packet (with a success return
@@ -1508,6 +1810,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 	jamming_threshold = ?default_jamming_threshold :: bytes_per_second(),
 
 
+	% The number of retries until the triggering of an actuator is acknowledged:
+	trigger_retry_count = ?default_trigger_retry_count :: count(),
+
 	% A list of the PID of any processes listening for Enocean events:
 	event_listeners = [] :: [ event_listener_pid() ] } ).
 
@@ -1541,7 +1846,7 @@ An Oceanic state, including configuration, typically loaded from an ETF file.
 -type bytes_per_second() :: system_utils:bytes_per_second().
 
 -type uint8() :: type_utils:uint8().
--type tuple(T) :: type_utils:tuple(T).
+-type tuploid(T) :: type_utils:tuploid(T).
 
 -type timestamp() :: time_utils:timestamp().
 -type dhms_duration() :: time_utils:dhms_duration().
@@ -2311,7 +2616,422 @@ decide_auto_periodicity( _OtherEEPId ) ->
 
 
 
--doc "Declares the specifed taught-in device.".
+% Helpers introduced for re-use by the code using Oceanic.
+
+
+-doc "Returns a list of all known device types.".
+-spec get_all_device_types() -> [ device_type() ].
+get_all_device_types() ->
+	[ thermo_hygro_sensor, single_contact, push_button, smart_plug,
+	  double_rocker ].
+
+
+
+-doc "Tells whether the specified term is a valid device type.".
+-spec is_valid_device_type( term() ) -> boolean().
+is_valid_device_type( DT ) ->
+	lists:member( DT, get_all_device_types() ).
+
+
+% General helpers, for incoming/outgoing specifications.
+
+-doc "Tells whether the specified term is a valid application style.".
+-spec is_valid_application_style( term() ) -> boolean().
+is_valid_application_style( AppStyle ) when is_integer( AppStyle ) and AppStyle > 0 ->
+	true;
+
+is_valid_application_style( _Other ) ->
+	false.
+
+
+-doc "Tells whether the specified term is a valid channel.".
+-spec is_valid_channel( term() ) -> boolean().
+is_valid_channel( Channel ) when is_integer( Channel ) and Channel > 0 ->
+	true;
+
+is_valid_channel( _Other ) ->
+	false.
+
+
+-doc "Tells whether the specified term is a valid button position.".
+-spec is_valid_button_position( term() ) -> boolean().
+is_valid_button_position( _ButPos=top ) ->
+	true;
+
+is_valid_button_position( _ButPos=bottom ) ->
+	true;
+
+is_valid_button_position( _Other ) ->
+	false.
+
+
+
+-doc "Tells whether the specified term is a valid button transition.".
+-spec is_valid_button_transition( term() ) -> boolean().
+is_valid_button_transition( _ButPos=pressed ) ->
+	true;
+
+is_valid_button_transition( _ButPos=released ) ->
+	true;
+
+is_valid_button_transition( _Other ) ->
+	false.
+
+
+-doc """
+Returns a textual description of the specified canonical device state change
+specification.
+""".
+-spec device_state_change_spec_to_string( device_type(),
+								device_state_change_spec() )-> ustring().
+device_state_change_spec_to_string( _DevType=double_rocker,
+		_CanonDRSCSpec={ Channel, ButPos, ButTrans } ) ->
+	text_utils:format( "channel #~B, ~ts button position and a ~ts transition",
+					   [ Channel, ButPos, ButTrans ] );
+
+device_state_change_spec_to_string( DevType, _CanonSCSpec ) ->
+	text_utils:format( "(unknown state change spec for device type '~ts')",
+					   [ DevType ] ).
+
+
+-doc """
+Canonicalises the specified user-level double-rocker change specifications.
+""".
+-spec canonicalise_double_rocker_change_spec(
+		double_rocker_state_change_spec() ) ->
+			canon_double_rocker_state_change_spec().
+% Full version:
+canonicalise_double_rocker_change_spec( DRCS={ Channel, ButPos, ButTrans } ) ->
+
+	is_valid_channel( Channel ) orelse
+		throw( { invalid_double_rocker_channel_in_change_spec, Channel } ),
+
+	is_valid_button_position( ButPos ) orelse
+		throw( { invalid_double_rocker_button_position_in_change_spec, ButPos } ),
+
+	is_valid_button_transition( ButTrans ) orelse
+		throw( { invalid_double_rocker_button_transition_in_change_spec, ButTrans } ),
+
+	DRCS;
+
+canonicalise_double_rocker_change_spec( { Channel, ButPos } ) ->
+	canonicalise_double_rocker_change_spec(
+	  { Channel, ButPos, _ButTrans=pressed } );
+
+canonicalise_double_rocker_change_spec( _DRChangeSpec=Channel ) ->
+	canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
+
+
+
+% Helpers for incoming specifications.
+
+
+-doc "Canonicalises the specified user-level listening event specifications.".
+-spec canonicalise_listened_event_specs( [ listened_event_spec() ] ) ->
+											[ canon_listened_event_spec() ].
+% Better than "bad generator" with a list comprehension:
+canonicalise_listened_event_specs( LESs ) when is_list( LESs ) ->
+	canonicalise_listened_event_specs( LESs, _Acc=[] );
+
+canonicalise_listened_event_specs( Other ) ->
+	throw( { invalid_listened_event_specs, non_list, Other } ).
+
+
+
+% (sub-helper)
+canonicalise_listened_event_specs( _LESs=[], Acc ) ->
+	% Preferring preserving order:
+	lists:reverse( Acc );
+
+canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ], Acc ) ->
+
+	Eurid = maybe_string_to_eurid( MaybeEuridStr ),
+
+	CITS = case ITS of
+
+		{ double_rocker, DRChangeSpec } ->
+			CanDRChangeSpec =
+				canonicalise_double_rocker_change_spec( DRChangeSpec ),
+
+			{ double_rocker, CanDRChangeSpec };
+
+		{ OtherDeviceType, ChangeSpec } when is_atom( OtherDeviceType ) ->
+			case is_valid_device_type( OtherDeviceType ) of
+
+				% Valid yet not supported (yet):
+				true ->
+					throw( { unsupported_listened_device_type, OtherDeviceType,
+							 ChangeSpec } );
+
+				false ->
+					throw( { invalid_listened_device_type, OtherDeviceType,
+							 ChangeSpec } )
+
+			end;
+
+		{ Other, ChangeSpec } ->
+			throw( { not_an_incoming_trigger_spec, Other, ChangeSpec } );
+
+		Other ->
+			throw( { invalid_listened_event_spec, Other, MaybeEuridStr } )
+
+	end,
+
+	CLES = { Eurid, CITS },
+
+	canonicalise_listened_event_specs( T, [ CLES | Acc ] );
+
+canonicalise_listened_event_specs( _LESs=[ Other | _T ], _Acc ) ->
+	throw( { invalid_listened_event_spec, non_pair, Other } ).
+
+
+
+-doc """
+Returns a textual description of the specified canonical listening event
+specification (CLES).
+
+No Oceanic server specified, hence EURIDs cannot be resolved in actual device
+descriptions.
+""".
+-spec canon_listened_event_spec_to_string( canon_listened_event_spec() ) ->
+												ustring().
+canon_listened_event_spec_to_string( { EmitterDeviceEurid,
+		_CanonITS={ DevType, CanonDevSCS } } ) ->
+	text_utils:format( "listening to device of EURID ~ts of type ~ts, for ~ts",
+		[ eurid_to_string( EmitterDeviceEurid ), DevType,
+		  device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
+
+
+
+-doc """
+Returns a textual description of the specified canonical listening event
+specification, enriched thanks to the specified Oceanic server.
+""".
+-spec canon_listened_event_spec_to_string( canon_listened_event_spec(),
+										   oceanic_server_pid() ) -> ustring().
+canon_listened_event_spec_to_string( { EmitterDeviceEurid,
+		_CanonITS={ DevType, CanonDevSCS } }, OcSrvPid ) ->
+	text_utils:format( "listening to ~ts of type ~ts, for ~ts",
+		[ get_device_description ( EmitterDeviceEurid, OcSrvPid ), DevType,
+		  device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
+
+
+
+
+-doc """
+Returns a textual description of the specified canonical listening event
+specifications.
+
+No Oceanic server specified, hence EURIDs cannot be resolved in actual device
+descriptions.
+""".
+-spec canon_listened_event_specs_to_string( [ canon_listened_event_spec() ] ) ->
+												ustring().
+canon_listened_event_specs_to_string( CLESs ) ->
+	text_utils:strings_to_string( [ canon_listened_event_spec_to_string( CLES )
+										|| CLES <- CLESs ] ).
+
+
+-doc """
+Returns a textual description of the specified canonical listening event
+specifications, enriched thanks to the specified Oceanic server.
+""".
+-spec canon_listened_event_specs_to_string( [ canon_listened_event_spec() ],
+											oceanic_server_pid() ) -> ustring().
+canon_listened_event_specs_to_string( CLESs, OcSrvPid ) ->
+	text_utils:strings_to_string( [ canon_listened_event_spec_to_string( CLES,
+										OcSrvPid ) || CLES <- CLESs ] ).
+
+
+
+
+% Helpers for outgoing specifications.
+
+
+-doc "Canonicalises the specified user-level emitting event specifications.".
+-spec canonicalise_emitted_event_specs( [ emitted_event_spec() ] ) ->
+											[ canon_emitted_event_spec() ].
+% Better than "bad generator" with a list comprehension:
+canonicalise_emitted_event_specs( EESs ) when is_list( EESs ) ->
+	canonicalise_emitted_event_specs( EESs, _Acc=[] );
+
+canonicalise_emitted_event_specs( Other ) ->
+	throw( { invalid_emitted_event_specs, non_list, Other } ).
+
+
+
+% (sub-helper)
+canonicalise_emitted_event_specs( _EESs=[], Acc ) ->
+	% Preferring preserving order:
+	lists:reverse( Acc );
+
+canonicalise_emitted_event_specs( _EESs=[
+		{ OTS, ActInfo={ MaybeEuridStr, MaybeTargetDeviceType } } | T ], Acc ) ->
+
+	COTS = case OTS of
+
+		{ double_rocker, DRChangeSpec } ->
+			DefaultAppStyle = 1,
+
+			CanDRChangeSpec =
+				canonicalise_double_rocker_change_spec( DRChangeSpec ),
+
+			{ double_rocker, _VirtEmitInfo=DefaultAppStyle, CanDRChangeSpec };
+
+
+		{ double_rocker, AppStyle, DRChangeSpec } ->
+
+			is_valid_application_style( AppStyle ) orelse
+				throw( { invalid_double_rocker_app_style_in_emitted_spec,
+						 AppStyle } ),
+
+			CanDRChangeSpec =
+				canonicalise_double_rocker_change_spec( DRChangeSpec ),
+
+			{ double_rocker, _VirtEmitInfo=AppStyle, CanDRChangeSpec };
+
+		Other ->
+			throw( { unsupported_outgoing_trigger_spec, Other, ActInfo } )
+
+	end,
+
+	Eurid = maybe_string_to_eurid( MaybeEuridStr ),
+
+	MaybeTargetDeviceType =:= undefined
+		orelse is_valid_device_type( MaybeTargetDeviceType )
+		orelse throw( { invalid_device_type, MaybeTargetDeviceType } ),
+
+	CanActInfo = { Eurid, MaybeTargetDeviceType },
+
+	CEES = { COTS, CanActInfo },
+
+	canonicalise_emitted_event_specs( T, [ CEES | Acc ] );
+
+
+canonicalise_emitted_event_specs( _EESs=[ { OTS, _ActInfo=MaybeEuridStr } | T ], Acc ) ->
+	CanonActInfo = { _TargetDevice=MaybeEuridStr, _TargetDeviceType=undefined },
+	canonicalise_emitted_event_specs( [ { OTS, CanonActInfo } | T ], Acc );
+
+
+canonicalise_emitted_event_specs( _EESs=[ Other | _T ], _Acc ) ->
+	throw( { invalid_emitted_event_spec, non_pair, Other } ).
+
+
+
+-doc """
+Returns a textual description of the specified information regarding a virtual
+emitting device.
+""".
+-spec virtual_emitter_info_to_string( virtual_emitter_info() ) -> ustring().
+virtual_emitter_info_to_string( _VirtualEmitterInfo=undefined ) ->
+	"";
+
+virtual_emitter_info_to_string( VirtualEmitterInfo ) ->
+	text_utils:format( " whose associated virtual-emitter information is ~p",
+					   [ VirtualEmitterInfo ] ).
+
+
+-doc """
+Returns a textual description of the specified canonical outgoing trigger
+specification (COTS).
+""".
+-spec canon_outgoing_trigger_spec_to_string( canon_outgoing_trigger_spec() ) ->
+												ustring().
+canon_outgoing_trigger_spec_to_string( _CanonOTS={ EmittingDeviceType, VirtualEmitterInfo,
+												   CanonDevStChS } ) ->
+	text_utils:format( "emitting as a device of type ~ts~ts, "
+		"for a state change of ~ts", [ EmittingDeviceType,
+		  virtual_emitter_info_to_string( VirtualEmitterInfo ),
+		  device_state_change_spec_to_string( EmittingDeviceType,
+											  CanonDevStChS ) ] ).
+
+
+
+-doc """
+Returns a textual description of the specified canonical emitting event
+specification.
+
+No Oceanic server specified, hence EURIDs cannot be resolved in actual device
+descriptions.
+""".
+-spec canon_emitted_event_spec_to_string( canon_emitted_event_spec() ) ->
+												ustring().
+canon_emitted_event_spec_to_string( _CEES={ CanonOTS, ActInfo } ) ->
+	text_utils:format( "~ts, targeting ~ts",
+		[ canon_outgoing_trigger_spec_to_string( CanonOTS ),
+		  actuator_info_to_string( ActInfo ) ] ).
+
+
+
+-doc """
+Returns a textual description of the specified canonical emitting event
+specification, enriched thanks to the specified Oceanic server.
+""".
+-spec canon_emitted_event_spec_to_string( canon_emitted_event_spec(),
+										  oceanic_server_pid() ) -> ustring().
+canon_emitted_event_spec_to_string( _CEES={ CanonOTS, ActInfo }, OcSrvPid ) ->
+	text_utils:format( "~ts, targeting ~ts",
+		[ canon_outgoing_trigger_spec_to_string( CanonOTS ),
+		  actuator_info_to_string( ActInfo, OcSrvPid ) ] ).
+
+
+
+-doc """
+Returns a basic textual description of the specified actuator information.
+""".
+-spec actuator_info_to_string( actuator_info() ) -> ustring().
+actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined } ) ->
+	text_utils:format( "actuator ~ts (not addressed as a specific type)",
+					   [ eurid_to_string( Eurid ) ] );
+
+actuator_info_to_string( { Eurid, AddrDeviceType } ) ->
+	text_utils:format( "actuator ~ts, addressed as a ~ts type",
+					   [ eurid_to_string( Eurid ), AddrDeviceType ] ).
+
+
+-doc """
+Returns a textual description of the specified actuator information, enhanced
+thanks to the Oceanic server.
+""".
+-spec actuator_info_to_string( actuator_info(), oceanic_server_pid() ) -> ustring().
+actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined }, OcSrvPid ) ->
+	text_utils:format( "actuator ~ts (not addressed as a specific type)",
+		[ get_device_description( Eurid, OcSrvPid ) ] );
+
+actuator_info_to_string( { Eurid, AddrDeviceType }, OcSrvPid ) ->
+	text_utils:format( "actuator ~ts, addressed as a ~ts type",
+		[ get_device_description( Eurid, OcSrvPid ), AddrDeviceType ] ).
+
+
+
+-doc """
+Returns a textual description of the specified canonical emitting event
+specifications.
+
+No Oceanic server specified, hence EURIDs cannot be resolved in actual device
+descriptions.
+""".
+-spec canon_emitted_event_specs_to_string( [ canon_emitted_event_spec() ] ) ->
+												ustring().
+canon_emitted_event_specs_to_string( CEESs ) ->
+	text_utils:strings_to_string( [ canon_emitted_event_spec_to_string( CEES )
+									  || CEES <- CEESs ] ).
+
+
+-doc """
+Returns a textual description of the specified canonical emitting event
+specifications, enriched thanks to the specified Oceanic server.
+""".
+-spec canon_emitted_event_specs_to_string( [ canon_emitted_event_spec() ],
+									oceanic_server_pid() ) -> ustring().
+canon_emitted_event_specs_to_string( CEESs, OcSrvPid ) ->
+	text_utils:strings_to_string( [ canon_emitted_event_spec_to_string( CEES,
+										OcSrvPid ) || CEES <- CEESs ] ).
+
+
+
+
+-doc "Declares the specified taught-in device.".
 -spec declare_device_from_teach_in( eurid(), eep(), device_table() ) ->
 						{ device_table(), enocean_device(), timestamp() }.
 declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
@@ -2461,6 +3181,27 @@ acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
 
 
 % Finer section for the RPS telegrams, which include only the F6-* EEPs.
+
+
+
+-doc """
+Encodes a double-rocker telegram, from the specified EURID to the targeted one,
+based on the specified outgoing trigger specification.
+""".
+-spec encode_double_rocker_telegram( eurid(), canon_outgoing_trigger_spec(),
+									 eurid() ) -> telegram().
+encode_double_rocker_telegram( SourceEurid,
+		% With a check:
+		_COTS={ _DevType=double_rocker,
+				_VirtEmitInfo=AppStyle,
+				_DevStChgSpec={ Channel, ButPos, ButTrans } },
+		TargetEurid ) ->
+
+	ButtonLocator = { Channel, ButPos },
+
+	encode_double_rocker_switch_telegram( SourceEurid, AppStyle, ButtonLocator,
+		ButTrans, TargetEurid ).
+
 
 
 -doc """
@@ -2975,6 +3716,54 @@ encode_esp3_packet( PacketType, Data, MaybeOptData ) ->
 
 
 
+-doc """
+Triggers the actuators specified by their event specs, by requesting the Oceanic
+server to emit the corresponding telegrams and possibly track their
+acknowledgements.
+
+The expected event information expected to be sent back can be specified (the
+same for all actuators); this will allow waiting for any acknowledgement from
+them, and detect failed triggers.
+""".
+-spec trigger_actuators( [ canon_emitted_event_spec() ],
+	option( reported_event_info() ), oceanic_server_pid() ) -> void().
+
+trigger_actuators( ActEvSpecs, MaybeExpectedReportedEventInfo, OcSrvPid ) ->
+	[ trigger_actuator( AES, MaybeExpectedReportedEventInfo, OcSrvPid )
+		|| AES <- ActEvSpecs ].
+
+
+
+-doc """
+Triggers the actuator specified by its event spec, by requesting the Oceanic
+server to emit the corresponding telegram and possibly track its
+acknowledgement.
+""".
+-spec trigger_actuator( canon_emitted_event_spec(),
+	option( reported_event_info() ), oceanic_server_pid() ) -> void().
+% If the actuator is to be addressed as smart plug:
+trigger_actuator( _CEES={ COTS,
+						  _ActInfo={ ActEurid, _MaybeActDevType=smart_plug } },
+				  MaybeExpectedReportedEventInfo,
+				  OcSrvPid ) ->
+
+	TrackSpec = { _WaitedEventType=smart_plug_status_report_event,
+				  MaybeExpectedReportedEventInfo },
+
+	% Oceanic server to keep track of a corresponding TriggerTrackInfo:
+	OcSrvPid ! { sendDoubleRockerTelegram, [ ActEurid, COTS, TrackSpec ] };
+
+trigger_actuator( _CEES={ _COTS,
+						  _ActInfo={ _ActEurid, MaybeActDevType } },
+				  _MaybeExpectedReportedEventInfo,
+				  _OcSrvPid ) ->
+	% If MaybeActDevType is set, could be guessed
+	throw( { unsupported_actuator_device_type, MaybeActDevType } ).
+
+
+
+
+
 % Subsection for the encoding of packets of the Common Command type.
 
 
@@ -3164,6 +3953,27 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 										 JamState ),
 
 			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
+
+
+		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
+				TrackSpec={ DevEvType, MaybeExpectedReportedEvInfo } ] } ->
+			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
+				"to ~ts, ~ts, with track specification ~p.",
+				[ eurid_to_string( ActEurid ),
+				  canon_outgoing_trigger_spec_to_string( COTS ), TrackSpec ] ),
+
+			BaseEurid = State#oceanic_state.emitter_eurid,
+
+			Telegram = encode_double_rocker_telegram( BaseEurid, COTS,
+													  ActEurid ),
+
+			NewState = send_raw_telegram( Telegram, State ),
+
+			% TODO: register and monitor TrackInfo
+			_TrackInfo = { _From=ActEurid, DevEvType, MaybeExpectedReportedEvInfo,
+						   State#oceanic_state.trigger_retry_count },
+
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
 		{ onSerialMessage, Msg } ->
@@ -6579,6 +7389,17 @@ For example `3076502 = oceanic:string_to_eurid("002ef196")`.
 string_to_eurid( EuridStr ) ->
 	text_utils:hexastring_to_integer( EuridStr ).
 
+
+-doc """
+Returns the actual EURID corresponding to any specified (plain) EURID string,
+otherwise the broadcast EURID.
+""".
+-spec maybe_string_to_eurid( option( ustring() ) ) -> eurid().
+maybe_string_to_eurid( _MaybeEuridStr=undefined ) ->
+	?eurid_broadcast;
+
+maybe_string_to_eurid( EuridStr ) ->
+	text_utils:hexastring_to_integer( EuridStr ).
 
 
 -doc "Returns the broadcast EURID, suitable to target all devices in range.".
