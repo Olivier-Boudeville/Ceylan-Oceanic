@@ -72,9 +72,7 @@ decode_file( RecordPath ) ->
 
 	test_facilities:display( "Decoding this telegram stream now." ),
 
-	DecodedEvents = decode_all( Telegrams, _ToSkipLen=0,
-		_FirstMaybeNextChunk=undefined, _AccMsgs=[],
-		oceanic:get_test_state() ),
+	DecodedEvents = decode_all( Telegrams, _AccEvents=[] ),
 
 	test_facilities:display( "Decoded ~B (ordered) events: ~ts",
 		[ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
@@ -87,43 +85,62 @@ decode_file( RecordPath ) ->
 Decodes in turn all specified telegrams, relying on the specified decoding
 context.
 """.
-decode_all( _Telegrams=[], ToSkipLen, MaybeAccChunk, AccEvents, State ) ->
-
-	ToSkipLen =:= 0 orelse test_facilities:display(
-		"(test finished whereas still having ~B bytes to skip.",
-		[ ToSkipLen ] ),
-
-	MaybeAccChunk =:= undefined orelse
-		test_facilities:display(
-			"(test finished whereas still having following chunk: ~w)",
-			[ MaybeAccChunk ] ),
-
-	test_facilities:display( "~nFinal state: ~ts~n",
-							 [ oceanic:state_to_string( State ) ] ),
-
+decode_all( _Telegrams=[], AccEvents ) ->
 	lists:reverse( AccEvents );
 
 
-decode_all( _Telegrams=[ Tl | T ], ToSkipLen, MaybeAccChunk, AccEvents,
-			State ) ->
+decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
 
 	test_facilities:display( "~nTest examining telegram ~ts now:",
 							 [ oceanic:telegram_to_string( Tl ) ] ),
 
-	case oceanic:try_integrate_chunk( ToSkipLen, MaybeAccChunk, Tl, State ) of
+	case oceanic:test_decode( Tl ) of
 
 		{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
-		  AnyNextChunk, NewState } ->
+		  _NextMaybeTelTail=undefined, _NewState } ->
 
 			test_facilities:display( "Test decoded following event: ~ts.",
 				[ oceanic:device_event_to_string( Event ) ] ),
 
-			decode_all( T, _ToSkipLen=0, AnyNextChunk, [ Event | AccEvents ],
-						NewState );
+			decode_all( T, [ Event | AccEvents ] );
 
-		{ Unsuccessful, NewToSkipLen, NewMaybeAccChunk, NewState } ->
-			test_facilities:display( "(chunk outcome: ~p)", [ Unsuccessful ] ),
-			decode_all( T, NewToSkipLen, NewMaybeAccChunk, AccEvents, NewState )
+
+		{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+		  NextTelTail, _NewState } ->
+
+			trace_utils:error_fmt( "Test decoded following event: ~ts, "
+				"but a telegram tail was detected, ~p.",
+				[ oceanic:device_event_to_string( Event ), NextTelTail ] ),
+
+			decode_all( T, [ Event | AccEvents ] );
+
+
+		{ Unsuccessful, _NewToSkipLen=0, _NextMaybeTelTail=undefined,
+		  _NewState } ->
+			trace_utils:warning_fmt( "Telegram not decoded; outcome: ~p.",
+									 [ Unsuccessful ] ),
+			decode_all( T, AccEvents );
+
+		{ Unsuccessful, NewToSkipLen, _NextMaybeTelTail=undefined,
+		  _NewState } ->
+			trace_utils:warning_fmt( "Telegram not decoded; outcome: ~p, "
+				"and ~B bytes to be skipped were declared.",
+				[ Unsuccessful, NewToSkipLen ] ),
+			decode_all( T, AccEvents );
+
+		{ Unsuccessful, _NewToSkipLen=0, NextTelTail, _NewState } ->
+			trace_utils:warning_fmt( "Telegram not decoded; outcome: ~p, "
+				"and a telegram tail was detected, ~p.",
+				[ Unsuccessful, NextTelTail ] ),
+			decode_all( T, AccEvents );
+
+		{ Unsuccessful, NewToSkipLen, NextTelTail, _NewState } ->
+			trace_utils:warning_fmt( "Telegram not decoded; outcome: ~p, "
+				"a telegram tail was detected, ~p, "
+				"and ~B bytes to be skipped were declared.",
+				[ Unsuccessful, NextTelTail, NewToSkipLen ] ),
+			decode_all( T, AccEvents )
+
 
 	end.
 
