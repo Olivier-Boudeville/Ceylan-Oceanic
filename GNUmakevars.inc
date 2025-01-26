@@ -68,6 +68,7 @@ ifeq ($(ENABLE_DEBUG),true)
 	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_activity
 endif
 
+
 # Defining check flags:
 ifeq ($(EXECUTION_TARGET),development)
 	#OCEANIC_CHECK_FLAGS += -Doceanic_check_tty
