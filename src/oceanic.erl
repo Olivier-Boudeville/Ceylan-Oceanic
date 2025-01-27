@@ -3992,7 +3992,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 				TrackSpec={ DevEvType, MaybeExpectedReportedEvInfo } ] } ->
 
 			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
-				"to ~ts, ~ts, with track specificatio ~w.",
+				"to device whose EURID is ~ts, ~ts, "
+				"with track specification ~w.",
 				[ eurid_to_string( ActEurid ),
 				  canon_outgoing_trigger_spec_to_string( COTS ), TrackSpec ] ),
 
@@ -4443,9 +4444,9 @@ tail and on the specified new chunk.
 -spec integrate_all_telegrams( count(), option( telegram_tail() ),
 			telegram_chunk(), oceanic_state() ) -> oceanic_state().
 
-integrate_all_telegrams( _ToSkipLen, _MaybeTelTail=undefined, _Chunk= <<>>,
+integrate_all_telegrams( ToSkipLen, MaybeTelTail=undefined, _Chunk= <<>>,
 						 State ) ->
-	State;
+	{ ToSkipLen, MaybeTelTail, State };
 
 integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 
@@ -4548,6 +4549,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
 									 _Chunk= <<>>,  NewState );
 
+
 		% Now the unlucky cases; first the ones that may result in extra tail to
 		% decode:
 		%
@@ -4559,13 +4561,13 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 									 _Chunk= <<>>, NewState );
 
 
-		% Then the others, which are the only possible stops of the ongoing
-		% recursion:
+		% Then the others, which are the only unlucky possible stops of the
+		% ongoing recursion:
 		%
-		DO={ DecodingError, _NewToSkipLen, _NextMaybeTelTail, _NewState }
-			when DecodingError =:= not_reached
-				 orelse DecodingError =:= incomplete  ->
-			DO
+		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
+			    when DecodingError =:= not_reached
+					 orelse DecodingError =:= incomplete  ->
+			{ NewToSkipLen, NextMaybeTelTail, NewState }
 
 	end.
 
@@ -5159,7 +5161,7 @@ decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 			   State=#oceanic_state{ waited_command_info=undefined,
 									 discarded_count=DiscCount } ) ->
 
-	trace_bridge:error_fmt( "Received a command response "
+	trace_bridge:warning_fmt( "Received a command response "
 		"(data: ~w, optional data: ~w) whereas there is no pending request, "
 		"dropping it.", [ Data, OptData ] ),
 
