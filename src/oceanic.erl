@@ -126,6 +126,8 @@ through an Oceanic server**.
 		  canon_emitted_event_specs_to_string/1,
 		  canon_emitted_event_specs_to_string/2,
 
+		  get_reciprocal_state_change_spec/2,
+
 		  actuator_info_to_string/1, actuator_info_to_string/2,
 
 		  get_all_device_types/0, is_valid_device_type/1,
@@ -1200,13 +1202,19 @@ Both a user-level and an internal type.
 Describes a stage change of a device.
 
 Used both for incoming and outgoing telegrams.
+
+Abbreviated as SCS.
 """.
 -type device_state_change_spec() ::
 	double_rocker_state_change_spec()
   | tuploid( state_change_info() ).
 
 
--doc "Canonicalised, internal version of device_state_change_spec().".
+-doc """
+Canonical, internal version of device_state_change_spec().
+
+Abbreviated as CSCS.
+""".
 -type canon_device_state_change_spec() ::
 	canon_double_rocker_state_change_spec()
   | tuploid( state_change_info() ).
@@ -1522,11 +1530,13 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 % An Oceanic server could have been a WOOPER instance.
 
-% Section about Command/request acknowledgements
+
+% Section about Command/request acknowledgements.
 %
-% A previous system had been start, based on command_queue(). We have to
-% determine whether tracking acknowledgements if of use, depending on the level
-% of telegram losses.
+% A previous system had been start, based on command_queue(), and another one
+% was also started in a user, higher-level library (namely US-Main). We have yet
+% to determine whether tracking acknowledgements is of use, depending on the
+% level of telegram losses.
 %
 % If such a system is needed, most probably that the command_queue() shall be
 % replaced with some (global, or per-actuator) tracking information (see
@@ -2265,13 +2275,14 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 					ReadState#oceanic_state{ emitter_eurid=BaseEurid };
 
 
-				{ Unsuccessful, NewToSkipLen, MaybeNextTelTail, NewState } ->
+				{ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_bridge:debug_fmt( "Unsuccessful decoding, '~w' "
-							"(whereas NewToSkipLen=~B, MaybeNextTelTail=~w).",
-							[ Unsuccessful, NewToSkipLen, MaybeNextTelTail ] ),
-						basic_utils:ignore_unused( Unsuccessful ) ),
+							"(whereas NewToSkipLen=~B, NewMaybeNextTelTail=~w).",
+							[ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail ] ),
+						basic_utils:ignore_unused(
+							[ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
 					wait_initial_base_request( NewToSkipLen, MaybeNextTelTail,
 											   NewState )
@@ -2637,7 +2648,8 @@ is_valid_device_type( DT ) ->
 
 -doc "Tells whether the specified term is a valid application style.".
 -spec is_valid_application_style( term() ) -> boolean().
-is_valid_application_style( AppStyle ) when is_integer( AppStyle ) and AppStyle > 0 ->
+is_valid_application_style( AppStyle ) when is_integer( AppStyle )
+											andalso AppStyle > 0 ->
 	true;
 
 is_valid_application_style( _Other ) ->
@@ -2646,7 +2658,7 @@ is_valid_application_style( _Other ) ->
 
 -doc "Tells whether the specified term is a valid channel.".
 -spec is_valid_channel( term() ) -> boolean().
-is_valid_channel( Channel ) when is_integer( Channel ) and Channel > 0 ->
+is_valid_channel( Channel ) when is_integer( Channel ) andalso Channel > 0 ->
 	true;
 
 is_valid_channel( _Other ) ->
@@ -2720,6 +2732,27 @@ canonicalise_double_rocker_change_spec( { Channel, ButPos } ) ->
 
 canonicalise_double_rocker_change_spec( _DRChangeSpec=Channel ) ->
 	canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
+
+
+
+-doc """
+Returns the specification of the reverse of the specified canonical device state
+change, that is its reciprocal one (thus able to undo it).
+
+Typically used to determine how to untrigger an actuator (e.g. switch a smart
+plug off).
+""".
+-spec get_reciprocal_state_change_spec( device_type(),
+		canon_device_state_change_spec() ) -> canon_device_state_change_spec().
+get_reciprocal_state_change_spec( _DevType=double_rocker,
+								  _CSCS={ Channel, _ButPos=top, ButTrans } ) ->
+	% By convention, same transition, other button of the rocker:
+	{ Channel, bottom, ButTrans };
+
+get_reciprocal_state_change_spec( _DevType=double_rocker,
+								  _CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
+	{ Channel, top, ButTrans }.
+
 
 
 
@@ -3957,13 +3990,19 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
 				TrackSpec={ DevEvType, MaybeExpectedReportedEvInfo } ] } ->
+
 			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
-				"to ~ts, ~ts, with track specification ~p.",
+				"to ~ts, ~ts, with track specificatio ~w.",
 				[ eurid_to_string( ActEurid ),
 				  canon_outgoing_trigger_spec_to_string( COTS ), TrackSpec ] ),
 
 			BaseEurid = State#oceanic_state.emitter_eurid,
 
+			% Note that this results in the target button of the target rocker
+			% to undergo a single transition (generally 'pressed'), not a double
+			% one (e.g. 'pressed' then 'released'), as it showed sufficient to
+			% trigger all tested actuators:
+			%
 			Telegram = encode_double_rocker_telegram( BaseEurid, COTS,
 													  ActEurid ),
 
@@ -4194,8 +4233,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 		% integrated in a more advanced trace system (typically Ceylan-Traces):
 		%
 		{ registerTraceBridge, BridgeSpec } ->
-			trace_utils:register( BridgeSpec ),
-			trace_util:info_fmt( "Just registered the trace bridge "
+			trace_bridge:register( BridgeSpec ),
+			trace_bridge:info_fmt( "Just registered the trace bridge "
 				"specification ~p.", [ BridgeSpec ] ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
@@ -4398,11 +4437,16 @@ monitor_jamming( ChunkSize,
 
 
 -doc """
-Decodes and processes all telegrams found based on any current telegram tail and
-the specified new chunk.
+Decodes and processes all the telegrams found, based on any current telegram
+tail and on the specified new chunk.
 """.
 -spec integrate_all_telegrams( count(), option( telegram_tail() ),
 			telegram_chunk(), oceanic_state() ) -> oceanic_state().
+
+integrate_all_telegrams( _ToSkipLen, _MaybeTelTail=undefined, _Chunk= <<>>,
+						 State ) ->
+	State;
+
 integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 
 	case try_integrate_next_telegram( ToSkipLen, MaybeTelTail, Chunk, State ) of
@@ -4417,9 +4461,8 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 				"Decoded command_processed event." ) ),
 
 			% Just recurse on this tail (no chunk to append):
-			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-									 _Chunk= <<>>, NewState );
-
+			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail, _Chunk= <<>>,
+									 NewState );
 
 		% Then just an event, possibly listened to:
 		{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline, MaybeDevice,
