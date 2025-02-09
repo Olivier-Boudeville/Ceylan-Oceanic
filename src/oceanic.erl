@@ -60,7 +60,7 @@ through an Oceanic server**.
 
 	acknowledge_teach_request/2, acknowledge_teach_request/3,
 
-	trigger_actuator/3,	trigger_actuators/3,
+	trigger_actuator/3, trigger_actuators/3,
 
 	% For lower-level operation/testing:
 	encode_esp3_packet/2, encode_esp3_packet/3,
@@ -105,8 +105,11 @@ through an Oceanic server**.
 % Event-related API, to achieve some kind of polymorphism on the corresponding
 % records:
 %
--export([ get_source_eurid/1, get_channel/1, get_button_reference/1,
+-export([ get_event_type/1, get_source_eurid/1, get_channel/1,
+		  get_button_reference/1,
+
 		  get_maybe_device_name/1, get_best_device_name_from/1,
+
 		  get_maybe_eep/1,
 		  get_timestamp/1, get_last_seen_info/1,
 		  get_subtelegram_count/1, get_maybe_destination_eurid/1,
@@ -120,6 +123,8 @@ through an Oceanic server**.
 		  canon_listened_event_specs_to_string/1,
 		  canon_listened_event_specs_to_string/2,
 
+		  cits_to_string/1, device_state_change_spec_to_string/2,
+
 		  canonicalise_emitted_event_specs/1,
 		  canon_emitted_event_spec_to_string/1,
 		  canon_emitted_event_spec_to_string/2,
@@ -127,6 +132,7 @@ through an Oceanic server**.
 		  canon_emitted_event_specs_to_string/2,
 
 		  get_reciprocal_state_change_spec/2,
+		  event_matches_trigger/2,
 
 		  actuator_info_to_string/1, actuator_info_to_string/2,
 
@@ -719,8 +725,7 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 						 | 'not_supported'. % Hence unknown
 
 
-% Curiously triggers a -doc redefinition warning:
-%-doc "The power currently output by a device (e.g. a smart plug).".
+-doc "The power currently output by a device (e.g. a smart plug).".
 -type power_report() :: 'off'
 					  | pos_integer() % Percentage of max power
 					  | 'not_available'. % Hence unknown
@@ -1128,6 +1133,7 @@ command request.
 
 
 -doc "Lists the known types of device events.".
+% Corresponds to the tags of the corresponding records.
 -type device_event_type() ::
 	'thermo_hygro_event'
   | 'single_input_contact_event'
@@ -1179,6 +1185,13 @@ For example may correspond to Channel(), for a double-rocker change information.
 -type state_change_info() :: term().
 
 
+-doc "Describes a stage change of a double-rocker.".
+-type double_rocker_state_change_spec() ::
+	canon_double_rocker_state_change_spec()
+  | { channel(), button_position() } % then transition is 'pressed'
+  | channel(). % then position is 'top' and transition is 'pressed'
+
+
 -doc """
 Canonical version of double_rocker_state_change_spec().
 
@@ -1188,13 +1201,6 @@ Both a user-level and an internal type.
 """.
 -type canon_double_rocker_state_change_spec() ::
 	{ channel(), button_position(), button_transition() }.
-
-
--doc "Describes a stage change of a double-rocker.".
--type double_rocker_state_change_spec() ::
-	canon_double_rocker_state_change_spec()
-  | { channel(), button_position() } % then transition is 'pressed'
-  | channel(). % then position is 'top' and transition is 'pressed'
 
 
 
@@ -1240,6 +1246,8 @@ For example, ``{double_rocker, {2, bottom, released}}.``.
 
 
 -doc """
+A canonical incoming trigger specification.
+
 Canonicalised, internal version of incoming_trigger_spec().
 
 Abbreviated as CITS.
@@ -1272,10 +1280,14 @@ Canonicalised, internal version of listened_event_spec().
 
 For example: ``{"25af97a0", {double_rocker, {2, bottom, released}}}``.
 
-Internal type.
+Abbreviated as CLES.
 """.
 -type canon_listened_event_spec() ::
 	{ EmitterDevice :: eurid(), canon_incoming_trigger_spec() }.
+
+
+-doc "The outcome of the match of a trigger event.".
+-type event_match_trigger_outcome() :: 'false' | { 'true', eurid(), device_status() }.
 
 
 
@@ -1319,7 +1331,8 @@ Abbreviated as COTS.
 
 
 -doc """
-User-level description of an actuator, typically when emitting an event targeting it.
+User-level description of an actuator, typically when emitting an event
+targeting it.
 
 Specifies the EURID (possibly a broadcast address) to be used in order to reach
 this actuator, and possibly the device type it will be addressed at, i.e. as
@@ -1483,11 +1496,14 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   device_type/0, device_info/0, virtual_emitter_info/0,
 
-			   state_change_info/0, device_state_change_spec/0,
+			   state_change_info/0,
+			   device_state_change_spec/0, canon_device_state_change_spec/0,
 			   double_rocker_state_change_spec/0,
 
-			   incoming_trigger_spec/0, listened_event_spec/0,
-			   outgoing_trigger_spec/0, emitted_event_spec/0,
+			   incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
+			   listened_event_spec/0, canon_listened_event_spec/0,
+			   outgoing_trigger_spec/0, canon_outgoing_trigger_spec/0,
+			   emitted_event_spec/0, event_match_trigger_outcome/0,
 
 			   common_command/0, common_command_failure/0,
 			   timer_ref/0,
@@ -2246,7 +2262,8 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 				trace_bridge:debug_fmt( "Read ~ts.",
 					[ telegram_to_string( NewChunk ) ] ) ),
 
-			case try_integrate_next_telegram( ToSkipLen, MaybeNextTelTail, NewChunk, State ) of
+			case try_integrate_next_telegram( ToSkipLen, MaybeNextTelTail,
+											  NewChunk, State ) of
 
 				{ decoded, Event=#read_base_id_info_response{
 							% (not interested here in remaining_write_cycles)
@@ -2267,12 +2284,36 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 
 					end,
 
+					% Checks that this is a response to the request made in
+					% get_base_state/1, before clearing it:
+					%
+					case State#oceanic_state.waited_command_info of
+
+						{ _InitCmdReq=#command_request{
+										command_type=co_rd_idbase,
+										% Not to be checked: command_telegram
+										requester=internal },
+						   _MaybeTimerRef=undefined } ->
+							ok;
+
+						OtherWaitedCmdInfo ->
+							trace_bridge:error_fmt( "Unexpected "
+								"read_base_id_info_response, whereas waited "
+								"command information is ~p.",
+								[ OtherWaitedCmdInfo ] )
+
+					end,
+
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_bridge:debug_fmt( "Successfully ~ts.",
 							[ device_event_to_string( Event ) ] ),
 						basic_utils:ignore_unused( Event ) ),
 
-					ReadState#oceanic_state{ emitter_eurid=BaseEurid };
+					trace_bridge:info_fmt( "Detected the EURID of the base "
+						"emitter: ~ts.", [ oceanic:eurid_to_string( BaseEurid ) ] ),
+
+					ReadState#oceanic_state{ emitter_eurid=BaseEurid,
+											 waited_command_info=undefined };
 
 
 				{ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
@@ -2690,6 +2731,17 @@ is_valid_button_transition( _Other ) ->
 	false.
 
 
+
+-doc """
+Returns a textual description of the specified CITS (canonical incoming trigger
+specification).
+""".
+-spec cits_to_string( canon_incoming_trigger_spec() ) -> ustring().
+cits_to_string( _CITS={ DevType, CanonDRSCSpec } ) ->
+	text_utils:format( "incoming trigger specification regarding ~ts",
+		[ device_state_change_spec_to_string( DevType, CanonDRSCSpec ) ] ).
+
+
 -doc """
 Returns a textual description of the specified canonical device state change
 specification.
@@ -2698,12 +2750,13 @@ specification.
 								device_state_change_spec() )-> ustring().
 device_state_change_spec_to_string( _DevType=double_rocker,
 		_CanonDRSCSpec={ Channel, ButPos, ButTrans } ) ->
-	text_utils:format( "channel #~B, ~ts button position and a ~ts transition",
-					   [ Channel, ButPos, ButTrans ] );
+	text_utils:format( "double-rocker channel #~B, ~ts button position "
+					   "and a ~ts transition", [ Channel, ButPos, ButTrans ] );
 
 device_state_change_spec_to_string( DevType, _CanonSCSpec ) ->
-	text_utils:format( "(unknown state change spec for device type '~ts')",
+	text_utils:format( "an unknown state change for a device of type '~ts'",
 					   [ DevType ] ).
+
 
 
 -doc """
@@ -2719,10 +2772,12 @@ canonicalise_double_rocker_change_spec( DRCS={ Channel, ButPos, ButTrans } ) ->
 		throw( { invalid_double_rocker_channel_in_change_spec, Channel } ),
 
 	is_valid_button_position( ButPos ) orelse
-		throw( { invalid_double_rocker_button_position_in_change_spec, ButPos } ),
+		throw( { invalid_double_rocker_button_position_in_change_spec,
+				 ButPos } ),
 
 	is_valid_button_transition( ButTrans ) orelse
-		throw( { invalid_double_rocker_button_transition_in_change_spec, ButTrans } ),
+		throw( { invalid_double_rocker_button_transition_in_change_spec,
+				 ButTrans } ),
 
 	DRCS;
 
@@ -2750,8 +2805,102 @@ get_reciprocal_state_change_spec( _DevType=double_rocker,
 	{ Channel, bottom, ButTrans };
 
 get_reciprocal_state_change_spec( _DevType=double_rocker,
-								  _CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
+		_CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
 	{ Channel, top, ButTrans }.
+
+
+
+-doc """
+Tells whether the specified device trigger event matches at least one if the
+CLES and, if yes, for which new status reported by this event (typically the on
+or off button of a rocker being transitioned.
+""".
+-spec event_matches_trigger( device_event(),
+		[ canon_listened_event_spec() ] ) -> event_match_trigger_outcome().
+event_matches_trigger( DevEvent, CLESs ) ->
+
+	DevEurid = get_source_eurid( DevEvent ),
+
+	% Tries to find a CITS corresponding to this emitter:
+	case get_maybe_matching_cits( DevEurid, CLESs ) of
+
+		undefined ->
+			false;
+
+		CITS ->
+			interpret_cits_matching( CITS, DevEurid, DevEvent )
+
+	end.
+
+
+
+-doc """
+Returns (any, first) CITS that matches the specified emitter EURID, among the
+specified CLES.
+""".
+-spec get_maybe_matching_cits( eurid(), [ canon_listened_event_spec() ] ) ->
+									option( canon_incoming_trigger_spec() ).
+get_maybe_matching_cits( _EmitterEurid, _CLESs=[] ) ->
+	undefined;
+
+% Matching:
+get_maybe_matching_cits( EmitterEurid,
+						 _CLESs=[ { EmitterEurid, CITS } | _T ] ) ->
+	CITS;
+
+% Non-matching EmitterEurid:
+get_maybe_matching_cits( EmitterEurid, _CLESs=[ _ | T ] ) ->
+	get_maybe_matching_cits( EmitterEurid, T ).
+
+
+
+-doc """
+Reports any trigger matching and corresponding device new status, based on the
+specified CITS and device event.
+""".
+-spec interpret_cits_matching( canon_incoming_trigger_spec(), eurid(),
+				device_event() ) -> event_match_trigger_outcome().
+% Here a double-rocker change spec matches (therefore in terms of device type,
+% channel, button position and transition):
+%
+interpret_cits_matching(
+		_CITS={ _DevType=double_rocker, _CSCS={ Channel, ButPos, ButTrans } },
+		DevEurid,
+		_DevEvent=#double_rocker_switch_event{
+						first_action_button={ Channel, ButPos },
+						energy_bow=ButTrans } ) ->
+
+	{ true, DevEurid, _NewStatus=on };
+
+
+% Here, same as previous clause, a double-rocker change spec matches (therefore
+% in terms of device type, channel and transition), except for the different -
+% hence opposite - button position:
+%
+interpret_cits_matching(
+		_CITS={ _DevType=double_rocker, _CSCS={ Channel, _ButPos, ButTrans } },
+		DevEurid,
+		_DevEvent=#double_rocker_switch_event{
+						first_action_button={ Channel, _OppositeButPos },
+						energy_bow=ButTrans } ) ->
+
+	{ true, DevEurid, _NewStatus=off };
+
+
+% Add here clauses if wanting to match other CITS/events.
+
+% Non-matching case:
+interpret_cits_matching( _CITS, _DevEurid, _DevEvent ) ->
+
+	% No State:
+	%cond_utils:if_defined( us_main_debug_home_automation,
+	%	?debug_fmt( "(this event ~ts does not match the presence switching ~ts)",
+	%				[ oceanic:device_event_to_string( DevEvent ),
+	%				  oceanic:cits_to_string( CITS ) ] ),
+	%	basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
+
+	false.
+
 
 
 
@@ -2776,7 +2925,8 @@ canonicalise_listened_event_specs( _LESs=[], Acc ) ->
 	% Preferring preserving order:
 	lists:reverse( Acc );
 
-canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ], Acc ) ->
+canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ],
+								   Acc ) ->
 
 	Eurid = maybe_string_to_eurid( MaybeEuridStr ),
 
@@ -2970,8 +3120,8 @@ specification (COTS).
 """.
 -spec canon_outgoing_trigger_spec_to_string( canon_outgoing_trigger_spec() ) ->
 												ustring().
-canon_outgoing_trigger_spec_to_string( _CanonOTS={ EmittingDeviceType, VirtualEmitterInfo,
-												   CanonDevStChS } ) ->
+canon_outgoing_trigger_spec_to_string(
+		_CanonOTS={ EmittingDeviceType, VirtualEmitterInfo, CanonDevStChS } ) ->
 	text_utils:format( "emitting as a device of type ~ts~ts, "
 		"for a state change of ~ts", [ EmittingDeviceType,
 		  virtual_emitter_info_to_string( VirtualEmitterInfo ),
@@ -4486,68 +4636,88 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 
 				end ),
 
-			DeviceMsg = case MaybeDiscoverOrigin of
+			EventSrcEurid = get_source_eurid( Event ),
 
-				% Most common case (already detected, hence not set):
-				undefined ->
-					BackOnlineInfo = case IsBackOnline of
+			% Reducing noise, by not relaying the telegrams that it received
+			% (possibly through repeating) yet that were presumably sent by this
+			% gateway itself:
+			%
+			case EventSrcEurid =:= State#oceanic_state.emitter_eurid of
 
-						true ->
-							case MaybeDevice of
+				true ->
+					%trace_bridge:debug_fmt( "Skipping following self-emitted "
+					%   "event: ~ts", [ device_event_to_string( Event ) ] ),
 
-								undefined ->
-									throw(
-									  { unexpected_undefined_device, Event } );
+					integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+											 _Chunk= <<>>,  NewState );
 
-								Device ->
-									get_device_description( Device )
+				false ->
 
-							end;
+					DeviceMsg = case MaybeDiscoverOrigin of
 
-						false ->
-							undefined
-
-					end,
-
-					{ onEnoceanDeviceEvent,	[ Event, BackOnlineInfo, self() ] };
-
-
-				% Set, hence just detected:
-				DiscoverOrigin ->
-
-					BinDesc = case MaybeDevice of
-
+						% Most common case (already detected, hence not set):
 						undefined ->
-							throw( { unexpected_undefined_device, Event } );
+							BackOnlineInfo = case IsBackOnline of
 
-						Device ->
-							get_device_description( Device )
+								true ->
+									case MaybeDevice of
 
-					end,
+										undefined ->
+											throw( { unexpected_undefined_device,
+													 Event } );
 
-					DevMsgType = case DiscoverOrigin of
+										Device ->
+											get_device_description( Device )
 
-						configuration ->
-							onEnoceanConfiguredDeviceFirstSeen;
+									end;
 
-						% Detected, yet not in configuration:
-						listening ->
-							onEnoceanDeviceDiscovery;
+								false ->
+									undefined
 
-						teaching ->
-							onEnoceanDeviceTeachIn
+							end,
 
-					end,
+						{ onEnoceanDeviceEvent,
+							[ Event, BackOnlineInfo, self() ] };
 
-					{ DevMsgType, [ Event, BinDesc, self() ] }
 
-			end,
+					% Set, hence just detected:
+					DiscoverOrigin ->
 
-			[ LPid ! DeviceMsg
-				|| LPid <- NewState#oceanic_state.event_listeners ],
+						BinDesc = case MaybeDevice of
 
-			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-									 _Chunk= <<>>,  NewState );
+							undefined ->
+								throw( { unexpected_undefined_device, Event } );
+
+							Device ->
+								get_device_description( Device )
+
+						end,
+
+						DevMsgType = case DiscoverOrigin of
+
+							configuration ->
+								onEnoceanConfiguredDeviceFirstSeen;
+
+							% Detected, yet not in configuration:
+							listening ->
+								onEnoceanDeviceDiscovery;
+
+							teaching ->
+								onEnoceanDeviceTeachIn
+
+						end,
+
+						{ DevMsgType, [ Event, BinDesc, self() ] }
+
+				end,
+
+				[ LPid ! DeviceMsg
+					|| LPid <- NewState#oceanic_state.event_listeners ],
+
+				integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+										 _Chunk= <<>>,  NewState )
+
+			end;
 
 
 		% Now the unlucky cases; first the ones that may result in extra tail to
@@ -4565,7 +4735,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 		% ongoing recursion:
 		%
 		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
-			    when DecodingError =:= not_reached
+				when DecodingError =:= not_reached
 					 orelse DecodingError =:= incomplete  ->
 			{ NewToSkipLen, NextMaybeTelTail, NewState }
 
@@ -6827,15 +6997,6 @@ interpret_power_report( _PwReport ) ->
 
 
 
-
--doc "The power currently output by a device (e.g. a smart plug).".
--type power_report() :: 'off'
-					  | pos_integer() % Percentage of max power
-					  | 'not_available'. % Hence unknown
-
-
-
-
 -doc "Returns a textual description of the specified temperature.".
 -spec temperature_to_string( celsius() ) -> ustring().
 temperature_to_string( Temp ) ->
@@ -7566,6 +7727,16 @@ string_to_eep( Str ) ->
 %
 % These functions are simple as, conventionally (by design), the first fields
 % are uniform.
+
+
+
+-doc """
+Returns the type of the specified device event.
+""".
+-spec get_event_type( device_event() ) -> device_event_type().
+get_event_type( DevEventTuple ) ->
+	% The record tag:
+	erlang:element( _PosIdx=1, DevEventTuple ).
 
 
 -doc """
