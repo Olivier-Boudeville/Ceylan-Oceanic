@@ -2995,7 +2995,7 @@ specification, enriched thanks to the specified Oceanic server.
 canon_listened_event_spec_to_string( { EmitterDeviceEurid,
 		_CanonITS={ DevType, CanonDevSCS } }, OcSrvPid ) ->
 	text_utils:format( "listening to ~ts of type ~ts, for ~ts",
-		[ get_device_description ( EmitterDeviceEurid, OcSrvPid ), DevType,
+		[ get_device_description( EmitterDeviceEurid, OcSrvPid ), DevType,
 		  device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
 
 
@@ -4142,9 +4142,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 				TrackSpec={ DevEvType, MaybeExpectedReportedEvInfo } ] } ->
 
 			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
-				"to device whose EURID is ~ts, ~ts, "
-				"with track specification ~w.",
-				[ eurid_to_string( ActEurid ),
+				"to ~ts, ~ts, with track specification ~w.",
+				[ describe_device( ActEurid, State ),
 				  canon_outgoing_trigger_spec_to_string( COTS ), TrackSpec ] ),
 
 			BaseEurid = State#oceanic_state.emitter_eurid,
@@ -4271,23 +4270,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		{ getDeviceDescription, Eurid, RequesterPid } ->
 
-			DeviceTable = State#oceanic_state.device_table,
-
-			BinDesc = case table:lookup_entry( Eurid, DeviceTable ) of
-
-				key_not_found ->
-					text_utils:bin_format( "unknown device of EURID ~ts",
-						[ eurid_to_string( Eurid ) ] );
-
-				{ value, #enocean_device{ name=undefined } } ->
-					text_utils:bin_format( "unnamed device of EURID ~ts",
-						[ eurid_to_string( Eurid ) ] );
-
-				{ value, #enocean_device{ name=BinName } } ->
-					text_utils:bin_format( "device '~ts' of EURID ~ts",
-						[ BinName, eurid_to_string( Eurid ) ] )
-
-			end,
+			BinDesc = describe_device( Eurid, State ),
 
 			RequesterPid ! { oceanic_device_description, BinDesc },
 
@@ -5015,7 +4998,7 @@ decode_after_start_byte( NewTelTail, State ) ->
 	%
 	case NewTelTail of
 
-		% First 32 bits available:
+		% First 32 bits available (header) and first CRC as well:
 		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
 			examine_header( Header, HeaderCRC, Rest, NewTelTail, State );
 
@@ -5081,7 +5064,7 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 				trace_bridge:debug_fmt( "Header CRC validated (~B).",
 										[ HeaderCRC ] ) ),
 
-			% +1 for its CRC size:
+			% +1 for the FullDataCRC size, after both data:
 			ExpectedRestSize = DataLen + OptDataLen + 1,
 
 			case get_packet_type( PacketTypeNum ) of
@@ -5154,8 +5137,8 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 							% May happen; e.g. if two telegrams overlap:
 							case Rest of
 
-								% Post-telegram not to be lost:
-								<<FullData:FullLen/binary, _NextChunk>> ->
+								% Post-telegram not to be lost (the second /binary was lacking:
+								<<FullData:FullLen/binary, _NextChunk/binary>> ->
 									examine_full_data( FullData, FullDataCRC,
 										Data, OptData, PacketType,
 										FullTelTail, NextChunk, State );
@@ -7694,6 +7677,33 @@ get_best_bin_naming( _MaybeDevName=undefined, Eurid ) ->
 
 get_best_bin_naming( BinDevName, _Eurid ) ->
 	BinDevName.
+
+
+
+-doc """
+Returns the best short description for the device of specified EURID, based on
+server-internal information.
+""".
+-spec describe_device( eurid(), wooper:state() ) -> bin_string().
+describe_device( Eurid, State ) ->
+
+	DeviceTable = State#oceanic_state.device_table,
+
+	case table:lookup_entry( Eurid, DeviceTable ) of
+
+		key_not_found ->
+			text_utils:bin_format( "unknown device of EURID ~ts",
+								   [ eurid_to_string( Eurid ) ] );
+
+		{ value, #enocean_device{ name=undefined } } ->
+			text_utils:bin_format( "unnamed device of EURID ~ts",
+								   [ eurid_to_string( Eurid ) ] );
+
+		{ value, #enocean_device{ name=BinName } } ->
+			text_utils:bin_format( "device '~ts' of EURID ~ts",
+								   [ BinName, eurid_to_string( Eurid ) ] )
+
+	end.
 
 
 
