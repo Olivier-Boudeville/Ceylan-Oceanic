@@ -36,6 +36,8 @@ No specific need here for the various hardware (Enocean USB dongle) and software
 Reads a file typically produced by the oceanic_record_device_test module. Run it
 first with 'make oceanic_record_device_run' and ensure that at least a few
 Enocean telegrams are received and stored, before trying to decode them here.
+
+Very useful to debug corner cases of the decoding logic.
 """.
 
 
@@ -130,8 +132,8 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
 
 		{ Unsuccessful, _NewToSkipLen=0, NextTelTail, _NewState } ->
 			trace_utils:warning_fmt( "Telegram not decoded; outcome: ~p, "
-				"and a telegram tail was detected, ~p.",
-				[ Unsuccessful, NextTelTail ] ),
+				"and a telegram tail of ~B bytes was detected:~n ~p.",
+				[ Unsuccessful, size( NextTelTail ), NextTelTail ] ),
 			decode_all( T, AccEvents );
 
 		{ Unsuccessful, NewToSkipLen, NextTelTail, _NewState } ->
