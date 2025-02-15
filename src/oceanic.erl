@@ -276,11 +276,16 @@ Tells whether a given device is considered by Oceanic to be online or lost.
 
 
 -doc """
-Higher-level description of the status of a device (typically an actuator).
+Higher-level description of a status of a device (typically an actuator).
 
-Useful to track trigger acknowledgements.
+Useful to track trigger acknowledgements, or to specify an expected or wanted
+device status.
 """.
--type device_status() :: 'on' | 'off' % For smart plugs
+-type device_status() :: 'on' | 'off' % For example for a smart plug when driven
+                                      % by a rocker
+
+					   | 'inverted' % For example for a smart plugs when driven
+                                    % by a push button
 					   | term().
 
 
@@ -1031,7 +1036,7 @@ Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
 
 Refer to [EEP-spec] p.15 for further details.
 """.
--type push_button_event() :: #push_button_event{}.
+-type push_button_switch_event() :: #push_button_switch_event{}.
 
 
 
@@ -1122,7 +1127,7 @@ command request.
 	% Device events:
 	thermo_hygro_event()
   | single_input_contact_event()
-  | push_button_event()
+  | push_button_switch_event()
   | smart_plug_status_report_event()
   | double_rocker_switch_event()
   | double_rocker_multipress_event()
@@ -1137,7 +1142,7 @@ command request.
 -type device_event_type() ::
 	'thermo_hygro_event'
   | 'single_input_contact_event'
-  | 'push_button_event'
+  | 'push_button_switch_event'
   | 'smart_plug_status_report_event'
   | 'double_rocker_switch_event'
   | 'double_rocker_multipress_event'
@@ -1185,6 +1190,8 @@ For example may correspond to Channel(), for a double-rocker change information.
 -type state_change_info() :: term().
 
 
+
+
 -doc "Describes a stage change of a double-rocker.".
 -type double_rocker_state_change_spec() ::
 	canon_double_rocker_state_change_spec()
@@ -1203,6 +1210,16 @@ Both a user-level and an internal type.
 	{ channel(), button_position(), button_transition() }.
 
 
+-doc "Describes a stage change of a push-button.".
+-type push_button_state_change_spec() :: canon_push_button_state_change_spec().
+
+
+-doc """
+Canonical version of push_button_state_change_spec().
+""".
+-type canon_push_button_state_change_spec() :: button_transition().
+
+
 
 -doc """
 Describes a stage change of a device.
@@ -1213,6 +1230,7 @@ Abbreviated as SCS.
 """.
 -type device_state_change_spec() ::
 	double_rocker_state_change_spec()
+  |	push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -1223,6 +1241,7 @@ Abbreviated as CSCS.
 """.
 -type canon_device_state_change_spec() ::
 	canon_double_rocker_state_change_spec()
+  |	canon_push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -1241,8 +1260,11 @@ For example, ``{double_rocker, {2, bottom, released}}.``.
 
 	{ 'double_rocker', double_rocker_state_change_spec() }
 
+  |	{ 'push_button', push_button_state_change_spec() }
+
 	% General form:
   | { device_type(), device_state_change_spec() }.
+
 
 
 -doc """
@@ -1286,8 +1308,13 @@ Abbreviated as CLES.
 	{ EmitterDevice :: eurid(), canon_incoming_trigger_spec() }.
 
 
--doc "The outcome of the match of a trigger event.".
--type event_match_trigger_outcome() :: 'false' | { 'true', eurid(), device_status() }.
+-doc """
+The outcome of the match of a trigger event, possibly telling which is the
+triggering device and the new device status that shall be set.
+""".
+-type event_match_trigger_outcome() :: 
+    'false' 
+  | { 'true', SourceDevice :: eurid(), device_status() }.
 
 
 
@@ -1488,7 +1515,7 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 			   command_type/0, command_request/0, command_outcome/0,
 
 			   thermo_hygro_event/0, single_input_contact_event/0,
-			   push_button_event/0,
+			   push_button_switch_event/0,
 			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
 			   device_description/0, back_online_info/0, device_event/0,
@@ -1498,7 +1525,12 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 			   state_change_info/0,
 			   device_state_change_spec/0, canon_device_state_change_spec/0,
+
+			   push_button_state_change_spec/0,
+			   canon_push_button_state_change_spec/0,
+
 			   double_rocker_state_change_spec/0,
+			   canon_double_rocker_state_change_spec/0,
 
 			   incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
 			   listened_event_spec/0, canon_listened_event_spec/0,
@@ -2268,11 +2300,11 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 				{ decoded, Event=#read_base_id_info_response{
 							% (not interested here in remaining_write_cycles)
 							base_eurid=BaseEurid }, _MaybeDiscoverOrigin,
-						_IsBackOnline, _MaybeDevice, MaybeNextTelTail,
+						_IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
 						ReadState } ->
 
 					% Clearer that way:
-					case MaybeNextTelTail of
+					case NewMaybeNextTelTail of
 
 						undefined ->
 							ok;
@@ -2290,9 +2322,9 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 					case State#oceanic_state.waited_command_info of
 
 						{ _InitCmdReq=#command_request{
-										command_type=co_rd_idbase,
-										% Not to be checked: command_telegram
-										requester=internal },
+									command_type=co_rd_idbase,
+									% Not to be checked: command_telegram
+									requester=internal },
 						   _MaybeTimerRef=undefined } ->
 							ok;
 
@@ -2753,6 +2785,10 @@ device_state_change_spec_to_string( _DevType=double_rocker,
 	text_utils:format( "double-rocker channel #~B, ~ts button position "
 					   "and a ~ts transition", [ Channel, ButPos, ButTrans ] );
 
+device_state_change_spec_to_string( _DevType=push_button,
+									_CanonPBSCSpec=ButTrans ) ->
+	text_utils:format( "a toggle on a ~ts transition", [ ButTrans ] );
+
 device_state_change_spec_to_string( DevType, _CanonSCSpec ) ->
 	text_utils:format( "an unknown state change for a device of type '~ts'",
 					   [ DevType ] ).
@@ -2760,7 +2796,7 @@ device_state_change_spec_to_string( DevType, _CanonSCSpec ) ->
 
 
 -doc """
-Canonicalises the specified user-level double-rocker change specifications.
+Canonicalises the specified user-level double-rocker change specification.
 """.
 -spec canonicalise_double_rocker_change_spec(
 		double_rocker_state_change_spec() ) ->
@@ -2789,7 +2825,6 @@ canonicalise_double_rocker_change_spec( _DRChangeSpec=Channel ) ->
 	canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
 
 
-
 -doc """
 Returns the specification of the reverse of the specified canonical device state
 change, that is its reciprocal one (thus able to undo it).
@@ -2806,14 +2841,19 @@ get_reciprocal_state_change_spec( _DevType=double_rocker,
 
 get_reciprocal_state_change_spec( _DevType=double_rocker,
 		_CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
-	{ Channel, top, ButTrans }.
+	{ Channel, top, ButTrans };
+
+% Just alternating:
+get_reciprocal_state_change_spec( _DevType=push_button,	_CSCS=undefined ) ->
+	undefined.
+
 
 
 
 -doc """
 Tells whether the specified device trigger event matches at least one if the
 CLES and, if yes, for which new status reported by this event (typically the on
-or off button of a rocker being transitioned.
+or off button of a rocker being transitioned).
 """.
 -spec event_matches_trigger( device_event(),
 		[ canon_listened_event_spec() ] ) -> event_match_trigger_outcome().
@@ -2855,8 +2895,8 @@ get_maybe_matching_cits( EmitterEurid, _CLESs=[ _ | T ] ) ->
 
 
 -doc """
-Reports any trigger matching and corresponding device new status, based on the
-specified CITS and device event.
+Reports any trigger matching and corresponding device new logical status, based
+on the specified CITS and device event.
 """.
 -spec interpret_cits_matching( canon_incoming_trigger_spec(), eurid(),
 				device_event() ) -> event_match_trigger_outcome().
@@ -2887,17 +2927,39 @@ interpret_cits_matching(
 	{ true, DevEurid, _NewStatus=off };
 
 
+% Here a push-button change spec matches, i.e. the specified button transition
+% does; acting as a rocker (alternating between two states, on and off) based on
+% a single button transition (either pressed or released, not both, otherwise a
+% user action would trigger press then release, and this would lead to a double
+% transition)
+%
+interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS=ButtonTransition },
+		DevEurid,
+		_DevEvent=#push_button_switch_event{ transition=ButtonTransition } ) ->
+
+	{ true, DevEurid, _NewStatus=inverted };
+
+
+% Non-listened button transition for this push-button:
+interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
+		_DevEurid,
+		_DevEvent=#push_button_switch_event{} ) ->
+
+	false;
+
+
 % Add here clauses if wanting to match other CITS/events.
 
 % Non-matching case:
-interpret_cits_matching( _CITS, _DevEurid, _DevEvent ) ->
+interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 
-	% No State:
-	%cond_utils:if_defined( us_main_debug_home_automation,
-	%	?debug_fmt( "(this event ~ts does not match the presence switching ~ts)",
-	%				[ oceanic:device_event_to_string( DevEvent ),
-	%				  oceanic:cits_to_string( CITS ) ] ),
-	%	basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
+
+	cond_utils:if_defined( us_main_debug_home_automation,
+		trace_bridge:debug_fmt(
+			"(this event ~ts does not match the presence switching ~ts)",
+			[ oceanic:device_event_to_string( DevEvent ),
+			  oceanic:cits_to_string( CITS ) ] ),
+		basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
 
 	false.
 
@@ -2938,6 +3000,14 @@ canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ],
 
 			{ double_rocker, CanDRChangeSpec };
 
+		push_button ->
+			{ push_button, pressed };
+
+		P={ push_button, ButTrans } ->
+			is_valid_button_transition( ButTrans ) orelse
+				throw( { invalid_button_transition, ButTrans } ),
+			P;
+
 		{ OtherDeviceType, ChangeSpec } when is_atom( OtherDeviceType ) ->
 			case is_valid_device_type( OtherDeviceType ) of
 
@@ -2952,8 +3022,6 @@ canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ],
 
 			end;
 
-		{ Other, ChangeSpec } ->
-			throw( { not_an_incoming_trigger_spec, Other, ChangeSpec } );
 
 		Other ->
 			throw( { invalid_listened_event_spec, Other, MaybeEuridStr } )
@@ -3072,6 +3140,7 @@ canonicalise_emitted_event_specs( _EESs=[
 				canonicalise_double_rocker_change_spec( DRChangeSpec ),
 
 			{ double_rocker, _VirtEmitInfo=AppStyle, CanDRChangeSpec };
+
 
 		Other ->
 			throw( { unsupported_outgoing_trigger_spec, Other, ActInfo } )
@@ -4945,7 +5014,7 @@ try_decode_chunk( TelegramChunk, State ) ->
 	% enocean/protocol/packet.py, the parse_msg/1 method)
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Trying to decode '~w' (of size ~B bytes)",
+		trace_bridge:debug_fmt( "Trying to decode ~w (of size ~B bytes)",
 								[ TelegramChunk, size( TelegramChunk ) ] ) ),
 
 	% First 6 bytes correspond to the serial synchronisation:
@@ -5137,7 +5206,9 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 							% May happen; e.g. if two telegrams overlap:
 							case Rest of
 
-								% Post-telegram not to be lost (the second /binary was lacking:
+								% Post-telegram not to be lost (the second
+								% /binary is crucial to match any size):
+								%
 								<<FullData:FullLen/binary, _NextChunk/binary>> ->
 									examine_full_data( FullData, FullDataCRC,
 										Data, OptData, PacketType,
@@ -5310,6 +5381,13 @@ decode_packet( _PacketType=radio_erp1_type,
 
 
 % Here a response is received whereas no request was sent:
+%
+% (note that some smart plugs, like at least the ELTAKO FSSAF-230V, emit, once
+% triggered, a <<85,0,1,0,2,101,0,0>> telegram, carrying in terms of information
+% only that it is a response_type packet with a payload of <<0>>; hence no
+% emitter EURID available, for example - instead of sending a
+% smart_plug_status_report_event)
+%
 decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 			   State=#oceanic_state{ waited_command_info=undefined,
 									 discarded_count=DiscCount } ) ->
@@ -5478,10 +5556,6 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
-		{ value, Device=#enocean_device{ eep=single_input_contact } } ->
-			decode_rps_single_input_contact_packet( DB_0, SenderEurid, Status,
-				OptData, NextMaybeTelTail, Device, State );
-
 		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_1 } } ->
 			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
 				OptData, NextMaybeTelTail, Device, State );
@@ -5489,6 +5563,10 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 		% Same as previous:
 		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_2 } } ->
 			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
+		{ value, Device=#enocean_device{ eep=push_button } } ->
+			decode_rps_push_button_packet( DB_0, SenderEurid, Status,
 				OptData, NextMaybeTelTail, Device, State );
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
@@ -5501,7 +5579,7 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
-			trace_bridge:debug_fmt( "Unable to decode a RPS (F6) packet "
+			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
 				[ get_best_naming( MaybeDeviceName, SenderEurid ),
 				  UnsupportedEepId,
@@ -5526,20 +5604,20 @@ press/release events).
 Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 [EEP-spec] p.15.
 """.
--spec decode_rps_single_input_contact_packet( telegram_chunk(), eurid(),
+-spec decode_rps_push_button_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
+decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 		Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
 	ButtonTransition = case DB_0AsInt band ?b4 =:= 0 of
 
 		true ->
-			pressed;
+			released;
 
 		false ->
-			released
+			pressed
 
 	end,
 
@@ -5576,16 +5654,16 @@ decode_rps_single_input_contact_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-	Event = #push_button_event{ source_eurid=SenderEurid,
-								name=MaybeDeviceName,
-								eep=MaybeEepId,
-								timestamp=Now,
-								last_seen=MaybeLastSeen,
-								subtelegram_count=MaybeTelCount,
-								destination_eurid=MaybeDestEurid,
-								dbm=MaybeDBm,
-								security_level=MaybeSecLvl,
-								transition=ButtonTransition },
+	Event = #push_button_switch_event{ source_eurid=SenderEurid,
+									   name=MaybeDeviceName,
+									   eep=MaybeEepId,
+									   timestamp=Now,
+									   last_seen=MaybeLastSeen,
+									   subtelegram_count=MaybeTelCount,
+									   destination_eurid=MaybeDestEurid,
+									   dbm=MaybeDBm,
+									   security_level=MaybeSecLvl,
+									   transition=ButtonTransition },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
 	  NextMaybeTelTail, NewState }.
@@ -6829,9 +6907,8 @@ decode_vld_smart_plug_with_metering_packet(
 	cond_utils:if_defined( oceanic_debug_decoding,
 
 		begin
-			PFStr = basic_utils:if_else( IsPowerFailureEnabled,
-				_IfTrue=interpret_power_failure( IsPowerFailureDetected ),
-				_IfNotTrue="" ),
+			PFStr = interpret_power_failure( IsPowerFailureEnabled,
+											 IsPowerFailureDetected ),
 
 			OCStr =
 				interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
@@ -6844,7 +6921,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 			trace_bridge:debug_fmt(
 				"Decoding a VLD smart plug with metering packet "
-				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts,"
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts,"
 				"~ts; this plug is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
 				  get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
@@ -6923,6 +7000,18 @@ decode_vld_smart_plug_with_metering_packet(
 
 
 -doc "Interprets the specified power failure information.".
+-spec interpret_power_failure( boolean(), boolean() ) -> ustring().
+interpret_power_failure( _IsPowerFailureEnabled=true,
+						 IsPowerFailureDetected ) ->
+	interpret_power_failure( IsPowerFailureDetected );
+
+interpret_power_failure( _IsPowerFailureEnabled=false,
+						 _IsPowerFailureDetected ) ->
+	"".
+
+
+
+-doc "Interprets the specified power failure information.".
 -spec interpret_power_failure( boolean() ) -> ustring().
 interpret_power_failure( _IsPowerFailureDetected=true ) ->
 	"a power failure was detected";
@@ -6976,7 +7065,7 @@ interpret_power_report( _PwReport=PInt ) when is_integer( PInt ) ->
 	text_utils:format( "is powering at ~B%", [ PInt ] );
 
 interpret_power_report( _PwReport ) ->
-	"has an unknwon powering status".
+	"has an unknown powering status".
 
 
 
@@ -7418,7 +7507,9 @@ type.
 """.
 -spec get_packet_type( enum() ) -> option( packet_type() ).
 get_packet_type( PacketTypeNum ) ->
-	% Topic defined by the module that Oceanic generates:
+	% Topic defined by the module that Oceanic generates from the
+	% oceanic_constants one:
+	%
 	oceanic_generated:get_maybe_first_for_packet_type( PacketTypeNum ).
 
 
@@ -7762,8 +7853,9 @@ get_source_eurid( DevEventTuple ) ->
 Returns any channel referenced by the emitting device stored in the specified
 device event.
 
-For events from devices not having multiple channels (e.g. push_button_event,
-single_input_contact_event, thermo_hygro_event), returns channel 1.
+For events from devices not having multiple channels
+(e.g. push_button_switch_event, single_input_contact_event, thermo_hygro_event),
+returns channel 1.
 """.
 -spec get_channel( device_event() ) -> channel().
 % For multiple-rockers, only the first button reported is considered:
@@ -7883,7 +7975,7 @@ Tells whether the specified device event indicates that this device can be
 interpreted as being triggered by the user.
 """.
 -spec device_triggered( device_event() ) -> boolean().
-device_triggered( #push_button_event{ transition=pressed } ) ->
+device_triggered( #push_button_switch_event{ transition=pressed } ) ->
 	true;
 
 device_triggered( #double_rocker_switch_event{ energy_bow=pressed } ) ->
@@ -8105,7 +8197,7 @@ device_event_to_string( #single_input_contact_event{
 		  get_eep_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
 
 
-device_event_to_string( #push_button_event{
+device_event_to_string( #push_button_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
 		eep=MaybeEepId,
@@ -8117,8 +8209,7 @@ device_event_to_string( #push_button_event{
 		security_level=MaybeSecLvl,
 		transition=ButtonTransition } ) ->
 	text_utils:format(
-		"push-button device ~ts has been ~ts at ~ts~ts;this is declared~ts; "
-		"~ts; ~ts",
+		"push-button device ~ts has been ~ts at ~ts~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
@@ -8305,7 +8396,7 @@ device_event_to_string( time_out ) ->
 	"the current command failed to be acknowledged on time";
 
 device_event_to_string( OtherEvent ) ->
-	text_utils:format( "unknown event: ~p", [ OtherEvent ] ).
+	text_utils:format( "unknown event to detail: ~p", [ OtherEvent ] ).
 
 
 
@@ -8378,7 +8469,7 @@ device_event_to_short_string( #single_input_contact_event{
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
 
 
-device_event_to_short_string( #push_button_event{
+device_event_to_short_string( #push_button_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
 		eep=MaybeEepId,
@@ -8391,6 +8482,31 @@ device_event_to_short_string( #push_button_event{
 		  get_button_transition_description( ButtonTransition ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
+
+
+device_event_to_short_string( #smart_plug_status_report_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		power_failure_detected=PFDetected,
+		overcurrent_triggered=OCTriggered,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=OutputPower } ) ->
+	text_utils:format( "The smart-plug device ~ts reports that it ~ts "
+		"(~ts, ~ts, ~ts, ~ts); ~ts; EEP: ~ts.",
+		[ get_name_description( MaybeName, Eurid ),
+		  interpret_power_report( OutputPower ),
+		  interpret_power_failure( PFDetected ),
+		  interpret_overcurrent_trigger( OCTriggered ),
+		  interpret_hardware_status( HardwareStatus ),
+		  interpret_local_control( IsLocalControlEnabled ),
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+
+		  % Possibly "D2-01-0B":
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="D2-01-0A" ) ] );
 
 
 device_event_to_short_string( #double_rocker_switch_event{
@@ -8522,7 +8638,7 @@ device_event_to_short_string( time_out ) ->
 	"The current command failed to be acknowledged on time.";
 
 device_event_to_short_string( OtherEvent ) ->
-	text_utils:format( "Unknown event: ~p.", [ OtherEvent ] ).
+	text_utils:format( "Unknown event to summarise: ~p.", [ OtherEvent ] ).
 
 
 
