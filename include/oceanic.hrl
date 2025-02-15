@@ -106,9 +106,6 @@
 %
 % Useful to report problems, typically time-out while waiting for a response
 % (e.g. a mere aknowledgement).
-%
-%  - the identifier of the requester of that command:
-%           requester :: oceanic:requester()
 
 
 % Record allowing to keep track of a submitted command request.
@@ -123,7 +120,7 @@
 	% The telegram corresponding to that command:
 	command_telegram :: oceanic:telegram(),
 
-	% The requester of this command:
+	% The identifier of the requester of this command:
 	requester :: oceanic:requester() } ).
 
 
@@ -132,7 +129,7 @@
 % Definition of device events, preferably ordered by increasing EEP.
 
 
-% By convention all of them start with the same first four, always-set, fields:
+% By convention all of them start with the same first five, always-set, fields:
 %
 % - the EnOcean Unique Radio Identifier of the emitting device:
 %           source_eurid :: oceanic:eurid()
@@ -296,7 +293,7 @@
 %
 % Refer to [EEP-spec] p.15 for further details.
 %
--record( push_button_event, {
+-record( push_button_switch_event, {
 
 	% Section common to all events:
 
@@ -400,7 +397,7 @@
 	% The reported hardware status:
 	hardware_status :: oceanic:hardware_status(),
 
-	% When the local control of the plug is enabled:
+	% Whether the local control of the plug is enabled:
 	local_control_enabled :: boolean(),
 
 	% The power currently output by the plug:
