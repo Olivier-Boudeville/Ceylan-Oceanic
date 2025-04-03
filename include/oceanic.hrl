@@ -400,8 +400,10 @@
 	% Whether the local control of the plug is enabled:
 	local_control_enabled :: boolean(),
 
-	% The power currently output by the plug:
-	output_power :: oceanic:power_report() } ).
+	% Any power currently output by the plug (if being able to perform
+	% metering):
+	%
+	output_power :: option( oceanic:power_report() ) } ).
 
 
 
