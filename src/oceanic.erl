@@ -166,7 +166,8 @@ through an Oceanic server**.
 
 % Silencing (depending on the tokens defined):
 -export([ get_located_button_enum/2, get_designated_button_enum/2,
-		  encode_common_command/2, ptm_module_to_string/1,
+		  encode_common_command/2, interpret_power_failure/2,
+		  ptm_module_to_string/1,
 		  nu_message_type_to_string/1,
 		  optional_data_to_string/1, optional_data_to_short_string/2,
 		  maybe_optional_data_to_string/2, repeater_count_to_string/1 ]).
@@ -282,10 +283,10 @@ Useful to track trigger acknowledgements, or to specify an expected or wanted
 device status.
 """.
 -type device_status() :: 'on' | 'off' % For example for a smart plug when driven
-                                      % by a rocker
+									  % by a rocker
 
 					   | 'inverted' % For example for a smart plugs when driven
-                                    % by a push button
+									% by a push button
 					   | term().
 
 
@@ -1312,8 +1313,8 @@ Abbreviated as CLES.
 The outcome of the match of a trigger event, possibly telling which is the
 triggering device and the new device status that shall be set.
 """.
--type event_match_trigger_outcome() :: 
-    'false' 
+-type event_match_trigger_outcome() ::
+	'false'
   | { 'true', SourceDevice :: eurid(), device_status() }.
 
 
@@ -2624,8 +2625,8 @@ declare_devices( _DeviceCfgs=[
 								 expected_periodicity=ActPeriod },
 
 	table:has_entry( Eurid, DeviceTable ) andalso
-		trace_bridge:warning_fmt( "Overriding device entry for EURID ~ts "
-			"(with: ~ts)",
+		trace_bridge:warning_fmt( "Overriding entry for device "
+			"whose EURID is ~ts (with: ~ts)",
 			[ eurid_to_string( Eurid ), device_to_string( DeviceRec ) ] ),
 
 	% Overriding allowed:
@@ -3048,7 +3049,8 @@ descriptions.
 												ustring().
 canon_listened_event_spec_to_string( { EmitterDeviceEurid,
 		_CanonITS={ DevType, CanonDevSCS } } ) ->
-	text_utils:format( "listening to device of EURID ~ts of type ~ts, for ~ts",
+	text_utils:format( "listening to device whose EURID is ~ts "
+		"of type ~ts, for ~ts",
 		[ eurid_to_string( EmitterDeviceEurid ), DevType,
 		  device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
 
@@ -3233,11 +3235,12 @@ Returns a basic textual description of the specified actuator information.
 """.
 -spec actuator_info_to_string( actuator_info() ) -> ustring().
 actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined } ) ->
-	text_utils:format( "actuator ~ts (not addressed as a specific type)",
-					   [ eurid_to_string( Eurid ) ] );
+	text_utils:format(
+		"actuator whose EURID is ~ts (not addressed as a specific type)",
+		[ eurid_to_string( Eurid ) ] );
 
 actuator_info_to_string( { Eurid, AddrDeviceType } ) ->
-	text_utils:format( "actuator ~ts, addressed as a ~ts type",
+	text_utils:format( "actuator whose EURID is ~ts, addressed as a ~ts type",
 					   [ eurid_to_string( Eurid ), AddrDeviceType ] ).
 
 
@@ -3295,8 +3298,8 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 	NewDevice = case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device ~ts through "
-				"teach-in.", [ eurid_to_string( Eurid ) ] ),
+			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+				"is ~ts~ts through teach-in.", [ eurid_to_string( Eurid ) ] ),
 
 			#enocean_device{ eurid=Eurid,
 							 name=undefined,
@@ -4249,7 +4252,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 				key_not_found ->
 					% Really abnormal:
-					trace_bridge:error_fmt( "A sensor of EURID '~ts' was "
+					trace_bridge:error_fmt( "A sensor whose EURID is '~ts' was "
 						"reported as lost whereas it is not known.",
 						[ eurid_to_string( LostEurid ) ] ),
 					% This EURID is not specifically registered.
@@ -5528,7 +5531,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 			  _MaybeEepId } = record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
-				"for ~ts: device not configured, no EEP known for it.",
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.",
 				[ eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -5802,7 +5806,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
-				"for ~ts and EEP ~ts (~ts), as T21=~B and NU=~B.",
+				"from device whose EURID is ~ts and EEP ~ts (~ts), "
+				"as T21=~B and NU=~B.",
 				[ eurid_to_string( SenderEurid ), EepId,
 				  oceanic_generated:get_maybe_second_for_eep_strings( EepId ),
 				  T21, NU ] ),
@@ -6312,7 +6317,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS packet, "
 			"with a payload of ~B bytes "
 			"(with DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), "
-			"sender is ~ts, ~ts~ts",
+			"sending device has for EURID ~ts, ~ts~ts",
 			[ size( DataTail ), DB_3, DB_2, DB_1, DB_0,
 			  eurid_to_string( SenderEurid ), repeater_count_to_string( RC ),
 			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
@@ -6332,8 +6337,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			% Device first time seen:
 			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
-				"for ~ts: device not configured, no EEP known for it.",
-				[ eurid_to_string( SenderEurid ) ] ),
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.",	[ eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -6672,8 +6677,8 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 			  _MaybeEepId } = record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
-				"for ~ts: device not configured, no EEP known for it.",
-				[ eurid_to_string( SenderEurid ) ] ),
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.",	[ eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -6741,24 +6746,161 @@ switches and dimmers with Energy Measurement and Local Control" device of type
 0A).
 
 This corresponds to basic smart, non-metering plugs bidirectional actuators that
-control (switch on/off) most electrical loads (e.g. appliances); they do not
+may control (switch on/off) most electrical loads (e.g. appliances); they do not
 perform metering.
 
 Discussed in [EEP-spec] p. 132.
 
-Notably, if the command is equal to 0x4 (hence 'actuator_status_response'; see
+Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
 [EEP-spec] p. 135), it is an information sent (as a broadcast) by the smart plug
 about its status (either after a status request or after a state change request
 - whether or not it triggered an actual state change), typically to acknowledge
-that a requested switching was indeed triggered).
+that a requested switching was indeed triggered.
 """.
 -spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
 		telegram_opt_data(), option( telegram_tail() ), enocean_device(),
 		oceanic_state() ) -> decoding_outcome().
-decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
+decode_vld_smart_plug_packet(
+		% 3 bytes (no OutputValue available):
+		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
+					CmdAsInt:4, OverCurrentSwitchOff:1, ErrorLevel:2,
+					_IOChannel:5, LocalControl:1, _OutputValue:7>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } )
+						when CmdAsInt =:= 16#4 ->
+
+	% Mostly as decode_vld_smart_plug_with_metering_packet/7, except no
+	% measurement.
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+
+	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
+			case PowerFailureEnabled of
+
+		0 ->
+			{ false, false };
+
+		1 ->
+			Detect = case PowerFailureDetected of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+			{ true, Detect }
+
+	end,
+
+	IsOverCurrentSwitchOffTrigger = case OverCurrentSwitchOff of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	HardwareStatus = case ErrorLevel of
+
+		0 ->
+			nominal;
+
+		1 ->
+			warning;
+
+		2 ->
+			failure;
+
+		3 ->
+			not_supported
+
+	end,
+
+	% IOChannel not decoded yet.
+
+	IsLocalControlEnabled = case LocalControl of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	MaybeCmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			PFStr = interpret_power_failure( IsPowerFailureEnabled,
+											 IsPowerFailureDetected ),
+
+			OCStr = interpret_overcurrent_trigger(
+				IsOverCurrentSwitchOffTrigger ),
+
+			HardStr = interpret_hardware_status( HardwareStatus ),
+
+			LocCtrlStr = interpret_local_control( IsLocalControlEnabled ),
+
+			trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
+				  HardStr, LocCtrlStr,
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+			 MaybeDecodedOptData, IsPowerFailureEnabled,
+			 IsPowerFailureDetected ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #smart_plug_status_report_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=undefined },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState };
+
+
+% For other, not supported yet, smart plug command packets:
+decode_vld_smart_plug_packet(
+		% 3 bytes:
+		_Payload= <<_:4, CmdAsInt:5, _Rest/binary>>,
 		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
+	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	% Actually is currently not managed:
 	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
 		record_known_device_success( Device, DeviceTable ),
@@ -6767,26 +6909,26 @@ decode_vld_smart_plug_packet( _Payload= <<_:4, CmdAsInt:4, _Rest/binary>>,
 
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
-	Cmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
-			"for command '~ts' (~B); sender is ~ts~ts.",
-			[ Cmd, CmdAsInt, get_best_naming( MaybeDeviceName, SenderEurid ),
-			  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
-			] ),
-		basic_utils:ignore_unused( [ SenderEurid, Cmd, MaybeDeviceName,
+
+		begin
+			trace_bridge:debug_fmt(
+				"Partial decoding a VLD smart plug packet "
+				"for command '~ts' (~B); sender is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  get_best_naming( MaybeDeviceName, SenderEurid ),
+				  maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
 									 MaybeDecodedOptData ] ) ),
 
-	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
-	%Event = to_do,
-
-	%{ decoded, Event, NextMaybeTelTail, UndefinedDiscoverOrigin,
-	%  IsBackOnline, NewDevice, NewState }.
-
-	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }.
 
 
 
@@ -6795,19 +6937,17 @@ Decodes a packet emitted by a rorg_vld smart_plug_with_metering (D2-01-0B, an
 "Electronic switches and dimmers with Energy Measurement and Local Control"
 device of type 0B).
 
-This corresponds to smart, metering plugs bidirectional actuators that control
-(switch on/off) most electrical load (e.g. appliances) and may report it.
+This corresponds to smart, metering plugs bidirectional actuators that may
+control (switch on/off) most electrical loads (e.g. appliances) and may report
+metering information.
+
+See decode_vld_smart_plug_packet/7 for extra details.
 
 Discussed in [EEP-spec] p.143.
 """.
 -spec decode_vld_smart_plug_with_metering_packet( vld_payload(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-
-% For a packet of type "Actuator Status Response", i.e. with CmdAsInt=16#4 ("CMD
-% 0x4", see [EEP-spec] p.135); such a response is systematically emitted, even
-% if not state changed:
-%
 decode_vld_smart_plug_with_metering_packet(
 		% 3 bytes:
 		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
@@ -6816,6 +6956,12 @@ decode_vld_smart_plug_with_metering_packet(
 		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } )
 					when CmdAsInt =:= 16#4 ->
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
 	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
 			case PowerFailureEnabled of
@@ -6895,13 +7041,6 @@ decode_vld_smart_plug_with_metering_packet(
 
 	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
 
-	% Actually is currently not managed:
-	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
-	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
-		record_known_device_success( Device, DeviceTable ),
-
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
-
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
@@ -6910,8 +7049,8 @@ decode_vld_smart_plug_with_metering_packet(
 			PFStr = interpret_power_failure( IsPowerFailureEnabled,
 											 IsPowerFailureDetected ),
 
-			OCStr =
-				interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
+			OCStr = interpret_overcurrent_trigger(
+				IsOverCurrentSwitchOffTrigger ),
 
 			HardStr = interpret_hardware_status( HardwareStatus ),
 
@@ -6921,7 +7060,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 			trace_bridge:debug_fmt(
 				"Decoding a VLD smart plug with metering packet "
-				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts,"
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, "
 				"~ts; this plug is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
 				  get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
@@ -7007,7 +7146,7 @@ interpret_power_failure( _IsPowerFailureEnabled=true,
 
 interpret_power_failure( _IsPowerFailureEnabled=false,
 						 _IsPowerFailureDetected ) ->
-	"".
+	"no power failure detection enabled".
 
 
 
@@ -7017,7 +7156,7 @@ interpret_power_failure( _IsPowerFailureDetected=true ) ->
 	"a power failure was detected";
 
 interpret_power_failure( _IsPowerFailureDetected=false ) ->
-	"no power failure is detected".
+	"no power failure was detected".
 
 
 
@@ -7175,8 +7314,8 @@ record_device_success( Eurid, DeviceTable ) ->
 	case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device ~ts through "
-				"listening.", [ eurid_to_string( Eurid ) ] ),
+			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+				"is ~ts through listening.", [ eurid_to_string( Eurid ) ] ),
 
 			Now = time_utils:get_timestamp(),
 
@@ -7281,8 +7420,8 @@ record_device_failure( Eurid, DeviceTable ) ->
 	case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device ~ts "
-				"through failure.", [ eurid_to_string( Eurid ) ] ),
+			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+				"is ~ts through failure.", [ eurid_to_string( Eurid ) ] ),
 
 			DiscoverOrigin = listening,
 
@@ -7393,9 +7532,10 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 	TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
 
 	cond_utils:if_defined( oceanic_debug_activity,
-		trace_bridge:debug_fmt( "Setting an automatic timer for ~ts, "
-			"for a duration of ~ts.", [ eurid_to_string( Eurid ),
-				time_utils:duration_to_string( NextDelayMs ) ] ) ),
+		trace_bridge:debug_fmt( "Setting an automatic timer for device "
+			"whose EURID is ~ts, for a duration of ~ts.",
+			[ eurid_to_string( Eurid ),
+			  time_utils:duration_to_string( NextDelayMs ) ] ) ),
 
 	{ ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
 	TimerRef;
@@ -7410,9 +7550,10 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
 	TimedMsg = { onActivityTimeout, Eurid, PeriodicityMs },
 
 	cond_utils:if_defined( oceanic_debug_activity,
-		trace_bridge:debug_fmt( "Setting a fixed timer for ~ts, "
-			"for a duration of ~ts.", [ eurid_to_string( Eurid ),
-				time_utils:duration_to_string( PeriodicityMs ) ] ) ),
+		trace_bridge:debug_fmt( "Setting a fixed timer for device "
+			"whose EURID is ~ts, for a duration of ~ts.",
+			[ eurid_to_string( Eurid ),
+			  time_utils:duration_to_string( PeriodicityMs ) ] ) ),
 
 	case timer:send_after( PeriodicityMs, TimedMsg ) of
 
@@ -7723,7 +7864,7 @@ eurid_to_bin_string( Eurid, #oceanic_state{ device_table=DeviceTable } ) ->
 -doc "Returns a textual description of the specified button reference.".
 -spec button_ref_to_string( button_ref() ) -> ustring().
 button_ref_to_string( _ButRef={ Eurid, Channel } ) ->
-	text_utils:format( "button #~B of device of EURID ~ts",
+	text_utils:format( "button #~B of device whose EURID is ~ts",
 					   [ Channel, eurid_to_string( Eurid ) ] ).
 
 
@@ -7751,7 +7892,8 @@ available information.
 """.
 -spec get_best_naming( option( device_name() ), eurid() ) -> any_string().
 get_best_naming( _MaybeDevName=undefined, Eurid ) ->
-	eurid_to_string( Eurid );
+	text_utils:format( "device whose EURID is ~ts",
+					   [ eurid_to_string( Eurid ) ] );
 
 get_best_naming( BinDevName, _Eurid ) ->
 	text_utils:bin_format( "'~ts'", [ BinDevName ] ).
@@ -7783,15 +7925,15 @@ describe_device( Eurid, State ) ->
 	case table:lookup_entry( Eurid, DeviceTable ) of
 
 		key_not_found ->
-			text_utils:bin_format( "unknown device of EURID ~ts",
+			text_utils:bin_format( "unknown device whose EURID is ~ts",
 								   [ eurid_to_string( Eurid ) ] );
 
 		{ value, #enocean_device{ name=undefined } } ->
-			text_utils:bin_format( "unnamed device of EURID ~ts",
+			text_utils:bin_format( "unnamed device whose EURID is ~ts",
 								   [ eurid_to_string( Eurid ) ] );
 
 		{ value, #enocean_device{ name=BinName } } ->
-			text_utils:bin_format( "device '~ts' of EURID ~ts",
+			text_utils:bin_format( "device '~ts' whose EURID is ~ts",
 								   [ BinName, eurid_to_string( Eurid ) ] )
 
 	end.
@@ -8046,7 +8188,7 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 
 	end,
 
-	text_utils:format( " with ~ts, targeted to ~ts~ts~ts",
+	text_utils:format( " with ~ts, targeted to device whose EURID is ~ts~ts~ts",
 		[ SubTelStr, eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
 
 
@@ -8368,7 +8510,7 @@ device_event_to_string( #read_base_id_info_response{
 		base_eurid=BaseEurid,
 		remaining_write_cycles=RemainWrtCycles } ) ->
 
-	text_utils:format( "read gateway base ID ~ts, "
+	text_utils:format( "read gateway base ID whose EURID is ~ts, "
 		% Possibly 'unlimited':
 		"for ~p remaining write cycles",
 		[ eurid_to_string( BaseEurid ), RemainWrtCycles ] );
@@ -8610,7 +8752,7 @@ device_event_to_short_string( #read_base_id_info_response{
 		base_eurid=BaseEurid,
 		remaining_write_cycles=RemainWrtCycles } ) ->
 
-	text_utils:format( "Read gateway base ID ~ts, "
+	text_utils:format( "Read gateway base ID of EURID ~ts, "
 		% Possibly 'unlimited':
 		"for ~p remaining write cycles.",
 		[ eurid_to_string( BaseEurid ), RemainWrtCycles ] );
@@ -8663,7 +8805,7 @@ command_request_to_string( #command_request{ command_type=CmdType,
 -doc "Returns a textual description of the specified device name.".
 -spec get_name_description( option( device_name() ), eurid() ) -> ustring().
 get_name_description( _MaybeName=undefined, Eurid ) ->
-	text_utils:format( "of EURID ~ts", [ eurid_to_string( Eurid ) ] );
+	text_utils:format( "whose EURID is ~ts", [ eurid_to_string( Eurid ) ] );
 
 get_name_description( Name, Eurid ) ->
 	text_utils:format( "'~ts' (whose EURID is ~ts)",
@@ -8846,7 +8988,7 @@ state_to_string( #oceanic_state{
 		"~B bytes per second)", [ TrafficLvl, JamThreshold ] ),
 
 	text_utils:format( "Oceanic server using serial server ~w, "
-		"using emitter EURID ~ts, ~ts, ~ts; ~ts, ~ts, ~ts, ~ts, "
+		"whose emitter EURID is ~ts, ~ts, ~ts; ~ts, ~ts, ~ts, ~ts, "
 		"and knowing ~ts",
 		[ SerialServerPid, eurid_to_string( EmitterEurid ), WaitStr, QStr,
 		  ListenStr, SentStr, DiscStr, JamStr,
