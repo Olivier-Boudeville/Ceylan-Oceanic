@@ -110,8 +110,8 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
 		{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
 		  NextTelTail, _NewState } ->
 
-			trace_utils:error_fmt( "Test decoded following event: ~ts, "
-				"but a telegram tail was detected, ~p.",
+			trace_utils:error_fmt( "Test decoded following event: ~ts; "
+				"however a telegram tail was detected:~n ~p.",
 				[ oceanic:device_event_to_string( Event ), NextTelTail ] ),
 
 			decode_all( T, [ Event | AccEvents ] );
