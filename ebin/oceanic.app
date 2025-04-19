@@ -21,7 +21,7 @@
 
 {application, oceanic,
  [{description, "Ceylan-Oceanic, a library for the support of the Enocean building automation system, as an OTP application library here (see http://oceanic.esperide.org)"},
-  {vsn, "1.4.5"},
+  {vsn, "1.4.6"},
 
   % No process registered:
   {registered, []},
@@ -33,7 +33,7 @@
   %{env,[]},
 
   % Flat hierarchy in ebin here:
-  {modules, [oceanic, oceanic_constants, send_telegram_app, telegram_decoding, telegram_sending]},
+  {modules, [oceanic, oceanic_constants, send_telegram_app, telegram_decoding, telegram_sending, test]},
 
   {licenses, ["Ceylan-Oceanic is licensed by its author (Olivier Boudeville) under a disjunctive tri-license, giving you the choice of one of the three following sets of free software/open source licensing terms:
 	- the Mozilla Public License (MPL), version 1.1 or later (very close to the former Erlang Public License, except aspects regarding Ericsson and/or the Swedish law)
