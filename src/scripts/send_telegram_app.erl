@@ -19,7 +19,7 @@ An Oceanic application to **send Enocean telegrams from the command-line**.
 
 
 % For update_code_path_for_myriad/0 and all:
--include("myriad_script_include.hrl").
+-include_lib("myriad/include/myriad_script_include.hrl").
 
 
 
