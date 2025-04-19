@@ -844,7 +844,7 @@ devices.
 A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
 denotes a broadcast transmission (as opposed to an Addressed Transmission, ADT).
 """.
--type eurid() :: type_utils:uint32(). % Previously `<<_:32>>`.
+-type eurid() :: type_utils:uint32(). % Previously was a 32-bit binary.
 
 
 
