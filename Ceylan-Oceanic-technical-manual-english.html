@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.20.1: https://docutils.sourceforge.io/" />
+<meta name="generator" content="Docutils 0.21.2: https://docutils.sourceforge.io/" />
 <meta content="Oceanic, Enocean, home automation, Erlang" name="keywords" />
 <title>Welcome to the Ceylan-Oceanic documentation</title>
 <link rel="stylesheet" href="pygments-default.css" type="text/css" />
@@ -23,15 +23,15 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Organisation:</th><td class="field-body">Copyright (C) 2022-2024 Olivier Boudeville</td>
+<tr class="field"><th class="field-name">Organisation:</th><td class="field-body">Copyright (C) 2022-2025 Olivier Boudeville</td>
 </tr>
 <tr class="field"><th class="field-name">Contact:</th><td class="field-body">about (dash) oceanic (at) esperide (dot) com</td>
 </tr>
 <tr class="field"><th class="field-name">Creation date:</th><td class="field-body">Wednesday, September 7, 2022</td>
 </tr>
-<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Sunday, January 14, 2024</td>
+<tr class="field"><th class="field-name">Lastly updated:</th><td class="field-body">Saturday, April 19, 2025</td>
 </tr>
-<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.4</td>
+<tr class="field"><th class="field-name">Version:</th><td class="field-body">1.4.6</td>
 </tr>
 <tr class="field"><th class="field-name">Status:</th><td class="field-body">In development</td>
 </tr>
@@ -48,7 +48,7 @@
 <p></p>
 <p><span class="raw-html"><a name="oceanic_toc"></a></span></p>
 <div class="contents topic" id="topic-1">
-<span id="table-of-contents"></span><p class="topic-title"><strong>Table of Contents</strong></p>
+<span id="table-of-contents"></span><p class="topic-title"><a class="reference internal" href="#top"><strong>Table of Contents</strong></a></p>
 <ul class="simple">
 <li><a class="reference internal" href="#overview" id="toc-entry-1">Overview</a></li>
 <li><a class="reference internal" href="#a-word-about-other-standards-and-confidentiality" id="toc-entry-2">A Word About Other Standards and Confidentiality</a></li>
@@ -85,33 +85,35 @@
 <li><a class="reference internal" href="#good-practices" id="toc-entry-27">Good Practices</a></li>
 <li><a class="reference internal" href="#pairing" id="toc-entry-28">Pairing</a></li>
 <li><a class="reference internal" href="#buttons-vs-rocker-transition-vs-state" id="toc-entry-29">Buttons vs Rocker: Transition vs State</a></li>
-<li><a class="reference internal" href="#eltako-socket-switching-actuator-fssa" id="toc-entry-30">Eltako Socket switching actuator FSSA</a></li>
+<li><a class="reference internal" href="#regarding-the-eltako-socket-switching-actuator-fssa" id="toc-entry-30">Regarding the Eltako Socket Switching Actuator FSSA</a></li>
+<li><a class="reference internal" href="#regarding-the-nodon-smart-plug" id="toc-entry-31">Regarding the Nodon Smart Plug</a></li>
+<li><a class="reference internal" href="#reliability" id="toc-entry-32">Reliability</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#troubleshooting" id="toc-entry-31">Troubleshooting</a></li>
-<li><a class="reference internal" href="#support" id="toc-entry-32">Support</a></li>
-<li><a class="reference internal" href="#additional-information" id="toc-entry-33">Additional Information</a></li>
-<li><a class="reference internal" href="#similar-projects" id="toc-entry-34">Similar Projects</a></li>
-<li><a class="reference internal" href="#please-react" id="toc-entry-35">Please React!</a></li>
-<li><a class="reference internal" href="#ending-word" id="toc-entry-36">Ending Word</a></li>
+<li><a class="reference internal" href="#troubleshooting" id="toc-entry-33">Troubleshooting</a></li>
+<li><a class="reference internal" href="#support" id="toc-entry-34">Support</a></li>
+<li><a class="reference internal" href="#additional-information" id="toc-entry-35">Additional Information</a></li>
+<li><a class="reference internal" href="#similar-projects" id="toc-entry-36">Similar Projects</a></li>
+<li><a class="reference internal" href="#please-react" id="toc-entry-37">Please React!</a></li>
+<li><a class="reference internal" href="#ending-word" id="toc-entry-38">Ending Word</a></li>
 </ul>
 </div>
 <p></p>
 <div class="section" id="overview">
 <h1><a class="toc-backref" href="#toc-entry-1">Overview</a></h1>
 <p>The Ceylan-Oceanic library provides <a class="reference external" href="http://erlang.org">Erlang</a>-based facilities for the support of the <a class="reference external" href="https://en.wikipedia.org/wiki/EnOcean">Enocean</a> building automation system, an open standard whose devices are generally energy-harvesting / very low-consumption, and wireless (supported frequencies around 900 MHz, depending on countries; for a range of up to 300 meters in the open, and up to 30 meters inside buildings) with very low traffic.</p>
-<p>So Enocean, whose slogan could be &quot;no wire, no battery&quot;, is rather unique. No Wifi involved (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged; no real risk of interferences), no IP connectivity either, hence no real risk in terms of health or privacy/data leak (see next section), as Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times: the gateway can only communicate with its host (hence with Oceanic), moreover through a low-level USB serial interface (no third-party driver involved on that hosting computer), and the devices only send tiny telegrams that can be listened to only at short range (up to a few dozens meters).</p>
+<p>So Enocean, whose slogan could be &quot;<em>no wire, no battery</em>&quot;, is rather unique. No Wifi involved (and very little radio frequency exposure: due to energy constraints, few short, terse telegrams are exchanged; no real risk of interferences), no IP connectivity either, hence no real risk in terms of health or privacy/data leak (see next section), as Oceanic just receives / decodes / encodes / emits series of well-determined bytes, and remains in full control at all times: an Enocean gateway can only communicate with its host (hence with Oceanic), moreover through a low-level USB serial interface (no third-party driver involved on that hosting computer), and the devices only send tiny telegrams that can be listened to only at short range (up to a few dozens meters).</p>
 <p>Finally, at least most of the Enocean specifications are <a class="reference external" href="https://www.enocean-alliance.org/specifications/">freely available</a>.</p>
-<p>Besides Erlang, Ceylan-Oceanic relies only on <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Myriad">Ceylan-Myriad</a> and is a rather autonomous part of the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan">Ceylan</a> project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our <a class="reference external" href="https://us-main.esperide.org/#home-automation">US-Main home automation server</a>, especially its <a class="reference external" href="https://github.com/Olivier-Boudeville/us-main/blob/master/src/class_USSensorManager.erl">sensor manager</a>.</p>
+<p>Besides Erlang, Ceylan-Oceanic relies only on <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Myriad">Ceylan-Myriad</a> and is a rather autonomous part of the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan">Ceylan</a> project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our <a class="reference external" href="https://us-main.esperide.org/#home-automation">US-Main home automation server</a>.</p>
 <p>The Ceylan-Oceanic project repository is located <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">here</a>.</p>
 <p>At least a basic knowledge of Erlang is expected in order to use Ceylan-Oceanic.</p>
 </div>
 <div class="section" id="a-word-about-other-standards-and-confidentiality">
 <h1><a class="toc-backref" href="#toc-entry-2">A Word About Other Standards and Confidentiality</a></h1>
 <p>Compared to Enocean, more recent technologies and open standards exist, including <a class="reference external" href="https://en.wikipedia.org/wiki/Matter_(standard)">Matter</a>. They are increasingly promoted by Amazon, Apple and Google, so that they integrate with their respective home assistants; they communicate over IP.</p>
-<p>Such devices are certainly convenient and often cheap, yet, as for us, we prefer not having in our home &quot;Big Five&quot;-originating black boxes generally full of sensors, cameras and microphones, running closed, proprietary, transparently-upgradable software, having their own IP connectivity (they typically obtain through DHCP their own local IP address) and therefore able to communicate rather freely with any &quot;cloud&quot; on the Internet (in practice, almost nobody blocks outgoing traffic from such dynamically-allocated IPs, knowing moreover that these devices often rely on Internet services and expect to regularly update their software).</p>
+<p>Such devices are certainly convenient and often cheap, yet, as for us, we prefer not having in our home &quot;Big Five&quot;-originating black boxes generally full of sensors, cameras and microphones, running closed, proprietary, transparently-upgradable software, having their own IP connectivity (they typically obtain through DHCP their own local IP address) and therefore able to communicate rather freely with any &quot;cloud&quot; on the Internet (in practice, almost nobody blocks outgoing traffic from such dynamically-allocated IPs - see <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Hull/blob/master/set-cctv-internet-connectivity.sh">our example of script</a> though - knowing moreover that these devices often rely on Internet services and expect to regularly update their software).</p>
 <p>So we are a bit puzzled that so many people trust such home automation devices to the point of actually happily <em>purchasing</em> them, and placing them at the core of their home - whereas there are already <a class="reference external" href="https://www.eff.org/fr/deeplinks/2022/07/ring-reveals-they-give-videos-police-without-user-consent-or-warrant">examples</a> showing, if necessary, that their owner is certainly not in full control of them.</p>
 <p>Many will consider that non-IP protocols like Enocean or Z-Wave are already superseded by newer technologies like the aforementioned Matter system. Another point of view is that a standard like Enocean (that is moreover interesting for its unique energy-harvesting capabilities) is probably the last (and thus the most advanced one) that <em>can be easily trusted</em>.</p>
 <p>It could also be argued that all wireless protocols are flawed anyway, as they can be relatively easily snooped and/or jammed, as opposed to wired ones (like with KNX, X10 and other PLC-based ones) that are by design safer / more reliable (albeit more expensive). At least for new buildings (as opposed to partially-renovated ones), such wired systems could be considered, but, to the best of our knowledge, no such practical (open, affordable, future-proof) option exists (and this is a bit of a pity).</p>
@@ -121,13 +123,13 @@
 <h1><a class="toc-backref" href="#toc-entry-3">Purpose</a></h1>
 <p>The main motivation of Oceanic is to provide some basic home automation features, especially here in terms of security, in order to be able to:</p>
 <ul class="simple">
-<li><strong>intercept and decode telegrams</strong> emitted by sensors - notably single-input contacts (to detect the opening/closing of doors or windows), presence or temperature / humidity sensors or to detect electricity outages, sensor losses (having been sabotaged or running out of energy), jamming attempts, typically in order to implement one's own alarm center; should a security event happen, a network camera can be switched on, e-mails and/or <a class="reference external" href="https://mobile.esperide.org">SMS</a> can be sent, etc.</li>
-<li><strong>generate and emit telegrams</strong> to control any kind of electrical devices (driven by a smart plug or an in-wall module), typically to turn on an electric heater or to run one's own presence simulator (possibly with lamps and sound devices)</li>
+<li><strong>intercept and decode telegrams</strong> emitted by <strong>sensors</strong> - notably single-input contacts (to detect the opening/closing of doors or windows), presence or temperature / humidity sensors or to detect electricity outages, sensor losses (having been sabotaged or running out of energy), jamming attempts, typically in order to implement one's own alarm center; should a security event happen, a network camera can be switched on, e-mails and/or <a class="reference external" href="https://mobile.esperide.org">SMS</a> can be sent, etc.</li>
+<li><strong>generate and emit telegrams</strong> to control, as <strong>actuators</strong>, any kind of electrical devices (driven by a smart plug or an in-wall module), typically to turn on an electric heater or to run one's own presence simulator (possibly with lamps and sound devices)</li>
 </ul>
 </div>
 <div class="section" id="progress-enocean-coverage">
 <h1><a class="toc-backref" href="#toc-entry-4">Progress &amp; Enocean Coverage</a></h1>
-<p>The targeted basic Enocean support has been implemented, so EEP Enocean telegrams can be intercepted and, for the supported EEPs (other ones may be quite easily added), such telegrams can be properly decoded and notified as higher-level, incoming events to be managed by one's application.</p>
+<p>The targeted basic Enocean support has been implemented, so EEP Enocean (sensor-emanating) telegrams can be intercepted and, for the supported EEPs (other ones may be quite easily added), such telegrams can be properly decoded and notified as higher-level, incoming events to be managed by one's application.</p>
 <p>Reciprocally, telegrams for the supported EEPs can also be encoded and sent, and they are able to trigger appropriately-configured (Enocean) devices (actuators).</p>
 <p>Oceanic can also execute a few common commands directly onto the local USB gateway chip.</p>
 </div>
@@ -139,10 +141,10 @@
 <h1><a class="toc-backref" href="#toc-entry-6">Hardware Prerequisites</a></h1>
 <p>In terms of Enocean devices, one needs typically:</p>
 <ul class="simple">
-<li>any kind of emitter/sensor device, for example a single-input contact/rocker button like <a class="reference external" href="https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902">these ones</a>; opening sensors are also convenient, as we can easily act on them directly</li>
+<li>any kind of emitter/sensor device, for example a single-input contact/rocker button like <a class="reference external" href="https://www.enocean.com/en/product-category/kinetic-switches-finished-products/?frequency=902">these ones</a>; opening sensors are also convenient, as we can easily act on them directly (i.e. by approaching a magnet)</li>
 <li>a general-purpose emitter/receiver, typically a USB gateway, which includes a <a class="reference external" href="https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter">UART</a> for asynchronous serial communication with an integrated RF module</li>
 </ul>
-<p>For that popular USB dongles can be purchased, which often rely on the <a class="reference external" href="https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf">TCM 310 chip</a>; this includes the <a class="reference external" href="https://www.enocean.com/en/product/usb-300-500u-400j/">USB300</a> one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer, as it features a <a class="reference external" href="https://en.wikipedia.org/wiki/SMA_connector">SMA connector</a>, which allows an external antenna to be connected in order to boost emission / reception ranges inexpensively.</p>
+<p>For that, popular USB dongles can be purchased, which often rely on the <a class="reference external" href="https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules/tcm-310/user-manual-pdf/TCM310_UserManual_Oct2019.pdf">TCM 310 chip</a>; this includes the <a class="reference external" href="https://www.enocean.com/en/product/usb-300-500u-400j/">USB300</a> one (around 37 Euros in France), or the USB310 one (around 50 Euros in France) that we prefer, as it features a <a class="reference external" href="https://en.wikipedia.org/wiki/SMA_connector">SMA connector</a>, which allows an external antenna to be connected in order to boost emission / reception ranges inexpensively.</p>
 <p>We will rely here on such a configuration.</p>
 </div>
 <div class="section" id="operating-system-support">
@@ -206,7 +208,7 @@ $<span class="w"> </span>ls<span class="w"> </span>-l<span class="w"> </span>/de
 </div>
 <div class="section" id="serial">
 <h2><a class="toc-backref" href="#toc-entry-10">Serial</a></h2>
-<p id="erlang-serial">We use our version <a class="footnote-reference" href="#footnote-2" id="footnote-reference-2">[2]</a> of <a class="reference external" href="https://github.com/Olivier-Boudeville/erlang-serial">erlang-serial</a> for that, which we generally prefer, for standalone use, installing in user space (rather than in the system tree and embedded in a release) that way:</p>
+<p id="erlang-serial">We use our version <a class="footnote-reference" href="#footnote-2" id="footnote-reference-2">[2]</a> of <a class="reference external" href="https://github.com/Olivier-Boudeville/erlang-serial">erlang-serial</a> for that; we generally prefer, for standalone use, installing it in user space (rather than in the system tree and embedded in a release) that way:</p>
 <pre class="code bash literal-block">
 $<span class="w"> </span>mkdir<span class="w"> </span>~/Software<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>~/Software<span class="w">
 </span>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Olivier-Boudeville/erlang-serial<span class="w">
@@ -236,9 +238,6 @@ $<span class="w"> </span>erl<span class="w"> </span>-pa<span class="w"> </span><
 </span>&lt;<span class="m">0</span>.82.0&gt;
 </pre>
 <p>Perfect!</p>
-<p>However we noticed repeatedly that after a few days the communication seemed to freeze bilaterally. Resetting serial once a day (e.g. at midnight) seemed to solve that problem.</p>
-<p>However, after longer durations (e.g. 10 days), another issue happened: serial was still able to send telegrams, but not to receive any of them anymore - despite being restarted (indeed its PID was different each day as expected) and the TTY receiving the corresponding telegrams (as shown by <tt class="docutils literal">od <span class="pre">-x</span> &lt; /dev/ttyUSBEnOcean</tt>).</p>
-<p>So we believe there is a defect in serial, but we could not figure out where. Ideas and contributions welcome!</p>
 </div>
 <div class="section" id="ceylan-myriad-2">
 <h2><a class="toc-backref" href="#toc-entry-11">Ceylan-Myriad</a></h2>
@@ -309,7 +308,7 @@ $<span class="w"> </span>cat<span class="w"> </span>&lt;<span class="w"> </span>
 <p>Extra information can be added in this tuple:</p>
 <ul class="simple">
 <li>first, its expected activity periodicity (the average rhythm at which this device is expected to emit telegrams, to detect if for any reason it happens to become missing in action), <tt class="docutils literal">ActPeriod :: oceanic:declared_device_activity_periodicity()</tt>, which may be <tt class="docutils literal">none</tt> (typically if the device emits no spontaneous state feedback), <tt class="docutils literal">default</tt> (to apply a reasonable default), a DHMS value (Days/Hours/Minutes/Seconds, like <tt class="docutils literal">{0,2,15,0}</tt>; see <tt class="docutils literal">time_utils:dhms_duration()</tt>), or <tt class="docutils literal">learn</tt> (to be automatically determined by Oceanic over time; the default setting)</li>
-<li>then a mere, optional comment, <tt class="docutils literal">CommentStr :: ustring()</tt>, like <tt class="docutils literal">&quot;Just a switch, not a rocker; controls the smart plug in the living room&quot;</tt>; only of interest for the user (ignored by Oceanic)</li>
+<li>then a mere, optional comment, <tt class="docutils literal">CommentStr :: ustring()</tt>, like <tt class="docutils literal">&quot;Just a switch, not a rocker; controls the smart plug in the living room&quot;</tt>; only of interest for the user, for configuration purposes (ignored by Oceanic)</li>
 </ul>
 <p>Examples of device configurations (see also the <a class="reference internal" href="#oceanic-settings">Oceanic settings</a> complete example below):</p>
 </li>
@@ -321,7 +320,7 @@ $<span class="w"> </span>cat<span class="w"> </span>&lt;<span class="w"> </span>
 </li>
 </ul>
 <p>These configuration information can be provided either thanks to the Ceylan-Myriad preferences system (see the <tt class="docutils literal">preferences</tt> module; this usually boils down to an <a class="reference external" href="https://myriad.esperide.org/#etf">ETF file</a>, by default <tt class="docutils literal"><span class="pre">~/.ceylan-settings.etf</span></tt>) and/or programmatically (see the <tt class="docutils literal">oceanic:add_configuration_settings/2</tt>; in which case these settings would take priority over any set preferences).</p>
-<p>Note that, should a device have a repeater ability activated, Oceanic may detect also the Enocean gateway it is using (as it may receive back its own sendings).</p>
+<p>Note that, should a device have a repeater ability activated, Oceanic may detect also the Enocean gateway it is using (as it may then receive back its own sendings).</p>
 </div>
 <div class="section" id="testing-oceanic">
 <h1><a class="toc-backref" href="#toc-entry-17">Testing Oceanic</a></h1>
@@ -329,38 +328,38 @@ $<span class="w"> </span>cat<span class="w"> </span>&lt;<span class="w"> </span>
 <h2><a class="toc-backref" href="#toc-entry-18">First test: executing a few Common Commands</a></h2>
 <p>This consists in having Oceanic discuss with the local USB gateway dongle, regardless of any actual Enocean device.</p>
 <p>From the root of the Ceylan-Oceanic clone, supposing that Myriad and erlang-serial are already available and built (whereas here debug flags have been activated, see Oceanic's <tt class="docutils literal">GNUmakevars.inc</tt>):</p>
-<pre class="code literal-block">
-# Ensure erlang-serial is available:
-$ make info-serial
-ERLANG_SERIAL_BASE = /home/stallone/Software/erlang-serial/erlang/lib/serial-1.1
+<pre class="code bash literal-block">
+<span class="c1"># Ensure erlang-serial is available:
+</span>$<span class="w"> </span>make<span class="w"> </span>info-serial<span class="w">
+</span><span class="nv">ERLANG_SERIAL_BASE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>/home/stallone/Software/erlang-serial/erlang/lib/serial-1.1<span class="w">
 
-# Ensure that Ceylan-Oceanic is built:
-$ make all
+</span><span class="c1"># Ensure that Ceylan-Oceanic is built:
+</span>$<span class="w"> </span>make<span class="w"> </span>all<span class="w">
 
-$ cd test
+</span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="nb">test</span><span class="w">
 
-# Triggering a Common Command does not need any target device:
-$ make oceanic_common_command_run
+</span><span class="c1"># Triggering a Common Command does not need any target device:
+</span>$<span class="w"> </span>make<span class="w"> </span>oceanic_common_command_run<span class="w">
 
-       Running unitary test oceanic_common_command_run (third form) from oceanic_common_command_test
+       </span>Running<span class="w"> </span>unitary<span class="w"> </span><span class="nb">test</span><span class="w"> </span>oceanic_common_command_run<span class="w"> </span><span class="o">(</span>third<span class="w"> </span>form<span class="o">)</span><span class="w"> </span>from<span class="w"> </span>oceanic_common_command_test<span class="w">
 
---&gt; Testing module oceanic_common_command_test.
+</span>--&gt;<span class="w"> </span>Testing<span class="w"> </span>module<span class="w"> </span>oceanic_common_command_test.<span class="w">
 
-Testing the management of Common Commands.
-[debug] Using TTY '/dev/ttyUSBEnOcean' to connect to Enocean gateway, corresponding to serial server &lt;0.86.0&gt; (speed: 57600 bits per second).
-[debug] Discovering our base EURID.
-[debug] Sending to serial server &lt;0.86.0&gt; actual telegram &lt;&lt;85,0,1,0,5,112,8,56&gt;&gt; (hexadecimal form: '5500010005700838').
+</span>Testing<span class="w"> </span>the<span class="w"> </span>management<span class="w"> </span>of<span class="w"> </span>Common<span class="w"> </span>Commands.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Using<span class="w"> </span>TTY<span class="w"> </span><span class="s1">'/dev/ttyUSBEnOcean'</span><span class="w"> </span>to<span class="w"> </span>connect<span class="w"> </span>to<span class="w"> </span>Enocean<span class="w"> </span>gateway,<span class="w"> </span>corresponding<span class="w"> </span>to<span class="w"> </span>serial<span class="w"> </span>server<span class="w"> </span>&lt;<span class="m">0</span>.86.0&gt;<span class="w"> </span><span class="o">(</span>speed:<span class="w"> </span><span class="m">57600</span><span class="w"> </span>bits<span class="w"> </span>per<span class="w"> </span>second<span class="o">)</span>.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Discovering<span class="w"> </span>our<span class="w"> </span>base<span class="w"> </span>EURID.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Sending<span class="w"> </span>to<span class="w"> </span>serial<span class="w"> </span>server<span class="w"> </span>&lt;<span class="m">0</span>.86.0&gt;<span class="w"> </span>actual<span class="w"> </span>telegram<span class="w"> </span><span class="s">&lt;&lt;85,0,1,0,5,112,8,56&gt;&gt; (hexadecimal form: '5500010005700838').
 [debug] Waiting initial base request (ToSkipLen=0, AccChunk=&lt;&lt;&gt;&gt;).
-[debug] Read telegram &lt;&lt;85,0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt; of size 13 bytes (corresponding to hexadecimal '5500050102db00ffa3df000ab4').
-[debug] Trying to decode '&lt;&lt;85,0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt;' (of size 13 bytes)
-[debug] Start byte found, retaining now following chunk (of size 12 bytes; after dropping 0 byte(s)):
- &lt;&lt;0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt;.
-[debug] Examining now following chunk of 12 bytes:&lt;&lt;0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt;.
-[debug] Packet type 2; expecting 5 bytes of data, then 1 of optional data; checking first header CRC.
-[debug] Header CRC validated (219).
-[debug] Detected packet type: response_type.
-[debug] Full-data CRC validated (180).
-[debug] Decoding a command response, whereas awaiting command of type co_rd_idbase, based on telegram &lt;&lt;85,0,1,0,5,112,8,56&gt;&gt; of size 8 bytes
+[debug] Read telegram &lt;&lt;85</span>,0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt;<span class="w"> </span>of<span class="w"> </span>size<span class="w"> </span><span class="m">13</span><span class="w"> </span>bytes<span class="w"> </span><span class="o">(</span>corresponding<span class="w"> </span>to<span class="w"> </span>hexadecimal<span class="w"> </span><span class="s1">'5500050102db00ffa3df000ab4'</span><span class="o">)</span>.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Trying<span class="w"> </span>to<span class="w"> </span>decode<span class="w"> </span><span class="s1">'&lt;&lt;85,0,5,1,2,219,0,255,162,223,0,10,180&gt;&gt;'</span><span class="w"> </span><span class="o">(</span>of<span class="w"> </span>size<span class="w"> </span><span class="m">13</span><span class="w"> </span>bytes<span class="o">)</span><span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Start<span class="w"> </span>byte<span class="w"> </span>found,<span class="w"> </span>retaining<span class="w"> </span>now<span class="w"> </span>following<span class="w"> </span>chunk<span class="w"> </span><span class="o">(</span>of<span class="w"> </span>size<span class="w"> </span><span class="m">12</span><span class="w"> </span>bytes<span class="p">;</span><span class="w"> </span>after<span class="w"> </span>dropping<span class="w"> </span><span class="m">0</span><span class="w"> </span>byte<span class="o">(</span>s<span class="o">))</span>:<span class="w">
+ </span><span class="s">&lt;&lt;0,5,1,2,219,0</span>,255,162,223,0,10,180&gt;&gt;.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Examining<span class="w"> </span>now<span class="w"> </span>following<span class="w"> </span>chunk<span class="w"> </span>of<span class="w"> </span><span class="m">12</span><span class="w"> </span>bytes:<span class="s">&lt;&lt;0,5,1,2,219,0</span>,255,162,223,0,10,180&gt;&gt;.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Packet<span class="w"> </span><span class="nb">type</span><span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span>expecting<span class="w"> </span><span class="m">5</span><span class="w"> </span>bytes<span class="w"> </span>of<span class="w"> </span>data,<span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="m">1</span><span class="w"> </span>of<span class="w"> </span>optional<span class="w"> </span>data<span class="p">;</span><span class="w"> </span>checking<span class="w"> </span>first<span class="w"> </span>header<span class="w"> </span>CRC.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Header<span class="w"> </span>CRC<span class="w"> </span>validated<span class="w"> </span><span class="o">(</span><span class="m">219</span><span class="o">)</span>.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Detected<span class="w"> </span>packet<span class="w"> </span>type:<span class="w"> </span>response_type.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Full-data<span class="w"> </span>CRC<span class="w"> </span>validated<span class="w"> </span><span class="o">(</span><span class="m">180</span><span class="o">)</span>.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Decoding<span class="w"> </span>a<span class="w"> </span><span class="nb">command</span><span class="w"> </span>response,<span class="w"> </span>whereas<span class="w"> </span>awaiting<span class="w"> </span><span class="nb">command</span><span class="w"> </span>of<span class="w"> </span><span class="nb">type</span><span class="w"> </span>co_rd_idbase,<span class="w"> </span>based<span class="w"> </span>on<span class="w"> </span>telegram<span class="w"> </span><span class="s">&lt;&lt;85,0,1,0,5,112,8,56&gt;&gt; of size 8 bytes
 (corresponding to hexadecimal '5500010005700838'), on behalf of requester internal.
 [debug] Returning the following internal response: read gateway base ID ffa3df00, for 10 remaining write cycles.
 [debug] Successfully read gateway base ID ffa3df00, for 10 remaining write cycles.
@@ -376,16 +375,16 @@ Read version: read application version 2.11.1.0, API version 2.6.3.0, chip ID 19
 [...]
 Read logs: read counters: 6 for application: [254,255,255,255,255,255], and 38 for API: [255,255,255,255,255,255,
 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255].
-[debug] Stopping the Oceanic server &lt;0.85.0&gt;.
-[debug] Stopping serial server &lt;0.86.0&gt;, while in following state: Oceanic server using serial server &lt;0.86.0&gt;, using emitter EURID ffa3df00,
-not having any command pending, based on a time-out of 1 second, with no command queued whereas a total of 2 of them have been issued;
-having &lt;0.9.0&gt; registered as listener of Enocean events, having sent 3 telegrams, not having discarded any telegram, and knowing no Enocean device
-[debug] Oceanic server &lt;0.85.0&gt; terminated.
-Stopped.
+[debug] Stopping the Oceanic server &lt;0.85</span>.0&gt;.<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Stopping<span class="w"> </span>serial<span class="w"> </span>server<span class="w"> </span>&lt;<span class="m">0</span>.86.0&gt;,<span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>following<span class="w"> </span>state:<span class="w"> </span>Oceanic<span class="w"> </span>server<span class="w"> </span>using<span class="w"> </span>serial<span class="w"> </span>server<span class="w"> </span>&lt;<span class="m">0</span>.86.0&gt;,<span class="w"> </span>using<span class="w"> </span>emitter<span class="w"> </span>EURID<span class="w"> </span>ffa3df00,<span class="w">
+</span>not<span class="w"> </span>having<span class="w"> </span>any<span class="w"> </span><span class="nb">command</span><span class="w"> </span>pending,<span class="w"> </span>based<span class="w"> </span>on<span class="w"> </span>a<span class="w"> </span>time-out<span class="w"> </span>of<span class="w"> </span><span class="m">1</span><span class="w"> </span>second,<span class="w"> </span>with<span class="w"> </span>no<span class="w"> </span><span class="nb">command</span><span class="w"> </span>queued<span class="w"> </span>whereas<span class="w"> </span>a<span class="w"> </span>total<span class="w"> </span>of<span class="w"> </span><span class="m">2</span><span class="w"> </span>of<span class="w"> </span>them<span class="w"> </span>have<span class="w"> </span>been<span class="w"> </span>issued<span class="p">;</span><span class="w">
+</span>having<span class="w"> </span>&lt;<span class="m">0</span>.9.0&gt;<span class="w"> </span>registered<span class="w"> </span>as<span class="w"> </span>listener<span class="w"> </span>of<span class="w"> </span>Enocean<span class="w"> </span>events,<span class="w"> </span>having<span class="w"> </span>sent<span class="w"> </span><span class="m">3</span><span class="w"> </span>telegrams,<span class="w"> </span>not<span class="w"> </span>having<span class="w"> </span>discarded<span class="w"> </span>any<span class="w"> </span>telegram,<span class="w"> </span>and<span class="w"> </span>knowing<span class="w"> </span>no<span class="w"> </span>Enocean<span class="w"> </span>device<span class="w">
+</span><span class="o">[</span>debug<span class="o">]</span><span class="w"> </span>Oceanic<span class="w"> </span>server<span class="w"> </span>&lt;<span class="m">0</span>.85.0&gt;<span class="w"> </span>terminated.<span class="w">
+</span>Stopped.<span class="w">
 
---&gt; Successful end of test.
+</span>--&gt;<span class="w"> </span>Successful<span class="w"> </span>end<span class="w"> </span>of<span class="w"> </span>test.<span class="w">
 
-(test finished, interpreter halted)
+</span><span class="o">(</span><span class="nb">test</span><span class="w"> </span>finished,<span class="w"> </span>interpreter<span class="w"> </span>halted<span class="o">)</span>
 </pre>
 </div>
 <div class="section" id="second-test-controlling-an-actual-device">
@@ -393,7 +392,7 @@ Stopped.
 <p>This more complete test will rely on experimental settings typically involving:</p>
 <ul class="simple">
 <li>a <strong>controller device</strong> (e.g. a double-rocker switch), which will be, once discovered, spoofed next by Oceanic</li>
-<li>a <strong>target device</strong> (e.g. a smart plug / socket switching actuator) that already learnt - according to its own procedure (typically pressing adequately buttons thereof) - the previous controller device; for example a lamp would be plugged on that actuator so that, when pressing and releasing a given button of the rocker switch, the lamp is toggled (on/off)</li>
+<li>a <strong>target device</strong> (e.g. a smart plug / socket switching actuator) that already learnt - according to its own procedure (typically pressing adequately buttons thereof) - the previous controller device; for example a lamp would be plugged on that actuator so that, when pressing and releasing a given button of the rocker switch, that lamp is toggled (on/off)</li>
 </ul>
 <p>The objective is to control that lamp programmatically, through Oceanic (only).</p>
 <p>First, the EURID of the controller device must be determined. Either it can be directly read from some actual label on the device, or it has to be obtained through passive listening.</p>
@@ -586,6 +585,7 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 </div>
 <div class="section" id="enocean-documentation">
 <h1><a class="toc-backref" href="#toc-entry-21">Enocean Documentation</a></h1>
+<p>Main reference pointers are:</p>
 <ul class="simple">
 <li>[ETS]: <a class="reference external" href="https://www.enocean-alliance.org/specifications/">Enocean Technical Specifications</a>, notably for:<ul>
 <li>[EEP-gen]: <a class="reference external" href="https://www.enocean-alliance.org/eep/">EnOcean Equipment Profiles</a> (e.g. version 3.1.4, 36 pages), a short, general view onto the structure of the various telegram types that are available (e.g. the RPS one)</li>
@@ -618,19 +618,19 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <li>learning a device relies at least on these internal IDs, sometimes also on the specified in-telegram source one</li>
 <li>a telegram will be considered by an actuator iff the internal ID of the emitter carried by this telegram matches with one that has been learnt by the actuator (hence no easy spoofing with rogue, undeclared emitters)</li>
 <li>the source EURID included in a telegram will designate a device but may not match the internal ID of the emitter; so for example we could forge, from Oceanic, telegrams whose source EURID matches the one of an actual device (a rocker switch) - and therefore did not match the internal ID of the dongle - while nevertheless, <em>provided that the dongle had already been learnt by the actuator, typically thanks to a previous Oceanic sending</em>, we could operate the actuator programmatically (despite these telegrams having inconsistent IDs)</li>
-<li>yet, do these Oceanic telegrams have to specify the same EURID as used for their registering, or any already-registered EURID - or would any EURID would do the trick?</li>
+<li>yet, do these Oceanic telegrams have to specify the same EURID as used for their registering, or any already-registered EURID - or would any EURID would do the trick? According to our tests of two different plugs from different manufacturers, they will act differently depending on, when emitting the learning message, the specified source EURID matched or not the internal ID:<ul>
+<li>if yes, then afterwards the plug will respond to all telegrams sent by this emitter whose source EURID still matches the internal ID, and only to them (this is a bit unfortunate, as if having multiple plugs of that type, one cannot programmatically target them individually)</li>
+<li>if no, then afterwards the plug will respond to all telegrams sent by this emitter, regardless of their source EURID - provided that the source EURID is <em>not</em> the internal ID (this is very strange that a single EURID gets rejected, but we tested multiple times); and, with this constraint and the previous one, we can thus control separately up to two of such plugs</li>
 </ul>
-<ul>
-<li><p class="first">for the repeating mechanisms to have an interest, their re-emitted telegrams must be taken into account by the target actuators; so accepting already-sent telegrams emanating from different emitters than the one specified in the telegrams is needed; repeating is most probably handled transparently by lower-level protocols as well</p>
+</li>
+<li>for the repeating mechanisms to have an interest, their re-emitted telegrams must be taken into account by the target actuators; so accepting already-sent telegrams emanating from different emitters than the one specified in the telegrams is needed; repeating is most probably handled transparently by lower-level protocols as well</li>
+</ul>
 <table class="docutils footnote" frame="void" id="footnote-8" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#footnote-reference-8">[8]</a></td><td><p class="first last">This is merely a convention though, as apparently any another EURID could be used instead at this level. We used to add &quot;<em>provided it is consistently used from then on</em>&quot; (that is: when learning and also when sending telegram afterwards), yet we could see that even forging a telegram with a random source EURID but sending it from a right, already learnt device (hence using another EURID then) is sufficient to have the corresponding request accepted and processed - at least by some actuators.</p>
-</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#footnote-reference-8">[8]</a></td><td>This is merely a convention though, as apparently any another EURID could be used instead at this level. We used to add &quot;<em>provided it is consistently used from then on</em>&quot; (that is: when learning and also when sending telegram afterwards), yet we could see that even forging a telegram with a random source EURID but sending it from a right, already learnt device (hence using another EURID then) is sufficient to have the corresponding request accepted and processed - at least by some actuators.</td></tr>
 </tbody>
 </table>
-</li>
-</ul>
 <p>We can also verify that devices like rocker switches are apparently stateless, in the sense that they seem to send the same information regardless of their history when one of their buttons is pressed (they have no memory).</p>
 <p>So from our experiments we believe that, in terms of identification, the devices rely on a lower-level protocol (possibly ESP3) than the one that can be handled programmatically (e.g. ERP1 and siblings); as these operations seem to be done through the firmware of the USB gateway, spoofing Enocean traffic may be out of the reach of programs relying on &quot;standard&quot; USB gateways (therefore Oceanic having to be involved also in the learn process, not only in the emitting one).</p>
 <p>And forging custom source EURIDs may have an interest, yet the spoofer must have been previously learnt - otherwise this would be a bit like if one was spoofing IP addresses in forged packets, whereas the target device would first compare MAC addresses.</p>
@@ -664,7 +664,7 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <ul class="simple">
 <li>directly specified by the user, as a DHMS duration; for instance <tt class="docutils literal">{0,0,12,0}</tt> will denote an expected (maximum) duration of up to 12 minutes (0 Day, 0 Hour, 12 Minutes, 0 Second) between two telegrams sent by this device - otherwise the sensor will be reported as lost</li>
 <li>a default one (see <tt class="docutils literal">default_dhms_periodicity</tt>), if the configuration specified <tt class="docutils literal">default</tt></li>
-<li>determined automatically by Oceanic, based on the rhythm that it could learn from past traffic emanating from this device, if the configuration specified <tt class="docutils literal">learn</tt> or did not set it</li>
+<li>determined automatically by Oceanic, based on the rhythm that it could learn from past traffic emanating from this device, if the configuration specified <tt class="docutils literal">learn</tt>, or did not set it</li>
 </ul>
 <p>Whenever the checking period of a sensor elapses whereas no telegram from it has been received during that time frame, any process registered as an Oceanic event listener will be sent an <tt class="docutils literal">onEnoceanDeviceLost</tt> message, specifying notably the name and EURID of that device, when it has been seen last, and what its expected periodicity was.</p>
 </div>
@@ -686,7 +686,7 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <div class="section" id="pairing">
 <h3><a class="toc-backref" href="#toc-entry-28">Pairing</a></h3>
 <p>As mentioned, when using Oceanic as an emitter, it <em>must</em> have been paired to the target actuator.</p>
-<p>Pairing can be done through teach-in (through an exchange of specific telegrams) or through learning (putting the actuator in a specific mode, and forcing the emitter to send a telegram). Some actuators support both procedures.</p>
+<p>Pairing can be done through teach-in (through an exchange of specific telegrams, triggered by the actuator) or through learning (putting the actuator in a specific mode, and forcing the emitter to send a telegram). Some actuators support both procedures.</p>
 <p>As detailed in the next section, some actuators are able to learn a device according to various device types/EEPs (e.g. a rocker as a rocker, or as two push-buttons).</p>
 <p>This choice matters: although this may not impact the telegrams to be sent by the device, it is bound to impact the behaviour of the actuator when receiving these telegrams.</p>
 </div>
@@ -703,24 +703,71 @@ Then, after a short waiting, we press (and then release) this 'switch off' butto
 <p>In the general case, setting (hence the rocker behaviour) may be seen as more reliable than toggling (the push-button behaviour): a given setting order may be sent multiple times to a rocker to ensure a given state is reached despite a possible message loss, whereas a single loss of a toggling message will result in being consistently from then on in the opposite state of the intended one.</p>
 <p>Another approach is to enable and manage state feedback / status return through confirmation telegrams about the current state of the actuator.</p>
 </div>
-<div class="section" id="eltako-socket-switching-actuator-fssa">
-<span id="main-test-actuator"></span><h3><a class="toc-backref" href="#toc-entry-30">Eltako Socket switching actuator FSSA</a></h3>
+<div class="section" id="regarding-the-eltako-socket-switching-actuator-fssa">
+<span id="main-test-actuator"></span><h3><a class="toc-backref" href="#toc-entry-30">Regarding the Eltako Socket Switching Actuator FSSA</a></h3>
 <p>In practice, in addition to the documentation, we found clearer to respect the following procedures:</p>
 <ul class="simple">
 <li>to reset: press left-button for about 3 &quot;large&quot; seconds, then the LED blinks continuously, then press the right-button for about 5 seconds, until the LED turns off</li>
 <li>to learn a device as:<ul>
 <li>a push-button : press left-button for about 1 &quot;large&quot; second, then the LED is on continuously, then press the right-button shortly <em>once</em>; the LED will blink once and stay fixed until a telegram is received and learnt: if for example we pressed the top bottom to generate such telegram, this button will act as a on/off toggle, whereas its associated bottom button will have no effect</li>
-<li>a &quot;direction push-button&quot; (maybe a synonymous of rocker): press left-button for about 1 &quot;large&quot; second, then the LED is on continuously, then press the right-button shortly <em>twice</em>; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to &quot;set on&quot;), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to &quot;set off&quot;</li>
+<li>a &quot;direction push-button&quot; (supposedly a synonym of rocker): press left-button for about 1 &quot;large&quot; second, then the LED is on continuously, then press the right-button shortly <em>twice</em>; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to &quot;set on&quot;), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to &quot;set off&quot;</li>
 </ul>
 </li>
 </ul>
 <p>Afterwards, the LED will blink once a telegram of a learnt device is received (whether or not this specified action has been learnt).</p>
 <p>As mentioned in the previous section, we prefer the &quot;direction push-button&quot; mode, i.e. the rocker-based, &quot;state setting&quot; mode.</p>
+<p>We never managed to determine an EURID for that plug, and are not sure it has even one; same applies for any EEP.</p>
+<p>In terms of behaviour:</p>
+<ul class="simple">
+<li>two options exist to control this plug: either with a broadcast telegram, or with a telegram targeting any (thus arbitrary) EURID (as mentioned, no EURID is known for that plug - and it will process a telegram regardless of the target EURID it comprises); we recommend the second, more selective approach, and to assign this plug a pseudo-EURID (not used by any other device), to better discriminate them</li>
+<li>when issuing a command (e.g switch on or switch off), generally we do our best to send a first telegram to denote the press of a rocker-like trigger, then, shortly after, a second one to denote the release of that trigger; however:<ul>
+<li>we first had better results in sending multipress events (telling that no button is then pressed) rather than release (reciprocal of press) ones (as at least some push buttons/rockers do)</li>
+<li>then we observed that the release-like events are not necessary (e.g. with an emulated rocker, sending a &quot;top button pressed&quot; then a &quot;bottom button pressed&quot; event - hence with no release-like event for either - is sufficient to switch on then off that plug)</li>
+</ul>
+</li>
+<li>when a switch on then switch off operation fails (it happens quite frequently):<ul>
+<li>the plug is almost always activated (e.g. a lamp is lit): only the switch off command fails</li>
+<li>sending the switch off command multiple times seems then the best course of action</li>
+</ul>
+</li>
+</ul>
+<p>So the best course of action we determined could be (hence with a bogus, non-broadcast target EURID, and multipress rather than release event):</p>
+<pre class="literal-block">
+for e in top top bottom bottom bottom bottom; do m ${e}_press_eltako_run; done
+</pre>
+</div>
+<div class="section" id="regarding-the-nodon-smart-plug">
+<h3><a class="toc-backref" href="#toc-entry-31">Regarding the Nodon Smart Plug</a></h3>
+<p>These are <tt class="docutils literal"><span class="pre">ASP-2-1-00</span></tt> or <tt class="docutils literal"><span class="pre">ASP-2-1-01</span></tt>.</p>
+<p>To learn a new controlling device, the (single) button of that plug shall be pushed for at least 3 seconds (its red LED starts to blink). The receiving of a telegram is supposed to grant the emitting device the right to control that plug.</p>
+<p>Note though that, when forging a telegram so that a USB dongle is to control that plug, our tests showed that the incoming telegram will not be taken into account for learning if its target EURID is the one of that plug; only using the broadcast EURID allowed the plug to learn the emitter from these telegrams.</p>
+<p>Afterwards, telegrams newly forged by the USB dongle were accepted and processed by the plug, whether they were broadcast or - better - targeting the specified EURID of that plug.</p>
+<p>In terms of behaviour, this plug is simpler/clearer/more reliable:</p>
+<ul class="simple">
+<li>it can/should be targeted based on its EURID (better than using broadcast)</li>
+<li>we retained a multipress release (although a standard release might be as relevant)</li>
+<li>a smaller yet non-null probability of missing a telegram exists, and it does not seem to happen more for &quot;switch off&quot; than for &quot;switch on&quot;</li>
+</ul>
+<p>So the best course of action we determined could be:</p>
+<pre class="literal-block">
+for e in top top top bottom bottom bottom; do m ${e}_press_nodon_run; done
+</pre>
+</div>
+<div class="section" id="reliability">
+<h3><a class="toc-backref" href="#toc-entry-32">Reliability</a></h3>
+<p>Regardless of the smart plug, the same test (same software - namely <tt class="docutils literal">oceanic_just_send_to_device_test</tt>, on the same hardware) seems either to work flawlessly, or very erratically / unsatisfactorily.</p>
+<p>Indeed, in some faulty, unspecified contexts, sending repeatedly a &quot;switch on&quot; order, then pausing, then sending a &quot;switch off&quot; order, results, with the:</p>
+<ul class="simple">
+<li>Eltako plug: in systematically switching on, and never off (as if at least most &quot;switching off&quot; telegrams were discarded)</li>
+<li>Nodon plug: in sometimes performing the expected transitions, sometimes not at all (erratically, as if some telegrams were missed - although as if only the &quot;switching on&quot; were be lost, the plug never remained on)</li>
+</ul>
+<p>The cause for these abnormal behaviours is unknown, the best interpretation we have is that some telegram may be lost.</p>
+<p>As the plugs remain correctly responsive with an actual device, it may be a problem with the USB dongle or its driver.</p>
 </div>
 </div>
 </div>
 <div class="section" id="troubleshooting">
-<h1><a class="toc-backref" href="#toc-entry-31">Troubleshooting</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-33">Troubleshooting</a></h1>
 <p>If an error report such as <tt class="docutils literal">Cannot open terminal /dev/ttyUSBEnOcean for read and write</tt> is issued, this may be the sign that a past failed <tt class="docutils literal">serial</tt> instance may linger and block the USB dongle.</p>
 <p>To check and solve:</p>
 <pre class="code bash literal-block">
@@ -737,18 +784,18 @@ $<span class="w"> </span>fuser<span class="w"> </span>/dev/ttyUSBEnOcean<span cl
 <p>This should happen in the rare case of a prior crash.</p>
 </div>
 <div class="section" id="support">
-<h1><a class="toc-backref" href="#toc-entry-32">Support</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-34">Support</a></h1>
 <p>Bugs, questions, remarks, patches, requests for enhancements, etc. are to be reported to the <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic">project interface</a> (typically <a class="reference external" href="https://github.com/Olivier-Boudeville/Ceylan-Oceanic/issues">issues</a>) or directly at the email address mentioned at the beginning of this document.</p>
 </div>
 <div class="section" id="additional-information">
-<h1><a class="toc-backref" href="#toc-entry-33">Additional Information</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-35">Additional Information</a></h1>
 <ul class="simple">
 <li>use <tt class="docutils literal">make <span class="pre">sync-sources-to-server</span></tt> if needing to update directly Oceanic' sources on a remote server that hosts an appropriate USB dongle</li>
 <li>refer to <a class="reference external" href="http://tvaira.free.fr/projets/activites/enocean.html">EnOcean in Practice</a> (very clear information, in French)</li>
 </ul>
 </div>
 <div class="section" id="similar-projects">
-<h1><a class="toc-backref" href="#toc-entry-34">Similar Projects</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-36">Similar Projects</a></h1>
 <p>They may be used as sources of inspiration:</p>
 <ul class="simple">
 <li>[PY-EN] the rather complete <a class="reference external" href="https://github.com/kipe/enocean">Python EnOcean</a> library, including for its <a class="reference external" href="https://github.com/kipe/enocean/blob/master/enocean/protocol/EEP.xml">EEP (XML) information</a></li>
@@ -761,11 +808,11 @@ $<span class="w"> </span>fuser<span class="w"> </span>/dev/ttyUSBEnOcean<span cl
 <p>Finally, there are nice, interesting integrated solutions like <a class="reference external" href="https://www.jeedom.com">Jeedom</a> that are mostly open-source (yet the <a class="reference external" href="https://market.jeedom.com/index.php?v=d&amp;p=market_display&amp;id=2622">support for Enocean</a> may require closed-source plugins to be bought).</p>
 </div>
 <div class="section" id="please-react">
-<h1><a class="toc-backref" href="#toc-entry-35">Please React!</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-37">Please React!</a></h1>
 <p>If you have information more detailed or more recent than those presented in this document, if you noticed errors, neglects or points insufficiently discussed, drop us a line! (for that, follow the <a class="reference internal" href="#support">Support</a> guidelines).</p>
 </div>
 <div class="section" id="ending-word">
-<h1><a class="toc-backref" href="#toc-entry-36">Ending Word</a></h1>
+<h1><a class="toc-backref" href="#toc-entry-38">Ending Word</a></h1>
 <p>Have fun with Ceylan-Oceanic!</p>
 <p><span class="raw-html"><center><img src="oceanic-title.png" id="responsive-image-small"></img></center></span>
 </p>

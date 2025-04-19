@@ -10,100 +10,158 @@
 <hr>
 
 <h1>Module oceanic</h1>
-<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Main module of Ceylan-Oceanic, in order to <b>drive Enocean
- communications through an Oceanic server</b>.
+<ul class="index"><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
 
-
-<h2><a name="description">Description</a></h2>Main module of Ceylan-Oceanic, in order to <b>drive Enocean
- communications through an Oceanic server</b>.
 
 <h2><a name="types">Data Types</a></h2>
 
+<h3 class="typedecl"><a name="type-actuator_info">actuator_info()</a></h3>
+<p><code>actuator_info() = {<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>)}</code></p>
+
+
 <h3 class="typedecl"><a name="type-any_device_path">any_device_path()</a></h3>
-<p><code>any_device_path() = <a href="file_utils.html#type-any_device_path">file_utils:any_device_path()</a></code></p>
+<p><code>any_device_path() = <a href="file_utils.html#type-any_device_path" docgen-rel="seetype" docgen-href="file_utils#any_device_path/0">file_utils:any_device_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-any_directory_path">any_directory_path()</a></h3>
-<p><code>any_directory_path() = <a href="file_utils.html#type-any_directory_path">file_utils:any_directory_path()</a></code></p>
+<p><code>any_directory_path() = <a href="file_utils.html#type-any_directory_path" docgen-rel="seetype" docgen-href="file_utils#any_directory_path/0">file_utils:any_directory_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-any_file_path">any_file_path()</a></h3>
-<p><code>any_file_path() = <a href="file_utils.html#type-any_file_path">file_utils:any_file_path()</a></code></p>
+<p><code>any_file_path() = <a href="file_utils.html#type-any_file_path" docgen-rel="seetype" docgen-href="file_utils#any_file_path/0">file_utils:any_file_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-any_string">any_string()</a></h3>
-<p><code>any_string() = <a href="text_utils.html#type-any_string">text_utils:any_string()</a></code></p>
+<p><code>any_string() = <a href="text_utils.html#type-any_string" docgen-rel="seetype" docgen-href="text_utils#any_string/0">text_utils:any_string()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-application_style">application_style()</a></h3>
+<p><code>application_style() = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-availability_status">availability_status()</a></h3>
+<p><code>availability_status() = online | lost</code></p>
 
 
 <h3 class="typedecl"><a name="type-back_online_info">back_online_info()</a></h3>
-<p><code>back_online_info() = <a href="#type-maybe">maybe</a>(<a href="#type-device_description">device_description()</a>)</code></p>
-<p> Information sent to notify (if not set to 'undefined') that a lost device is
- back online.</p>
+<p><code>back_online_info() = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_description" docgen-rel="seetype" docgen-href="#device_description/0">device_description()</a>)</code></p>
+
 
 <h3 class="typedecl"><a name="type-bin_device_path">bin_device_path()</a></h3>
-<p><code>bin_device_path() = <a href="file_utils.html#type-bin_device_path">file_utils:bin_device_path()</a></code></p>
+<p><code>bin_device_path() = <a href="file_utils.html#type-bin_device_path" docgen-rel="seetype" docgen-href="file_utils#bin_device_path/0">file_utils:bin_device_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-bin_string">bin_string()</a></h3>
-<p><code>bin_string() = <a href="text_utils.html#type-bin_string">text_utils:bin_string()</a></code></p>
+<p><code>bin_string() = <a href="text_utils.html#type-bin_string" docgen-rel="seetype" docgen-href="text_utils#bin_string/0">text_utils:bin_string()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-button_counting">button_counting()</a></h3>
 <p><code>button_counting() = none | three_or_four</code></p>
-<p> A "number" of buttons, typically involved in a multipress event.</p>
+
 
 <h3 class="typedecl"><a name="type-button_designator">button_designator()</a></h3>
 <p><code>button_designator() = button_ai | button_ao | button_bi | button_bo</code></p>
 
 
+<h3 class="typedecl"><a name="type-button_locator">button_locator()</a></h3>
+<p><code>button_locator() = {<a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a>, <a href="#type-button_position" docgen-rel="seetype" docgen-href="#button_position/0">button_position()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-button_position">button_position()</a></h3>
+<p><code>button_position() = top | bottom</code></p>
+
+
+<h3 class="typedecl"><a name="type-button_ref">button_ref()</a></h3>
+<p><code>button_ref() = {<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-button_ref_description">button_ref_description()</a></h3>
+<p><code>button_ref_description() = <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-button_ref_spec">button_ref_spec()</a></h3>
+<p><code>button_ref_spec() = {<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>, <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a>}</code></p>
+
+
 <h3 class="typedecl"><a name="type-button_transition">button_transition()</a></h3>
 <p><code>button_transition() = pressed | released</code></p>
-<p> Tells whether a button has been pressed (and held) or released.</p>
+
 
 <h3 class="typedecl"><a name="type-bytes_per_second">bytes_per_second()</a></h3>
-<p><code>bytes_per_second() = <a href="system_utils.html#type-bytes_per_second">system_utils:bytes_per_second()</a></code></p>
+<p><code>bytes_per_second() = <a href="system_utils.html#type-bytes_per_second" docgen-rel="seetype" docgen-href="system_utils#bytes_per_second/0">system_utils:bytes_per_second()</a></code></p>
 
+
+<h3 class="typedecl"><a name="type-canon_device_state_change_spec">canon_device_state_change_spec()</a></h3>
+<p><code>canon_device_state_change_spec() = <a href="#type-canon_double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#canon_double_rocker_state_change_spec/0">canon_double_rocker_state_change_spec()</a> | <a href="#type-canon_push_button_state_change_spec" docgen-rel="seetype" docgen-href="#canon_push_button_state_change_spec/0">canon_push_button_state_change_spec()</a> | <a href="#type-tuploid" docgen-rel="seetype" docgen-href="#tuploid/0">tuploid</a>(<a href="#type-state_change_info" docgen-rel="seetype" docgen-href="#state_change_info/0">state_change_info()</a>)</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_double_rocker_state_change_spec">canon_double_rocker_state_change_spec()</a></h3>
+<p><code>canon_double_rocker_state_change_spec() = {<a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a>, <a href="#type-button_position" docgen-rel="seetype" docgen-href="#button_position/0">button_position()</a>, <a href="#type-button_transition" docgen-rel="seetype" docgen-href="#button_transition/0">button_transition()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_emitted_event_spec">canon_emitted_event_spec()</a></h3>
+<p><code>canon_emitted_event_spec() = {<a href="#type-canon_outgoing_trigger_spec" docgen-rel="seetype" docgen-href="#canon_outgoing_trigger_spec/0">canon_outgoing_trigger_spec()</a>, <a href="#type-actuator_info" docgen-rel="seetype" docgen-href="#actuator_info/0">actuator_info()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_incoming_trigger_spec">canon_incoming_trigger_spec()</a></h3>
+<p><code>canon_incoming_trigger_spec() = {<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, <a href="#type-canon_device_state_change_spec" docgen-rel="seetype" docgen-href="#canon_device_state_change_spec/0">canon_device_state_change_spec()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_listened_event_spec">canon_listened_event_spec()</a></h3>
+<p><code>canon_listened_event_spec() = {EmitterDevice::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-canon_incoming_trigger_spec" docgen-rel="seetype" docgen-href="#canon_incoming_trigger_spec/0">canon_incoming_trigger_spec()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_outgoing_trigger_spec">canon_outgoing_trigger_spec()</a></h3>
+<p><code>canon_outgoing_trigger_spec() = {<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, <a href="#type-virtual_emitter_info" docgen-rel="seetype" docgen-href="#virtual_emitter_info/0">virtual_emitter_info()</a>, <a href="#type-canon_device_state_change_spec" docgen-rel="seetype" docgen-href="#canon_device_state_change_spec/0">canon_device_state_change_spec()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_push_button_state_change_spec">canon_push_button_state_change_spec()</a></h3>
+<p><code>canon_push_button_state_change_spec() = <a href="#type-button_transition" docgen-rel="seetype" docgen-href="#button_transition/0">button_transition()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-canon_user_actuator_info">canon_user_actuator_info()</a></h3>
+<p><code>canon_user_actuator_info() = {TargetDevice::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>), TargetAddressedDeviceType::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>)}</code></p>
+
+
+<h3 class="typedecl"><a name="type-channel">channel()</a></h3>
+<p><code>channel() = pos_integer()</code></p>
+<p> rather than uint8().</p>
 
 <h3 class="typedecl"><a name="type-channel_taught">channel_taught()</a></h3>
-<p><code>channel_taught() = <a href="#type-uint8">uint8()</a> | all</code></p>
-<p> Tells which channel(s) should be taught.</p>
+<p><code>channel_taught() = <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a> | all</code></p>
+
 
 <h3 class="typedecl"><a name="type-command_outcome">command_outcome()</a></h3>
-<p><code>command_outcome() = <a href="#type-command_response">command_response()</a> | time_out</code></p>
-<p> The (synchronous) outcome of a sent command.</p>
+<p><code>command_outcome() = <a href="#type-command_response" docgen-rel="seetype" docgen-href="#command_response/0">command_response()</a> | time_out</code></p>
+
 
 <h3 class="typedecl"><a name="type-command_queue">command_queue()</a></h3>
-<p><code>command_queue() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/queue.html#type-queue">queue:queue</a>(<a href="#type-command_request">command_request()</a>)</code></p>
-<p> A (FIFO) queue of command requests, to be sent in turn next.</p>
+<p><code>command_queue() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/queue.html#type-queue" docgen-rel="seetype" docgen-href="stdlib:queue#queue/0">queue:queue</a>(<a href="#type-command_request" docgen-rel="seetype" docgen-href="#command_request/0">command_request()</a>)</code></p>
+
 
 <h3 class="typedecl"><a name="type-command_request">command_request()</a></h3>
-<p><code>command_request() = #command_request{command_type = <a href="oceanic.html#type-command_type">oceanic:command_type()</a>, command_telegram = <a href="oceanic.html#type-telegram">oceanic:telegram()</a>, requester = <a href="oceanic.html#type-requester">oceanic:requester()</a>}</code></p>
-<p> Allows to keep track of an ongoing command request.</p>
+<p><code>command_request() = #command_request{command_type = <a href="oceanic.html#type-command_type" docgen-rel="seetype" docgen-href="oceanic#command_type/0">oceanic:command_type()</a>, command_telegram = <a href="oceanic.html#type-telegram" docgen-rel="seetype" docgen-href="oceanic#telegram/0">oceanic:telegram()</a>, requester = <a href="oceanic.html#type-requester" docgen-rel="seetype" docgen-href="oceanic#requester/0">oceanic:requester()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-command_response">command_response()</a></h3>
-<p><code>command_response() = command_processed | <a href="#type-common_command_response">common_command_response()</a></code></p>
-<p> The response to a command, as sent back to the user.</p>
+<p><code>command_response() = command_processed | <a href="#type-common_command_response" docgen-rel="seetype" docgen-href="#common_command_response/0">common_command_response()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-command_type">command_type()</a></h3>
-<p><code>command_type() = device_command | <a href="#type-common_command">common_command()</a></code></p>
-<p> Type information regarding a command.</p>
+<p><code>command_type() = device_command | <a href="#type-common_command" docgen-rel="seetype" docgen-href="#common_command/0">common_command()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-common_command">common_command()</a></h3>
 <p><code>common_command() = co_rd_version | co_rd_sys_log | co_rd_idbase | atom()</code></p>
-<p><p> Designates an ESP3 command, like co_wr_sleep or co_rd_repeater.</p>
 
- Refer to oceanic_generated:get_common_command_topic_spec/0 for further
- information.</p>
 
 <h3 class="typedecl"><a name="type-common_command_failure">common_command_failure()</a></h3>
 <p><code>common_command_failure() = error_return | not_supported_return | wrong_parameter_return | operation_denied | time_out</code></p>
-<p><p> Generic causes of failure for a common command request.</p>
 
- See also oceanic_generated:get_return_code_topic_spec/0.</p>
 
 <h3 class="typedecl"><a name="type-common_command_response">common_command_response()</a></h3>
-<p><code>common_command_response() = <a href="#type-read_version_response">read_version_response()</a> | <a href="#type-read_logs_response">read_logs_response()</a> | <a href="#type-read_base_id_info_response">read_base_id_info_response()</a> | <a href="#type-common_command_failure">common_command_failure()</a></code></p>
-<p> Designates a response to a common command request.</p>
+<p><code>common_command_response() = <a href="#type-read_version_response" docgen-rel="seetype" docgen-href="#read_version_response/0">read_version_response()</a> | <a href="#type-read_logs_response" docgen-rel="seetype" docgen-href="#read_logs_response/0">read_logs_response()</a> | <a href="#type-read_base_id_info_response" docgen-rel="seetype" docgen-href="#read_base_id_info_response/0">read_base_id_info_response()</a> | <a href="#type-common_command_failure" docgen-rel="seetype" docgen-href="#common_command_failure/0">common_command_failure()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-communication_direction">communication_direction()</a></h3>
 <p><code>communication_direction() = unidirectional | bidirectional</code></p>
@@ -111,95 +169,102 @@
 
 <h3 class="typedecl"><a name="type-contact_status">contact_status()</a></h3>
 <p><code>contact_status() = open | closed</code></p>
-<p> Tells whether a contact is open or closed.</p>
+
 
 <h3 class="typedecl"><a name="type-count">count()</a></h3>
-<p><code>count() = <a href="basic_utils.html#type-count">basic_utils:count()</a></code></p>
+<p><code>count() = <a href="basic_utils.html#type-count" docgen-rel="seetype" docgen-href="basic_utils#count/0">basic_utils:count()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-crc">crc()</a></h3>
 <p><code>crc() = byte()</code></p>
-<p><p> The CRC (Cyclic Redundancy Check) or polynomial code checksum of a 
-sub-telegram/packet can be computed.</p>
 
- Remainder on 8 bits of the modulo 2 division of the G(x) = x^8 + x^2 + x^1 +
- x^0 polynom.</p>
 
 <h3 class="typedecl"><a name="type-dbm">dbm()</a></h3>
 <p><code>dbm() = integer()</code></p>
-<p><p> The best RSSI value, expressed in decibels (dB) with reference to one 
-milliwatt (mW), of all received subtelegrams.</p>
 
- <p>Here a negative value, like -6 dBm.</p>
-
- Of course only applies when receiving telegrams (not sending).</p>
 
 <h3 class="typedecl"><a name="type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a></h3>
-<p><code>declared_device_activity_periodicity() = <a href="#type-dhms_duration">dhms_duration()</a> | none | default | auto</code></p>
+<p><code>declared_device_activity_periodicity() = <a href="#type-dhms_duration" docgen-rel="seetype" docgen-href="#dhms_duration/0">dhms_duration()</a> | none | default | auto</code></p>
 
 
 <h3 class="typedecl"><a name="type-decoded_optional_data">decoded_optional_data()</a></h3>
-<p><code>decoded_optional_data() = {<a href="#type-subtelegram_count">subtelegram_count()</a>, <a href="#type-eurid">eurid()</a>, <a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>), <a href="#type-maybe">maybe</a>(<a href="#type-security_level">security_level()</a>)}</code></p>
-<p><p> The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1) 
-telegrams.</p>
+<p><code>decoded_optional_data() = {<a href="#type-subtelegram_count" docgen-rel="seetype" docgen-href="#subtelegram_count/0">subtelegram_count()</a>, <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-dbm" docgen-rel="seetype" docgen-href="#dbm/0">dbm()</a>), <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-security_level" docgen-rel="seetype" docgen-href="#security_level/0">security_level()</a>)}</code></p>
 
- See also telegram_opt_data/0.</p>
 
 <h3 class="typedecl"><a name="type-decoding_error">decoding_error()</a></h3>
 <p><code>decoding_error() = not_reached | incomplete | invalid | unsupported | unconfigured</code></p>
 
 
 <h3 class="typedecl"><a name="type-decoding_outcome">decoding_outcome()</a></h3>
-<p><code>decoding_outcome() = {decoded, <a href="#type-maybe">maybe</a>(<a href="#type-device_event">device_event()</a> | command_processed), MaybeDiscoverOrigin::<a href="#type-maybe">maybe</a>(<a href="#type-discovery_origin">discovery_origin()</a>), IsBackOnline::boolean(), MaybeDevice::<a href="#type-maybe">maybe</a>(<a href="#type-enocean_device">enocean_device()</a>), NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>} | {<a href="#type-decoding_error">decoding_error()</a>, ToSkipLen::<a href="#type-count">count()</a>, NextChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, <a href="#type-oceanic_state">oceanic_state()</a>}</code></p>
+<p><code>decoding_outcome() = {decoded, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a> | command_processed), MaybeDiscoverOrigin::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-discovery_origin" docgen-rel="seetype" docgen-href="#discovery_origin/0">discovery_origin()</a>), IsBackOnline::boolean(), MaybeDevice::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-enocean_device" docgen-rel="seetype" docgen-href="#enocean_device/0">enocean_device()</a>), NextMaybeTelTail::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-telegram_tail" docgen-rel="seetype" docgen-href="#telegram_tail/0">telegram_tail()</a>), <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>} | {<a href="#type-decoding_error" docgen-rel="seetype" docgen-href="#decoding_error/0">decoding_error()</a>, ToSkipLen::<a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, NextMaybeTelTail::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-telegram_tail" docgen-rel="seetype" docgen-href="#telegram_tail/0">telegram_tail()</a>), <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>}</code></p>
 
 
 <h3 class="typedecl"><a name="type-decoding_result">decoding_result()</a></h3>
-<p><code>decoding_result() = <a href="#type-decoding_error">decoding_error()</a> | <a href="#type-device_event">device_event()</a></code></p>
-<p> The result of a decoding request.</p>
+<p><code>decoding_result() = <a href="#type-decoding_error" docgen-rel="seetype" docgen-href="#decoding_error/0">decoding_error()</a> | <a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-device_any_name">device_any_name()</a></h3>
-<p><code>device_any_name() = <a href="#type-any_string">any_string()</a></code></p>
-<p> A user-defined device name, a lot more convenient than a EURID.</p>
+<p><code>device_any_name() = <a href="#type-any_string" docgen-rel="seetype" docgen-href="#any_string/0">any_string()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-device_config">device_config()</a></h3>
-<p><code>device_config() = {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, <a href="#type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a>} | {UserDefinedName::<a href="#type-ustring">ustring()</a>, EURIDStr::<a href="#type-eurid_string">eurid_string()</a>, EEP::<a href="#type-ustring">ustring()</a>, <a href="#type-declared_device_activity_periodicity">declared_device_activity_periodicity()</a>, Comment::<a href="#type-ustring">ustring()</a>}</code></p>
+<p><code>device_config() = {UserDefinedName::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, EURIDStr::<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>, EEP::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>} | {UserDefinedName::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, EURIDStr::<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>, EEP::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, <a href="#type-declared_device_activity_periodicity" docgen-rel="seetype" docgen-href="#declared_device_activity_periodicity/0">declared_device_activity_periodicity()</a>} | {UserDefinedName::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, EURIDStr::<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>, EEP::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, <a href="#type-declared_device_activity_periodicity" docgen-rel="seetype" docgen-href="#declared_device_activity_periodicity/0">declared_device_activity_periodicity()</a>, Comment::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>}</code></p>
 
 
 <h3 class="typedecl"><a name="type-device_description">device_description()</a></h3>
-<p><code>device_description() = <a href="#type-bin_string">bin_string()</a></code></p>
-<p> The description of a device, as known and returned by Oceanic.</p>
+<p><code>device_description() = <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-device_designator">device_designator()</a></h3>
-<p><code>device_designator() = <a href="#type-eurid">eurid()</a> | <a href="#type-device_any_name">device_any_name()</a></code></p>
-<p> An element designating a device, either thanks to an EURID (as an integer), or
- thanks to a user-defined name (as any kind of string).</p>
+<p><code>device_designator() = <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a> | <a href="#type-device_any_name" docgen-rel="seetype" docgen-href="#device_any_name/0">device_any_name()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-device_event">device_event()</a></h3>
-<p><code>device_event() = <a href="#type-thermo_hygro_event">thermo_hygro_event()</a> | <a href="#type-single_input_contact_event">single_input_contact_event()</a> | <a href="#type-push_button_event">push_button_event()</a> | <a href="#type-double_rocker_switch_event">double_rocker_switch_event()</a> | <a href="#type-double_rocker_multipress_event">double_rocker_multipress_event()</a> | <a href="#type-teach_request">teach_request()</a> | <a href="#type-command_response">command_response()</a></code></p>
+<p><code>device_event() = <a href="#type-thermo_hygro_event" docgen-rel="seetype" docgen-href="#thermo_hygro_event/0">thermo_hygro_event()</a> | <a href="#type-single_input_contact_event" docgen-rel="seetype" docgen-href="#single_input_contact_event/0">single_input_contact_event()</a> | <a href="#type-push_button_switch_event" docgen-rel="seetype" docgen-href="#push_button_switch_event/0">push_button_switch_event()</a> | <a href="#type-smart_plug_status_report_event" docgen-rel="seetype" docgen-href="#smart_plug_status_report_event/0">smart_plug_status_report_event()</a> | <a href="#type-double_rocker_switch_event" docgen-rel="seetype" docgen-href="#double_rocker_switch_event/0">double_rocker_switch_event()</a> | <a href="#type-double_rocker_multipress_event" docgen-rel="seetype" docgen-href="#double_rocker_multipress_event/0">double_rocker_multipress_event()</a> | <a href="#type-teach_request" docgen-rel="seetype" docgen-href="#teach_request/0">teach_request()</a> | <a href="#type-command_response" docgen-rel="seetype" docgen-href="#command_response/0">command_response()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-device_event_type">device_event_type()</a></h3>
+<p><code>device_event_type() = thermo_hygro_event | single_input_contact_event | push_button_switch_event | smart_plug_status_report_event | double_rocker_switch_event | double_rocker_multipress_event | teach_request | command_response</code></p>
+
+
+<h3 class="typedecl"><a name="type-device_info">device_info()</a></h3>
+<p><code>device_info() = <a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a> | term()</code></p>
 
 
 <h3 class="typedecl"><a name="type-device_name">device_name()</a></h3>
-<p><code>device_name() = <a href="#type-bin_string">bin_string()</a></code></p>
-<p> A user-defined device name, a lot more convenient than a EURID.</p>
+<p><code>device_name() = <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-device_path">device_path()</a></h3>
-<p><code>device_path() = <a href="file_utils.html#type-device_path">file_utils:device_path()</a></code></p>
+<p><code>device_path() = <a href="file_utils.html#type-device_path" docgen-rel="seetype" docgen-href="file_utils#device_path/0">file_utils:device_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-device_plain_name">device_plain_name()</a></h3>
-<p><code>device_plain_name() = <a href="#type-ustring">ustring()</a></code></p>
-<p> A user-defined device name, a lot more convenient than a EURID.</p>
+<p><code>device_plain_name() = <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-device_state_change_spec">device_state_change_spec()</a></h3>
+<p><code>device_state_change_spec() = <a href="#type-double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#double_rocker_state_change_spec/0">double_rocker_state_change_spec()</a> | <a href="#type-push_button_state_change_spec" docgen-rel="seetype" docgen-href="#push_button_state_change_spec/0">push_button_state_change_spec()</a> | <a href="#type-tuploid" docgen-rel="seetype" docgen-href="#tuploid/0">tuploid</a>(<a href="#type-state_change_info" docgen-rel="seetype" docgen-href="#state_change_info/0">state_change_info()</a>)</code></p>
+
+
+<h3 class="typedecl"><a name="type-device_status">device_status()</a></h3>
+<p><code>device_status() = on | off | inverted | term()</code></p>
+
 
 <h3 class="typedecl"><a name="type-device_table">device_table()</a></h3>
-<p><code>device_table() = <a href="#type-table">table</a>(<a href="#type-eurid">eurid()</a>, <a href="#type-enocean_device">enocean_device()</a>)</code></p>
-<p> A table recording information regarding Enocean devices.</p>
+<p><code>device_table() = <a href="#type-table" docgen-rel="seetype" docgen-href="#table/0">table</a>(<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-enocean_device" docgen-rel="seetype" docgen-href="#enocean_device/0">enocean_device()</a>)</code></p>
+
+
+<h3 class="typedecl"><a name="type-device_type">device_type()</a></h3>
+<p><code>device_type() = thermo_hygro_sensor | single_contact | push_button | smart_plug | double_rocker</code></p>
+
 
 <h3 class="typedecl"><a name="type-dhms_duration">dhms_duration()</a></h3>
-<p><code>dhms_duration() = <a href="time_utils.html#type-dhms_duration">time_utils:dhms_duration()</a></code></p>
+<p><code>dhms_duration() = <a href="time_utils.html#type-dhms_duration" docgen-rel="seetype" docgen-href="time_utils#dhms_duration/0">time_utils:dhms_duration()</a></code></p>
 <p>-type seconds() :: time_utils:seconds().</p>
 
 <h3 class="typedecl"><a name="type-directory_path">directory_path()</a></h3>
-<p><code>directory_path() = <a href="file_utils.html#type-directory_path">file_utils:directory_path()</a></code></p>
+<p><code>directory_path() = <a href="file_utils.html#type-directory_path" docgen-rel="seetype" docgen-href="file_utils#directory_path/0">file_utils:directory_path()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-discovery_origin">discovery_origin()</a></h3>
@@ -207,263 +272,236 @@ telegrams.</p>
 
 
 <h3 class="typedecl"><a name="type-double_rocker_multipress_event">double_rocker_multipress_event()</a></h3>
-<p><code>double_rocker_multipress_event() = #double_rocker_multipress_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), button_counting = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-button_counting">oceanic:button_counting()</a>), energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</code></p>
-<p><p> Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
-Application Style 1"), for T21=1 and NU=0.</p>
+<p><code>double_rocker_multipress_event() = #double_rocker_multipress_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), button_counting = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-button_counting" docgen-rel="seetype" docgen-href="oceanic#button_counting/0">oceanic:button_counting()</a>), energy_bow = <a href="oceanic.html#type-button_transition" docgen-rel="seetype" docgen-href="oceanic#button_transition/0">oceanic:button_transition()</a>}</code></p>
 
- Refer to [EEP-spec] p.16 for further details.</p>
+
+<h3 class="typedecl"><a name="type-double_rocker_state_change_spec">double_rocker_state_change_spec()</a></h3>
+<p><code>double_rocker_state_change_spec() = <a href="#type-canon_double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#canon_double_rocker_state_change_spec/0">canon_double_rocker_state_change_spec()</a> | {<a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a>, <a href="#type-button_position" docgen-rel="seetype" docgen-href="#button_position/0">button_position()</a>} | <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-double_rocker_switch_event">double_rocker_switch_event()</a></h3>
-<p><code>double_rocker_switch_event() = #double_rocker_switch_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), first_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, energy_bow = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>, second_action_button = <a href="oceanic.html#type-button_designator">oceanic:button_designator()</a>, second_action_valid = boolean()}</code></p>
-<p><p> Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
-Application Style 1"), for T21=1.</p>
+<p><code>double_rocker_switch_event() = #double_rocker_switch_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), application_style = <a href="oceanic.html#type-application_style" docgen-rel="seetype" docgen-href="oceanic#application_style/0">oceanic:application_style()</a>, first_action_button = <a href="oceanic.html#type-button_locator" docgen-rel="seetype" docgen-href="oceanic#button_locator/0">oceanic:button_locator()</a>, energy_bow = <a href="oceanic.html#type-button_transition" docgen-rel="seetype" docgen-href="oceanic#button_transition/0">oceanic:button_transition()</a>, second_action_button = <a href="oceanic.html#type-button_locator" docgen-rel="seetype" docgen-href="oceanic#button_locator/0">oceanic:button_locator()</a>, second_action_valid = boolean()}</code></p>
 
- Refer to [EEP-spec] p.16 for further details.</p>
 
 <h3 class="typedecl"><a name="type-eep">eep()</a></h3>
-<p><code>eep() = {<a href="#type-rorg">rorg()</a>, <a href="#type-func">func()</a>, <a href="#type-type">type()</a>}</code></p>
-<p> An EEP defines the coding of the data to be exchanged, so that two devices
- complying to the same EEP can be interchanged.</p>
+<p><code>eep() = {<a href="#type-rorg" docgen-rel="seetype" docgen-href="#rorg/0">rorg()</a>, <a href="#type-func" docgen-rel="seetype" docgen-href="#func/0">func()</a>, <a href="#type-type" docgen-rel="seetype" docgen-href="#type/0">type()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-eep_id">eep_id()</a></h3>
-<p><code>eep_id() = thermo_hygro_low | thermo_hygro_mid | thermo_hygro_high | push_button | double_rocker_switch | double_rocker_multipress | single_input_contact | single_channel_module | double_channel_module | atom()</code></p>
+<p><code>eep_id() = thermo_hygro_low | thermo_hygro_mid | thermo_hygro_high | push_button | double_rocker_switch_style_1 | double_rocker_switch_style_2 | double_rocker_multipress | single_input_contact | single_channel_module | double_channel_module | atom()</code></p>
 
 
 <h3 class="typedecl"><a name="type-eep_string">eep_string()</a></h3>
-<p><code>eep_string() = <a href="#type-ustring">ustring()</a></code></p>
-<p> An EEP defined as a string (e.g. "D5-00-01").</p>
+<p><code>eep_string() = <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-emitted_event_spec">emitted_event_spec()</a></h3>
+<p><code>emitted_event_spec() = {<a href="#type-outgoing_trigger_spec" docgen-rel="seetype" docgen-href="#outgoing_trigger_spec/0">outgoing_trigger_spec()</a>, <a href="#type-user_actuator_info" docgen-rel="seetype" docgen-href="#user_actuator_info/0">user_actuator_info()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-enocean_device">enocean_device()</a></h3>
-<p><code>enocean_device() = #enocean_device{eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), discovered_through = <a href="oceanic.html#type-discovery_origin">oceanic:discovery_origin()</a>, first_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), availability = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-availability_status">oceanic:availability_status()</a>), telegram_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>, error_count = <a href="basic_utils.html#type-count">basic_utils:count()</a>, expected_periodicity = <a href="oceanic.html#type-expected_periodicity">oceanic:expected_periodicity()</a>, activity_timer = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-timer_ref">oceanic:timer_ref()</a>)}</code></p>
-<p> Information regarding an Enocean device, as known by the Oceanic server.</p>
+<p><code>enocean_device() = #enocean_device{eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), discovered_through = <a href="oceanic.html#type-discovery_origin" docgen-rel="seetype" docgen-href="oceanic#discovery_origin/0">oceanic:discovery_origin()</a>, first_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), availability = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-availability_status" docgen-rel="seetype" docgen-href="oceanic#availability_status/0">oceanic:availability_status()</a>), telegram_count = <a href="basic_utils.html#type-count" docgen-rel="seetype" docgen-href="basic_utils#count/0">basic_utils:count()</a>, error_count = <a href="basic_utils.html#type-count" docgen-rel="seetype" docgen-href="basic_utils#count/0">basic_utils:count()</a>, expected_periodicity = <a href="oceanic.html#type-expected_periodicity" docgen-rel="seetype" docgen-href="oceanic#expected_periodicity/0">oceanic:expected_periodicity()</a>, activity_timer = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-timer_ref" docgen-rel="seetype" docgen-href="oceanic#timer_ref/0">oceanic:timer_ref()</a>)}</code></p>
+
 
 <h3 class="typedecl"><a name="type-enocean_version">enocean_version()</a></h3>
-<p><code>enocean_version() = {Main::<a href="#type-version_number">version_number()</a>, Beta::<a href="#type-version_number">version_number()</a>, Alpha::<a href="#type-version_number">version_number()</a>, Build::<a href="#type-version_number">version_number()</a>}</code></p>
-<p><p> The version of an EnOcean application or API.</p>
+<p><code>enocean_version() = {Main::<a href="#type-version_number" docgen-rel="seetype" docgen-href="#version_number/0">version_number()</a>, Beta::<a href="#type-version_number" docgen-rel="seetype" docgen-href="#version_number/0">version_number()</a>, Alpha::<a href="#type-version_number" docgen-rel="seetype" docgen-href="#version_number/0">version_number()</a>, Build::<a href="#type-version_number" docgen-rel="seetype" docgen-href="#version_number/0">version_number()</a>}</code></p>
 
- This is a basic_utils:four_digit_version().</p>
 
 <h3 class="typedecl"><a name="type-entry_type">entry_type()</a></h3>
-<p><code>entry_type() = <a href="file_utils.html#type-entry_type">file_utils:entry_type()</a></code></p>
+<p><code>entry_type() = <a href="file_utils.html#type-entry_type" docgen-rel="seetype" docgen-href="file_utils#entry_type/0">file_utils:entry_type()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-enum">enum()</a></h3>
 <p><code>enum() = integer()</code></p>
-<p> An enumeration specified in the protocol.</p>
+
 
 <h3 class="typedecl"><a name="type-esp3_packet">esp3_packet()</a></h3>
 <p><code>esp3_packet() = binary()</code></p>
-<p><p> An ESP3 data unit, consisting of Header, Data and Optional Data.</p>
 
- The semantics of the optional data is defined by the packet type, it can be
- used to extend an existing ESP3 packet.</p>
 
 <h3 class="typedecl"><a name="type-eurid">eurid()</a></h3>
-<p><code>eurid() = <a href="type_utils.html#type-uint32">type_utils:uint32()</a></code></p>
-<p><p> Previously <code>&lt;&lt;_:32&gt;&gt;</code>. 
-EURID (EnOcean Unique Radio Identifier) is a unique and non-changeable 
-identification number (as a 32-bit value) assigned to every EnOcean 
-transmitter during its production process.</p>
-
- <p>The EURID corresponds to the hexadecimal identifier typically labelled at the 
-back of devices (e.g. "ID: B50533EC").</p>
-
- <p>Our EURIDs are defined and stored in uppercase, as they are generally written 
-on devices.</p>
-
- A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
- denotes a broadcast transmission (as opposed to an Addressed Transmission,
- ADT).</p>
+<p><code>eurid() = <a href="type_utils.html#type-uint32" docgen-rel="seetype" docgen-href="type_utils#uint32/0">type_utils:uint32()</a></code></p>
+<p> Previously was a 32-bit binary.</p>
 
 <h3 class="typedecl"><a name="type-eurid_bin_string">eurid_bin_string()</a></h3>
-<p><code>eurid_bin_string() = <a href="#type-bin_string">bin_string()</a></code></p>
-<p><p> An EURID, expressed as a binary string.</p>
+<p><code>eurid_bin_string() = <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code></p>
 
- For example: <code>&lt;&lt;"B50533EC"&gt;&gt;</code>.</p>
 
 <h3 class="typedecl"><a name="type-eurid_string">eurid_string()</a></h3>
-<p><code>eurid_string() = <a href="#type-ustring">ustring()</a></code></p>
-<p><p> An EURID, expressed as a string.</p>
+<p><code>eurid_string() = <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code></p>
 
- For example: "B50533EC".</p>
 
 <h3 class="typedecl"><a name="type-event_listener_pid">event_listener_pid()</a></h3>
 <p><code>event_listener_pid() = pid()</code></p>
-<p> The PID of any process registered to an Oceanic server as a listener of
- Enocean events.</p>
+
+
+<h3 class="typedecl"><a name="type-event_match_trigger_outcome">event_match_trigger_outcome()</a></h3>
+<p><code>event_match_trigger_outcome() = false | {true, SourceDevice::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-device_status" docgen-rel="seetype" docgen-href="#device_status/0">device_status()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-expected_periodicity">expected_periodicity()</a></h3>
-<p><code>expected_periodicity() = <a href="#type-milliseconds">milliseconds()</a> | none | auto</code></p>
+<p><code>expected_periodicity() = <a href="#type-milliseconds" docgen-rel="seetype" docgen-href="#milliseconds/0">milliseconds()</a> | none | auto</code></p>
 
 
 <h3 class="typedecl"><a name="type-func">func()</a></h3>
-<p><code>func() = <a href="#type-uint8">uint8()</a></code></p>
-<p> Describes the basic functionality of the data content.</p>
+<p><code>func() = <a href="#type-uint8" docgen-rel="seetype" docgen-href="#uint8/0">uint8()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-hardware_status">hardware_status()</a></h3>
+<p><code>hardware_status() = nominal | warning | failure | not_supported</code></p>
+<p> Hence unknown</p>
+
+<h3 class="typedecl"><a name="type-incoming_trigger_spec">incoming_trigger_spec()</a></h3>
+<p><code>incoming_trigger_spec() = {double_rocker, <a href="#type-double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#double_rocker_state_change_spec/0">double_rocker_state_change_spec()</a>} | {push_button, <a href="#type-push_button_state_change_spec" docgen-rel="seetype" docgen-href="#push_button_state_change_spec/0">push_button_state_change_spec()</a>} | {<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, <a href="#type-device_state_change_spec" docgen-rel="seetype" docgen-href="#device_state_change_spec/0">device_state_change_spec()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-list_table">list_table()</a></h3>
-<p><code>list_table() = <a href="list_table.html#type-list_table">list_table:list_table()</a></code></p>
+<p><code>list_table() = <a href="list_table.html#type-list_table" docgen-rel="seetype" docgen-href="list_table#list_table/0">list_table:list_table()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-listened_event_spec">listened_event_spec()</a></h3>
+<p><code>listened_event_spec() = {EmitterDevice::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>), <a href="#type-incoming_trigger_spec" docgen-rel="seetype" docgen-href="#incoming_trigger_spec/0">incoming_trigger_spec()</a>}</code></p>
 
 
 <h3 class="typedecl"><a name="type-log_counter">log_counter()</a></h3>
-<p><code>log_counter() = <a href="type_utils.html#type-uint8">type_utils:uint8()</a></code></p>
-<p> A log counter, starting from 255 downward.</p>
+<p><code>log_counter() = <a href="type_utils.html#type-uint8" docgen-rel="seetype" docgen-href="type_utils#uint8/0">type_utils:uint8()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-log_counters">log_counters()</a></h3>
-<p><code>log_counters() = [<a href="#type-log_counter">log_counter()</a>]</code></p>
-<p> A series of log entries of an USB gateway.</p>
+<p><code>log_counters() = [<a href="#type-log_counter" docgen-rel="seetype" docgen-href="#log_counter/0">log_counter()</a>]</code></p>
+
 
 <h3 class="typedecl"><a name="type-manufacturer_id">manufacturer_id()</a></h3>
-<p><code>manufacturer_id() = <a href="#type-uint8">uint8()</a></code></p>
-<p> Identifier of device manufacturer.</p>
+<p><code>manufacturer_id() = <a href="#type-uint8" docgen-rel="seetype" docgen-href="#uint8/0">uint8()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-milliseconds">milliseconds()</a></h3>
-<p><code>milliseconds() = <a href="unit_utils.html#type-milliseconds">unit_utils:milliseconds()</a></code></p>
+<p><code>milliseconds() = <a href="unit_utils.html#type-milliseconds" docgen-rel="seetype" docgen-href="unit_utils#milliseconds/0">unit_utils:milliseconds()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-nu_message_type">nu_message_type()</a></h3>
 <p><code>nu_message_type() = normal | unassigned | unknown_type_2 | unknown_type_3</code></p>
-<p> "Nu" Message type, as defined in RPS packets.</p>
+
 
 <h3 class="typedecl"><a name="type-oceanic_availability_outcome">oceanic_availability_outcome()</a></h3>
-<p><code>oceanic_availability_outcome() = {true, SerialRootDir::<a href="#type-directory_path">directory_path()</a>} | {false, Reason::<a href="#type-ustring">ustring()</a>, <a href="basic_utils.html#type-error_term">basic_utils:error_term()</a>}</code></p>
-<p> The outcome of an availability check for Oceanic itself, as a whole (at least
- a suitable gateway is needed).</p>
+<p><code>oceanic_availability_outcome() = {true, SerialRootDir::<a href="#type-directory_path" docgen-rel="seetype" docgen-href="#directory_path/0">directory_path()</a>} | {false, Reason::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>, <a href="basic_utils.html#type-error_term" docgen-rel="seetype" docgen-href="basic_utils#error_term/0">basic_utils:error_term()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-oceanic_server_pid">oceanic_server_pid()</a></h3>
 <p><code>oceanic_server_pid() = pid()</code></p>
-<p> The PID of an Oceanic server.</p>
+
 
 <h3 class="typedecl"><a name="type-oceanic_settings">oceanic_settings()</a></h3>
-<p><code>oceanic_settings() = <a href="#type-list_table">list_table()</a></code></p>
+<p><code>oceanic_settings() = <a href="#type-list_table" docgen-rel="seetype" docgen-href="#list_table/0">list_table()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-oceanic_state">oceanic_state()</a></h3>
-<p><code>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid">serial_server_pid()</a>, device_path = <a href="#type-bin_device_path">bin_device_path()</a>, emitter_eurid = <a href="#type-eurid">eurid()</a>, device_table = <a href="#type-device_table">device_table()</a>, command_queue = <a href="#type-command_queue">command_queue()</a>, waited_command_info = <a href="#type-maybe">maybe</a>(<a href="#type-waited_command_info">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out">time_utils:time_out()</a>, command_count = <a href="#type-count">count()</a>, sent_count = <a href="#type-count">count()</a>, discarded_count = <a href="#type-count">count()</a>, traffic_level = <a href="#type-bytes_per_second">bytes_per_second()</a>, last_traffic_seen = <a href="#type-timestamp">timestamp()</a>, jamming_threshold = <a href="#type-bytes_per_second">bytes_per_second()</a>, event_listeners = [<a href="#type-event_listener_pid">event_listener_pid()</a>]}</code></p>
-<p> An Oceanic state, including configuration typically loaded from an ETF file.</p>
+<p><code>oceanic_state() = #oceanic_state{serial_server_pid = <a href="#type-serial_server_pid" docgen-rel="seetype" docgen-href="#serial_server_pid/0">serial_server_pid()</a>, device_path = <a href="#type-bin_device_path" docgen-rel="seetype" docgen-href="#bin_device_path/0">bin_device_path()</a>, emitter_eurid = <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, device_table = <a href="#type-device_table" docgen-rel="seetype" docgen-href="#device_table/0">device_table()</a>, command_queue = <a href="#type-command_queue" docgen-rel="seetype" docgen-href="#command_queue/0">command_queue()</a>, waited_command_info = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-waited_command_info" docgen-rel="seetype" docgen-href="#waited_command_info/0">waited_command_info()</a>), wait_timeout = <a href="time_utils.html#type-time_out" docgen-rel="seetype" docgen-href="time_utils#time_out/0">time_utils:time_out()</a>, command_count = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, sent_count = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, discarded_count = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, traffic_level = <a href="#type-bytes_per_second" docgen-rel="seetype" docgen-href="#bytes_per_second/0">bytes_per_second()</a>, last_traffic_seen = <a href="#type-timestamp" docgen-rel="seetype" docgen-href="#timestamp/0">timestamp()</a>, jamming_threshold = <a href="#type-bytes_per_second" docgen-rel="seetype" docgen-href="#bytes_per_second/0">bytes_per_second()</a>, trigger_retry_count = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, event_listeners = [<a href="#type-event_listener_pid" docgen-rel="seetype" docgen-href="#event_listener_pid/0">event_listener_pid()</a>]}</code></p>
+
+
+<h3 class="typedecl"><a name="type-outgoing_trigger_spec">outgoing_trigger_spec()</a></h3>
+<p><code>outgoing_trigger_spec() = {double_rocker, <a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a>, <a href="#type-double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#double_rocker_state_change_spec/0">double_rocker_state_change_spec()</a>} | {double_rocker, <a href="#type-double_rocker_state_change_spec" docgen-rel="seetype" docgen-href="#double_rocker_state_change_spec/0">double_rocker_state_change_spec()</a>} | {<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, <a href="#type-virtual_emitter_info" docgen-rel="seetype" docgen-href="#virtual_emitter_info/0">virtual_emitter_info()</a>, <a href="#type-device_state_change_spec" docgen-rel="seetype" docgen-href="#device_state_change_spec/0">device_state_change_spec()</a>} | {<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, <a href="#type-device_state_change_spec" docgen-rel="seetype" docgen-href="#device_state_change_spec/0">device_state_change_spec()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-packet">packet()</a></h3>
 <p><code>packet() = binary()</code></p>
-<p> An ESP-level data unit.</p>
+
 
 <h3 class="typedecl"><a name="type-packet_type">packet_type()</a></h3>
 <p><code>packet_type() = reserved | radio_erp1 | response | radio_sub_tel | event | common_command | smart_ack_command | remote_man_command | radio_message | radio_erp2 | radio_802_15_4 | command_2_4</code></p>
-<p><p> The type of a (typically ESP3) packet.</p>
 
- <p>Refer to [ESP3] p.12.</p>
-
- <p>After a radio_erp1, radio_sub_tel or remote_man_command packet, a response 
-packet is expected.</p>
-
- See also the 'packet_type' topic in the oceanic_generated module.</p>
 
 <h3 class="typedecl"><a name="type-payload">payload()</a></h3>
 <p><code>payload() = binary()</code></p>
-<p><p> The payload of a (typically ESP3) packet, a sequence of bytes sometimes 
-designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to 
-the "optional data" one) found after the R-ORG one.</p>
 
- Such a payload corresponds to a packet of a given type (e.g. an ERP1 radio
- packet, encapsulated in an ESP3 packet).</p>
+
+<h3 class="typedecl"><a name="type-power_report">power_report()</a></h3>
+<p><code>power_report() = off | pos_integer() | not_available</code></p>
+<p> Hence unknown</p>
+
+<h3 class="typedecl"><a name="type-power_status">power_status()</a></h3>
+<p><code>power_status() = power_on | power_off</code></p>
+
 
 <h3 class="typedecl"><a name="type-ptm_switch_module_type">ptm_switch_module_type()</a></h3>
 <p><code>ptm_switch_module_type() = ptm1xx | ptm2xx</code></p>
-<p> synonymous for module PTM2xx
- The types of PTM switch modules (radio emitter), as defined in RPS packets.</p>
+<p> synonymous for module PTM2xx</p>
 
-<h3 class="typedecl"><a name="type-push_button_event">push_button_event()</a></h3>
-<p><code>push_button_event() = #push_button_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), transition = <a href="oceanic.html#type-button_transition">oceanic:button_transition()</a>}</code></p>
-<p><p> Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").</p>
+<h3 class="typedecl"><a name="type-push_button_state_change_spec">push_button_state_change_spec()</a></h3>
+<p><code>push_button_state_change_spec() = <a href="#type-canon_push_button_state_change_spec" docgen-rel="seetype" docgen-href="#canon_push_button_state_change_spec/0">canon_push_button_state_change_spec()</a></code></p>
 
- Refer to [EEP-spec] p.15 for further details.</p>
+
+<h3 class="typedecl"><a name="type-push_button_switch_event">push_button_switch_event()</a></h3>
+<p><code>push_button_switch_event() = #push_button_switch_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), transition = <a href="oceanic.html#type-button_transition" docgen-rel="seetype" docgen-href="oceanic#button_transition/0">oceanic:button_transition()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-read_base_id_info_response">read_base_id_info_response()</a></h3>
-<p><code>read_base_id_info_response() = #read_base_id_info_response{base_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, remaining_write_cycles = <a href="type_utils.html#type-uint8">type_utils:uint8()</a> | unlimited}</code></p>
-<p> Response to a successful 'read base ID information' (CO_RD_IDBASE) common
- command request.</p>
+<p><code>read_base_id_info_response() = #read_base_id_info_response{base_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, remaining_write_cycles = <a href="type_utils.html#type-uint8" docgen-rel="seetype" docgen-href="type_utils#uint8/0">type_utils:uint8()</a> | unlimited}</code></p>
+
 
 <h3 class="typedecl"><a name="type-read_logs_response">read_logs_response()</a></h3>
-<p><code>read_logs_response() = #read_logs_response{app_counters = <a href="oceanic.html#type-log_counters">oceanic:log_counters()</a>, api_counters = <a href="oceanic.html#type-log_counters">oceanic:log_counters()</a>}</code></p>
-<p> Response to a successful 'read logs' common command request.</p>
+<p><code>read_logs_response() = #read_logs_response{app_counters = <a href="oceanic.html#type-log_counters" docgen-rel="seetype" docgen-href="oceanic#log_counters/0">oceanic:log_counters()</a>, api_counters = <a href="oceanic.html#type-log_counters" docgen-rel="seetype" docgen-href="oceanic#log_counters/0">oceanic:log_counters()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-read_version_response">read_version_response()</a></h3>
-<p><code>read_version_response() = #read_version_response{app_version = <a href="oceanic.html#type-enocean_version">oceanic:enocean_version()</a>, api_version = <a href="oceanic.html#type-enocean_version">oceanic:enocean_version()</a>, chip_id = <a href="type_utils.html#type-uint32">type_utils:uint32()</a>, chip_version = <a href="type_utils.html#type-uint32">type_utils:uint32()</a>, app_description = <a href="text_utils.html#type-bin_string">text_utils:bin_string()</a>}</code></p>
-<p> Response to a successful 'read version' common command request.</p>
+<p><code>read_version_response() = #read_version_response{app_version = <a href="oceanic.html#type-enocean_version" docgen-rel="seetype" docgen-href="oceanic#enocean_version/0">oceanic:enocean_version()</a>, api_version = <a href="oceanic.html#type-enocean_version" docgen-rel="seetype" docgen-href="oceanic#enocean_version/0">oceanic:enocean_version()</a>, chip_id = <a href="type_utils.html#type-uint32" docgen-rel="seetype" docgen-href="type_utils#uint32/0">type_utils:uint32()</a>, chip_version = <a href="type_utils.html#type-uint32" docgen-rel="seetype" docgen-href="type_utils#uint32/0">type_utils:uint32()</a>, app_description = <a href="text_utils.html#type-bin_string" docgen-rel="seetype" docgen-href="text_utils#bin_string/0">text_utils:bin_string()</a>}</code></p>
+
 
 <h3 class="typedecl"><a name="type-registration_name">registration_name()</a></h3>
-<p><code>registration_name() = <a href="naming_utils.html#type-registration_name">naming_utils:registration_name()</a></code></p>
+<p><code>registration_name() = <a href="naming_utils.html#type-registration_name" docgen-rel="seetype" docgen-href="naming_utils#registration_name/0">naming_utils:registration_name()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-repetition_count">repetition_count()</a></h3>
-<p><code>repetition_count() = <a href="#type-count">count()</a></code></p>
-<p> A number of repetitions, typically in a RPS packet.</p>
+<p><code>repetition_count() = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-reported_event_info">reported_event_info()</a></h3>
+<p><code>reported_event_info() = power_on | power_off</code></p>
+
 
 <h3 class="typedecl"><a name="type-requester">requester()</a></h3>
 <p><code>requester() = pid() | internal</code></p>
-<p> The PID of the requester of a common command, or the 'internal' atom to tell
- that this is a request emitted by Oceanic for its own economy.</p>
+
 
 <h3 class="typedecl"><a name="type-rorg">rorg()</a></h3>
-<p><code>rorg() = <a href="#type-uint8">uint8()</a></code></p>
-<p> Radio ORG (organization number / Radio-telegram types grouped
- ORGanizationally); describes the ERP radio telegram type, as an
- identifier. Equivalent of "Choice".</p>
+<p><code>rorg() = <a href="#type-uint8" docgen-rel="seetype" docgen-href="#uint8/0">uint8()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-security_level">security_level()</a></h3>
 <p><code>security_level() = not_processed | obsolete | decrypted | authenticated | decrypted_and_authenticated</code></p>
-<p><p> The level of security of a received telegram.</p>
 
- Only applies when receiving telegrams (when sending, security is selected by
- link table entries).</p>
 
 <h3 class="typedecl"><a name="type-serial_protocol">serial_protocol()</a></h3>
 <p><code>serial_protocol() = esp2 | esp3</code></p>
-<p><p> Defines the serial, bidirectional communication between a host and EnOcean 
-modules.</p>
 
- <p>There are two Enocean serial protocols: ESP2 and ESP3. 
-Oceanic focuses primarily on newer, richer, ESP3.</p>
-
- The physical interface between a host and an EnOcean RF module (UART) is a
- 3-wire connection (Rx, Tx, GND / software handshake / full-duplex), modelled
- on RS-232 serial interfaces.</p>
 
 <h3 class="typedecl"><a name="type-serial_server_pid">serial_server_pid()</a></h3>
 <p><code>serial_server_pid() = pid()</code></p>
-<p> The PID of a process in charge of a serial connection to the Enocean gateway
- (USB dongle).</p>
+
 
 <h3 class="typedecl"><a name="type-single_input_contact_event">single_input_contact_event()</a></h3>
-<p><code>single_input_contact_event() = #single_input_contact_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), learn_activated = boolean(), contact = <a href="oceanic.html#type-contact_status">oceanic:contact_status()</a>}</code></p>
-<p><p> Event sent by EEP D5-00-01: Single Input Contact.</p>
+<p><code>single_input_contact_event() = #single_input_contact_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), learn_activated = boolean(), contact = <a href="oceanic.html#type-contact_status" docgen-rel="seetype" docgen-href="oceanic#contact_status/0">oceanic:contact_status()</a>}</code></p>
 
- <p>D5-00 corresponds to Contacts and Switches.</p>
 
- <p>Refer to [EEP-spec] p.27 for further details.</p>
+<h3 class="typedecl"><a name="type-smart_plug_status_report_event">smart_plug_status_report_event()</a></h3>
+<p><code>smart_plug_status_report_event() = #smart_plug_status_report_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), power_failure_detected = boolean(), overcurrent_triggered = boolean(), hardware_status = <a href="oceanic.html#type-hardware_status" docgen-rel="seetype" docgen-href="oceanic#hardware_status/0">oceanic:hardware_status()</a>, local_control_enabled = boolean(), output_power = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-power_report" docgen-rel="seetype" docgen-href="oceanic#power_report/0">oceanic:power_report()</a>)}</code></p>
 
- <p>Note that, at least by default, most if not all opening detectors not only 
-report state transitions (between closed and opened), they also notify 
-regularly (e.g. every 5-30 minutes, on average often 15 minutes) and 
-spontaneously their current state (even if no specific transition happened), 
-presumably to help overcoming any message loss.</p>
 
- So any listener of these events shall store their current state, to be able to
- detect the actual transitions (even if they are late).</p>
+<h3 class="typedecl"><a name="type-state_change_info">state_change_info()</a></h3>
+<p><code>state_change_info() = term()</code></p>
+
 
 <h3 class="typedecl"><a name="type-subtelegram_count">subtelegram_count()</a></h3>
-<p><code>subtelegram_count() = <a href="#type-count">count()</a></code></p>
-<p> A number of subtelegrams.</p>
+<p><code>subtelegram_count() = <a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-teach_outcome">teach_outcome()</a></h3>
 <p><code>teach_outcome() = teach_refused | teach_in_accepted | teach_out_accepted | teach_eep_unsupported</code></p>
 
 
 <h3 class="typedecl"><a name="type-teach_request">teach_request()</a></h3>
-<p><code>teach_request() = #teach_request{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), comm_direction = <a href="oceanic.html#type-communication_direction">oceanic:communication_direction()</a>, response_expected = boolean(), request_type = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-teach_request_type">oceanic:teach_request_type()</a>), channel_taught = <a href="oceanic.html#type-channel_taught">oceanic:channel_taught()</a>, manufacturer_id = <a href="oceanic.html#type-manufacturer_id">oceanic:manufacturer_id()</a>, echo_content = binary()}</code></p>
-<p><p> Message (hence not an event per se) corresponding to the receiving a R-ORG 
-telegram for an universal Teach-in request, EEP based (UTE), one way of 
-pairing devices.</p>
+<p><code>teach_request() = #teach_request{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), comm_direction = <a href="oceanic.html#type-communication_direction" docgen-rel="seetype" docgen-href="oceanic#communication_direction/0">oceanic:communication_direction()</a>, response_expected = boolean(), request_type = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-teach_request_type" docgen-rel="seetype" docgen-href="oceanic#teach_request_type/0">oceanic:teach_request_type()</a>), channel_taught = <a href="oceanic.html#type-channel_taught" docgen-rel="seetype" docgen-href="oceanic#channel_taught/0">oceanic:channel_taught()</a>, manufacturer_id = <a href="oceanic.html#type-manufacturer_id" docgen-rel="seetype" docgen-href="oceanic#manufacturer_id/0">oceanic:manufacturer_id()</a>, echo_content = binary()}</code></p>
 
- Refer to [EEP-gen] p.17 for further details.</p>
 
 <h3 class="typedecl"><a name="type-teach_request_type">teach_request_type()</a></h3>
 <p><code>teach_request_type() = teach_in | teach_out</code></p>
@@ -471,907 +509,913 @@ pairing devices.</p>
 
 <h3 class="typedecl"><a name="type-telegram">telegram()</a></h3>
 <p><code>telegram() = binary()</code></p>
-<p><p> A telegram is a raw (non-decoded) series of bytes that have been received or 
-are to be sent. Ideally a telegram would correspond to a full, unitary radio 
-ESP3 packet typically received from an Enocean gateway.</p>
 
- E.g. <code>&lt;&lt;85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23&gt;&gt;</code>,
- <code>&lt;&lt;85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181&gt;&gt;</code> or
- <code>&lt;&lt;85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3&gt;&gt;</code>.</p>
 
 <h3 class="typedecl"><a name="type-telegram_chunk">telegram_chunk()</a></h3>
 <p><code>telegram_chunk() = binary()</code></p>
-<p> A telegram chunk is a partial telegram, possibly a full ESP3 packet.</p>
+
 
 <h3 class="typedecl"><a name="type-telegram_data">telegram_data()</a></h3>
-<p><code>telegram_data() = <a href="#type-telegram_chunk">telegram_chunk()</a></code></p>
-<p> The part of a telegram with the base, normalised, stable data (corresponding
- to the actual payload of an ESP3 packet, which can be for example an ERP1
- radio packet), possibly to be complemented with optional data.</p>
+<p><code>telegram_data() = <a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-telegram_data_tail">telegram_data_tail()</a></h3>
-<p><code>telegram_data_tail() = <a href="#type-telegram_chunk">telegram_chunk()</a></code></p>
-<p> A base, normalised, stable data of a telegram once its initial byte (typically
- R-ORG or Return Code) has already been chopped.</p>
+<p><code>telegram_data_tail() = <a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-telegram_opt_data">telegram_opt_data()</a></h3>
-<p><code>telegram_opt_data() = <a href="#type-telegram_chunk">telegram_chunk()</a></code></p>
-<p><p> The (encoded) part of a telegram with the optional data that may 
-complement/extend the base data.</p>
+<p><code>telegram_opt_data() = <a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a></code></p>
 
- See also decoded_optional_data/0.</p>
+
+<h3 class="typedecl"><a name="type-telegram_tail">telegram_tail()</a></h3>
+<p><code>telegram_tail() = <a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-temperature_range">temperature_range()</a></h3>
 <p><code>temperature_range() = low | high</code></p>
-<p> -20°C to +60°C (A5-04-02)
- The range of a temperature sensor.</p>
+<p> -20°C to +60°C (A5-04-02)</p>
 
 <h3 class="typedecl"><a name="type-thermo_hygro_event">thermo_hygro_event()</a></h3>
-<p><code>thermo_hygro_event() = #thermo_hygro_event{source_eurid = <a href="oceanic.html#type-eurid">oceanic:eurid()</a>, name = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-device_name">oceanic:device_name()</a>), eep = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eep_id">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>, last_seen = <a href="#type-maybe">maybe</a>(<a href="time_utils.html#type-timestamp">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-subtelegram_count">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-eurid">oceanic:eurid()</a>), dbm = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-dbm">oceanic:dbm()</a>), security_level = <a href="#type-maybe">maybe</a>(<a href="oceanic.html#type-security_level">oceanic:security_level()</a>), relative_humidity = <a href="math_utils.html#type-percent">math_utils:percent()</a>, temperature = <a href="#type-maybe">maybe</a>(<a href="unit_utils.html#type-celsius">unit_utils:celsius()</a>), temperature_range = <a href="oceanic.html#type-temperature_range">oceanic:temperature_range()</a>, learn_activated = boolean()}</code></p>
-<p><p> Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any 
-range).</p>
+<p><code>thermo_hygro_event() = #thermo_hygro_event{source_eurid = <a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>, name = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-device_name" docgen-rel="seetype" docgen-href="oceanic#device_name/0">oceanic:device_name()</a>), eep = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eep_id" docgen-rel="seetype" docgen-href="oceanic#eep_id/0">oceanic:eep_id()</a>), timestamp = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>, last_seen = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a>), subtelegram_count = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-subtelegram_count" docgen-rel="seetype" docgen-href="oceanic#subtelegram_count/0">oceanic:subtelegram_count()</a>), destination_eurid = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-eurid" docgen-rel="seetype" docgen-href="oceanic#eurid/0">oceanic:eurid()</a>), dbm = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-dbm" docgen-rel="seetype" docgen-href="oceanic#dbm/0">oceanic:dbm()</a>), security_level = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="oceanic.html#type-security_level" docgen-rel="seetype" docgen-href="oceanic#security_level/0">oceanic:security_level()</a>), relative_humidity = <a href="math_utils.html#type-percent" docgen-rel="seetype" docgen-href="math_utils#percent/0">math_utils:percent()</a>, temperature = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="unit_utils.html#type-celsius" docgen-rel="seetype" docgen-href="unit_utils#celsius/0">unit_utils:celsius()</a>), temperature_range = <a href="oceanic.html#type-temperature_range" docgen-rel="seetype" docgen-href="oceanic#temperature_range/0">oceanic:temperature_range()</a>, learn_activated = boolean()}</code></p>
 
- Refer to [EEP-spec] p.35 for further details.</p>
 
 <h3 class="typedecl"><a name="type-three_digit_version">three_digit_version()</a></h3>
-<p><code>three_digit_version() = <a href="basic_utils.html#type-three_digit_version">basic_utils:three_digit_version()</a></code></p>
+<p><code>three_digit_version() = <a href="basic_utils.html#type-three_digit_version" docgen-rel="seetype" docgen-href="basic_utils#three_digit_version/0">basic_utils:three_digit_version()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-timer_ref">timer_ref()</a></h3>
-<p><code>timer_ref() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/timer.html#type-tref">timer:tref()</a></code></p>
+<p><code>timer_ref() = <a href="http://www.erlang.org/edoc/doc/stdlib/doc/timer.html#type-tref" docgen-rel="seetype" docgen-href="stdlib:timer#tref/0">timer:tref()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-timestamp">timestamp()</a></h3>
-<p><code>timestamp() = <a href="time_utils.html#type-timestamp">time_utils:timestamp()</a></code></p>
+<p><code>timestamp() = <a href="time_utils.html#type-timestamp" docgen-rel="seetype" docgen-href="time_utils#timestamp/0">time_utils:timestamp()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-trigger_track_info">trigger_track_info()</a></h3>
+<p><code>trigger_track_info() = {From::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, <a href="#type-device_event_type" docgen-rel="seetype" docgen-href="#device_event_type/0">device_event_type()</a>, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-reported_event_info" docgen-rel="seetype" docgen-href="#reported_event_info/0">reported_event_info()</a>), NextRetries::<a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>}</code></p>
+
+
+<h3 class="typedecl"><a name="type-trigger_track_spec">trigger_track_spec()</a></h3>
+<p><code>trigger_track_spec() = {<a href="#type-device_event_type" docgen-rel="seetype" docgen-href="#device_event_type/0">device_event_type()</a>, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-reported_event_info" docgen-rel="seetype" docgen-href="#reported_event_info/0">reported_event_info()</a>)}</code></p>
 
 
 <h3 class="typedecl"><a name="type-tty_detection_outcome">tty_detection_outcome()</a></h3>
-<p><code>tty_detection_outcome() = true | {false, non_existing | {not_device, <a href="#type-entry_type">entry_type()</a>}}</code></p>
-<p> The outcome of an attempt of TTY detection.</p>
+<p><code>tty_detection_outcome() = true | {false, non_existing | {not_device, <a href="#type-entry_type" docgen-rel="seetype" docgen-href="#entry_type/0">entry_type()</a>}}</code></p>
+
+
+<h3 class="typedecl"><a name="type-tuploid">tuploid()</a></h3>
+<p><code>tuploid(T) = <a href="type_utils.html#type-tuploid" docgen-rel="seetype" docgen-href="type_utils#tuploid/0">type_utils:tuploid</a>(T)</code></p>
+
 
 <h3 class="typedecl"><a name="type-type">type()</a></h3>
-<p><code>type() = <a href="#type-uint8">uint8()</a></code></p>
-<p> Describes the type of device in its individual characteristics.</p>
+<p><code>type() = <a href="#type-uint8" docgen-rel="seetype" docgen-href="#uint8/0">uint8()</a></code></p>
+
 
 <h3 class="typedecl"><a name="type-uint8">uint8()</a></h3>
-<p><code>uint8() = <a href="type_utils.html#type-uint8">type_utils:uint8()</a></code></p>
+<p><code>uint8() = <a href="type_utils.html#type-uint8" docgen-rel="seetype" docgen-href="type_utils#uint8/0">type_utils:uint8()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-user_actuator_info">user_actuator_info()</a></h3>
+<p><code>user_actuator_info() = <a href="#type-canon_user_actuator_info" docgen-rel="seetype" docgen-href="#canon_user_actuator_info/0">canon_user_actuator_info()</a> | (TargetDevice::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid_string" docgen-rel="seetype" docgen-href="#eurid_string/0">eurid_string()</a>))</code></p>
 
 
 <h3 class="typedecl"><a name="type-ustring">ustring()</a></h3>
-<p><code>ustring() = <a href="text_utils.html#type-ustring">text_utils:ustring()</a></code></p>
+<p><code>ustring() = <a href="text_utils.html#type-ustring" docgen-rel="seetype" docgen-href="text_utils#ustring/0">text_utils:ustring()</a></code></p>
 
 
 <h3 class="typedecl"><a name="type-version_number">version_number()</a></h3>
-<p><code>version_number() = <a href="basic_utils.html#type-version_number">basic_utils:version_number()</a></code></p>
+<p><code>version_number() = <a href="basic_utils.html#type-version_number" docgen-rel="seetype" docgen-href="basic_utils#version_number/0">basic_utils:version_number()</a></code></p>
+
+
+<h3 class="typedecl"><a name="type-virtual_emitter_info">virtual_emitter_info()</a></h3>
+<p><code>virtual_emitter_info() = <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-tuploid" docgen-rel="seetype" docgen-href="#tuploid/0">tuploid</a>(<a href="#type-device_info" docgen-rel="seetype" docgen-href="#device_info/0">device_info()</a>))</code></p>
 
 
 <h3 class="typedecl"><a name="type-vld_d2_00_cmd">vld_d2_00_cmd()</a></h3>
 <p><code>vld_d2_00_cmd() = actuator_set_output | actuator_set_local | actuator_status_query | actuator_status_response | actuator_set_measurement | actuator_measurement_query | actuator_measurement_response | actuator_set_pilot_wire_mode | actuator_pilot_wire_mode_query | actuator_pilot_wire_mode_response | actuator_set_external_interface_settings | actuator_external_interface_settings_query | actuator_external_interface_settings_response</code></p>
-<p><p> The type of a VLD message, in the context of the D2-01 EEPs: "Electronic 
-switches and dimmers with Energy Measurement and Local Control".</p>
 
- <p>Refer to the 'vld_d2_00_cmd' topic.</p>
 
- <p>It is also designated by the CMD field of these VLD telegrams, the 4 last bits 
-of the first byte of the payload (hence 16 possible values).</p>
+<h3 class="typedecl"><a name="type-vld_payload">vld_payload()</a></h3>
+<p><code>vld_payload() = binary()</code></p>
 
- Described in [EEP-spec] p.131.</p>
 
 <h3 class="typedecl"><a name="type-vld_rcp_message_type">vld_rcp_message_type()</a></h3>
 <p><code>vld_rcp_message_type() = a | b | c | d | e | f | g | h</code></p>
 
 
 <h3 class="typedecl"><a name="type-waited_command_info">waited_command_info()</a></h3>
-<p><code>waited_command_info() = {<a href="#type-command_request">command_request()</a>, <a href="#type-maybe">maybe</a>(<a href="#type-timer_ref">timer_ref()</a>)}</code></p>
-<p><p> Tracking information regarding a currently pending command.</p>
+<p><code>waited_command_info() = {<a href="#type-command_request" docgen-rel="seetype" docgen-href="#command_request/0">command_request()</a>, <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-timer_ref" docgen-rel="seetype" docgen-href="#timer_ref/0">timer_ref()</a>)}</code></p>
 
- A timer is used for most commands, except typically internally-triggered
- common commands.</p>
 
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#acknowledge_teach_request-2">acknowledge_teach_request/2</a></td><td>Acknowledges (accepts) the specified teach request, by sending a 
-(successful) teach response.</td></tr>
-<tr><td valign="top"><a href="#acknowledge_teach_request-3">acknowledge_teach_request/3</a></td><td>Acknowledges the specified teach-in request, by sending the specified 
-teach-in response.</td></tr>
-<tr><td valign="top"><a href="#add_configuration_settings-2">add_configuration_settings/2</a></td><td>Registers the specified additional Oceanic configuration in the specified 
-Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#decode_telegram-2">decode_telegram/2</a></td><td>Returns, if possible, the specified telegram once decoded as an event, 
-using the specified Oceanic server for that.</td></tr>
-<tr><td valign="top"><a href="#device_event_to_short_string-1">device_event_to_short_string/1</a></td><td>Returns a short textual description of the specified device event,
- designed for user-friendly reporting.</td></tr>
-<tr><td valign="top"><a href="#device_event_to_string-1">device_event_to_string/1</a></td><td>Returns a (rather complete) textual description of the specified device
- event.</td></tr>
-<tr><td valign="top"><a href="#device_triggered-1">device_triggered/1</a></td><td>Tells whether the specified device event indicates that this device can
- be interpreted as being triggered by the user.</td></tr>
-<tr><td valign="top"><a href="#encode_common_command-2">encode_common_command/2</a></td><td>Encodes a common command, based on the specified data and optional data.</td></tr>
-<tr><td valign="top"><a href="#encode_double_rocker_multipress_telegram-4">encode_double_rocker_multipress_telegram/4</a></td><td>Encodes a double-rocker multipress telegram, from the specified device to 
-the specified one (if any), reporting the specified transition for the 
-specified button.</td></tr>
-<tr><td valign="top"><a href="#encode_double_rocker_switch_telegram-4">encode_double_rocker_switch_telegram/4</a></td><td>Encodes a double-rocker switch telegram, from the specified device to the 
-specified one (if any), reporting the specified transition for the specified 
-button.</td></tr>
-<tr><td valign="top"><a href="#encode_esp3_packet-2">encode_esp3_packet/2</a></td><td>Encodes an ESP3 packet from its packet type and base data.</td></tr>
-<tr><td valign="top"><a href="#encode_esp3_packet-3">encode_esp3_packet/3</a></td><td>Encodes an ESP3 packet from its packet type, base and optional data.</td></tr>
-<tr><td valign="top"><a href="#eurid_to_bin_string-1">eurid_to_bin_string/1</a></td><td>Returns a raw, direct (binary) textual description of the specified
- EURID.</td></tr>
-<tr><td valign="top"><a href="#eurid_to_bin_string-2">eurid_to_bin_string/2</a></td><td>Returns a (binary) textual description of the specified EURID, possibly
- translated to a user-friendly device name if any is known for that device.</td></tr>
-<tr><td valign="top"><a href="#eurid_to_short_string-1">eurid_to_short_string/1</a></td><td>Returns a short, raw, (plain) textual description of the specified EURID.</td></tr>
-<tr><td valign="top"><a href="#eurid_to_string-1">eurid_to_string/1</a></td><td>Returns a raw, (plain) textual description of the specified EURID.</td></tr>
-<tr><td valign="top"><a href="#execute_command-2">execute_command/2</a></td><td>Executes synchronously the specified command, specified as an opaque,
- already-encoded telegram, that is supposed to be acknowledged next by the
- recipient device, with a response telegram.</td></tr>
-<tr><td valign="top"><a href="#generate_support_modules-0">generate_support_modules/0</a></td><td>To be called by the 'oceanic_generated.beam' automatic make target in
- order to generate, here, a (single) module to share the Oceanic constants.</td></tr>
-<tr><td valign="top"><a href="#get_best_device_name_from-1">get_best_device_name_from/1</a></td><td>Returns the best name found for the emitting device stored in the
- specified device event.</td></tr>
-<tr><td valign="top"><a href="#get_best_naming-2">get_best_naming/2</a></td><td>Returns the best naming for a device, as any kind of string, depending on
- the available information.</td></tr>
-<tr><td valign="top"><a href="#get_broadcast_eurid-0">get_broadcast_eurid/0</a></td><td>Returns the broadcast EURID, suitable to target all devices in range.</td></tr>
-<tr><td valign="top"><a href="#get_default_tty_path-0">get_default_tty_path/0</a></td><td>Returns the path to the default TTY allocated to the USB Enocean gateway,
- according to our conventions.</td></tr>
-<tr><td valign="top"><a href="#get_device_description-2">get_device_description/2</a></td><td>Returns the best textual description found for the device specified from
- its EURID.</td></tr>
-<tr><td valign="top"><a href="#get_device_table-1">get_device_table/1</a></td><td>Returns the device state in the specified state; only useful for some
- tests.</td></tr>
-<tr><td valign="top"><a href="#get_last_seen_info-1">get_last_seen_info/1</a></td><td>Returns the timestamp corresponding to any previously seen telegram from 
-that device.</td></tr>
-<tr><td valign="top"><a href="#get_maybe_dbm-1">get_maybe_dbm/1</a></td><td>Returns the best RSSI value (if any) stored in the specified device
- event.</td></tr>
-<tr><td valign="top"><a href="#get_maybe_destination_eurid-1">get_maybe_destination_eurid/1</a></td><td>Returns the EURID of the target of this transmission (addressed or
- broadcast), if any, stored in the specified device event.</td></tr>
-<tr><td valign="top"><a href="#get_maybe_device_name-1">get_maybe_device_name/1</a></td><td>Returns the emitting device name (if any) stored in the specified device
- event.</td></tr>
-<tr><td valign="top"><a href="#get_maybe_eep-1">get_maybe_eep/1</a></td><td>Returns the EEP (if any is defined and registered) stored in the
- specified device event.</td></tr>
-<tr><td valign="top"><a href="#get_maybe_security_level-1">get_maybe_security_level/1</a></td><td>Returns the stored in the specified device event.</td></tr>
-<tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td>Returns the current (emitter) EURID used by Oceanic for the local USB 
-gateway, notably as default source base identifier when generating telegrams.</td></tr>
-<tr><td valign="top"><a href="#get_oceanic_version-0">get_oceanic_version/0</a></td><td>Returns the version of the Oceanic library being used.</td></tr>
-<tr><td valign="top"><a href="#get_oceanic_version_string-0">get_oceanic_version_string/0</a></td><td>Returns the version of the Oceanic library being used, as a string.</td></tr>
-<tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td>Returns the PID of the (supposedly-existing) Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td>Returns the registration name of the Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#get_source_eurid-1">get_source_eurid/1</a></td><td>Returns the EURID of the emitting device stored in the specified device
- event.</td></tr>
-<tr><td valign="top"><a href="#get_subtelegram_count-1">get_subtelegram_count/1</a></td><td>Returns the number (if any) of subtelegrams stored in the specified
- device event.</td></tr>
-<tr><td valign="top"><a href="#get_test_state-0">get_test_state/0</a></td><td>Returns a pseudo-state, loaded from default configuration; only useful 
-for some tests.</td></tr>
-<tr><td valign="top"><a href="#get_test_state-1">get_test_state/1</a></td><td>Returns a pseudo-state, based on the specified device table; only useful
- for some tests.</td></tr>
-<tr><td valign="top"><a href="#get_timestamp-1">get_timestamp/1</a></td><td>Returns the timestamp stored in the specified device event.</td></tr>
-<tr><td valign="top"><a href="#has_tty-0">has_tty/0</a></td><td>Tells whether the default TTY exists and is a device.</td></tr>
-<tr><td valign="top"><a href="#has_tty-1">has_tty/1</a></td><td>Tells whether the specified TTY exists and is a device, together with any 
-failure reason.</td></tr>
-<tr><td valign="top"><a href="#hexastring_to_telegram-1">hexastring_to_telegram/1</a></td><td>Returns an hexadecimal string corresponding to the specified telegram.</td></tr>
-<tr><td valign="top"><a href="#is_available-1">is_available/1</a></td><td>Tells whether Oceanic should be available, that is if all its 
-prerequisites seem to be met.</td></tr>
-<tr><td valign="top"><a href="#load_configuration-1">load_configuration/1</a></td><td>Loads Oceanic configuration information from the default Ceylan 
-preferences file, if any, otherwise returns a state with an empty device 
-table.</td></tr>
-<tr><td valign="top"><a href="#load_configuration-2">load_configuration/2</a></td><td>Loads Oceanic configuration information in the specified state from the 
-specified ETF file, and returns a corresponding updated state.</td></tr>
-<tr><td valign="top"><a href="#maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></td><td>Returns a textual description of the specified decoded maybe-optional
- data, otherwise from the corresponding raw data.</td></tr>
-<tr><td valign="top"><a href="#nu_message_type_to_string-1">nu_message_type_to_string/1</a></td><td>Returns a textual description of the specified "Nu" Message type, as
- defined in RPS packets.</td></tr>
-<tr><td valign="top"><a href="#optional_data_to_short_string-2">optional_data_to_short_string/2</a></td><td>Returns a short textual description of the specified decoded optional
- data, designed for user-friendly reporting.</td></tr>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#acknowledge_teach_request-2">acknowledge_teach_request/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#acknowledge_teach_request-3">acknowledge_teach_request/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#actuator_info_to_string-1">actuator_info_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#actuator_info_to_string-2">actuator_info_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#add_configuration_settings-2">add_configuration_settings/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#button_designator_to_string-1">button_designator_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#button_locator_to_string-1">button_locator_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#button_ref_to_string-1">button_ref_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#button_refs_to_string-1">button_refs_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_emitted_event_spec_to_string-1">canon_emitted_event_spec_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_emitted_event_spec_to_string-2">canon_emitted_event_spec_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_emitted_event_specs_to_string-1">canon_emitted_event_specs_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_emitted_event_specs_to_string-2">canon_emitted_event_specs_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_listened_event_spec_to_string-1">canon_listened_event_spec_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_listened_event_spec_to_string-2">canon_listened_event_spec_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_listened_event_specs_to_string-1">canon_listened_event_specs_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canon_listened_event_specs_to_string-2">canon_listened_event_specs_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canonicalise_emitted_event_specs-1">canonicalise_emitted_event_specs/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#canonicalise_listened_event_specs-1">canonicalise_listened_event_specs/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#cits_to_string-1">cits_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#decode_telegram-2">decode_telegram/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#device_event_to_short_string-1">device_event_to_short_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#device_event_to_string-1">device_event_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#device_state_change_spec_to_string-2">device_state_change_spec_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#device_triggered-1">device_triggered/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_common_command-2">encode_common_command/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_double_rocker_multipress_telegram-4">encode_double_rocker_multipress_telegram/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_double_rocker_switch_telegram-5">encode_double_rocker_switch_telegram/5</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_esp3_packet-2">encode_esp3_packet/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_esp3_packet-3">encode_esp3_packet/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#eurid_to_bin_string-1">eurid_to_bin_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#eurid_to_bin_string-2">eurid_to_bin_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#eurid_to_short_string-1">eurid_to_short_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#eurid_to_string-1">eurid_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#event_matches_trigger-2">event_matches_trigger/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#execute_command-2">execute_command/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#generate_support_modules-0">generate_support_modules/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_all_device_types-0">get_all_device_types/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_app_style_from_eep-1">get_app_style_from_eep/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_best_device_name_from-1">get_best_device_name_from/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_best_naming-2">get_best_naming/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_broadcast_eurid-0">get_broadcast_eurid/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_button_ref_description-2">get_button_ref_description/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_button_ref_descriptions-2">get_button_ref_descriptions/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_button_reference-1">get_button_reference/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_channel-1">get_channel/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_default_tty_path-0">get_default_tty_path/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_designated_button_enum-2">get_designated_button_enum/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_device_description-2">get_device_description/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_device_table-1">get_device_table/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_event_type-1">get_event_type/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_last_seen_info-1">get_last_seen_info/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_located_button_enum-2">get_located_button_enum/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_maybe_dbm-1">get_maybe_dbm/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_maybe_destination_eurid-1">get_maybe_destination_eurid/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_maybe_device_name-1">get_maybe_device_name/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_maybe_eep-1">get_maybe_eep/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_maybe_security_level-1">get_maybe_security_level/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_oceanic_eurid-1">get_oceanic_eurid/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_oceanic_version-0">get_oceanic_version/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_oceanic_version_string-0">get_oceanic_version_string/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_reciprocal_state_change_spec-2">get_reciprocal_state_change_spec/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_server_pid-0">get_server_pid/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_server_registration_name-0">get_server_registration_name/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_source_eurid-1">get_source_eurid/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_subtelegram_count-1">get_subtelegram_count/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_test_state-0">get_test_state/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_test_state-1">get_test_state/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_timestamp-1">get_timestamp/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#has_tty-0">has_tty/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#has_tty-1">has_tty/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#hexastring_to_telegram-1">hexastring_to_telegram/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#interpret_button_ref_spec-1">interpret_button_ref_spec/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#interpret_button_ref_specs-1">interpret_button_ref_specs/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#interpret_power_failure-2">interpret_power_failure/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_available-1">is_available/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_serial_available-1">is_serial_available/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_valid_application_style-1">is_valid_application_style/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_valid_button_position-1">is_valid_button_position/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_valid_button_transition-1">is_valid_button_transition/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_valid_channel-1">is_valid_channel/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_valid_device_type-1">is_valid_device_type/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#load_configuration-1">load_configuration/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#load_configuration-2">load_configuration/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#nu_message_type_to_string-1">nu_message_type_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#optional_data_to_short_string-2">optional_data_to_short_string/2</a></td><td></td></tr>
 <tr><td valign="top"><a href="#optional_data_to_string-1">optional_data_to_string/1</a></td><td></td></tr>
-<tr><td valign="top"><a href="#ptm_module_to_string-1">ptm_module_to_string/1</a></td><td>Returns a textual description of the specified PTM switch module.</td></tr>
-<tr><td valign="top"><a href="#read_base_id_info-1">read_base_id_info/1</a></td><td>Returns the information held by the USB gateway about its base ID, thanks
- to a (local) common command.</td></tr>
-<tr><td valign="top"><a href="#read_logs-1">read_logs/1</a></td><td>Returns the log information held by the USB gateway, thanks to a
- (local) common command.</td></tr>
-<tr><td valign="top"><a href="#read_version-1">read_version/1</a></td><td>Returns the version information held by the USB gateway, thanks to a
- (local) common command.</td></tr>
-<tr><td valign="top"><a href="#repeater_count_to_string-1">repeater_count_to_string/1</a></td><td>Returns a textual description of the specified repeater count.</td></tr>
-<tr><td valign="top"><a href="#restart_serial_interface-1">restart_serial_interface/1</a></td><td>Restarts the serial USB interface used internally.</td></tr>
-<tr><td valign="top"><a href="#secure_serial-1">secure_serial/1</a></td><td>Secures the usability of (our fork of) erlang-serial, typically from an
- (e)script.</td></tr>
-<tr><td valign="top"><a href="#secure_tty-1">secure_tty/1</a></td><td>Secures the TTY connection to the Enocean gateway.</td></tr>
-<tr><td valign="top"><a href="#send-2">send/2</a></td><td>Sends the specified telegram, through the specified Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#start-0">start/0</a></td><td>Starts the Enocean support, based on our default conventions regarding 
-the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as one of its Enocean 
-event listeners (but did not link to it).</td></tr>
-<tr><td valign="top"><a href="#start-1">start/1</a></td><td>Starts the Enocean support, based on the specified device path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners (but did not link to it).</td></tr>
-<tr><td valign="top"><a href="#start-2">start/2</a></td><td>Starts the Enocean support, based on the specified path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server (which is not linked to the calling process), registering the specified 
-listener processes for Enocean events.</td></tr>
-<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td>Starts the Enocean support, based on our default conventions regarding 
-the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as one of its Enocean 
-event listeners, and linked to it.</td></tr>
-<tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td>Starts the Enocean support, based on the specified device path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners, and linked to it.</td></tr>
-<tr><td valign="top"><a href="#start_link-2">start_link/2</a></td><td>Starts the Enocean support, based on the specified path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners, and linked to it.</td></tr>
-<tr><td valign="top"><a href="#state_to_string-1">state_to_string/1</a></td><td>Returns a textual description of the specified state of the Oceanic
- server.</td></tr>
-<tr><td valign="top"><a href="#stop-0">stop/0</a></td><td>Stops and terminates (asynchronously) the supposedly-existing Oceanic
- server.</td></tr>
-<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td>Stops and terminates (asynchronously) the specified Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#string_to_eep-1">string_to_eep/1</a></td><td>Converts an EEP described as a string into its internal form.</td></tr>
-<tr><td valign="top"><a href="#string_to_eurid-1">string_to_eurid/1</a></td><td>Returns the actual EURID corresponding to the specified (plain) EURID 
-string.</td></tr>
-<tr><td valign="top"><a href="#synchronous_stop-1">synchronous_stop/1</a></td><td>Stops and terminates synchronously the specified Oceanic server.</td></tr>
-<tr><td valign="top"><a href="#telegram_to_hexastring-1">telegram_to_hexastring/1</a></td><td>Returns an hexadecimal string corresponding to the specified telegram.</td></tr>
-<tr><td valign="top"><a href="#telegram_to_string-1">telegram_to_string/1</a></td><td>Returns a textual description of the specified telegram.</td></tr>
-<tr><td valign="top"><a href="#test_decode-1">test_decode/1</a></td><td>Helper introduced only to make the decoding logic available for tests.</td></tr>
-<tr><td valign="top"><a href="#try_integrate_chunk-4">try_integrate_chunk/4</a></td><td>Tries to integrate a new telegram chunk, that is to decode an ESP3 packet
- from the specified chunk.</td></tr>
+<tr><td valign="top"><a href="#ptm_module_to_string-1">ptm_module_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#read_base_id_info-1">read_base_id_info/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#read_logs-1">read_logs/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#read_version-1">read_version/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#repeater_count_to_string-1">repeater_count_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#restart_serial_interface-1">restart_serial_interface/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#secure_serial-1">secure_serial/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#secure_tty-1">secure_tty/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-0">start/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-2">start/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-2">start_link/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#state_to_string-1">state_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stop-0">stop/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#string_to_eep-1">string_to_eep/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#string_to_eurid-1">string_to_eurid/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#synchronous_stop-1">synchronous_stop/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#telegram_to_hexastring-1">telegram_to_hexastring/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#telegram_to_string-1">telegram_to_string/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#test_decode-1">test_decode/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#trigger_actuator-3">trigger_actuator/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#trigger_actuators-3">trigger_actuators/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#try_integrate_next_telegram-4">try_integrate_next_telegram/4</a></td><td></td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
 
 <h3 class="function"><a name="acknowledge_teach_request-2">acknowledge_teach_request/2</a></h3>
 <div class="spec">
-<p><code>acknowledge_teach_request(TeachReq::<a href="#type-teach_request">teach_request()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>acknowledge_teach_request(TeachReq::<a href="#type-teach_request" docgen-rel="seetype" docgen-href="#teach_request/0">teach_request()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p><p>Acknowledges (accepts) the specified teach request, by sending a 
-(successful) teach response.</p>
-
- See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen]
- p.26.
-</p>
+</div>
 
 <h3 class="function"><a name="acknowledge_teach_request-3">acknowledge_teach_request/3</a></h3>
 <div class="spec">
-<p><code>acknowledge_teach_request(Teach_request::<a href="#type-teach_request">teach_request()</a>, TeachOutcome::<a href="#type-teach_outcome">teach_outcome()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>acknowledge_teach_request(Teach_request::<a href="#type-teach_request" docgen-rel="seetype" docgen-href="#teach_request/0">teach_request()</a>, TeachOutcome::<a href="#type-teach_outcome" docgen-rel="seetype" docgen-href="#teach_outcome/0">teach_outcome()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p><p>Acknowledges the specified teach-in request, by sending the specified 
-teach-in response.</p>
+</div>
 
- See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen] p.26.
-</p>
+<h3 class="function"><a name="actuator_info_to_string-1">actuator_info_to_string/1</a></h3>
+<div class="spec">
+<p><code>actuator_info_to_string(X1::<a href="#type-actuator_info" docgen-rel="seetype" docgen-href="#actuator_info/0">actuator_info()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="actuator_info_to_string-2">actuator_info_to_string/2</a></h3>
+<div class="spec">
+<p><code>actuator_info_to_string(X1::<a href="#type-actuator_info" docgen-rel="seetype" docgen-href="#actuator_info/0">actuator_info()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="add_configuration_settings-2">add_configuration_settings/2</a></h3>
 <div class="spec">
-<p><code>add_configuration_settings(OcSettings::<a href="#type-oceanic_settings">oceanic_settings()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>add_configuration_settings(OcSettings::<a href="#type-oceanic_settings" docgen-rel="seetype" docgen-href="#oceanic_settings/0">oceanic_settings()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p><p>Registers the specified additional Oceanic configuration in the specified 
-Oceanic server.</p>
+</div>
 
- Refer to load_configuration/2 for key information.
-</p>
+<h3 class="function"><a name="button_designator_to_string-1">button_designator_to_string/1</a></h3>
+<div class="spec">
+<p><code>button_designator_to_string(X1::<a href="#type-button_designator" docgen-rel="seetype" docgen-href="#button_designator/0">button_designator()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="button_locator_to_string-1">button_locator_to_string/1</a></h3>
+<div class="spec">
+<p><code>button_locator_to_string(X1::<a href="#type-button_locator" docgen-rel="seetype" docgen-href="#button_locator/0">button_locator()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="button_ref_to_string-1">button_ref_to_string/1</a></h3>
+<div class="spec">
+<p><code>button_ref_to_string(ButRef::<a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="button_refs_to_string-1">button_refs_to_string/1</a></h3>
+<div class="spec">
+<p><code>button_refs_to_string(ButRefs::[<a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a>]) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_emitted_event_spec_to_string-1">canon_emitted_event_spec_to_string/1</a></h3>
+<div class="spec">
+<p><code>canon_emitted_event_spec_to_string(CEES::<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_emitted_event_spec_to_string-2">canon_emitted_event_spec_to_string/2</a></h3>
+<div class="spec">
+<p><code>canon_emitted_event_spec_to_string(CEES::<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_emitted_event_specs_to_string-1">canon_emitted_event_specs_to_string/1</a></h3>
+<div class="spec">
+<p><code>canon_emitted_event_specs_to_string(CEESs::[<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>]) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_emitted_event_specs_to_string-2">canon_emitted_event_specs_to_string/2</a></h3>
+<div class="spec">
+<p><code>canon_emitted_event_specs_to_string(CEESs::[<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>], OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_listened_event_spec_to_string-1">canon_listened_event_spec_to_string/1</a></h3>
+<div class="spec">
+<p><code>canon_listened_event_spec_to_string(X1::<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_listened_event_spec_to_string-2">canon_listened_event_spec_to_string/2</a></h3>
+<div class="spec">
+<p><code>canon_listened_event_spec_to_string(X1::<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_listened_event_specs_to_string-1">canon_listened_event_specs_to_string/1</a></h3>
+<div class="spec">
+<p><code>canon_listened_event_specs_to_string(CLESs::[<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>]) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canon_listened_event_specs_to_string-2">canon_listened_event_specs_to_string/2</a></h3>
+<div class="spec">
+<p><code>canon_listened_event_specs_to_string(CLESs::[<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>], OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canonicalise_emitted_event_specs-1">canonicalise_emitted_event_specs/1</a></h3>
+<div class="spec">
+<p><code>canonicalise_emitted_event_specs(EESs::[<a href="#type-emitted_event_spec" docgen-rel="seetype" docgen-href="#emitted_event_spec/0">emitted_event_spec()</a>]) -&gt; [<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>]</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="canonicalise_listened_event_specs-1">canonicalise_listened_event_specs/1</a></h3>
+<div class="spec">
+<p><code>canonicalise_listened_event_specs(LESs::[<a href="#type-listened_event_spec" docgen-rel="seetype" docgen-href="#listened_event_spec/0">listened_event_spec()</a>]) -&gt; [<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>]</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="cits_to_string-1">cits_to_string/1</a></h3>
+<div class="spec">
+<p><code>cits_to_string(CITS::<a href="#type-canon_incoming_trigger_spec" docgen-rel="seetype" docgen-href="#canon_incoming_trigger_spec/0">canon_incoming_trigger_spec()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="decode_telegram-2">decode_telegram/2</a></h3>
 <div class="spec">
-<p><code>decode_telegram(Telegram::<a href="#type-telegram">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-decoding_result">decoding_result()</a></code><br></p>
+<p><code>decode_telegram(Telegram::<a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-decoding_result" docgen-rel="seetype" docgen-href="#decoding_result/0">decoding_result()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns, if possible, the specified telegram once decoded as an event, 
-using the specified Oceanic server for that.</p>
-
- Mostly useful for testing purpose.
-</p>
+</div>
 
 <h3 class="function"><a name="device_event_to_short_string-1">device_event_to_short_string/1</a></h3>
 <div class="spec">
-<p><code>device_event_to_short_string(Thermo_hygro_event::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>device_event_to_short_string(Thermo_hygro_event::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a short textual description of the specified device event,
- designed for user-friendly reporting.
-</p>
+</div>
 
 <h3 class="function"><a name="device_event_to_string-1">device_event_to_string/1</a></h3>
 <div class="spec">
-<p><code>device_event_to_string(Thermo_hygro_event::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>device_event_to_string(Thermo_hygro_event::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a (rather complete) textual description of the specified device
- event.
-</p>
+</div>
+
+<h3 class="function"><a name="device_state_change_spec_to_string-2">device_state_change_spec_to_string/2</a></h3>
+<div class="spec">
+<p><code>device_state_change_spec_to_string(DevType::<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, CanonDRSCSpec::<a href="#type-device_state_change_spec" docgen-rel="seetype" docgen-href="#device_state_change_spec/0">device_state_change_spec()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="device_triggered-1">device_triggered/1</a></h3>
 <div class="spec">
-<p><code>device_triggered(Push_button_event::<a href="#type-device_event">device_event()</a>) -&gt; boolean()</code><br></p>
+<p><code>device_triggered(Push_button_switch_event::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; boolean()</code><br></p>
 <p> </p>
-</div><p>Tells whether the specified device event indicates that this device can
- be interpreted as being triggered by the user.
-</p>
+</div>
 
 <h3 class="function"><a name="encode_common_command-2">encode_common_command/2</a></h3>
 <div class="spec">
-<p><code>encode_common_command(Data::<a href="#type-telegram_data">telegram_data()</a>, OptData::<a href="#type-telegram_opt_data">telegram_opt_data()</a>) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>encode_common_command(Data::<a href="#type-telegram_data" docgen-rel="seetype" docgen-href="#telegram_data/0">telegram_data()</a>, OptData::<a href="#type-telegram_opt_data" docgen-rel="seetype" docgen-href="#telegram_opt_data/0">telegram_opt_data()</a>) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p><p>Encodes a common command, based on the specified data and optional data.</p>
-
- The actual specification of common commands starts at p.32 of [ESP3].
-</p>
+</div>
 
 <h3 class="function"><a name="encode_double_rocker_multipress_telegram-4">encode_double_rocker_multipress_telegram/4</a></h3>
 <div class="spec">
-<p><code>encode_double_rocker_multipress_telegram(SourceEurid::<a href="#type-eurid">eurid()</a>, MaybeTargetEurid::<a href="#type-maybe">maybe</a>(<a href="#type-eurid">eurid()</a>), ButtonCounting::<a href="#type-button_counting">button_counting()</a>, ButtonTransition::<a href="#type-button_transition">button_transition()</a>) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>encode_double_rocker_multipress_telegram(SourceEurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, ButtonCounting::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>), ButtonTransition::<a href="#type-button_counting" docgen-rel="seetype" docgen-href="#button_counting/0">button_counting()</a>, MaybeTargetEurid::<a href="#type-button_transition" docgen-rel="seetype" docgen-href="#button_transition/0">button_transition()</a>) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p><p>Encodes a double-rocker multipress telegram, from the specified device to 
-the specified one (if any), reporting the specified transition for the 
-specified button.</p>
+</div>
 
- <p>Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
-Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1 
-radio packet encapsulated into an ESP3 one.</p>
-
- See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
-</p>
-
-<h3 class="function"><a name="encode_double_rocker_switch_telegram-4">encode_double_rocker_switch_telegram/4</a></h3>
+<h3 class="function"><a name="encode_double_rocker_switch_telegram-5">encode_double_rocker_switch_telegram/5</a></h3>
 <div class="spec">
-<p><code>encode_double_rocker_switch_telegram(SourceEurid::<a href="#type-eurid">eurid()</a>, MaybeTargetEurid::<a href="#type-maybe">maybe</a>(<a href="#type-eurid">eurid()</a>), ButtonDesignator::<a href="#type-button_designator">button_designator()</a>, ButtonTransition::<a href="#type-button_transition">button_transition()</a>) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>encode_double_rocker_switch_telegram(SourceEurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, SourceAppStyle::<a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a>, ButtonLocator::<a href="#type-button_locator" docgen-rel="seetype" docgen-href="#button_locator/0">button_locator()</a>, ButtonTransition::<a href="#type-button_transition" docgen-rel="seetype" docgen-href="#button_transition/0">button_transition()</a>, MaybeTargetEurid::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>)) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p><p>Encodes a double-rocker switch telegram, from the specified device to the 
-specified one (if any), reporting the specified transition for the specified 
-button.</p>
-
- <p>As this encoding is done exclusively on the caller side (the Oceanic server 
-not being involved), it is up to the caller to specify the source EURID. We 
-recommend at the caller fetches from the Oceanic server its EURID (see 
-get_oceanic_eurid/1) once for all, and use it afterwards.</p>
-
- <p>Event sent in the context of EEP F6-02-01 ("Light and Blind Control - 
-Application Style 1"), for T21=1. It results thus in a RPS telegram, an ERP1 
-radio packet encapsulated into an ESP3 one.</p>
-
- <p>See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.</p>
-
- Depending on how Oceanic was learnt by the target actuator, it will be seen
- either as a rocker (recommended) or as push-button(s).
-</p>
+</div>
 
 <h3 class="function"><a name="encode_esp3_packet-2">encode_esp3_packet/2</a></h3>
 <div class="spec">
-<p><code>encode_esp3_packet(PacketType::<a href="#type-packet_type">packet_type()</a>, Data::<a href="#type-telegram_data">telegram_data()</a>) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>encode_esp3_packet(PacketType::<a href="#type-packet_type" docgen-rel="seetype" docgen-href="#packet_type/0">packet_type()</a>, Data::<a href="#type-telegram_data" docgen-rel="seetype" docgen-href="#telegram_data/0">telegram_data()</a>) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p>Encodes an ESP3 packet from its packet type and base data.</p>
+</div>
 
 <h3 class="function"><a name="encode_esp3_packet-3">encode_esp3_packet/3</a></h3>
 <div class="spec">
-<p><code>encode_esp3_packet(PacketType::<a href="#type-packet_type">packet_type()</a>, Data::<a href="#type-telegram_data">telegram_data()</a>, MaybeOptData::<a href="#type-maybe">maybe</a>(<a href="#type-telegram_opt_data">telegram_opt_data()</a>)) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>encode_esp3_packet(PacketType::<a href="#type-packet_type" docgen-rel="seetype" docgen-href="#packet_type/0">packet_type()</a>, Data::<a href="#type-telegram_data" docgen-rel="seetype" docgen-href="#telegram_data/0">telegram_data()</a>, MaybeOptData::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-telegram_opt_data" docgen-rel="seetype" docgen-href="#telegram_opt_data/0">telegram_opt_data()</a>)) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p>Encodes an ESP3 packet from its packet type, base and optional data.</p>
+</div>
 
 <h3 class="function"><a name="eurid_to_bin_string-1">eurid_to_bin_string/1</a></h3>
 <div class="spec">
-<p><code>eurid_to_bin_string(Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-bin_string">bin_string()</a></code><br></p>
+<p><code>eurid_to_bin_string(Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>) -&gt; <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code><br></p>
 <p> </p>
-</div><p>Returns a raw, direct (binary) textual description of the specified
- EURID.
-</p>
+</div>
 
 <h3 class="function"><a name="eurid_to_bin_string-2">eurid_to_bin_string/2</a></h3>
 <div class="spec">
-<p><code>eurid_to_bin_string(Eurid::<a href="#type-eurid">eurid()</a>, OceanicState::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-bin_string">bin_string()</a></code><br></p>
+<p><code>eurid_to_bin_string(Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, OceanicState::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-bin_string" docgen-rel="seetype" docgen-href="#bin_string/0">bin_string()</a></code><br></p>
 <p> </p>
-</div><p>Returns a (binary) textual description of the specified EURID, possibly
- translated to a user-friendly device name if any is known for that device.
-</p>
+</div>
 
 <h3 class="function"><a name="eurid_to_short_string-1">eurid_to_short_string/1</a></h3>
 <div class="spec">
-<p><code>eurid_to_short_string(Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>eurid_to_short_string(Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a short, raw, (plain) textual description of the specified EURID.</p>
+</div>
 
 <h3 class="function"><a name="eurid_to_string-1">eurid_to_string/1</a></h3>
 <div class="spec">
-<p><code>eurid_to_string(Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>eurid_to_string(Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a raw, (plain) textual description of the specified EURID.</p>
+</div>
+
+<h3 class="function"><a name="event_matches_trigger-2">event_matches_trigger/2</a></h3>
+<div class="spec">
+<p><code>event_matches_trigger(DevEvent::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>, CLESs::[<a href="#type-canon_listened_event_spec" docgen-rel="seetype" docgen-href="#canon_listened_event_spec/0">canon_listened_event_spec()</a>]) -&gt; <a href="#type-event_match_trigger_outcome" docgen-rel="seetype" docgen-href="#event_match_trigger_outcome/0">event_match_trigger_outcome()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="execute_command-2">execute_command/2</a></h3>
 <div class="spec">
-<p><code>execute_command(CmdTelegram::<a href="#type-telegram">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-command_outcome">command_outcome()</a></code><br></p>
+<p><code>execute_command(CmdTelegram::<a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-command_outcome" docgen-rel="seetype" docgen-href="#command_outcome/0">command_outcome()</a></code><br></p>
 <p> </p>
-</div><p>Executes synchronously the specified command, specified as an opaque,
- already-encoded telegram, that is supposed to be acknowledged next by the
- recipient device, with a response telegram.
-</p>
+</div>
 
 <h3 class="function"><a name="generate_support_modules-0">generate_support_modules/0</a></h3>
 <div class="spec">
 <p><code>generate_support_modules() -&gt; no_return()</code><br></p>
 <p> </p>
-</div><p>To be called by the 'oceanic_generated.beam' automatic make target in
- order to generate, here, a (single) module to share the Oceanic constants.
-</p>
+</div>
+
+<h3 class="function"><a name="get_all_device_types-0">get_all_device_types/0</a></h3>
+<div class="spec">
+<p><code>get_all_device_types() -&gt; [<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>]</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="get_app_style_from_eep-1">get_app_style_from_eep/1</a></h3>
+<div class="spec">
+<p><code>get_app_style_from_eep(EEPId::<a href="#type-eep_id" docgen-rel="seetype" docgen-href="#eep_id/0">eep_id()</a>) -&gt; <a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_best_device_name_from-1">get_best_device_name_from/1</a></h3>
 <div class="spec">
-<p><code>get_best_device_name_from(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-device_name">device_name()</a></code><br></p>
+<p><code>get_best_device_name_from(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-device_name" docgen-rel="seetype" docgen-href="#device_name/0">device_name()</a></code><br></p>
 <p> </p>
-</div><p>Returns the best name found for the emitting device stored in the
- specified device event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_best_naming-2">get_best_naming/2</a></h3>
 <div class="spec">
-<p><code>get_best_naming(MaybeDevName::<a href="#type-maybe">maybe</a>(<a href="#type-device_name">device_name()</a>), Eurid::<a href="#type-eurid">eurid()</a>) -&gt; <a href="#type-any_string">any_string()</a></code><br></p>
+<p><code>get_best_naming(MaybeDevName::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_name" docgen-rel="seetype" docgen-href="#device_name/0">device_name()</a>), Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>) -&gt; <a href="#type-any_string" docgen-rel="seetype" docgen-href="#any_string/0">any_string()</a></code><br></p>
 <p> </p>
-</div><p>Returns the best naming for a device, as any kind of string, depending on
- the available information.
-</p>
+</div>
 
 <h3 class="function"><a name="get_broadcast_eurid-0">get_broadcast_eurid/0</a></h3>
 <div class="spec">
-<p><code>get_broadcast_eurid() -&gt; <a href="#type-eurid">eurid()</a></code><br></p>
+<p><code>get_broadcast_eurid() -&gt; <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a></code><br></p>
 <p> </p>
-</div><p>Returns the broadcast EURID, suitable to target all devices in range.</p>
+</div>
+
+<h3 class="function"><a name="get_button_ref_description-2">get_button_ref_description/2</a></h3>
+<div class="spec">
+<p><code>get_button_ref_description(ButRef::<a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-button_ref_description" docgen-rel="seetype" docgen-href="#button_ref_description/0">button_ref_description()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="get_button_ref_descriptions-2">get_button_ref_descriptions/2</a></h3>
+<div class="spec">
+<p><code>get_button_ref_descriptions(ButRefs::[<a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a>], OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-button_ref_description" docgen-rel="seetype" docgen-href="#button_ref_description/0">button_ref_description()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="get_button_reference-1">get_button_reference/1</a></h3>
+<div class="spec">
+<p><code>get_button_reference(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="get_channel-1">get_channel/1</a></h3>
+<div class="spec">
+<p><code>get_channel(Double_rocker_switch_event::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-channel" docgen-rel="seetype" docgen-href="#channel/0">channel()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_default_tty_path-0">get_default_tty_path/0</a></h3>
 <div class="spec">
-<p><code>get_default_tty_path() -&gt; <a href="#type-device_path">device_path()</a></code><br></p>
+<p><code>get_default_tty_path() -&gt; <a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a></code><br></p>
 <p> </p>
-</div><p>Returns the path to the default TTY allocated to the USB Enocean gateway,
- according to our conventions.
-</p>
+</div>
+
+<h3 class="function"><a name="get_designated_button_enum-2">get_designated_button_enum/2</a></h3>
+<div class="spec">
+<p><code>get_designated_button_enum(Des::<a href="#type-button_designator" docgen-rel="seetype" docgen-href="#button_designator/0">button_designator()</a>, AppStyle::<a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a>) -&gt; <a href="#type-enum" docgen-rel="seetype" docgen-href="#enum/0">enum()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_device_description-2">get_device_description/2</a></h3>
 <div class="spec">
-<p><code>get_device_description(Eurid::<a href="#type-eurid">eurid()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-device_description">device_description()</a></code><br></p>
+<p><code>get_device_description(Eurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-device_description" docgen-rel="seetype" docgen-href="#device_description/0">device_description()</a></code><br></p>
 <p> </p>
-</div><p>Returns the best textual description found for the device specified from
- its EURID.
-</p>
+</div>
 
 <h3 class="function"><a name="get_device_table-1">get_device_table/1</a></h3>
 <div class="spec">
-<p><code>get_device_table(Oceanic_state::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-device_table">device_table()</a></code><br></p>
+<p><code>get_device_table(Oceanic_state::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-device_table" docgen-rel="seetype" docgen-href="#device_table/0">device_table()</a></code><br></p>
 <p> </p>
-</div><p>Returns the device state in the specified state; only useful for some
- tests.
-</p>
+</div>
+
+<h3 class="function"><a name="get_event_type-1">get_event_type/1</a></h3>
+<div class="spec">
+<p><code>get_event_type(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-device_event_type" docgen-rel="seetype" docgen-href="#device_event_type/0">device_event_type()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_last_seen_info-1">get_last_seen_info/1</a></h3>
 <div class="spec">
-<p><code>get_last_seen_info(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-timestamp">timestamp()</a>)</code><br></p>
+<p><code>get_last_seen_info(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-timestamp" docgen-rel="seetype" docgen-href="#timestamp/0">timestamp()</a>)</code><br></p>
 <p> </p>
-</div><p><p>Returns the timestamp corresponding to any previously seen telegram from 
-that device.</p>
+</div>
 
- Also useful to determine whether an event corresponds to a device discovery.
-</p>
+<h3 class="function"><a name="get_located_button_enum-2">get_located_button_enum/2</a></h3>
+<div class="spec">
+<p><code>get_located_button_enum(Loc::<a href="#type-button_locator" docgen-rel="seetype" docgen-href="#button_locator/0">button_locator()</a>, AppStyle::<a href="#type-application_style" docgen-rel="seetype" docgen-href="#application_style/0">application_style()</a>) -&gt; <a href="#type-enum" docgen-rel="seetype" docgen-href="#enum/0">enum()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_maybe_dbm-1">get_maybe_dbm/1</a></h3>
 <div class="spec">
-<p><code>get_maybe_dbm(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>)</code><br></p>
+<p><code>get_maybe_dbm(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-dbm" docgen-rel="seetype" docgen-href="#dbm/0">dbm()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the best RSSI value (if any) stored in the specified device
- event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_maybe_destination_eurid-1">get_maybe_destination_eurid/1</a></h3>
 <div class="spec">
-<p><code>get_maybe_destination_eurid(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-eurid">eurid()</a>)</code><br></p>
+<p><code>get_maybe_destination_eurid(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the EURID of the target of this transmission (addressed or
- broadcast), if any, stored in the specified device event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_maybe_device_name-1">get_maybe_device_name/1</a></h3>
 <div class="spec">
-<p><code>get_maybe_device_name(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-device_name">device_name()</a>)</code><br></p>
+<p><code>get_maybe_device_name(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-device_name" docgen-rel="seetype" docgen-href="#device_name/0">device_name()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the emitting device name (if any) stored in the specified device
- event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_maybe_eep-1">get_maybe_eep/1</a></h3>
 <div class="spec">
-<p><code>get_maybe_eep(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-eep_id">eep_id()</a>)</code><br></p>
+<p><code>get_maybe_eep(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-eep_id" docgen-rel="seetype" docgen-href="#eep_id/0">eep_id()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the EEP (if any is defined and registered) stored in the
- specified device event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_maybe_security_level-1">get_maybe_security_level/1</a></h3>
 <div class="spec">
-<p><code>get_maybe_security_level(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-security_level">security_level()</a>)</code><br></p>
+<p><code>get_maybe_security_level(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-security_level" docgen-rel="seetype" docgen-href="#security_level/0">security_level()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the stored in the specified device event.</p>
+</div>
 
 <h3 class="function"><a name="get_oceanic_eurid-1">get_oceanic_eurid/1</a></h3>
 <div class="spec">
-<p><code>get_oceanic_eurid(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-eurid">eurid()</a></code><br></p>
+<p><code>get_oceanic_eurid(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns the current (emitter) EURID used by Oceanic for the local USB 
-gateway, notably as default source base identifier when generating telegrams.</p>
-
- Useful when encoding telegrams.
-</p>
+</div>
 
 <h3 class="function"><a name="get_oceanic_version-0">get_oceanic_version/0</a></h3>
 <div class="spec">
-<p><code>get_oceanic_version() -&gt; <a href="#type-three_digit_version">three_digit_version()</a></code><br></p>
+<p><code>get_oceanic_version() -&gt; <a href="#type-three_digit_version" docgen-rel="seetype" docgen-href="#three_digit_version/0">three_digit_version()</a></code><br></p>
 <p> </p>
-</div><p>Returns the version of the Oceanic library being used.</p>
+</div>
 
 <h3 class="function"><a name="get_oceanic_version_string-0">get_oceanic_version_string/0</a></h3>
 <div class="spec">
-<p><code>get_oceanic_version_string() -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>get_oceanic_version_string() -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns the version of the Oceanic library being used, as a string.</p>
+</div>
+
+<h3 class="function"><a name="get_reciprocal_state_change_spec-2">get_reciprocal_state_change_spec/2</a></h3>
+<div class="spec">
+<p><code>get_reciprocal_state_change_spec(DevType::<a href="#type-device_type" docgen-rel="seetype" docgen-href="#device_type/0">device_type()</a>, CSCS::<a href="#type-canon_device_state_change_spec" docgen-rel="seetype" docgen-href="#canon_device_state_change_spec/0">canon_device_state_change_spec()</a>) -&gt; <a href="#type-canon_device_state_change_spec" docgen-rel="seetype" docgen-href="#canon_device_state_change_spec/0">canon_device_state_change_spec()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="get_server_pid-0">get_server_pid/0</a></h3>
 <div class="spec">
-<p><code>get_server_pid() -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>get_server_pid() -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p>Returns the PID of the (supposedly-existing) Oceanic server.</p>
+</div>
 
 <h3 class="function"><a name="get_server_registration_name-0">get_server_registration_name/0</a></h3>
 <div class="spec">
-<p><code>get_server_registration_name() -&gt; <a href="#type-registration_name">registration_name()</a></code><br></p>
+<p><code>get_server_registration_name() -&gt; <a href="#type-registration_name" docgen-rel="seetype" docgen-href="#registration_name/0">registration_name()</a></code><br></p>
 <p> </p>
-</div><p>Returns the registration name of the Oceanic server.</p>
+</div>
 
 <h3 class="function"><a name="get_source_eurid-1">get_source_eurid/1</a></h3>
 <div class="spec">
-<p><code>get_source_eurid(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-eurid">eurid()</a></code><br></p>
+<p><code>get_source_eurid(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a></code><br></p>
 <p> </p>
-</div><p>Returns the EURID of the emitting device stored in the specified device
- event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_subtelegram_count-1">get_subtelegram_count/1</a></h3>
 <div class="spec">
-<p><code>get_subtelegram_count(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-maybe">maybe</a>(<a href="#type-subtelegram_count">subtelegram_count()</a>)</code><br></p>
+<p><code>get_subtelegram_count(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-subtelegram_count" docgen-rel="seetype" docgen-href="#subtelegram_count/0">subtelegram_count()</a>)</code><br></p>
 <p> </p>
-</div><p>Returns the number (if any) of subtelegrams stored in the specified
- device event.
-</p>
+</div>
 
 <h3 class="function"><a name="get_test_state-0">get_test_state/0</a></h3>
 <div class="spec">
-<p><code>get_test_state() -&gt; <a href="#type-oceanic_state">oceanic_state()</a></code><br></p>
+<p><code>get_test_state() -&gt; <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns a pseudo-state, loaded from default configuration; only useful 
-for some tests.</p>
-
- <p>Note that, in order that an encoding or decoding (non-sending, non-receiving) 
-test can work without any actual device, we create here a type-correct yet 
-incorrect state (no real base ID, no relevant serial server).</p>
-
- So thise resulting state, which does not need an actual USB gateway to be
- available, is mostly bogus.
-</p>
+</div>
 
 <h3 class="function"><a name="get_test_state-1">get_test_state/1</a></h3>
 <div class="spec">
-<p><code>get_test_state(DeviceTable::<a href="#type-device_table">device_table()</a>) -&gt; <a href="#type-oceanic_state">oceanic_state()</a></code><br></p>
+<p><code>get_test_state(DeviceTable::<a href="#type-device_table" docgen-rel="seetype" docgen-href="#device_table/0">device_table()</a>) -&gt; <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a></code><br></p>
 <p> </p>
-</div><p>Returns a pseudo-state, based on the specified device table; only useful
- for some tests.
-</p>
+</div>
 
 <h3 class="function"><a name="get_timestamp-1">get_timestamp/1</a></h3>
 <div class="spec">
-<p><code>get_timestamp(DevEventTuple::<a href="#type-device_event">device_event()</a>) -&gt; <a href="#type-timestamp">timestamp()</a></code><br></p>
+<p><code>get_timestamp(DevEventTuple::<a href="#type-device_event" docgen-rel="seetype" docgen-href="#device_event/0">device_event()</a>) -&gt; <a href="#type-timestamp" docgen-rel="seetype" docgen-href="#timestamp/0">timestamp()</a></code><br></p>
 <p> </p>
-</div><p>Returns the timestamp stored in the specified device event.</p>
+</div>
 
 <h3 class="function"><a name="has_tty-0">has_tty/0</a></h3>
 <div class="spec">
-<p><code>has_tty() -&gt; <a href="#type-tty_detection_outcome">tty_detection_outcome()</a></code><br></p>
+<p><code>has_tty() -&gt; <a href="#type-tty_detection_outcome" docgen-rel="seetype" docgen-href="#tty_detection_outcome/0">tty_detection_outcome()</a></code><br></p>
 <p> </p>
-</div><p><p>Tells whether the default TTY exists and is a device.</p>
-
- Useful at least for testing.
-</p>
+</div>
 
 <h3 class="function"><a name="has_tty-1">has_tty/1</a></h3>
 <div class="spec">
-<p><code>has_tty(AnyTtyPath::<a href="#type-any_device_path">any_device_path()</a>) -&gt; <a href="#type-tty_detection_outcome">tty_detection_outcome()</a></code><br></p>
+<p><code>has_tty(AnyTtyPath::<a href="#type-any_device_path" docgen-rel="seetype" docgen-href="#any_device_path/0">any_device_path()</a>) -&gt; <a href="#type-tty_detection_outcome" docgen-rel="seetype" docgen-href="#tty_detection_outcome/0">tty_detection_outcome()</a></code><br></p>
 <p> </p>
-</div><p><p>Tells whether the specified TTY exists and is a device, together with any 
-failure reason.</p>
-
- Useful at least for testing.
-</p>
+</div>
 
 <h3 class="function"><a name="hexastring_to_telegram-1">hexastring_to_telegram/1</a></h3>
 <div class="spec">
-<p><code>hexastring_to_telegram(HexaStr::<a href="#type-ustring">ustring()</a>) -&gt; <a href="#type-telegram">telegram()</a></code><br></p>
+<p><code>hexastring_to_telegram(HexaStr::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>) -&gt; <a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns an hexadecimal string corresponding to the specified telegram.</p>
+</div>
 
- Useful for testing with serial clients like cutecom.
-</p>
+<h3 class="function"><a name="interpret_button_ref_spec-1">interpret_button_ref_spec/1</a></h3>
+<div class="spec">
+<p><code>interpret_button_ref_spec(Other::term()) -&gt; <a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="interpret_button_ref_specs-1">interpret_button_ref_specs/1</a></h3>
+<div class="spec">
+<p><code>interpret_button_ref_specs(ButRefSpecs::term()) -&gt; [<a href="#type-button_ref" docgen-rel="seetype" docgen-href="#button_ref/0">button_ref()</a>]</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="interpret_power_failure-2">interpret_power_failure/2</a></h3>
+<div class="spec">
+<p><code>interpret_power_failure(IsPowerFailureEnabled::boolean(), IsPowerFailureDetected::boolean()) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="is_available-1">is_available/1</a></h3>
 <div class="spec">
-<p><code>is_available(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-oceanic_availability_outcome">oceanic_availability_outcome()</a></code><br></p>
+<p><code>is_available(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>) -&gt; <a href="#type-oceanic_availability_outcome" docgen-rel="seetype" docgen-href="#oceanic_availability_outcome/0">oceanic_availability_outcome()</a></code><br></p>
 <p> </p>
-</div><p><p>Tells whether Oceanic should be available, that is if all its 
-prerequisites seem to be met.</p>
+</div>
 
- Useful to de-risk a future launch thereof and factor code.
-</p>
+<h3 class="function"><a name="is_serial_available-1">is_serial_available/1</a></h3>
+<div class="spec">
+<p><code>is_serial_available(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="is_valid_application_style-1">is_valid_application_style/1</a></h3>
+<div class="spec">
+<p><code>is_valid_application_style(AppStyle::term()) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="is_valid_button_position-1">is_valid_button_position/1</a></h3>
+<div class="spec">
+<p><code>is_valid_button_position(ButPos::term()) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="is_valid_button_transition-1">is_valid_button_transition/1</a></h3>
+<div class="spec">
+<p><code>is_valid_button_transition(ButPos::term()) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="is_valid_channel-1">is_valid_channel/1</a></h3>
+<div class="spec">
+<p><code>is_valid_channel(Channel::term()) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="is_valid_device_type-1">is_valid_device_type/1</a></h3>
+<div class="spec">
+<p><code>is_valid_device_type(DT::term()) -&gt; boolean()</code><br></p>
+<p> </p>
+</div>
 
 <h3 class="function"><a name="load_configuration-1">load_configuration/1</a></h3>
 <div class="spec">
-<p><code>load_configuration(State::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-oceanic_state">oceanic_state()</a></code><br></p>
+<p><code>load_configuration(State::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a></code><br></p>
 <p> </p>
-</div><p><p>Loads Oceanic configuration information from the default Ceylan 
-preferences file, if any, otherwise returns a state with an empty device 
-table.</p>
-
- <p>Refer to load_configuration/2 for key information.</p>
-
- See also the 'preferences' Myriad module.
-</p>
+</div>
 
 <h3 class="function"><a name="load_configuration-2">load_configuration/2</a></h3>
 <div class="spec">
-<p><code>load_configuration(ConfFilePath::<a href="#type-any_file_path">any_file_path()</a>, State::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-oceanic_state">oceanic_state()</a></code><br></p>
+<p><code>load_configuration(ConfFilePath::<a href="#type-any_file_path" docgen-rel="seetype" docgen-href="#any_file_path/0">any_file_path()</a>, State::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a></code><br></p>
 <p> </p>
-</div><p><p>Loads Oceanic configuration information in the specified state from the 
-specified ETF file, and returns a corresponding updated state.</p>
-
- <p>The configuration information is expected to contain up to one entry for the 
-following keys (atoms):</p>
-
- <p>- oceanic_emitter: to specify the pseudo-device emitting any telegram to be 
-sent by Oceanic (note that USB gateways have already their own base EURID that 
-shall be preferred; refer to the co_rd_idbase common command)</p>
-
- <p>- oceanic_jamming_threshold: to set a non-default threshold</p>
-
- - oceanic_devices: to declare the known devices; a given device shall never be
- declared more than once
-</p>
+</div>
 
 <h3 class="function"><a name="maybe_optional_data_to_string-2">maybe_optional_data_to_string/2</a></h3>
 <div class="spec">
-<p><code>maybe_optional_data_to_string(MaybeDecodedOptData::<a href="#type-maybe">maybe</a>(<a href="#type-decoded_optional_data">decoded_optional_data()</a>), OptData::<a href="#type-telegram_opt_data">telegram_opt_data()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>maybe_optional_data_to_string(MaybeDecodedOptData::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-decoded_optional_data" docgen-rel="seetype" docgen-href="#decoded_optional_data/0">decoded_optional_data()</a>), OptData::<a href="#type-telegram_opt_data" docgen-rel="seetype" docgen-href="#telegram_opt_data/0">telegram_opt_data()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified decoded maybe-optional
- data, otherwise from the corresponding raw data.
-</p>
+</div>
 
 <h3 class="function"><a name="nu_message_type_to_string-1">nu_message_type_to_string/1</a></h3>
 <div class="spec">
-<p><code>nu_message_type_to_string(Nu::<a href="#type-nu_message_type">nu_message_type()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>nu_message_type_to_string(Nu::<a href="#type-nu_message_type" docgen-rel="seetype" docgen-href="#nu_message_type/0">nu_message_type()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified "Nu" Message type, as
- defined in RPS packets.
-</p>
+</div>
 
 <h3 class="function"><a name="optional_data_to_short_string-2">optional_data_to_short_string/2</a></h3>
 <div class="spec">
-<p><code>optional_data_to_short_string(DestinationEurid::<a href="#type-eurid">eurid()</a>, MaybeDBm::<a href="#type-maybe">maybe</a>(<a href="#type-dbm">dbm()</a>)) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>optional_data_to_short_string(DestinationEurid::<a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a>, MaybeDBm::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-dbm" docgen-rel="seetype" docgen-href="#dbm/0">dbm()</a>)) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a short textual description of the specified decoded optional
- data, designed for user-friendly reporting.
-</p>
+</div>
 
 <h3 class="function"><a name="optional_data_to_string-1">optional_data_to_string/1</a></h3>
 <div class="spec">
-<p><code>optional_data_to_string(OptData::<a href="#type-decoded_optional_data">decoded_optional_data()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>optional_data_to_string(OptData::<a href="#type-decoded_optional_data" docgen-rel="seetype" docgen-href="#decoded_optional_data/0">decoded_optional_data()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
 </div>
 
 <h3 class="function"><a name="ptm_module_to_string-1">ptm_module_to_string/1</a></h3>
 <div class="spec">
-<p><code>ptm_module_to_string(ModType::<a href="#type-ptm_switch_module_type">ptm_switch_module_type()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>ptm_module_to_string(ModType::<a href="#type-ptm_switch_module_type" docgen-rel="seetype" docgen-href="#ptm_switch_module_type/0">ptm_switch_module_type()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified PTM switch module.</p>
+</div>
 
 <h3 class="function"><a name="read_base_id_info-1">read_base_id_info/1</a></h3>
 <div class="spec">
-<p><code>read_base_id_info(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-read_base_id_info_response">read_base_id_info_response()</a> | <a href="#type-common_command_failure">common_command_failure()</a></code><br></p>
+<p><code>read_base_id_info(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-read_base_id_info_response" docgen-rel="seetype" docgen-href="#read_base_id_info_response/0">read_base_id_info_response()</a> | <a href="#type-common_command_failure" docgen-rel="seetype" docgen-href="#common_command_failure/0">common_command_failure()</a></code><br></p>
 <p> </p>
-</div><p>Returns the information held by the USB gateway about its base ID, thanks
- to a (local) common command.
-</p>
+</div>
 
 <h3 class="function"><a name="read_logs-1">read_logs/1</a></h3>
 <div class="spec">
-<p><code>read_logs(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-read_logs_response">read_logs_response()</a> | <a href="#type-common_command_failure">common_command_failure()</a></code><br></p>
+<p><code>read_logs(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-read_logs_response" docgen-rel="seetype" docgen-href="#read_logs_response/0">read_logs_response()</a> | <a href="#type-common_command_failure" docgen-rel="seetype" docgen-href="#common_command_failure/0">common_command_failure()</a></code><br></p>
 <p> </p>
-</div><p>Returns the log information held by the USB gateway, thanks to a
- (local) common command.
-</p>
+</div>
 
 <h3 class="function"><a name="read_version-1">read_version/1</a></h3>
 <div class="spec">
-<p><code>read_version(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-read_version_response">read_version_response()</a> | <a href="#type-common_command_failure">common_command_failure()</a></code><br></p>
+<p><code>read_version(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-read_version_response" docgen-rel="seetype" docgen-href="#read_version_response/0">read_version_response()</a> | <a href="#type-common_command_failure" docgen-rel="seetype" docgen-href="#common_command_failure/0">common_command_failure()</a></code><br></p>
 <p> </p>
-</div><p>Returns the version information held by the USB gateway, thanks to a
- (local) common command.
-</p>
+</div>
 
 <h3 class="function"><a name="repeater_count_to_string-1">repeater_count_to_string/1</a></h3>
 <div class="spec">
-<p><code>repeater_count_to_string(RC::<a href="#type-count">count()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>repeater_count_to_string(RC::<a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified repeater count.</p>
+</div>
 
 <h3 class="function"><a name="restart_serial_interface-1">restart_serial_interface/1</a></h3>
 <div class="spec">
-<p><code>restart_serial_interface(OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>restart_serial_interface(OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p><p>Restarts the serial USB interface used internally.</p>
-
- Such a reset might be useful to avoid an USB freeze that may happen after a
- few weeks. However then a second phenomenon may happen (e.g. after a duration
- of 10 days): despite these resets, serial does not seem then to receive
- telegrams anymore, whereas the TTY seems to propagate them properly (based on
- <code>od -x &lt; /dev/ttyUSBEnOcean</code>), whereas our server and Oceanic do remain fully
- responsive.
-</p>
+</div>
 
 <h3 class="function"><a name="secure_serial-1">secure_serial/1</a></h3>
 <div class="spec">
-<p><code>secure_serial(AnyOceanicRootDir::<a href="#type-any_directory_path">any_directory_path()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>secure_serial(AnyOceanicRootDir::<a href="#type-any_directory_path" docgen-rel="seetype" docgen-href="#any_directory_path/0">any_directory_path()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Secures the usability of (our fork of) erlang-serial, typically from an
- (e)script.
-</p>
+</div>
 
 <h3 class="function"><a name="secure_tty-1">secure_tty/1</a></h3>
 <div class="spec">
-<p><code>secure_tty(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-serial_server_pid">serial_server_pid()</a></code><br></p>
+<p><code>secure_tty(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>) -&gt; <a href="#type-serial_server_pid" docgen-rel="seetype" docgen-href="#serial_server_pid/0">serial_server_pid()</a></code><br></p>
 <p> </p>
-</div><p>Secures the TTY connection to the Enocean gateway.</p>
+</div>
 
 <h3 class="function"><a name="send-2">send/2</a></h3>
 <div class="spec">
-<p><code>send(Telegram::<a href="#type-telegram">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>send(Telegram::<a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a>, OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Sends the specified telegram, through the specified Oceanic server.</p>
+</div>
 
 <h3 class="function"><a name="start-0">start/0</a></h3>
 <div class="spec">
-<p><code>start() -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start() -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on our default conventions regarding 
-the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as one of its Enocean 
-event listeners (but did not link to it).</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="start-1">start/1</a></h3>
 <div class="spec">
-<p><code>start(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>) -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on the specified device path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners (but did not link to it).</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="start-2">start/2</a></h3>
 <div class="spec">
-<p><code>start(TtyPath::<a href="#type-device_path">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid" docgen-rel="seetype" docgen-href="#event_listener_pid/0">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on the specified path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server (which is not linked to the calling process), registering the specified 
-listener processes for Enocean events.</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="start_link-0">start_link/0</a></h3>
 <div class="spec">
-<p><code>start_link() -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start_link() -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on our default conventions regarding 
-the TTY allocated to the USB Enocean gateway; returns the PID of the launched 
-Oceanic server, which registered the calling process as one of its Enocean 
-event listeners, and linked to it.</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="start_link-1">start_link/1</a></h3>
 <div class="spec">
-<p><code>start_link(TtyPath::<a href="#type-device_path">device_path()</a>) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start_link(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>) -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on the specified device path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners, and linked to it.</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="start_link-2">start_link/2</a></h3>
 <div class="spec">
-<p><code>start_link(TtyPath::<a href="#type-device_path">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid">oceanic_server_pid()</a></code><br></p>
+<p><code>start_link(TtyPath::<a href="#type-device_path" docgen-rel="seetype" docgen-href="#device_path/0">device_path()</a>, EventListeners::[<a href="#type-event_listener_pid" docgen-rel="seetype" docgen-href="#event_listener_pid/0">event_listener_pid()</a>]) -&gt; <a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a></code><br></p>
 <p> </p>
-</div><p><p>Starts the Enocean support, based on the specified path to the TTY 
-allocated to the USB Enocean gateway; returns the PID of the launched Oceanic 
-server, which registered the calling process as one of its Enocean event 
-listeners, and linked to it.</p>
-
- Throws an exception if no relevant TTY can be used.
-</p>
+</div>
 
 <h3 class="function"><a name="state_to_string-1">state_to_string/1</a></h3>
 <div class="spec">
-<p><code>state_to_string(Oceanic_state::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>state_to_string(Oceanic_state::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified state of the Oceanic
- server.
-</p>
+</div>
 
 <h3 class="function"><a name="stop-0">stop/0</a></h3>
 <div class="spec">
-<p><code>stop() -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>stop() -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Stops and terminates (asynchronously) the supposedly-existing Oceanic
- server.</p>
+</div>
 
 <h3 class="function"><a name="stop-1">stop/1</a></h3>
 <div class="spec">
-<p><code>stop(SrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>stop(SrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Stops and terminates (asynchronously) the specified Oceanic server.</p>
+</div>
 
 <h3 class="function"><a name="string_to_eep-1">string_to_eep/1</a></h3>
 <div class="spec">
-<p><code>string_to_eep(Str::<a href="#type-ustring">ustring()</a>) -&gt; <a href="#type-eep">eep()</a></code><br></p>
+<p><code>string_to_eep(Str::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>) -&gt; <a href="#type-eep" docgen-rel="seetype" docgen-href="#eep/0">eep()</a></code><br></p>
 <p> </p>
-</div><p><p>Converts an EEP described as a string into its internal form.</p>
-
- Input example: "D5-00-01".
-</p>
+</div>
 
 <h3 class="function"><a name="string_to_eurid-1">string_to_eurid/1</a></h3>
 <div class="spec">
-<p><code>string_to_eurid(EuridStr::<a href="#type-ustring">ustring()</a>) -&gt; <a href="#type-eurid">eurid()</a></code><br></p>
+<p><code>string_to_eurid(EuridStr::<a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a>) -&gt; <a href="#type-eurid" docgen-rel="seetype" docgen-href="#eurid/0">eurid()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns the actual EURID corresponding to the specified (plain) EURID 
-string.</p>
-
- For example 3076502 = oceanic:string_to_eurid("002ef196")
-</p>
+</div>
 
 <h3 class="function"><a name="synchronous_stop-1">synchronous_stop/1</a></h3>
 <div class="spec">
-<p><code>synchronous_stop(SrvPid::<a href="#type-oceanic_server_pid">oceanic_server_pid()</a>) -&gt; <a href="#type-void">void()</a></code><br></p>
+<p><code>synchronous_stop(SrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Stops and terminates synchronously the specified Oceanic server.</p>
+</div>
 
 <h3 class="function"><a name="telegram_to_hexastring-1">telegram_to_hexastring/1</a></h3>
 <div class="spec">
-<p><code>telegram_to_hexastring(Telegram::<a href="#type-telegram">telegram()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>telegram_to_hexastring(Telegram::<a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p><p>Returns an hexadecimal string corresponding to the specified telegram.</p>
-
- Useful for testing with serial clients like cutecom.
-</p>
+</div>
 
 <h3 class="function"><a name="telegram_to_string-1">telegram_to_string/1</a></h3>
 <div class="spec">
-<p><code>telegram_to_string(Telegram::<a href="#type-telegram">telegram()</a>) -&gt; <a href="#type-ustring">ustring()</a></code><br></p>
+<p><code>telegram_to_string(Telegram::<a href="#type-telegram" docgen-rel="seetype" docgen-href="#telegram/0">telegram()</a>) -&gt; <a href="#type-ustring" docgen-rel="seetype" docgen-href="#ustring/0">ustring()</a></code><br></p>
 <p> </p>
-</div><p>Returns a textual description of the specified telegram.</p>
+</div>
 
 <h3 class="function"><a name="test_decode-1">test_decode/1</a></h3>
 <div class="spec">
-<p><code>test_decode(Chunk::<a href="#type-telegram_chunk">telegram_chunk()</a>) -&gt; <a href="#type-decoding_outcome">decoding_outcome()</a></code><br></p>
+<p><code>test_decode(Chunk::<a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a>) -&gt; <a href="#type-decoding_outcome" docgen-rel="seetype" docgen-href="#decoding_outcome/0">decoding_outcome()</a></code><br></p>
 <p> </p>
-</div><p>Helper introduced only to make the decoding logic available for tests.</p>
+</div>
 
-<h3 class="function"><a name="try_integrate_chunk-4">try_integrate_chunk/4</a></h3>
+<h3 class="function"><a name="trigger_actuator-3">trigger_actuator/3</a></h3>
 <div class="spec">
-<p><code>try_integrate_chunk(ToSkipLen::<a href="#type-count">count()</a>, MaybeAccChunk::<a href="#type-maybe">maybe</a>(<a href="#type-telegram_chunk">telegram_chunk()</a>), NewChunk::<a href="#type-telegram_chunk">telegram_chunk()</a>, State::<a href="#type-oceanic_state">oceanic_state()</a>) -&gt; <a href="#type-decoding_outcome">decoding_outcome()</a></code><br></p>
+<p><code>trigger_actuator(CEES::<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>, MaybeExpectedReportedEventInfo::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-reported_event_info" docgen-rel="seetype" docgen-href="#reported_event_info/0">reported_event_info()</a>), OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
 <p> </p>
-</div><p>Tries to integrate a new telegram chunk, that is to decode an ESP3 packet
- from the specified chunk.
-</p>
+</div>
+
+<h3 class="function"><a name="trigger_actuators-3">trigger_actuators/3</a></h3>
+<div class="spec">
+<p><code>trigger_actuators(ActEvSpecs::[<a href="#type-canon_emitted_event_spec" docgen-rel="seetype" docgen-href="#canon_emitted_event_spec/0">canon_emitted_event_spec()</a>], MaybeExpectedReportedEventInfo::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-reported_event_info" docgen-rel="seetype" docgen-href="#reported_event_info/0">reported_event_info()</a>), OcSrvPid::<a href="#type-oceanic_server_pid" docgen-rel="seetype" docgen-href="#oceanic_server_pid/0">oceanic_server_pid()</a>) -&gt; <a href="#type-void" docgen-rel="seetype" docgen-href="#void/0">void()</a></code><br></p>
+<p> </p>
+</div>
+
+<h3 class="function"><a name="try_integrate_next_telegram-4">try_integrate_next_telegram/4</a></h3>
+<div class="spec">
+<p><code>try_integrate_next_telegram(ToSkipLen::<a href="#type-count" docgen-rel="seetype" docgen-href="#count/0">count()</a>, MaybeTelTail::<a href="#type-option" docgen-rel="seetype" docgen-href="#option/0">option</a>(<a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a>), NewChunk::<a href="#type-telegram_chunk" docgen-rel="seetype" docgen-href="#telegram_chunk/0">telegram_chunk()</a>, State::<a href="#type-oceanic_state" docgen-rel="seetype" docgen-href="#oceanic_state/0">oceanic_state()</a>) -&gt; <a href="#type-decoding_outcome" docgen-rel="seetype" docgen-href="#decoding_outcome/0">decoding_outcome()</a></code><br></p>
+<p> </p>
+</div>
 <hr>
 
 <div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>

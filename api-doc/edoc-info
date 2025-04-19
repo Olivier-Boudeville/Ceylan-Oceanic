@@ -1,3 +1,4 @@
 %% encoding: UTF-8
 {application,'Ceylan-Oceanic'}.
-{modules,[oceanic,oceanic_constants,telegram_decoding,telegram_sending]}.
+{modules,[oceanic,oceanic_constants,send_telegram_app,telegram_decoding,
+          telegram_sending,test]}.
