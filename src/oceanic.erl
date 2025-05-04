@@ -594,7 +594,8 @@ D5-00-01.
 Refer to get_eep_topic_specs/0 for further details.
 """.
 -type eep_id() ::
-	'thermo_hygro_low'
+    'thermometer'
+  | 'thermo_hygro_low'
   | 'thermo_hygro_mid'
   | 'thermo_hygro_high'
   | 'push_button'
@@ -603,7 +604,7 @@ Refer to get_eep_topic_specs/0 for further details.
   | 'double_rocker_switch_style_1'
   | 'double_rocker_switch_style_2'
   | 'double_rocker_multipress' % Apparently can be an alternative to declare
-							   % that a specific button was released.
+                               % that a specific button was released.
 
   | 'single_input_contact'   % Typically opening detectors
   | 'single_channel_module'
@@ -1231,7 +1232,7 @@ Abbreviated as SCS.
 """.
 -type device_state_change_spec() ::
 	double_rocker_state_change_spec()
-  |	push_button_state_change_spec()
+  | push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -1242,7 +1243,7 @@ Abbreviated as CSCS.
 """.
 -type canon_device_state_change_spec() ::
 	canon_double_rocker_state_change_spec()
-  |	canon_push_button_state_change_spec()
+  | canon_push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -2250,8 +2251,8 @@ get_base_state( SerialServerPid ) ->
 
 	CmdTelegram = encode_common_command_request( CommonCmd ),
 
-	% For decoding re-use (try_integrate_next_telegram/4), we have to have a state
-	% anyway:
+	% For decoding re-use (try_integrate_next_telegram/4), we have to have a
+	% state anyway:
 
 	InitCmdReq = #command_request{ command_type=CommonCmd,
 								   command_telegram=CmdTelegram,
@@ -2343,7 +2344,8 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 						basic_utils:ignore_unused( Event ) ),
 
 					trace_bridge:info_fmt( "Detected the EURID of the base "
-						"emitter: ~ts.", [ oceanic:eurid_to_string( BaseEurid ) ] ),
+						"emitter: ~ts.",
+                        [ oceanic:eurid_to_string( BaseEurid ) ] ),
 
 					ReadState#oceanic_state{ emitter_eurid=BaseEurid,
 											 waited_command_info=undefined };
@@ -2353,8 +2355,10 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_bridge:debug_fmt( "Unsuccessful decoding, '~w' "
-							"(whereas NewToSkipLen=~B, NewMaybeNextTelTail=~w).",
-							[ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail ] ),
+							"(whereas NewToSkipLen=~B, "
+                            "NewMaybeNextTelTail=~w).",
+							[ Unsuccessful, NewToSkipLen,
+                              NewMaybeNextTelTail ] ),
 						basic_utils:ignore_unused(
 							[ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
@@ -2664,6 +2668,9 @@ explicit (non-auto) periodicity.
 decide_auto_periodicity( _MaybeEEPId=undefined ) ->
 	% Not known, supposed not talkative:
 	none;
+
+decide_auto_periodicity( _EEPId=thermometer ) ->
+	auto;
 
 decide_auto_periodicity( _EEPId=thermo_hygro_low ) ->
 	auto;
@@ -3119,7 +3126,8 @@ canonicalise_emitted_event_specs( _EESs=[], Acc ) ->
 	lists:reverse( Acc );
 
 canonicalise_emitted_event_specs( _EESs=[
-		{ OTS, ActInfo={ MaybeEuridStr, MaybeTargetDeviceType } } | T ], Acc ) ->
+		{ OTS, ActInfo={ MaybeEuridStr, MaybeTargetDeviceType } } | T ],
+                                  Acc ) ->
 
 	COTS = case OTS of
 
@@ -3162,7 +3170,8 @@ canonicalise_emitted_event_specs( _EESs=[
 	canonicalise_emitted_event_specs( T, [ CEES | Acc ] );
 
 
-canonicalise_emitted_event_specs( _EESs=[ { OTS, _ActInfo=MaybeEuridStr } | T ], Acc ) ->
+canonicalise_emitted_event_specs( _EESs=[ { OTS, _ActInfo=MaybeEuridStr } | T ],
+                                  Acc ) ->
 	CanonActInfo = { _TargetDevice=MaybeEuridStr, _TargetDeviceType=undefined },
 	canonicalise_emitted_event_specs( [ { OTS, CanonActInfo } | T ], Acc );
 
@@ -3248,7 +3257,8 @@ actuator_info_to_string( { Eurid, AddrDeviceType } ) ->
 Returns a textual description of the specified actuator information, enhanced
 thanks to the Oceanic server.
 """.
--spec actuator_info_to_string( actuator_info(), oceanic_server_pid() ) -> ustring().
+-spec actuator_info_to_string( actuator_info(), oceanic_server_pid() ) ->
+                                        ustring().
 actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined }, OcSrvPid ) ->
 	text_utils:format( "actuator ~ts (not addressed as a specific type)",
 		[ get_device_description( Eurid, OcSrvPid ) ] );
@@ -3269,8 +3279,8 @@ descriptions.
 -spec canon_emitted_event_specs_to_string( [ canon_emitted_event_spec() ] ) ->
 												ustring().
 canon_emitted_event_specs_to_string( CEESs ) ->
-	text_utils:strings_to_string( [ canon_emitted_event_spec_to_string( CEES )
-									  || CEES <- CEESs ] ).
+	text_utils:strings_to_string(
+        [ canon_emitted_event_spec_to_string( CEES ) || CEES <- CEESs ] ).
 
 
 -doc """
@@ -3533,8 +3543,8 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	end,
 
-	%trace_bridge:debug_fmt( "encode_double_rocker_switch_telegram: R1Enum = ~B,"
-	%                       " R2Enum = ~B.", [ R1Enum, R2Enum ] ),
+	%trace_bridge:debug_fmt( "encode_double_rocker_switch_telegram: "
+	%   "R1Enum = ~B, R2Enum = ~B.", [ R1Enum, R2Enum ] ),
 
 	% No LRN (Learn) bit for RPS, which can only send data and has no special
 	% telegram modification to teach-in the device. Therefore, the teach-in
@@ -3976,7 +3986,7 @@ Triggers the actuators specified by their event specs, by requesting the Oceanic
 server to emit the corresponding telegrams and possibly track their
 acknowledgements.
 
-The expected event information expected to be sent back can be specified (the
+The event information expected to be sent back can be specified (it will be the
 same for all actuators); this will allow waiting for any acknowledgement from
 them, and detect failed triggers.
 """.
@@ -4231,7 +4241,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			NewState = send_raw_telegram( Telegram, State ),
 
 			% TODO: register and monitor TrackInfo
-			_TrackInfo = { _From=ActEurid, DevEvType, MaybeExpectedReportedEvInfo,
+			_TrackInfo = { _From=ActEurid, DevEvType,
+                           MaybeExpectedReportedEvInfo,
 						   State#oceanic_state.trigger_retry_count },
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
@@ -4648,7 +4659,6 @@ tail and on the specified new chunk.
 """.
 -spec integrate_all_telegrams( count(), option( telegram_tail() ),
 			telegram_chunk(), oceanic_state() ) -> oceanic_state().
-
 integrate_all_telegrams( ToSkipLen, MaybeTelTail=undefined, _Chunk= <<>>,
 						 State ) ->
 	{ ToSkipLen, MaybeTelTail, State };
@@ -4718,8 +4728,9 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 									case MaybeDevice of
 
 										undefined ->
-											throw( { unexpected_undefined_device,
-													 Event } );
+											throw(
+                                                { unexpected_undefined_device,
+                                                  Event } );
 
 										Device ->
 											get_device_description( Device )
@@ -4967,7 +4978,8 @@ try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, NewChunk,
 % Still bytes to skip, and therefore still before any start byte is detected and
 % chopped:
 %
-try_integrate_next_telegram( ToSkipLen, _MaybeTelTail=undefined, NewChunk, State ) ->
+try_integrate_next_telegram( ToSkipLen, _MaybeTelTail=undefined, NewChunk,
+                             State ) ->
 
 	ChunkSize = size( NewChunk ),
 
@@ -5059,6 +5071,8 @@ try_decode_chunk( TelegramChunk, State ) ->
 Scans the specified telegram tail (knowing that the corresponding chunk used to
 begin with a start byte, which has already been chopped).
 """.
+-spec decode_after_start_byte( telegram_tail(), oceanic_state() ) ->
+                                            decoding_outcome().
 decode_after_start_byte( NewTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
@@ -5157,11 +5171,13 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
 							% We already skipped what was needed; we have the
-							% next chunk, but we need any corresponding tail, so:
+							% next chunk, but we need any corresponding tail,
+							% so:
 							%
 							NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
 
-							{ unsupported, _SkipLen=0, NextMaybeTelTail, State };
+							{ unsupported, _SkipLen=0, NextMaybeTelTail,
+                              State };
 
 						% Rest too short here; so we have to skip more than this
 						% chunk:
@@ -5212,10 +5228,11 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 								% Post-telegram not to be lost (the second
 								% /binary is crucial to match any size):
 								%
-								<<FullData:FullLen/binary, _NextChunk/binary>> ->
+								<<FullData:FullLen/binary,
+                                  _NextChunk/binary>> ->
 									examine_full_data( FullData, FullDataCRC,
-										Data, OptData, PacketType,
-										FullTelTail, NextChunk, State );
+										Data, OptData, PacketType, NextChunk,
+                                        State );
 
 								% Not expected to *ever* happen:
 								TooShortChunk ->
@@ -5262,10 +5279,10 @@ examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
 
 -doc "Further checks and decodes a telegram now that its type is known.".
 -spec examine_full_data( telegram_chunk(), crc(), telegram_data(),
-	telegram_opt_data(), packet_type(), telegram_tail(), telegram_chunk(),
-	oceanic_state() ) -> decoding_outcome().
+	telegram_opt_data(), packet_type(), telegram_chunk(), oceanic_state() ) ->
+                                            decoding_outcome().
 examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
-				   FullTelTail, NextChunk, State ) ->
+				   NextChunk, State ) ->
 
 	case compute_crc( FullData ) of
 
@@ -5292,12 +5309,11 @@ examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
 			% legit CRC'ed header, so supposing this is just a valid telegram
 			% that ended up being corrupted; yet for extra safety we will
 			% restart the decoding from the very first possible byte, the one
-			% after the last (chopped) start byte, i.e. from the beginning of
-			% this tail (so we are nevertheless still progressing - not wanting
-			% to recurse infinitely on a chunk):
+			% after the last (chopped) start byte, i.e. from FullData (not even
+			% from the later beginning of this tail (so we are nevertheless
+			% still progressing - not wanting to recurse infinitely on a chunk):
 			%
-			% (NextChunk already in that tail)
-			scan_for_packet_start( _Chunk=FullTelTail )
+            try_decode_chunk( FullData, State )
 
 	end.
 
@@ -5407,7 +5423,8 @@ decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 
 % Response received, presumably for this pending (possibly internal) command:
 decode_packet( _PacketType=response_type,
-			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData, NextMaybeTelTail,
+			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData,
+               NextMaybeTelTail,
 			   State=#oceanic_state{
 					waited_command_info={ WaitedCmdReq, MaybeTimerRef },
 					command_count=CmdCount } ) ->
@@ -5924,7 +5941,8 @@ decode_response_tail( #command_request{ command_type=co_rd_idbase }, DataTail,
 
 
 % Other common commands:
-decode_response_tail( OtherCmdReq, DataTail, OptData, NextMaybeTelTail, State ) ->
+decode_response_tail( OtherCmdReq, DataTail, OptData, NextMaybeTelTail,
+                      State ) ->
 
 	trace_bridge:error_fmt( "Responses to ~ts are currently "
 		"unsupported (dropping response and waited request).",
@@ -6338,7 +6356,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 			% Device first time seen:
 			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
 				"from device whose EURID is ~ts: device not configured, "
-				"no EEP known for it.",	[ eurid_to_string( SenderEurid ) ] ),
+				"no EEP known for it.", [ eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -6366,6 +6384,11 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 			decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
 				SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
+        % Expected to be less frequent than previous one:
+		{ value, Device=#enocean_device{ eep=thermometer } } ->
+			decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0,
+				SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -6391,14 +6414,80 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 
 -doc """
+Decodes a rorg_4bs (A5) packet for the thermometer EEP "A5-02-*", precisely here
+"A5-02-05": "Temperature Sensors" (05), range 0°C to +40°C.
+
+Refer to [EEP-spec] p.29.
+""".
+-spec decode_4bs_thermometer_packet( uint8(), uint8(), uint8(), uint8(),
+		eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
+		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
+		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+    % Always 0 and 12 with our sensor:
+    %trace_bridge:debug_fmt( "For temperature: DB_1=~w, DB_0=~w.",
+    %                        [ ScaledTemperature, DB_0 ] ),
+
+	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110111 =:= 0 ),
+
+    % Not using round/1:
+	%Temperature = ScaledTemperature / 255.0 * 40,
+	Temperature = (1 - ScaledTemperature / 255.0) * 40,
+
+	LearnActivated = DB_0 band ?b3 =:= 0,
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermometer "
+			"packet, reporting a ~ts~ts; sender is ~ts~ts.",
+			[ temperature_to_string( Temperature ),
+			  learn_to_string( LearnActivated ),
+			  get_best_naming( MaybeDeviceName, SenderEurid ),
+			  maybe_optional_data_to_string( MaybeDecodedOptData,
+											 OptData ) ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #thermometer_event{ source_eurid=SenderEurid,
+								name=MaybeDeviceName,
+								eep=MaybeEepId,
+								timestamp=Now,
+								last_seen=MaybeLastSeen,
+								subtelegram_count=MaybeTelCount,
+								destination_eurid=MaybeDestEurid,
+								dbm=MaybeDBm,
+								security_level=MaybeSecLvl,
+								temperature=Temperature,
+
+								% As "A5-04-01":
+								temperature_range=low,
+
+								learn_activated=LearnActivated },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState }.
+
+
+
+-doc """
 Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
 "Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100% (01).
 
 Refer to [EEP-spec] p.35.
 """.
 -spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
-		eurid(), telegram_opt_data(), option( telegram_tail() ), enocean_device(),
-		oceanic_state() ) -> decoding_outcome().
+		eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
 		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
@@ -6751,7 +6840,8 @@ perform metering.
 
 Discussed in [EEP-spec] p. 132.
 
-Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
+Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status
+Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
 [EEP-spec] p. 135), it is an information sent (as a broadcast) by the smart plug
 about its status (either after a status request or after a state change request
 - whether or not it triggered an actual state change), typically to acknowledge
@@ -6910,7 +7000,7 @@ decode_vld_smart_plug_packet(
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 
@@ -8270,6 +8360,37 @@ repeater_count_to_string( RC ) ->
 Returns a (rather complete) textual description of the specified device event.
 """.
 -spec device_event_to_string( device_event() ) -> ustring().
+device_event_to_string( #thermometer_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		temperature=Temp,
+		temperature_range=TempRange,
+		learn_activated=LearnActivated } ) ->
+
+	TempStr = text_utils:format( "a ~ts (sensitivity range: ~ts)",
+		[ temperature_to_string( Temp ), TempRange ] ),
+
+	text_utils:format( "thermometer sensor device ~ts which reports at ~ts "
+		"~ts ~ts; this is declared~ts; ~ts; ~ts",
+		[ get_name_description( MaybeName, Eurid ),
+		  time_utils:timestamp_to_string( Timestamp ),
+          TempStr,
+		  learn_to_string( LearnActivated ),
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ),
+
+		  last_seen_to_string( MaybeLastSeen ),
+
+		  % Multiple A5-05-02-like candidates:
+		  get_eep_description( MaybeEepId ) ] );
+
 device_event_to_string( #thermo_hygro_event{
 		source_eurid=Eurid,
 		name=MaybeName,
@@ -8311,7 +8432,6 @@ device_event_to_string( #thermo_hygro_event{
 
 		  % Multiple A5-04-01-like candidates:
 		  get_eep_description( MaybeEepId ) ] );
-
 
 device_event_to_string( #single_input_contact_event{
 		source_eurid=Eurid,
@@ -8409,12 +8529,12 @@ device_event_to_string( #double_rocker_switch_event{
 
 	%% SecondStr = case IsValid of
 
-	%%	true ->
-	%%		text_utils:format( " and its ~ts",
-	%%			[ button_locator_to_string( SecondButtonLocator ) ] );
+	%%  true ->
+	%%      text_utils:format( " and its ~ts",
+	%%         [ button_locator_to_string( SecondButtonLocator ) ] );
 
-	%%	false ->
-	%%		""
+	%%  false ->
+	%%      ""
 
 	%% end,
 
@@ -8562,6 +8682,27 @@ Returns a short textual description of the specified device event, designed for
 user-friendly reporting.
 """.
 -spec device_event_to_short_string( device_event() ) -> ustring().
+device_event_to_short_string( #thermometer_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		temperature=Temp,
+		temperature_range=TempRange } ) ->
+
+	TempStr = text_utils:format( "a ~ts (sensitivity range: ~ts)",
+                                 [ temperature_to_string( Temp ), TempRange ] ),
+
+	% Timestamp already available:
+	text_utils:format( "The thermometer sensor device ~ts reports "
+		"a ~ts; ~ts; EEP: ~ts.",
+		[ get_name_description( MaybeName, Eurid ), TempStr,
+		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+
+		  % Multiple A5-02-05-like candidates:
+		  get_eep_short_description( MaybeEepId ) ] );
+
 device_event_to_short_string( #thermo_hygro_event{
 		source_eurid=Eurid,
 		name=MaybeName,
