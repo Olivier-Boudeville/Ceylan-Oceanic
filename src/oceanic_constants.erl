@@ -340,6 +340,10 @@ get_maybe_eep_topic_specs() ->
 	% {eep_id, eep_string()} pairs:
 	RawEntries = [
 
+		% Temperature sensors:
+        { thermometer, "A5-02-05" },
+
+
 		% Temperature and humidity sensors:
 
 		% Lower-range, 0°C to +40°C and 0% to 100%:

@@ -165,6 +165,60 @@
 %           security_level :: option( oceanic:security_level() )
 
 
+% Event sent by EEP A5-02-*: "Temperature Sensor"
+%
+% Refer to [EEP-spec] p.29 for further details.
+%
+-record( thermometer_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: option( oceanic:device_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: option( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: option( time_utils:timestamp() ),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: option( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: option( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: option( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	temperature :: unit_utils:celsius(),
+
+	% The range of the temperature sensor:
+	temperature_range :: oceanic:temperature_range(),
+
+	% Tells whether the learn button has been pressed:
+	learn_activated :: boolean() } ).
+
+
 
 % Event sent by EEP A5-04-*: "Temperature and Humidity Sensor"
 %
