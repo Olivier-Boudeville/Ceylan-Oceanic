@@ -33,6 +33,13 @@ through an Oceanic server**.
 """.
 
 
+
+% Design notes:
+%
+% EEP-spec refers to EnOcean_Equipment_Profiles_EEP_v2.6.7_public.pdf (refer to
+% Oceanic web documentation).
+
+
 %
 % Export section.
 %
@@ -310,18 +317,31 @@ be performed if the current one times-out is also specified.
 Allows to detect issues such an emitted yet not (correctly) received telegrams,
 for example if wanting to switch on a smart plug and be sure that it succeeded.
 """.
-%
 % A configurable time-out could be added as well.
--type trigger_track_info() :: { From :: eurid(),
+-type trigger_track_info() :: { ActEurid :: eurid(),
 								device_event_type(),
 								option( reported_event_info() ),
+                                option( timer_ref() ),
 								NextRetries :: count() }.
 
 
 -doc """
 Extra information to validate a type of device event for an acknowledgement.
 """.
--type reported_event_info() :: 'power_on' | 'power_off'.
+-type reported_event_info() ::
+
+    % For actuators that are smart plug:
+    'power_on' | 'power_off'.
+
+
+-doc """
+A table keeping track of the requests that have bee, sent to actuators but do
+not have been acknowledged yet.
+
+The trigger_track_info() list is a FIFO (a logical queue) elements are stored in
+a reverse order, i.e. the ones corresponding to the latest sendings first.
+""".
+-type actuator_tracking_table() :: table( eurid(), [ trigger_track_info() ] ).
 
 
 
@@ -1124,7 +1144,11 @@ command request.
 
 
 
--doc "Any event notified by an EnOcean device.".
+-doc """
+Any event notified by an EnOcean device.
+
+See also their corresponding tags, defined in device_event_type/0.
+""".
 -type device_event() ::
 	% Device events:
 	thermo_hygro_event()
@@ -1139,8 +1163,11 @@ command request.
   | command_response().
 
 
--doc "Lists the known types of device events.".
-% Corresponds to the tags of the corresponding records.
+-doc """
+Lists the known types of device events.
+
+Note that they correspond to the tags of the corresponding records.
+""".
 -type device_event_type() ::
 	'thermo_hygro_event'
   | 'single_input_contact_event'
@@ -1333,6 +1360,8 @@ emitting device will be a double-rocker of application style 1 whose channel B
 (2; the second rocker) has its top button pressed.
 
 Both a user-level and an internal type.
+
+Abbreviated as OTS.
 """.
 % A difference with the incoming ones is that information regarding the emulated
 % source device (e.g. the application style of such a rocker) may be specified:
@@ -1427,12 +1456,16 @@ a telegram to be sent as a double-rocker (of application style 1, and with other
 defaults) in order to trigger an actuator whose EURID is 05936ef8, and which is
 expected to act as a smart plug (and thus is to send back a corresponding
 acknowledgement telegram).
+
+Often abbreviated as EES.
 """.
 -type emitted_event_spec() :: { outgoing_trigger_spec(), user_actuator_info() }.
 
 
 -doc """
 Canonicalised, internal version of emitted_event_spec().
+
+Often abbreviated as CEES.
 """.
 -type canon_emitted_event_spec() ::
 	% Internal actuator info, not user one:
@@ -1642,6 +1675,12 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 % sent yet not acknowledged:
 %
 -define( default_max_response_waiting_duration, 1000 ).
+
+
+% The default maximum waiting duration, in milliseconds, for a pending
+% actuation, triggered yet not acknowledged:
+%
+-define( default_max_actuation_waiting_duration, 1000 ).
 
 
 % The minimum timeout (in milliseconds) regarding the monitoring of device
@@ -1869,6 +1908,11 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 	% The threshold above which an onEnoceanJamming event is triggered:
 	jamming_threshold = ?default_jamming_threshold :: bytes_per_second(),
 
+
+    % A table tracking the events expected to be received from actuators when
+    % they have been triggered:
+    %
+    actuator_tracking_table :: actuator_tracking_table(),
 
 	% The number of retries until the triggering of an actuator is acknowledged:
 	trigger_retry_count = ?default_trigger_retry_count :: count(),
@@ -2258,10 +2302,12 @@ get_base_state( SerialServerPid ) ->
 								   command_telegram=CmdTelegram,
 								   requester=internal },
 
+    EmptyTable = table:new(),
+
 	InitialState = #oceanic_state{
 		serial_server_pid=SerialServerPid,
 		emitter_eurid=string_to_eurid( ?default_emitter_eurid ),
-		device_table=table:new(),
+		device_table=EmptyTable,
 		command_queue=queue:new(),
 		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined },
 		last_traffic_seen=time_utils:get_timestamp() },
@@ -3574,11 +3620,11 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	MaybeOptData = get_optional_data_for_sending( MaybeTargetEurid ),
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		begin
-			<<DB_0AsInt>> = DB_0,
-			<<StatusAsInt>> = Status,
-			PadWidth = 8,
+	cond_utils:if_defined( OCEANIC_DEBUG_DECODING,
+		Begin
+			<<Db_0asint>> = Db_0,
+			<<Statusasint>> = Status,
+			Padwidth = 8,
 			trace_bridge:debug_fmt(
 				"Generated packet: type=~ts RORG=~ts, DB_0=~ts, "
 				"data size=~B, optional data size=~B, status=~ts.",
@@ -3992,7 +4038,6 @@ them, and detect failed triggers.
 """.
 -spec trigger_actuators( [ canon_emitted_event_spec() ],
 	option( reported_event_info() ), oceanic_server_pid() ) -> void().
-
 trigger_actuators( ActEvSpecs, MaybeExpectedReportedEventInfo, OcSrvPid ) ->
 	[ trigger_actuator( AES, MaybeExpectedReportedEventInfo, OcSrvPid )
 		|| AES <- ActEvSpecs ].
@@ -4015,14 +4060,14 @@ trigger_actuator( _CEES={ COTS,
 	TrackSpec = { _WaitedEventType=smart_plug_status_report_event,
 				  MaybeExpectedReportedEventInfo },
 
-	% Oceanic server to keep track of a corresponding TriggerTrackInfo:
+	% This Oceanic server is to keep track of a corresponding TriggerTrackInfo:
 	OcSrvPid ! { sendDoubleRockerTelegram, [ ActEurid, COTS, TrackSpec ] };
 
 trigger_actuator( _CEES={ _COTS,
 						  _ActInfo={ _ActEurid, MaybeActDevType } },
 				  _MaybeExpectedReportedEventInfo,
 				  _OcSrvPid ) ->
-	% If MaybeActDevType is set, could be guessed
+	% If MaybeActDevType is set, could be guessed:
 	throw( { unsupported_actuator_device_type, MaybeActDevType } ).
 
 
@@ -4233,7 +4278,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			% Note that this results in the target button of the target rocker
 			% to undergo a single transition (generally 'pressed'), not a double
 			% one (e.g. 'pressed' then 'released'), as it showed sufficient to
-			% trigger all tested actuators:
+			% trigger all tested actuators (they are then not blocked waiting
+			% for a 'released' message):
 			%
 			Telegram = encode_double_rocker_telegram( BaseEurid, COTS,
 													  ActEurid ),
@@ -4714,7 +4760,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 					%   "event: ~ts", [ device_event_to_string( Event ) ] ),
 
 					integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-											 _Chunk= <<>>,  NewState );
+											 _Chunk= <<>>, NewState );
 
 				false ->
 
@@ -6588,7 +6634,7 @@ decode_ute_packet(
 					 Func:8,                                     % = DB_1
 					 RORG:8,                                     % = DB_0
 					 InitiatorEurid:32,
-					 Status:8>>,
+					 Status:8/binary>>,
 		OptData, NextMaybeTelTail,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
@@ -8219,6 +8265,40 @@ device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
 device_triggered( _DevEventTuple ) ->
 	false.
 
+
+
+% Section for tracking actuator reports.
+
+
+
+%% -doc """
+%% Registers the specified actuator trigger tracking info, to detect if no report
+%% is sent back.
+%% """.
+%% -spec init_actuator_trigger_tracking( eurid(), device_event_type(),
+%%         option( reported_event_info() ), oceanic_state() ) -> oceanic_state().
+%% register_trigger_track_info( ActEurid, DevEvttype, MaybeRepInfo,
+%%         State#oceanic_state{ actuator_tracking_table=ActTrackTable,
+%%                              trigger_retry_count=TrigCount ) ->
+
+%%     % No identifier is assigned to actuations, as we cannot discriminate them.
+%%  { ok, TimerRef } = timer:send_after(
+%%      ?default_max_actuation_waiting_duration,
+%%          _Msg={ considerActuationTimeout, NewCmdCount } ),
+
+
+%%     TrackInfo = { ActEurid, DevEvttype, MaybeRepInfo, TimerRef,
+%%                   _NextRetries=TrigCount ),
+
+%%     TInfos = table:get_value_with_default( _K=ActEurid, _Def=[],
+%%                                            ActTrackTable ),
+
+%%      % FIFO:
+%%      NewTInfos = list_utils:append_at_end( _Elem=TrackInfo, _List=TInfos ),
+
+%%     NewActTrackTable = table:add_entry( ActEurid, NewTInfos, ActTrackTable ),
+
+%%     State#oceanic_state{ actuator_tracking_table=NewActTrackTable }.
 
 
 
