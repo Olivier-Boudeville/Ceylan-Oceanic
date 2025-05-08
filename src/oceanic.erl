@@ -3620,8 +3620,8 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	MaybeOptData = get_optional_data_for_sending( MaybeTargetEurid ),
 
-	cond_utils:if_defined( OCEANIC_DEBUG_DECODING,
-		Begin
+	cond_utils:if_defined( oceanic_debug_decoding,
+		begin
 			<<Db_0asint>> = Db_0,
 			<<Statusasint>> = Status,
 			Padwidth = 8,
