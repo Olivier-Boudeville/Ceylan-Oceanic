@@ -921,12 +921,13 @@ So the best course of action we determined could be (hence with a bogus, non-bro
 Regarding the Nodon Smart Plug
 ______________________________
 
+.. refer to Manuel-prise-commandee-Nodon-ASP-2-1-00.pdf and Manuel-prise-commandee-Nodon-ASP-2-1-01.pdf
 
 These are ``ASP-2-1-00`` or ``ASP-2-1-01``.
 
 To learn a new controlling device, the (single) button of that plug shall be pushed for at least 3 seconds (its red LED starts to blink). The receiving of a telegram is supposed to grant the emitting device the right to control that plug.
 
-Note though that, when forging a telegram so that a USB dongle is to control that plug, our tests showed that the incoming telegram will not be taken into account for learning if its target EURID is the one of that plug; only using the broadcast EURID allowed the plug to learn the emitter from these telegrams.
+Note though that, when forging a telegram so that a USB dongle is to control that plug, our tests showed that the incoming telegram will not be taken into account for learning if its target EURID is the one of that plug; only using the broadcast EURID allowed the plug to learn the emitter from these telegrams. The problem is that, after, this plug will act upon to all telegrams emitted by the USB dongle *even if they target a non-broadcast EURID that is not the one of that plug*.
 
 Afterwards, telegrams newly forged by the USB dongle were accepted and processed by the plug, whether they were broadcast or - better - targeting the specified EURID of that plug.
 
@@ -935,11 +936,19 @@ In terms of behaviour, this plug is simpler/clearer/more reliable:
 
 - it can/should be targeted based on its EURID (better than using broadcast)
 - we retained a multipress release (although a standard release might be as relevant)
-- a smaller yet non-null probability of missing a telegram exists, and it does not seem to happen more for "switch off" than for "switch on"
+- however releasing triggering buttons that were pressed does not seem necessary (probably that the plug only listens to telegrams about pushed buttons)
+- when this plug is switched on or off, it emits a state telegram, regardless of the trigger (being a received telegram or its button being pushed) or whether an actual transition occurred (e.g. no transition to be done if told to switch on whereas already on)
+- so, when switching on by telegram that plug ("top" button pushed"), the plug sends back a state telegram (whether or not an actual switching was done); if/when a "top" button released" is later sent, a mostly empty command response (with data=0 and an empty optional data) is received back in all cases (again, whether or not an actual switching was done)
+- a not-so-small probability of missing a telegram exists, and it does not seem to happen more for "switch off" than for "switch on"; telegram loss happens a lot more frequently when multiple plugs react to a given broadcast telegram (possibly because the first plug to act sends a response that interfere with the others)
 
-So the best course of action we determined could be::
+So the best course of action we determined could be, to trigger a switch of this plug:
 
- for e in top top top bottom bottom bottom; do m ${e}_press_nodon_run; done
+- send a press telegram targeted at its EURID (not a broadcast one; release telegrams useless)
+- wait for a state telegram being received back (no command response expected)
+- if no telegram is received from that plug after a sensible time-out, either the press or the state telegram was lost; resend the press one (knowing that, if the switch actually occurred, this is not a problem, as it is not a toggle), unless too many resendings have already been done for that trigger
+
+
+.. for e in top top top bottom bottom bottom; do m ${e}_press_nodon_run; done
 
 
 Reliability
