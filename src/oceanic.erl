@@ -314,7 +314,7 @@ with or without success), specifying the type of event to wait for
 information expected (e.g. 'power_on'); the specified number of new attempts to
 be performed if the current one times-out is also specified.
 
-Allows to detect issues such an emitted yet not (correctly) received telegrams,
+Allows detecting issues such as emitted yet not (correctly) received telegrams,
 for example if wanting to switch on a smart plug and be sure that it succeeded.
 """.
 % A configurable time-out could be added as well.
@@ -330,16 +330,17 @@ Extra information to validate a type of device event for an acknowledgement.
 """.
 -type reported_event_info() ::
 
-    % For actuators that are smart plug:
+    % For actuators that are smart plugs:
     'power_on' | 'power_off'.
 
 
 -doc """
-A table keeping track of the requests that have bee, sent to actuators but do
+A table keeping track of the requests that have been sent to actuators but do
 not have been acknowledged yet.
 
-The trigger_track_info() list is a FIFO (a logical queue) elements are stored in
-a reverse order, i.e. the ones corresponding to the latest sendings first.
+The trigger_track_info() list is a FIFO (a logical queue), i.e. elements are
+stored in reverse order, i.e. the ones corresponding to the latest sendings
+first.
 """.
 -type actuator_tracking_table() :: table( eurid(), [ trigger_track_info() ] ).
 
@@ -1205,7 +1206,7 @@ For example the application style of a rocker.
 
 -doc """
 Information regarding a device (e.g. a double rocker) that is emulated in order
-to forget telegrams that it could send, typically in order to trigger actuators.
+to forge telegrams that it could send, typically in order to trigger actuators.
 """.
 -type virtual_emitter_info() :: option( tuploid( device_info() ) ).
 
@@ -1428,7 +1429,7 @@ based on the corresponding actuator information.
 -doc """
 Describes an actuator, typically when emitting an event targeting it.
 
-EURID may be a broadcast one.
+The EURID may be a broadcast one.
 
 Internal type.
 """.
@@ -1616,18 +1617,17 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 
 % Section about Command/request acknowledgements.
 %
-% A previous system had been start, based on command_queue(), and another one
-% was also started in a user, higher-level library (namely US-Main). We have yet
-% to determine whether tracking acknowledgements is of use, depending on the
-% level of telegram losses.
+% A previous system to organise sendings had been started, based on
+% command_queue(), and another one was also started in a user, higher-level
+% library (namely US-Main), yet tracking acknowledgements (which is almost
+% necessary, due to the level of telegram losses) is best done here.
 %
-% If such a system is needed, most probably that the command_queue() shall be
-% replaced with some (global, or per-actuator) tracking information (see
-% trigger_track_{spec,info,...}) where request time-outs would be scheduled, and
-% incoming telegrams (e.g. VLD ones, for smart plugs) would be decoded and would
-% unschedule the corresponding time-out. Having a time-out be triggered would
-% then result in the re-emission of the corresponding telegram, provided that
-% the maximum number of retries is not reached.
+% So the command_queue() has been replaced with per-actuator tracking
+% information (see trigger_track_{spec,info,...}) where request time-outs are
+% scheduled (as timers), and incoming telegrams (e.g. VLD ones, for smart plugs)
+% are tracked to unschedule the corresponding time-out. Having a time-out be
+% triggered would then result in the re-emission of the corresponding telegram,
+% provided that the maximum number of retries is not reached.
 
 
 
