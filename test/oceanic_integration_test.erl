@@ -28,7 +28,6 @@
 -module(oceanic_integration_test).
 
 -moduledoc """
-
 **Integration test** of Ceylan-Oceanic, representative of its actual use.
 
 The various hardware (Enocean USB dongle) and software (Myriad, Erlang-serial)

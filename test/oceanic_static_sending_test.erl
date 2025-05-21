@@ -129,8 +129,10 @@ actual_test( TtyPath ) ->
 	%InitialDeviceTable = table:new( [ { SourceEurid, SourceDeviceRec } ] ),
 
 	% Both forms, with a target (hence with optional data) or not, will work:
-	MaybeTargetEurid = oceanic:get_broadcast_eurid(),
+	%MaybeTargetEurid = oceanic:get_broadcast_eurid(),
 	%MaybeTargetEurid = undefined,
+
+	MaybeTargetEurid = oceanic:string_to_eurid( "050f143c" ),
 
 	%basic_utils:ignore_unused( [ SourceEurid, MaybeTargetEurid ] ),
 
@@ -169,21 +171,21 @@ actual_test( TtyPath ) ->
 	% subtelegram, not targeting any specified address (not even the address for
 	% broadcast transmission); its EEP is double_rocker_switch (F6-02-01):
 	%
-	PressOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+	PressOnButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SwitchOnButtonLoc, pressed,
 		MaybeTargetEurid ),
 
 
-	ReleaseOnButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+	ReleaseOnButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SwitchOnButtonLoc, released,
 		MaybeTargetEurid ),
 
 
-	PressOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+	PressOffButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SwitchOffButtonLoc, pressed,
 		MaybeTargetEurid ),
 
-	ReleaseOffButtonTelegram = oceanic:encode_double_rocker_switch_telegram(
+	ReleaseOffButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SwitchOffButtonLoc,
 		released, MaybeTargetEurid ),
 

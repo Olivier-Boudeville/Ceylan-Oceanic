@@ -378,7 +378,7 @@ get_maybe_eep_topic_specs() ->
 		{ single_channel_module, "D2-01-0E" },
 		{ double_channel_module, "D2-01-12" } ],
 
-	AsTripletsEntries = [ { EepId, oceanic:string_to_eep( EepStr ) }
+	AsTripletsEntries = [ { EepId, oceanic_text:string_to_eep( EepStr ) }
 								|| { EepId, EepStr } <- RawEntries ],
 
 	AsStringsEntries = [ { EepId, text_utils:string_to_binary( EepStr ) }

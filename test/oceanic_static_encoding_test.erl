@@ -50,7 +50,7 @@ run() ->
 	SourceEurid = oceanic:string_to_eurid( "0109d970" ),
 
 	% Hence never released:
-	Telegram = oceanic:encode_double_rocker_switch_telegram( SourceEurid,
+	Telegram = oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
 		_SourceAppStyle=1, _ButtonLoc={ _Channel=1, _ButtonPos=top },
 		_ButtonTransition=pressed, _MaybeTargetEurid=undefined ),
 

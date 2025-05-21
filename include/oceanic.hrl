@@ -26,7 +26,8 @@
 % Creation date: Tuesday, September 27, 2022.
 
 
-% Defines of possible interest for the user:
+% Defines and records of possible interest for the user (hence public).
+
 
 % The name under which the Oceanic server will register locally:
 -define( oceanic_server_reg_name, oceanic_server ).
@@ -57,6 +58,47 @@
 % ADT):
 %
 -define( eurid_broadcast, 16#ffffffff ). % That is 4294967295
+
+
+
+% The default maximum waiting duration, in milliseconds, for a pending command,
+% sent yet not acknowledged:
+%
+-define( default_max_response_waiting_duration, 1000 ).
+
+
+% The default maximum waiting duration, in milliseconds, for a pending
+% actuation, triggered yet not acknowledged:
+%
+-define( default_max_actuation_waiting_duration, 1000 ).
+
+
+% The minimum timeout (in milliseconds) regarding the monitoring of device
+% activity, as a security to avoid too frequent checking:
+%
+-define( min_activity_timeout, 5000 ).
+
+% The default threshold, in bytes per second (hence, considering an usual
+% telegram size of 21 bytes, roughly a dozen legit telegrams per second) above
+% which an onEnoceanJamming event should be triggered:
+%
+-define( default_jamming_threshold, 250 ).
+
+% To test detection:
+%-define( default_jamming_threshold, 10 ).
+
+
+% The default number of retries until the triggering of an actuator is
+% acknowledged:
+%
+-define( default_trigger_retry_count, 4 ).
+
+
+% The default DHMS expected activity periodicity for a device (hence a telegram
+% is expected here to be received on average every 25 minutes):
+%
+-define( default_dhms_periodicity, { 0, 0, 25, 0 } ).
+
 
 
 % Information regarding an Enocean device.

@@ -148,7 +148,8 @@ run() ->
 		%"55000707017af600002f50d62001ffffffff4900f1" ),
 		%"55000707017af632deadbeef3103ffffffffff000c" ),
 		%"55000707017af630002f50d63001ffffffff3d00b1" ),
-		"550007000111f6000109d97020e2" ),
+		%"550007000111f6000109d97020e2" ),
+        "550009070156d20460e4050f143c0001ffffffff400034" ),
 
 	AllTelegrams = [ TA5, TD5, TF6A, TF6B, TInvalid, TResp,
 					 TDRWhitePress, TDRWhiteRelease, TTested ],

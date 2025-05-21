@@ -313,8 +313,8 @@ emit_forged_telegrams( SerialPid ) ->
 	%InterPressReleaseDuration = 500,
 	InterPressReleaseDuration = 50,
 
-	TargetPlug = eltako,
-	%TargetPlug = nodon,
+	%TargetPlug = eltako,
+	TargetPlug = nodon,
 
 	case TargetPlug of
 
@@ -403,19 +403,19 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
 	% value being -68 dBm; security level: telegram not processed; its EEP is
 	% double_rocker_switch_style_1 (F6-02-01):
 	%
-	TopButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	TopButtonPressedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, FirstButtonLoc, pressed, TargetEurid ),
 
 
-	TopButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	TopButtonReleasedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, FirstButtonLoc, released, TargetEurid ),
 
 
 	% Now the bottom button:
-	BottomButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	BottomButtonPressedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SecondButtonLoc, pressed, TargetEurid ),
 
-	BottomButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	BottomButtonReleasedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SecondButtonLoc, released, TargetEurid ),
 
 
@@ -423,7 +423,7 @@ emit_forged_telegrams_for_eltako_smart_plug( SourceEuridStr,
 	% pressed:
 	%
 	AllButtonReleasedTelegram =
-		oceanic:encode_double_rocker_multipress_telegram( SourceEurid,
+		oceanic_encode:encode_double_rocker_multipress_telegram( SourceEurid,
 			_ButtonCounting=none, released, TargetEurid ),
 
 
@@ -587,19 +587,19 @@ emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr,
 	% value being -68 dBm; security level: telegram not processed; its EEP is
 	% double_rocker_switch_style_1 (F6-02-01):
 	%
-	TopButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	TopButtonPressedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, FirstButtonLoc, pressed, TargetEurid ),
 
 
-	TopButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	TopButtonReleasedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, FirstButtonLoc, released, TargetEurid ),
 
 
 	% Now the bottom button:
-	BottomButtonPressedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	BottomButtonPressedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SecondButtonLoc, pressed, TargetEurid ),
 
-	BottomButtonReleasedTelegram = oceanic:encode_double_rocker_switch_telegram(
+	BottomButtonReleasedTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
 		SourceEurid, SourceAppStyle, SecondButtonLoc, released, TargetEurid ),
 
 
@@ -607,7 +607,7 @@ emit_forged_telegrams_for_nodon_smart_plug( SourceEuridStr,
 	% pressed:
 	%
 	AllButtonReleasedTelegram =
-		oceanic:encode_double_rocker_multipress_telegram( SourceEurid,
+		oceanic_encode:encode_double_rocker_multipress_telegram( SourceEurid,
 			_ButtonCounting=none, released, TargetEurid ),
 
 

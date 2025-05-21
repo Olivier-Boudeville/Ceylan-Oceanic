@@ -1,0 +1,1890 @@
+% Copyright (C) 2025-2025 Olivier Boudeville
+%
+% This file is part of the Ceylan-Oceanic library.
+%
+% This library is free software: you can redistribute it and/or modify
+% it under the terms of the GNU Lesser General Public License or
+% the GNU General Public License, as they are published by the Free Software
+% Foundation, either version 3 of these Licenses, or (at your option)
+% any later version.
+% You can also redistribute it and/or modify it under the terms of the
+% Mozilla Public License, version 1.1 or later.
+%
+% This library is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+% GNU Lesser General Public License and the GNU General Public License
+% for more details.
+%
+% You should have received a copy of the GNU Lesser General Public
+% License, of the GNU General Public License and of the Mozilla Public License
+% along with this library.
+% If not, see <http://www.gnu.org/licenses/> and
+% <http://www.mozilla.org/MPL/>.
+%
+% Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
+% Creation date: Wednesday, May 21, 2025.
+
+-module(oceanic_decode).
+
+-moduledoc """
+Module centralising **all decoding** made by Ceylan-Oceanic.
+""".
+
+
+% For the records and defines:
+-include("oceanic.hrl").
+-include("oceanic_internal.hrl").
+
+
+-doc "The various kinds of errors that may happen when decoding.".
+-type decoding_error() ::
+	'not_reached'   % Beginning of next packet still ahead
+  | 'incomplete'    % Truncated packet (end of packet still ahead)
+  | 'invalid'       % Corrupted packet
+  | 'unsupported'   % Type of packet (currently) unsupported by Oceanic
+  | 'unconfigured'. % Device not configure (typically EEP not known)
+
+
+
+-doc """
+The outcome of a decoding.
+
+The outcome of an attempt of integrating / decoding a telegram chunk.
+
+A maybe-event was returned, as for example a common command response that is
+received whereas no request was sent shall be discarded.
+
+A maybe-discovery origin is also returned, so that an already discovered device
+is not reported as being discovered more than once ('undefined' is returned once
+already discovered).
+""".
+-type decoding_outcome() ::
+
+	{ 'decoded', device_event() | 'command_processed',
+	  MaybeDiscoverOrigin :: option( discovery_origin() ),
+	  IsBackOnline :: boolean(), MaybeDevice :: option( enocean_device() ),
+	  NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }
+
+  | { decoding_error(), ToSkipLen :: count(),
+	  NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }.
+
+
+
+-doc "The result of a decoding request.".
+-type decoding_result() :: decoding_error() | device_event().
+
+
+-export_type([ decoding_error/0, decoding_outcome/0, decoding_result/0 ]).
+
+
+-export([ decode_packet/5 ]).
+
+
+% Exported only for testing:
+-export([ decode_telegram/2 ]).
+
+
+
+% Module-internal defines.
+
+
+% For DB_0 for example, 8 bits:
+%  * bit name:   B7 - B6 - B5 - B4 - B3 - B2 - B1 - B0
+%  * bit offset:  0 -  1 -  2 -  3 -  4 -  5 -  6 -  7
+%
+% So the following bit masks:
+
+-define( b0, 2#00000001 ).
+-define( b1, 2#00000010 ).
+-define( b2, 2#00000100 ).
+-define( b3, 2#00001000 ).
+-define( b4, 2#00010000 ).
+-define( b5, 2#00100000 ).
+-define( b6, 2#01000000 ).
+-define( b7, 2#10000000 ).
+
+
+
+% Type shorthands:
+
+-type count() :: basic_utils:count().
+-type uint8() :: type_utils:uint8().
+
+-type eurid() :: oceanic:eurid().
+-type device_event() :: oceanic:device_event().
+-type discovery_origin() :: oceanic:discovery_origin().
+-type enocean_device() :: oceanic:enocean_device().
+-type telegram() :: oceanic:telegram().
+-type telegram_chunk() :: oceanic:telegram_chunk().
+-type telegram_tail() :: oceanic:telegram_tail().
+-type telegram_data() :: oceanic:telegram_data().
+-type telegram_data_tail() :: oceanic:telegram_data_tail().
+-type telegram_opt_data() :: oceanic:telegram_opt_data().
+-type decoded_optional_data() :: oceanic:decoded_optional_data().
+-type oceanic_state() :: oceanic:oceanic_state().
+-type oceanic_server_pid() :: oceanic:oceanic_server_pid().
+-type packet_type() :: oceanic:packet_type().
+-type vld_payload() :: oceanic:vld_payload().
+-type dbm():: oceanic:dbm().
+-type security_level() :: oceanic:security_level().
+-type subtelegram_count() :: oceanic:subtelegram_count().
+-type enum() :: oceanic:enum().
+-type application_style() :: oceanic:application_style() .
+-type button_locator() :: oceanic:button_locator().
+-type button_transition() :: oceanic:button_transition().
+-type ptm_switch_module_type() :: oceanic:ptm_switch_module_type().
+-type nu_message_type() :: oceanic:nu_message_type() .
+-type repetition_count() :: oceanic:repetition_count().
+
+
+
+-doc """
+Returns, if possible, the specified telegram once decoded as an event, using the
+specified Oceanic server for that.
+
+Mostly useful for testing purpose.
+""".
+-spec decode_telegram( telegram(), oceanic_server_pid() ) -> decoding_result().
+decode_telegram( Telegram, OcSrvPid ) ->
+	OcSrvPid ! { decodeOceanic, Telegram, self() },
+	receive
+
+		{ decoding_result, R } ->
+			R
+
+	end.
+
+
+-doc """
+Decodes the specified packet, based on the specified data elements.
+
+Data corresponds to the actual packet payload of the specified type.
+""".
+-spec decode_packet( packet_type(), telegram_data(), telegram_opt_data(),
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+% Clause only for ERP1 packets (e.g. not covering responses):
+decode_packet( _PacketType=radio_erp1_type,
+			   _Data= <<RorgNum:8, DataTail/binary>>, OptData, NextMaybeTelTail,
+			   State ) ->
+
+	MaybeRorg = oceanic_generated:get_maybe_first_for_rorg( RorgNum ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding an ERP1 radio packet of R-ORG ~ts, "
+			"hence ~ts, i.e. '~ts'...",
+			[ text_utils:integer_to_hexastring( RorgNum ), MaybeRorg,
+			  oceanic_generated:get_maybe_second_for_rorg_description(
+				MaybeRorg ) ] ) ),
+
+	case MaybeRorg of
+
+		rorg_rps ->
+			decode_rps_packet( DataTail, OptData, NextMaybeTelTail, State );
+
+		rorg_1bs ->
+			decode_1bs_packet( DataTail, OptData, NextMaybeTelTail, State );
+
+		rorg_4bs ->
+			decode_4bs_packet( DataTail, OptData, NextMaybeTelTail, State );
+
+		rorg_ute ->
+			decode_ute_packet( DataTail, OptData, NextMaybeTelTail, State );
+
+		rorg_vld ->
+			decode_vld_packet( DataTail, OptData, NextMaybeTelTail, State );
+
+		undefined ->
+			trace_bridge:warning_fmt( "The RORG ~ts is not known, "
+				"the corresponding packet is thus dropped.",
+				[ text_utils:integer_to_hexastring( RorgNum ) ] ),
+
+			% Not even an EURID to track.
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State };
+
+		Rorg ->
+			trace_bridge:warning_fmt( "The decoding of ERP1 radio packets "
+				"of R-ORG ~ts, hence ~ts (i.e. '~ts') is not implemented; "
+				"the corresponding packet is thus dropped.",
+				[ text_utils:integer_to_hexastring( RorgNum ), Rorg,
+				  oceanic_generated:get_maybe_second_for_rorg_description(
+					Rorg ) ] ),
+
+			% Not even an EURID to track.
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }
+
+	end;
+
+
+% Here a response is received whereas no request was sent:
+%
+% (note that some smart plugs, like at least the ELTAKO FSSAF-230V, emit, once
+% triggered, a `<<85,0,1,0,2,101,0,0>>` telegram, carrying in terms of
+% information only that it is a response_type packet with a payload of <<0>>;
+% hence no emitter EURID available, for example - instead of sending a
+% smart_plug_status_report_event)
+%
+decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
+			   State=#oceanic_state{ waited_command_info=undefined,
+									 discarded_count=DiscCount } ) ->
+
+	trace_bridge:warning_fmt( "Received a command response "
+		"(data: ~w, optional data: ~w) whereas there is no pending request, "
+		"dropping it.", [ Data, OptData ] ),
+
+	{ decoded, _MaybeDeviceEvent=command_processed,
+	  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
+	  _MaybeDevice=undefined, NextMaybeTelTail,
+	  State#oceanic_state{ discarded_count=DiscCount+1 } };
+
+
+% Response received, presumably for this pending (possibly internal) command:
+decode_packet( _PacketType=response_type,
+			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData,
+               NextMaybeTelTail,
+			   State=#oceanic_state{
+					waited_command_info={ WaitedCmdReq, MaybeTimerRef },
+					command_count=CmdCount } ) ->
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a command response, whereas "
+			"awaiting ~ts.",
+            [ oceanic_text:command_request_to_string( WaitedCmdReq ) ] ) ),
+
+	% In all cases the pending request is over:
+	oceanic:stop_any_timer( MaybeTimerRef ),
+
+	RespState = State#oceanic_state{ waited_command_info=undefined },
+
+	case oceanic_generated:get_maybe_first_for_return_code( ReturnCode ) of
+
+		undefined ->
+			trace_bridge:warning_fmt( "Unable to decode response whose return "
+				"code is invalid (~B), dropping packet and pending "
+				"command (#~B).", [ ReturnCode, CmdCount ] ),
+			{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
+
+
+		ok_return ->
+			oceanic_common_command:decode_response_tail( WaitedCmdReq,
+                DataTail, OptData, NextMaybeTelTail, RespState );
+
+		% Not a decoding failure, but more a protocol-level one that shall be
+		% notified to the requester.
+		%
+		% Expected in [error_return, not_supported_return,
+		%              wrong_parameter_return, operation_denied]:
+		%
+		FailureReturn ->
+
+			trace_bridge:error_fmt( "Received a failure response (~ts), "
+				"presumably to the pending ~ts.",
+				[ FailureReturn,
+                  oceanic_text:command_request_to_string( WaitedCmdReq ) ] ),
+
+			Requester = WaitedCmdReq#command_request.requester,
+
+			case Requester of
+
+				internal ->
+					{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
+
+				RequesterPid ->
+
+					RequesterPid !
+						{ oceanic_command_outcome, _Outcome=FailureReturn },
+
+					% Waiting information already cleared:
+					{ decoded, command_processed,
+					  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
+					  _MaybeDevice=undefined, NextMaybeTelTail, RespState }
+
+			end
+
+	end;
+
+
+decode_packet( PacketType, _Data, _OptData, NextMaybeTelTail, State ) ->
+
+	trace_bridge:warning_fmt( "Unsupported packet type '~ts' (hence ignored).",
+							  [ PacketType ] ),
+
+	% Not even an EURID to track, no real need to go further.
+
+	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
+
+
+
+-doc """
+Decodes a rorg_rps (F6, "Repeated Switch Communication") packet.
+
+If the RORG value (here "F6", RPS) is specified in the packet, FUNC and TYPES
+are not, hence the full, precise EEP of the packet cannot be determined from the
+telegram; extra device information must thus be available (typically specified
+out of band, in a configuration file) is order to decode it.
+
+Supported:
+
+- F6-01 corresponds to simple "Switch Buttons" (with no rocker, hence with
+punctual press/release events), described here as "push buttons"
+
+- F6-02: Rocker Switch, 2 Rocker: each rocker (A or B) has a top and a bottom
+button; pressing one sends a double_rocker_switch_event() telling that a given
+button (possibly both) is/are being pressed, and releasing it/them sends a
+`double_rocker_multipress_event()` telling "no button released simultaneously"
+
+Support to be added:
+- F6-03: Rocker Switch, 4 Rocker
+- F6-04: Position Switch, Home and Office Application
+- F6-05: Detectors
+- F6-10: Mechanical Handle
+
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.11.
+
+See decode_1bs_packet/3 for more information.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
+-spec decode_rps_packet( telegram_data_tail(), telegram_opt_data(),
+		option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
+				   Status:1/binary>>, OptData, NextMaybeTelTail,
+				   State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
+	case table:lookup_entry( SenderEurid, DeviceTable ) of
+
+		% Device first time seen:
+		key_not_found ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
+			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
+                                                             DeviceTable ),
+
+			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.",
+				[ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		% Knowing the actual EEP is needed in order to decode:
+		{ value, _Device=#enocean_device{ eep=undefined } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _UndefinedEepId } = oceanic:record_device_failure( SenderEurid,
+                                                                 DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a RPS packet "
+				"for ~ts: no EEP known for it.",
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
+                                                SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_1 } } ->
+			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
+		% Same as previous:
+		{ value, Device=#enocean_device{ eep=double_rocker_switch_style_2 } } ->
+			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
+		{ value, Device=#enocean_device{ eep=push_button } } ->
+			decode_rps_push_button_packet( DB_0, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
+		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _UnsupportedEepId } =
+				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
+				"for ~ts: EEP ~ts (~ts) not supported.",
+				[ oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  UnsupportedEepId,
+				  oceanic_generated:get_maybe_second_for_eep_strings(
+					UnsupportedEepId ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+
+	end.
+
+
+
+-doc """
+Decodes a rorg_rps single_input_contact (F6-01, simple "Switch Buttons") packet;
+in practice, only "F6-01-01" ("Push Button") exists.
+
+This corresponds to simple "Switch Buttons" (with no rocker, hence with punctual
+press/release events).
+
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.15.
+""".
+-spec decode_rps_push_button_packet( telegram_chunk(), eurid(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
+		enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
+		Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	ButtonTransition = case DB_0AsInt band ?b4 =:= 0 of
+
+		true ->
+			released;
+
+		false ->
+			pressed
+
+	end,
+
+	% (no learn bit in DB_0)
+
+	% All other bits than b4 shall be 0:
+	cond_utils:assert( oceanic_check_decoding,
+					   % Superfluous parentheses:
+					   DB_0AsInt band ( bnot ?b4 ) =:= 0 ),
+
+	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
+
+	% EEP was known, hence device was already known as well:
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG RPS packet, "
+			"with DB_0=~w; sender is ~ts, PTM switch module is ~ts, "
+			"NU message type is ~ts, ~ts~ts.",
+			[ DB_0,
+              oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+			  oceanic_text:ptm_module_to_string( PTMSwitchModuleType ),
+			  oceanic_text:nu_message_type_to_string( NuType ),
+			  oceanic_text:repeater_count_to_string( RepCount ),
+			  oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                          OptData ) ] ),
+		basic_utils:ignore_unused(
+			[ DB_0, PTMSwitchModuleType, NuType, RepCount ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #push_button_switch_event{ source_eurid=SenderEurid,
+									   name=MaybeDeviceName,
+									   eep=MaybeEepId,
+									   timestamp=Now,
+									   last_seen=MaybeLastSeen,
+									   subtelegram_count=MaybeTelCount,
+									   destination_eurid=MaybeDestEurid,
+									   dbm=MaybeDBm,
+									   security_level=MaybeSecLvl,
+									   transition=ButtonTransition },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState }.
+
+
+
+-doc """
+Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1 or
+2" packet (switch or multipress).
+
+It may contain 2 actions.
+
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.15.
+""".
+-spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
+		enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
+		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
+		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
+		NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	AppStyle = oceanic:get_app_style_from_eep( EepId ),
+
+	case { T21, NU } of
+
+		{ _T21=1, _NU=1 } ->
+
+			<<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
+
+			FirstButtonLocator = get_button_locator( R1Enum, AppStyle ),
+
+			ButtonTransition = get_button_transition( EB ),
+
+			SecondButtonLocator = get_button_locator( R2Enum, AppStyle ),
+
+			IsSecondActionValid = case SA of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+
+			% EEP was known, hence device already was known as well:
+			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+			  MaybeEepId } = oceanic:record_known_device_success( Device, DeviceTable ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			MaybeDecodedOptData = decode_optional_data( OptData ),
+
+			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+			Event = #double_rocker_switch_event{
+				source_eurid=SenderEurid,
+				name=MaybeDeviceName,
+				eep=MaybeEepId,
+				timestamp=Now,
+				last_seen=MaybeLastSeen,
+				subtelegram_count=MaybeTelCount,
+				destination_eurid=MaybeDestEurid,
+				dbm=MaybeDBm,
+				security_level=MaybeSecLvl,
+				first_action_button=FirstButtonLocator,
+				energy_bow=ButtonTransition,
+				second_action_button=SecondButtonLocator,
+				second_action_valid=IsSecondActionValid },
+
+			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+			  NextMaybeTelTail, NewState };
+
+
+		{ _T21=1, _NU=0 } ->
+
+			% The 4 last bits shall be 0:
+			%cond_utils:assert( oceanic_check_decoding,
+			%                   B_0AsInt band 2#00001111 =:= 0 ),
+
+			<<R1:3, EB:1, _:4>> = DB_0,
+
+			MaybeButtonCounting = case R1 of
+
+				0 ->
+					none;
+
+				3 ->
+					three_or_four;
+
+				% Abnormal:
+				_ ->
+					undefined
+
+			end,
+
+			ButtonTransition = get_button_transition( EB ),
+
+			% EEP was known, hence device already was known as well:
+			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+			  MaybeEepId } = oceanic:record_known_device_success( Device, DeviceTable ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			MaybeDecodedOptData = decode_optional_data( OptData ),
+
+			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+			Event = #double_rocker_multipress_event{
+				source_eurid=SenderEurid,
+				name=MaybeDeviceName,
+				eep=MaybeEepId,
+				timestamp=Now,
+				last_seen=MaybeLastSeen,
+				subtelegram_count=MaybeTelCount,
+				destination_eurid=MaybeDestEurid,
+				dbm=MaybeDBm,
+				security_level=MaybeSecLvl,
+				button_counting=MaybeButtonCounting,
+				energy_bow=ButtonTransition },
+
+			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+			  NextMaybeTelTail, NewState };
+
+
+		_Other ->
+			{ NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
+			  _IsBackOnline, _MaybeDeviceName, _MaybeEepId } =
+				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
+				"from device whose EURID is ~ts and EEP ~ts (~ts), "
+				"as T21=~B and NU=~B.",
+				[ oceanic_text:eurid_to_string( SenderEurid ), EepId,
+				  oceanic_generated:get_maybe_second_for_eep_strings( EepId ),
+				  T21, NU ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+
+	end.
+
+
+
+
+-doc """
+Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
+
+Discussed in `[EEP-spec]` p.27.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
+-spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
+		NextMaybeTelTail, State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% 0xd5 is 213.
+
+	% Apparently, at least in EEP 2.1, RPS/1BS packets are made of:
+	%  1. RORG (1 byte)
+	%  2. Data: DB0 (1 byte)
+	%  3. Sender ID (4 bytes)
+	%  4. Status (1 byte)
+	%
+	% DataTail is to contain fields 2, 3 and 4, and thus should be 6 bytes,
+	% e.g. <<9,5,5,51,236,0>>.
+	%
+	% As for OptData, an example could be <<1,255,255,255,255,45,0>>.
+
+	% For DB_0 for example, 8 bits:
+	%  * bit name:   B7 - B6 - B5 - B4 - B3 - B2 - B1 - B0
+	%  * bit offset:  0 -  1 -  2 -  3 -  4 -  5 -  6 -  7
+
+	% DB_0.3 i.e. B3:
+	LearnActivated = DB_0 band ?b3 =:= 0,
+
+	ContactStatus = case DB_0 band ?b0 =:= 0 of
+
+		true ->
+			open;
+
+		false ->
+			closed
+
+	end,
+
+	{ NewDeviceTable, NewDevice, Now, MaybePrevLastSeen, MaybeDiscoverOrigin,
+	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_device_success( SenderEurid, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG 1BS packet, "
+			"with a payload of ~B bytes (with DB_0=~w~ts; "
+			"contact is ~ts), sender is ~ts, status is ~w~ts.",
+			[ size( DataTail ), DB_0,
+              oceanic_text:learn_to_string( LearnActivated ),
+			  ContactStatus,
+              oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+			  Status,
+			  oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                          OptData ) ] ),
+		basic_utils:ignore_unused( [ DataTail, Status ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #single_input_contact_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		last_seen=MaybePrevLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		learn_activated=LearnActivated,
+		contact=ContactStatus },
+
+	{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState }.
+
+
+
+-doc """
+Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
+
+Discussed in `[EEP-spec]` p.12.
+
+DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+""".
+-spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
+		SenderEurid:32, _StatusFirstHalf:4, RC:4>>, OptData,
+		NextMaybeTelTail, State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% 0xa5 is 165.
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS packet, "
+			"with a payload of ~B bytes "
+			"(with DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w), "
+			"sending device has for EURID ~ts, ~ts~ts",
+			[ size( DataTail ), DB_3, DB_2, DB_1, DB_0,
+			  oceanic_text:eurid_to_string( SenderEurid ),
+              oceanic_text:repeater_count_to_string( RC ),
+			  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			] ),
+		basic_utils:ignore_unused( [ DataTail, RC, MaybeDecodedOptData ] ) ),
+
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
+	case table:lookup_entry( SenderEurid, DeviceTable ) of
+
+		key_not_found ->
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDeviceName,
+			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
+                                                             DeviceTable ),
+
+			% Device first time seen:
+			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.",
+                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		% Knowing the actual EEP is needed in order to decode:
+		{ value, _Device=#enocean_device{ eep=undefined } } ->
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
+                                                             DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5) packet "
+				"for ~ts: no EEP known for it.",
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
+                                                SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		{ value, Device=#enocean_device{ eep=thermo_hygro_low } } ->
+			decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
+				SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        % Expected to be less frequent than previous one:
+		{ value, Device=#enocean_device{ eep=thermometer } } ->
+			decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0,
+				SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+
+		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _UnsupportedEepId } =
+				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5F6) packet "
+				"for ~ts: EEP ~ts (~ts) not supported.",
+				[ oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  UnsupportedEepId,
+				  oceanic_generated:get_maybe_second_for_eep_strings(
+					UnsupportedEepId ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+
+   end.
+
+
+
+-doc """
+Decodes a rorg_4bs (A5) packet for the thermometer EEP "A5-02-*", precisely here
+"A5-02-05": "Temperature Sensors" (05), range 0°C to +40°C.
+
+Refer to `[EEP-spec]` p.29.
+""".
+-spec decode_4bs_thermometer_packet( uint8(), uint8(), uint8(), uint8(),
+		eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
+		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
+		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+    % Always 0 and 12 with our sensor:
+    %trace_bridge:debug_fmt( "For temperature: DB_1=~w, DB_0=~w.",
+    %                        [ ScaledTemperature, DB_0 ] ),
+
+	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110111 =:= 0 ),
+
+    % Not using round/1:
+	%Temperature = ScaledTemperature / 255.0 * 40,
+	Temperature = (1 - ScaledTemperature / 255.0) * 40,
+
+	LearnActivated = DB_0 band ?b3 =:= 0,
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermometer "
+			"packet, reporting a ~ts~ts; sender is ~ts~ts.",
+			[ oceanic_text:temperature_to_string( Temperature ),
+			  oceanic_text:learn_to_string( LearnActivated ),
+			  oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+			  oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                          OptData ) ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #thermometer_event{ source_eurid=SenderEurid,
+								name=MaybeDeviceName,
+								eep=MaybeEepId,
+								timestamp=Now,
+								last_seen=MaybeLastSeen,
+								subtelegram_count=MaybeTelCount,
+								destination_eurid=MaybeDestEurid,
+								dbm=MaybeDBm,
+								security_level=MaybeSecLvl,
+								temperature=Temperature,
+
+								% As "A5-04-01":
+								temperature_range=low,
+
+								learn_activated=LearnActivated },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState }.
+
+
+
+-doc """
+Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
+"Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100% (01).
+
+Refer to `[EEP-spec]` p.35.
+""".
+-spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
+		eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
+		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
+		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110101 =:= 0 ),
+
+	%RelativeHumidity = round( ScaledHumidity / 250.0 * 100 ),
+	RelativeHumidity = ScaledHumidity / 250.0 * 100,
+
+	MaybeTemperature = case DB_0 band ?b1 =:= 0 of
+
+		true ->
+			undefined;
+
+		false ->
+			%round( ScaledTemperature / 250.0 * 40 )
+			ScaledTemperature / 250.0 * 40
+
+	end,
+
+	LearnActivated = DB_0 band ?b3 =:= 0,
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		begin
+
+			TempStr = case MaybeTemperature of
+
+				undefined ->
+					"(no temperature available)";
+
+				Temp ->
+					text_utils:format( "and a ~ts",
+						[ oceanic_text:temperature_to_string( Temp ) ] )
+
+			end,
+
+			trace_bridge:debug_fmt( "Decoding a R-ORG 4BS thermo_hygro_low "
+				"packet, reporting a ~ts ~ts~ts; sender is ~ts~ts.",
+				[ oceanic_text:relative_humidity_to_string( RelativeHumidity ),
+                  TempStr,
+				  oceanic_text:learn_to_string( LearnActivated ),
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                         OptData ) ] )
+		end ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #thermo_hygro_event{ source_eurid=SenderEurid,
+								 name=MaybeDeviceName,
+								 eep=MaybeEepId,
+								 timestamp=Now,
+								 last_seen=MaybeLastSeen,
+								 subtelegram_count=MaybeTelCount,
+								 destination_eurid=MaybeDestEurid,
+								 dbm=MaybeDBm,
+								 security_level=MaybeSecLvl,
+								 relative_humidity=RelativeHumidity,
+								 temperature=MaybeTemperature,
+
+								 % As "A5-04-01":
+								 temperature_range=low,
+
+								 learn_activated=LearnActivated },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState }.
+
+
+
+-doc """
+Decodes a rorg_ute (D4) packet, that is a R-ORG telegram for Universal
+Teach-in/out, EEP based (UTE), one way of pairing devices.
+
+Discussed in `[EEP-gen]` p.17; p.25 for the query and p.26 for the response.
+""".
+-spec decode_ute_packet( telegram_data_tail(), telegram_opt_data(),
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+% This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
+% broadcasting (typically after one of its relevant buttons has been pressed in
+% the case of a smart plug) a request that devices (e.g. a home automation
+% gateway) declare to this initiator device.
+%
+% Proceeding byte per byte is probably clearer:
+decode_ute_packet(
+        % Hence 7+4+1=12 bytes:
+		DataTail= << CommDir:1, ResExpected:1, ReqType:2, Cmd:4, % = DB_6
+					 ChanCount:8,                                % = DB_5
+					 ManufIdLSB:8,                               % = DB_4
+					 _:5, ManufIdMSB:3,                          % = DB_3
+					 Type:8,                                     % = DB_2
+					 Func:8,                                     % = DB_1
+					 RORG:8,                                     % = DB_0
+					 InitiatorEurid:32,
+					 Status:1/binary>>,
+		OptData, NextMaybeTelTail,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	CommDirection= case CommDir of
+
+		0 ->
+			unidirectional;
+
+		% Usually:
+		1 ->
+			bidirectional
+
+	end,
+
+	{ ResponseExpected, ResponseExpectedStr } = case ResExpected of
+
+		% Usually:
+		0 ->
+			{ true, "a response is expected" } ;
+
+		1 ->
+			{ false, "no response is expected" }
+
+    end,
+
+	MaybeRequestType = case ReqType of
+
+		0 ->
+			teach_in;
+
+		1 ->
+			teach_out;
+
+		% Unspecified (usual); it is then supposed to be some kind of teach-in,
+		% (not teach-out):
+        %
+		2 ->
+			%undefined;
+            teach_in;
+
+		% Not used:
+		3 ->
+			undefined
+
+	end,
+
+	% Check:
+	Cmd = 0,
+
+	ChannelTaught = case ChanCount of
+
+		255 ->
+			all;
+
+		% Often 1:
+		ChanCount ->
+			ChanCount
+
+	end,
+
+	<<ManufId>> = <<ManufIdMSB:3, ManufIdLSB:5>>,
+
+	InitiatorEep = { RORG, Func, Type },
+
+	{ NewDeviceTable, Device=#enocean_device{ name=MaybeName,
+											  eep=MaybeEepId }, Now } =
+		oceanic:declare_device_from_teach_in( InitiatorEurid, InitiatorEep,
+                                              DeviceTable ),
+
+	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		begin
+
+			ChanStr = case ChannelTaught of
+
+				all ->
+					"all";
+
+				ChanCount ->
+					text_utils:format( "~B", [ ChanCount ] )
+
+			end,
+
+			trace_bridge:debug_fmt( "Decoding a Teach query UTE packet "
+				"from ~ts, whereas ~ts, for a ~ts communication, ~ts, "
+				"request type: ~ts involving ~ts channel(s), "
+                "manufacturer ID: ~ts, "
+				"PTM switch module is ~ts, message type is ~ts, ~ts~ts.",
+				[ oceanic_text:eurid_to_bin_string( InitiatorEurid, State ),
+				  oceanic_text:get_eep_description( MaybeEepId ), CommDirection,
+				  ResponseExpectedStr, MaybeRequestType, ChanStr,
+				  text_utils:integer_to_hexastring( ManufId ),
+				  oceanic_text:ptm_module_to_string( PTMSwitchModuleType ),
+				  oceanic_text:nu_message_type_to_string( NuType ),
+				  oceanic_text:repeater_count_to_string( RepCount ),
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, 
+                                                         OptData )
+				] )
+
+		end,
+		basic_utils:ignore_unused(
+            [ PTMSwitchModuleType, NuType, RepCount ] ) ),
+
+    % Just needing to echo DB5.7...DB0.0, hence 6 bytes:
+	<<_DB_6:8, ToEcho:6/binary, _/binary>> = DataTail,
+
+	% Probably that destination is broadcast:
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	TeachReqEvent = #teach_request_event{ source_eurid=InitiatorEurid,
+                                          name=MaybeName,
+                                          eep=MaybeEepId,
+                                          timestamp=Now,
+                                          last_seen=Now,
+                                          subtelegram_count=MaybeTelCount,
+                                          destination_eurid=MaybeDestEurid,
+                                          dbm=MaybeDBm,
+                                          security_level=MaybeSecLvl,
+                                          comm_direction=CommDirection,
+                                          response_expected=ResponseExpected,
+                                          request_type=MaybeRequestType,
+                                          channel_taught=ChannelTaught,
+                                          manufacturer_id=ManufId,
+                                          echo_content=ToEcho },
+
+    TeachState = case State#oceanic_state.auto_ack_teach_queries of
+
+        true ->
+            trace_bridge:debug( "Auto-acknowledgemet of teach query." ),
+            case MaybeRequestType of
+
+                teach_in ->
+                    oceanic:acknowledge_teach_request( TeachReqEvent,
+                        _TeachOutcome=teach_in_accepted, State );
+
+                teach_out ->
+                    oceanic:acknowledge_teach_request( TeachReqEvent,
+                        _TeachOutcome=teach_out_accepted, State );
+
+                undefined ->
+                    trace_bridge:debug( "Type of teach request unknown, hence "
+                        "not acknowledged." ),
+                    State
+
+            end;
+
+        false ->
+            State
+
+    end,
+
+	FinalState = TeachState#oceanic_state{ device_table=NewDeviceTable },
+
+    trace_bridge:debug( "Teach query decoded." ),
+
+	{ decoded, TeachReqEvent, _DiscoverOrigin=teaching, _IsBackOnline=false,
+      Device, NextMaybeTelTail, FinalState }.
+
+
+
+-doc """
+Decodes a rorg_vld (D2) packet, that is a R-ORG telegram containing Variable
+Length Data.
+
+VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
+their design.
+
+Discussed in `[EEP-gen]` p.12.
+
+Various packet types exist, in both directions (from/to sensor/actuator), and
+depend on the actual EEP (hence on its FUNC and TYPE) implemented by the emitter
+device.
+
+Yet only the RORG (namely D2) is specified on such telegrams, therefore their
+interpretation depends on the extra FUNC and TYPE information supposed to be
+known a priori by the receiver.
+""".
+-spec decode_vld_packet( telegram_data_tail(), telegram_opt_data(),
+			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
+				   State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	% We do not know yet the size of the payload, but we know that DataTail ends
+	% with SenderEurid:32 then Status:1/binary:
+	%
+	PayloadSize = size( DataTail ) - (4+1),
+
+	<<Payload:PayloadSize/binary, SenderEurid:32, Status:1/binary>> = DataTail,
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+		trace_bridge:debug_fmt( "Found a payload of ~B bytes: ~w.",
+								[ PayloadSize, Payload ] ) ),
+
+	% We have to know the specific EEP of this device in order to decode this
+	% telegram:
+	%
+	case table:lookup_entry( SenderEurid, DeviceTable ) of
+
+		% Device first time seen:
+		key_not_found ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
+			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid, 
+                                                             DeviceTable ),
+
+			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
+				"from device whose EURID is ~ts: device not configured, "
+				"no EEP known for it.", 
+                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		% Knowing the actual EEP is needed in order to decode:
+		{ value, _Device=#enocean_device{ eep=undefined } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _UndefinedEepId } =
+				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a VLD packet "
+				"for ~ts: no EEP known for it.",
+				[ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
+
+		{ value, Device=#enocean_device{ eep=smart_plug } } ->
+			decode_vld_smart_plug_packet( Payload, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
+
+		{ value, Device=#enocean_device{ eep=smart_plug_with_metering } } ->
+			decode_vld_smart_plug_with_metering_packet( Payload,
+				SenderEurid, Status, OptData, NextMaybeTelTail, Device, State );
+
+
+		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
+
+			% Not trying to decode optional data then.
+
+			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+			  _UnsupportedEepId } =
+				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+			% Device probably already seen:
+			trace_bridge:debug_fmt( "Unable to decode a VLD (D2) packet "
+				"for ~ts: EEP ~ts (~ts) not supported.",
+				[ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  UnsupportedEepId,
+				  oceanic_generated:get_maybe_second_for_eep_strings(
+					UnsupportedEepId ) ] ),
+
+			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+
+	end.
+
+
+
+-doc """
+Decodes a packet emitted by a rorg_vld smart_plug (D2-01-0A, an `Electronic
+switches and dimmers with Energy Measurement and Local Control` device of type
+0A).
+
+This corresponds to basic smart, non-metering plugs bidirectional actuators that
+may control (switch on/off) most electrical loads (e.g. appliances); they do not
+perform metering.
+
+Discussed in `[EEP-spec]` p. 132.
+
+Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status
+Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
+`[EEP-spec]` p. 135), it is an information sent (as a broadcast) by the smart
+plug about its status (either after a status request or after a state change
+request - whether or not it triggered an actual state change), typically to
+acknowledge that a requested switching was indeed triggered.
+""".
+-spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
+		telegram_opt_data(), option( telegram_tail() ), enocean_device(),
+		oceanic_state() ) -> decoding_outcome().
+decode_vld_smart_plug_packet(
+		% 3 bytes (no OutputValue available):
+		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
+					CmdAsInt:4, OverCurrentSwitchOff:1, ErrorLevel:2,
+					_IOChannel:5, LocalControl:1, _OutputValue:7>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } )
+						when CmdAsInt =:= 16#4 ->
+
+	% Mostly as decode_vld_smart_plug_with_metering_packet/7, except no
+	% measurement.
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+
+	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
+			case PowerFailureEnabled of
+
+		0 ->
+			{ false, false };
+
+		1 ->
+			Detect = case PowerFailureDetected of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+			{ true, Detect }
+
+	end,
+
+	IsOverCurrentSwitchOffTrigger = case OverCurrentSwitchOff of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	HardwareStatus = case ErrorLevel of
+
+		0 ->
+			nominal;
+
+		1 ->
+			warning;
+
+		2 ->
+			failure;
+
+		3 ->
+			not_supported
+
+	end,
+
+	% IOChannel not decoded yet.
+
+	IsLocalControlEnabled = case LocalControl of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	MaybeCmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			PFStr = oceanic_text:interpret_power_failure( IsPowerFailureEnabled,
+											 IsPowerFailureDetected ),
+
+			OCStr = oceanic_text:interpret_overcurrent_trigger(
+				IsOverCurrentSwitchOffTrigger ),
+
+			HardStr = oceanic_text:interpret_hardware_status( HardwareStatus ),
+
+			LocCtrlStr = oceanic_text:interpret_local_control( IsLocalControlEnabled ),
+
+			trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
+				  HardStr, LocCtrlStr,
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+			 MaybeDecodedOptData, IsPowerFailureEnabled,
+			 IsPowerFailureDetected ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #smart_plug_status_report_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=undefined },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState };
+
+
+% For other, not supported yet, smart plug command packets:
+decode_vld_smart_plug_packet(
+		% 3 bytes:
+		_Payload= <<_:4, CmdAsInt:5, _Rest/binary>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	% Actually is currently not managed:
+	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			trace_bridge:debug_fmt(
+				"Partial decoding a VLD smart plug packet "
+				"for command '~ts' (~B); sender is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+									 MaybeDecodedOptData ] ) ),
+
+	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
+
+
+
+
+-doc """
+Decodes a packet emitted by a rorg_vld smart_plug_with_metering (D2-01-0B, an
+`Electronic switches and dimmers with Energy Measurement and Local Control`
+device of type 0B).
+
+This corresponds to smart, metering plugs bidirectional actuators that may
+control (switch on/off) most electrical loads (e.g. appliances) and may report
+metering information.
+
+See decode_vld_smart_plug_packet/7 for extra details.
+
+Discussed in `[EEP-spec]` p.143.
+""".
+-spec decode_vld_smart_plug_with_metering_packet( vld_payload(), eurid(),
+		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
+		enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_vld_smart_plug_with_metering_packet(
+		% 3 bytes:
+		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
+					CmdAsInt:4, OverCurrentSwitchOff:1, ErrorLevel:2,
+					_IOChannel:5, LocalControl:1, OutputValue:7>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } )
+					when CmdAsInt =:= 16#4 ->
+
+	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
+			case PowerFailureEnabled of
+
+		0 ->
+			{ false, false };
+
+		1 ->
+			Detect = case PowerFailureDetected of
+
+				0 ->
+					false;
+
+				1 ->
+					true
+
+			end,
+			{ true, Detect }
+
+	end,
+
+	IsOverCurrentSwitchOffTrigger = case OverCurrentSwitchOff of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	HardwareStatus = case ErrorLevel of
+
+		0 ->
+			nominal;
+
+		1 ->
+			warning;
+
+		2 ->
+			failure;
+
+		3 ->
+			not_supported
+
+	end,
+
+	% IOChannel not decoded yet.
+
+	IsLocalControlEnabled = case LocalControl of
+
+		0 ->
+			false;
+
+		1 ->
+			true
+
+	end,
+
+	MaxLevel = 16#64,
+
+	OutputPower = case OutputValue of
+
+		0 ->
+			off;
+
+		V when V =< MaxLevel ->
+			round( V / MaxLevel * 100.0 );
+
+		% 16#7e: not used.
+
+		16#7f ->
+			not_available
+
+	end,
+
+	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			PFStr = oceanic_text:interpret_power_failure( IsPowerFailureEnabled,
+											 IsPowerFailureDetected ),
+
+			OCStr = oceanic_text:interpret_overcurrent_trigger(
+				IsOverCurrentSwitchOffTrigger ),
+
+			HardStr = oceanic_text:interpret_hardware_status( HardwareStatus ),
+
+			LocCtrlStr = 
+                oceanic_text:interpret_local_control( IsLocalControlEnabled ),
+
+			PowerStr = oceanic_text:interpret_power_report( OutputPower ),
+
+			trace_bridge:debug_fmt(
+				"Decoding a VLD smart plug with metering packet "
+				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, "
+				"~ts; this plug is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ), 
+                  PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, 
+                                                         OptData ) ] )
+
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+			 MaybeDecodedOptData, IsPowerFailureEnabled,
+			 IsPowerFailureDetected ] ) ),
+
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+		resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	Event = #smart_plug_status_report_event{
+		source_eurid=SenderEurid,
+		name=MaybeDeviceName,
+		eep=MaybeEepId,
+		timestamp=Now,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=OutputPower },
+
+	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+	  NextMaybeTelTail, NewState };
+
+
+% For other, not supported yet, smart plug with metering command packets:
+decode_vld_smart_plug_with_metering_packet(
+		% 3 bytes:
+		_Payload= <<_:4, CmdAsInt:5, _Rest/binary>>,
+		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
+		State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
+
+	% Actually is currently not managed:
+	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
+		oceanic:record_known_device_success( Device, DeviceTable ),
+
+	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+	MaybeDecodedOptData = decode_optional_data( OptData ),
+
+	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+	cond_utils:if_defined( oceanic_debug_decoding,
+
+		begin
+			trace_bridge:debug_fmt(
+				"Partial decoding a VLD smart plug with metering packet "
+				"for command '~ts' (~B); sender is ~ts~ts.",
+				[ MaybeCmd, CmdAsInt,
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				] )
+		end,
+
+		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
+									 MaybeDecodedOptData ] ) ),
+
+	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
+
+
+
+
+
+
+% Section for decoding helpers.
+
+
+-doc """
+Decodes the specified optional data, if any.
+
+Refer to `[ESP3]` p.18 for its description.
+
+The CRC for the overall full data (base+optional) is expected to have been
+checked beforehand.
+""".
+-spec decode_optional_data( telegram_opt_data() ) ->
+										option( decoded_optional_data() ).
+decode_optional_data( _OptData= <<SubTelNum:8, DestinationEurid:32, DBm:8,
+								  SecurityLevel:8>> ) ->
+	{ SubTelNum, DestinationEurid, decode_maybe_dbm( DBm ),
+	  decode_maybe_security_level( SecurityLevel ) };
+
+decode_optional_data( _NoOptData= <<>> ) ->
+	undefined;
+
+decode_optional_data( Other ) ->
+	trace_bridge:warning_fmt( "Unable to decode following optional data "
+		"(of size ~B bytes): ~w.", [ size( Other ), Other ] ),
+	undefined.
+
+
+
+-doc "Decodes the specified byte as a dBm measurement.".
+-spec decode_maybe_dbm( uint8() ) -> option( dbm() ).
+decode_maybe_dbm( 16#ff ) ->
+	% Should be a sending:
+	undefined;
+
+decode_maybe_dbm( V ) ->
+	-V.
+
+
+
+-doc "Decodes the specified byte as a security level.".
+-spec decode_maybe_security_level( uint8() ) -> option( security_level() ).
+decode_maybe_security_level( 0 ) ->
+	not_processed;
+
+decode_maybe_security_level( 1 ) ->
+	obsolete;
+
+decode_maybe_security_level( 2 ) ->
+	decrypted;
+
+decode_maybe_security_level( 3 ) ->
+	authenticated;
+
+decode_maybe_security_level( 4 ) ->
+	decrypted_and_authenticated;
+
+decode_maybe_security_level( Other ) ->
+	trace_bridge:warning_fmt( "Invalid telegram security level: ~B",
+							  [ Other ] ),
+	undefined.
+
+
+
+-doc "Helper to resolve correctly elements (if any) of optional data.".
+-spec resolve_maybe_decoded_data( option( decoded_optional_data() ) ) ->
+		{ option( subtelegram_count() ), option( eurid() ), option( dbm() ),
+		  option( security_level() ) }.
+resolve_maybe_decoded_data( _MaybeDecodedOptData=undefined ) ->
+	{ undefined, undefined, undefined, undefined };
+
+resolve_maybe_decoded_data( DecodedOptData ) ->
+	DecodedOptData.
+
+
+
+
+% Could be a bijective topic as well:
+
+
+-doc """
+Returns the button designated by the specified enumeration, in the context of
+the specified application style.
+""".
+-spec get_button_locator( enum(), application_style() ) -> button_locator().
+% Application style 1:
+get_button_locator( _Enum=0, _AppStyle=1 ) ->
+	% button_ai / button A, bottom
+	{ _Channel=1, _Pos=bottom };
+
+get_button_locator( _Enum=1, _AppStyle=1 ) ->
+	% button_ao / button A, top
+	{ _Channel=1, _Pos=top };
+
+get_button_locator( _Enum=2, _AppStyle=1 ) ->
+	% button_bi / button B, bottom
+	{ _Channel=2, _Pos=bottom };
+
+get_button_locator( _Enum=3, _AppStyle=1 ) ->
+	% button_bo / button B, top
+	{ _Channel=2, _Pos=top };
+
+
+% Application style 2; checked from the actual readings from a Nodon CRC-2-6-04
+% (EEP F6-02-02):
+%
+get_button_locator( _Enum=0, _AppStyle=2 ) ->
+	% button_ai / button A, top
+	%{ _Channel=1, _Pos=top };
+	{ _Channel=2, _Pos=bottom };
+
+get_button_locator( _Enum=1, _AppStyle=2 ) ->
+	% button_ao / button A, bottom
+	%{ _Channel=1, _Pos=bottom };
+	{ _Channel=2, _Pos=top };
+
+get_button_locator( _Enum=2, _AppStyle=2 ) ->
+	% button_bi / button B, top
+	%{ _Channel=2, _Pos=top };
+	{ _Channel=1, _Pos=bottom };
+
+get_button_locator( _Enum=3, _AppStyle=2 ) ->
+	% button_bo / button B, bottom
+	%{ _Channel=2, _Pos=bottom }.
+	{ _Channel=1, _Pos=top }.
+
+
+
+% Could be a bijective topic as well:
+
+
+-doc "Returns the button transition corresponding to the specified energy bow.".
+-spec get_button_transition( enum() ) -> button_transition().
+get_button_transition( _EnergyBow=0 ) ->
+	released;
+
+get_button_transition( _EnergyBow=1 ) ->
+	pressed.
+
+
+
+
+-doc """
+Decodes the RPS status byte, common to many RPS telegrams.
+
+Refer to `[EEP-spec]` p.11 for further details.
+""".
+-spec get_rps_status_info( telegram_chunk() ) ->
+		{ ptm_switch_module_type(), nu_message_type(), repetition_count() }.
+get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
+
+	PTMSwitchModuleType = case T21 + 1 of
+
+		1 ->
+			ptm1xx;
+
+		2 ->
+			ptm2xx
+
+	end,
+
+	% Nu expected to be 0 (Normal-message) or 1 (Unassigned-message), yet found
+	% to be 2 or 3:
+	%
+	NuType = case Nu of
+
+		0 ->
+			normal;
+
+		1 ->
+			unassigned;
+
+		2 ->
+			unknown_type_2;
+
+		3 ->
+			unknown_type_3
+
+	end,
+
+	{ PTMSwitchModuleType, NuType, RC }.
