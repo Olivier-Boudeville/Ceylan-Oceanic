@@ -86,7 +86,7 @@ get_maybe_packet_type_topic_spec() ->
 -doc """
 Returns the specification for the 'return_code' topic.
 
-For return codes, as defined in [ESP3].
+For return codes, as defined in `[ESP3]`.
 """.
 -spec get_maybe_return_code_topic_spec() -> topic_spec().
 get_maybe_return_code_topic_spec() ->
@@ -105,7 +105,7 @@ get_maybe_return_code_topic_spec() ->
 -doc """
 Returns the specification for the 'event_code' topic.
 
-For event codes, as defined in [ESP3].
+For event codes, as defined in `[ESP3]`.
 """.
 -spec get_maybe_event_code_topic_spec() -> topic_spec().
 get_maybe_event_code_topic_spec() ->
@@ -125,7 +125,7 @@ get_maybe_event_code_topic_spec() ->
 -doc """
 Returns the specification for the 'rorg' topic.
 
-For the RORG field of an ERP radio telegram type, as defined in [EEP] p.14.
+For the RORG field of an ERP radio telegram type, as defined in `[EEP]` p.14.
 """.
 -spec get_maybe_rorg_topic_spec() -> topic_spec().
 get_maybe_rorg_topic_spec() ->
@@ -170,7 +170,7 @@ get_maybe_rorg_description_topic_spec() ->
 		{ rorg_ex,         <<"SYS_EX (Remote Management)">> },
 		{ rorg_sec,        <<"SEC (Secure telegram)">> },
 		{ rorg_sec_encaps,
-			<<"SEC_ENCAPS (Secure telegram with RORG encapsulation)">> },
+			<<"SEC_ENCAPS (Secure telegram with RORG encapsul ation)">> },
 		{ rorg_man,        <<"SEC_MAN (Maintenance Security message)">> },
 		{ rorg_signal,     <<"SIGNAL (Signal telegram)">> },
 		{ rorg_ute,        <<"UTE (Universal Teach In)">> } ],
@@ -305,7 +305,7 @@ possible values)
 
 Second elements are their higher-level command names.
 
-Described in [EEP-spec] p.131.
+Described in `[EEP-spec]` p.131.
 """.
 -spec get_maybe_vld_d2_00_cmd_topic_spec() -> topic_spec().
 get_maybe_vld_d2_00_cmd_topic_spec() ->
