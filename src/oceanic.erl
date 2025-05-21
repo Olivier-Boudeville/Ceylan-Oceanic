@@ -165,7 +165,8 @@ through an Oceanic server**.
 
 % Exported only for testing:
 -export([ get_test_state/0, get_test_state/1,
-		  test_decode/1, secure_tty/1, try_integrate_next_telegram/4,
+		  test_decode/1, test_describe/1,
+          secure_tty/1, try_integrate_next_telegram/4,
 
 		  device_event_to_string/1, device_event_to_short_string/1,
 		  state_to_string/1 ]).
@@ -300,10 +301,10 @@ device status.
 -doc """
 Tracking information supplied with a trigger request sent to an actuator.
 
-For example ``{smart_plug_status_report_event, power_off}``.
+For example `{smart_plug_status_report_event, power_off}`.
 """.
--type trigger_track_spec() :: { device_event_type(),
-								option( reported_event_info() ) }.
+-type trigger_track_spec() ::
+    { device_event_type(), option( reported_event_info() ) }.
 
 
 -doc """
@@ -470,6 +471,8 @@ an ERP1 radio packet), a prefix possibly complemented with optional data.
 The (encoded) part of a telegram with the optional data that may
 complement/extend the base data (see telegram_data()).
 
+Refer to `[ESP3]`. p.18.
+
 See also decoded_optional_data/0.
 """.
 -type telegram_opt_data() :: telegram_chunk().
@@ -480,10 +483,14 @@ See also decoded_optional_data/0.
 The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
 telegrams.
 
+Refer to `[ESP3]`. p.18.
+
 See also telegram_opt_data/0.
 """.
 -type decoded_optional_data() ::
-	{ subtelegram_count(), eurid(),	option( dbm() ),
+	{ subtelegram_count(), % Number of subtelegrams (send: 3 / receive: 0)
+      DestID :: eurid(), % Either broadcast or the EURID of the target device
+      option( dbm() ),
 	  option( security_level() ) }.
 
 
@@ -698,7 +705,7 @@ translated in terms of AI, AO, etc.
 -doc """
 Our best way of identifying a button.
 
-For example: {2, bottom}.
+For example: `{2, bottom}`.
 """.
 -type button_locator() :: { channel(), button_position() }.
 
@@ -765,13 +772,13 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 
 
 -doc """
-The type of a VLD message, in the context of the D2-00 EEPs: "Room Control Panel
-(RCP)".
+The type of a VLD message, in the context of the D2-00 EEPs: `"Room Control
+Panel (RCP)"`.
 
 It is also designated by the MI field of these VLD telegrams, the 3 last bits of
 the first byte of the payload (hence 8 possible values).
 
-Described in [EEP-spec] p.127.
+Described in `[EEP-spec]` p.127.
 """.
 -type vld_rcp_message_type() ::
 	'a'  % ID 01
@@ -786,15 +793,15 @@ Described in [EEP-spec] p.127.
 
 
 -doc """
-The type of a VLD message, in the context of the D2-01 EEPs: "Electronic
-switches and dimmers with Energy Measurement and Local Control".
+The type of a VLD message, in the context of the D2-01 EEPs: `"Electronic
+switches and dimmers with Energy Measurement and Local Control"`.
 
 Refer to the 'vld_d2_00_cmd' topic.
 
 It is also designated by the CMD field of these VLD telegrams, the 4 last bits
 of the first byte of the payload (hence 16 possible values).
 
-Described in [EEP-spec] p.131.
+Described in `[EEP-spec]` p.131.
 """.
 -type vld_d2_00_cmd() ::
 	'actuator_set_output'
@@ -823,10 +830,21 @@ Described in [EEP-spec] p.131.
 
 
 
--doc "The outcome of a decoding.".
+-doc """
+The outcome of a decoding.
+
+The outcome of an attempt of integrating / decoding a telegram chunk.
+
+A maybe-event was returned, as for example a common command response that is
+received whereas no request was sent shall be discarded.
+
+A maybe-discovery origin is also returned, so that an already discovered device
+is not reported as being discovered more than once ('undefined' is returned once
+already discovered).
+""".
 -type decoding_outcome() ::
 
-	{ 'decoded', option( device_event() | 'command_processed' ),
+	{ 'decoded',  device_event() | 'command_processed',
 	  MaybeDiscoverOrigin :: option( discovery_origin() ),
 	  IsBackOnline :: boolean(), MaybeDevice :: option( enocean_device() ),
 	  NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }
@@ -836,14 +854,6 @@ Described in [EEP-spec] p.131.
 
 
 
-% The outcome of an attempt of integrating / decoding a telegram chunk.
-%
-% A maybe-event is returned, as for example a common command response that is
-% received whereas no request was sent shall be discarded.
-%
-% A maybe-discovery origin is also returned, so that an already discovered
-% device is not reported as being discovered more than once ('undefined' is
-% returned once already discovered).
 
 
 
@@ -858,7 +868,7 @@ identification number (as a 32-bit value) assigned to every EnOcean transmitter
 during its production process.
 
 The EURID corresponds to the hexadecimal identifier typically labelled at the
-back of devices (e.g. "ID: B50533EC").
+back of devices (e.g. `"ID: B50533EC"`).
 
 Our EURIDs are defined and stored in uppercase, as they are generally written on
 devices.
@@ -873,7 +883,7 @@ denotes a broadcast transmission (as opposed to an Addressed Transmission, ADT).
 -doc """
 An EURID, expressed as a string.
 
-For example: "B50533EC".
+For example: `"B50533EC"`.
 """.
 -type eurid_string() :: ustring().
 
@@ -897,8 +907,8 @@ For example: `<<"B50533EC">>`.
 The CRC (Cyclic Redundancy Check) or polynomial code checksum of a
 sub-telegram/packet can be computed.
 
-Remainder on 8 bits of the modulo 2 division of the G(x) = x^8 + x^2 + x^1 + x^0
-polynom.
+Remainder on 8 bits of the modulo 2 division of the `G(x) = x^8 + x^2 + x^1 +
+x^0` polynom.
 """.
 -type crc() :: byte().
 
@@ -917,7 +927,7 @@ to extend an existing ESP3 packet.
 -doc """
 The type of a (typically ESP3) packet.
 
-Refer to [ESP3] p.12.
+Refer to `[ESP3]` p.12.
 
 After a radio_erp1, radio_sub_tel or remote_man_command packet, a response
 packet is expected.
@@ -935,8 +945,8 @@ See also the 'packet_type' topic in the oceanic_generated module.
 
 -doc """
 The payload of a (typically ESP3) packet, a sequence of bytes sometimes
-designated as 'DataTail', that is all bytes in the "data" chunk (as opposed to
-the "optional data" one) found after the R-ORG one.
+designated as 'DataTail', that is all bytes in the `data` chunk (as opposed to
+the `optional data` one) found after the R-ORG one.
 
 Such a payload corresponds to a packet of a given type (e.g. an ERP1 radio
 packet, encapsulated in an ESP3 packet).
@@ -1028,7 +1038,7 @@ back online.
 -doc """
 Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any range).
 
-Refer to [EEP-spec] p.35 for further details.
+Refer to `[EEP-spec]` p.35 for further details.
 """.
 -type thermo_hygro_event() :: #thermo_hygro_event{}.
 
@@ -1039,7 +1049,7 @@ Event sent by EEP D5-00-01: Single Input Contact.
 
 D5-00 corresponds to Contacts and Switches.
 
-Refer to [EEP-spec] p.27 for further details.
+Refer to `[EEP-spec]` p.27 for further details.
 
 Note that, at least by default, most if not all opening detectors not only
 report state transitions (between closed and opened), they also notify regularly
@@ -1057,7 +1067,7 @@ detect the actual transitions (even if they are late).
 -doc """
 Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
 
-Refer to [EEP-spec] p.15 for further details.
+Refer to `[EEP-spec]` p.15 for further details.
 """.
 -type push_button_switch_event() :: #push_button_switch_event{}.
 
@@ -1067,7 +1077,7 @@ Refer to [EEP-spec] p.15 for further details.
 Event sent in the context of EEPs D2-01-* (e.g 0A), corresponding to an Actuator
 Status Response (command 0x4), so that a smart plug reports its current state.
 
-Refer to [EEP-spec] p.135 for further details.
+Refer to `[EEP-spec]` p.135 for further details.
 """.
 -type smart_plug_status_report_event() :: #smart_plug_status_report_event{}.
 
@@ -1082,7 +1092,7 @@ Refer to [EEP-spec] p.135 for further details.
 Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
 - Application Style 1 or 2"), for T21=1.
 
-Refer to [EEP-spec] p.16 for further details.
+Refer to `[EEP-spec]` p.16 for further details.
 """.
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
 
@@ -1092,7 +1102,7 @@ Refer to [EEP-spec] p.16 for further details.
 Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
 - Application Style 1 or 2"), for T21=1 and NU=0.
 
-Refer to [EEP-spec] p.16 for further details.
+Refer to `[EEP-spec]` p.16 for further details.
 """.
 -type double_rocker_multipress_event() :: #double_rocker_multipress_event{}.
 
@@ -1108,9 +1118,9 @@ Message (hence not an event per se) corresponding to the receiving a R-ORG
 telegram for an universal Teach-in request, EEP based (UTE), one way of pairing
 devices.
 
-Refer to [EEP-gen] p.17 for further details.
+Refer to `[EEP-gen]` p.17 for further details.
 """.
--type teach_request() :: #teach_request{}.
+-type teach_request_event() :: #teach_request_event{}.
 
 
 
@@ -1160,7 +1170,7 @@ See also their corresponding tags, defined in device_event_type/0.
   | double_rocker_multipress_event()
 
 	% Other events:
-  | teach_request()
+  | teach_request_event()
   | command_response().
 
 
@@ -1178,7 +1188,7 @@ Note that they correspond to the tags of the corresponding records.
   | 'double_rocker_multipress_event'
 
 	% Other events:
-  | 'teach_request'
+  | 'teach_request_event'
   | 'command_response'.
 
 
@@ -1767,7 +1777,7 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 %
 % - for 4BS: 3 variations exist, some allowing to exchange EEPs
 %
-% See [EEP-gen] starting from p.18 for more details.
+% See `[EEP-gen]` starting from p.18 for more details.
 
 
 % Common command section.
@@ -1815,10 +1825,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 % the Sender-ID of an arriving telegram is interpreted as an authorized
 % information source. To prevent unwanted devices from being learned, the input
 % sensitivity of the receiver is often reduced, and the device to be learned
-% should be placed close by the receiver. Some transmitters can also be
-% switched into the learn-mode via a remote management command. To avoid
-% inadvertent learning the RPS telegrams have to be triggered 3 times
-% within 2 seconds.
+% should be placed close by the receiver. Some transmitters can also be switched
+% into the learn-mode via a remote management command. To avoid inadvertent
+% learning, the RPS telegrams have to be triggered 3 times within 2 seconds.
 
 
 % Definition of the overall state of an Oceanic server.
@@ -1846,6 +1855,17 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 	device_table :: device_table(),
 
 
+    % Tells whether, when receiving a teach-in or teach-out query (e.g. from a
+    % smart plug put in learning mode), a teach-in/out acknowledgement response
+    % shall be automatically sent back, so that this gateway becomes
+    % registered/unregistered as a controller of the device that sent the
+    % teach-in query.
+    %
+    % Does not do anything besides sending that acknowledgement response to the
+    % taught device.
+    %
+    auto_ack_teach_queries = 'true' :: boolean(),
+
 	% We enqueue command requests that shall result in an acknowledgement (most
 	% of them; possibly all of them), as such acks, at least generally, just
 	% contain a corresponding return code - nothing else that could be
@@ -1867,9 +1887,9 @@ See also oceanic_generated:get_return_code_topic_spec/0.
 	% in an acknowledgement; so corresponds to any pending, sent but not yet
 	% acknowledged ESP3 command whose response telegram is still waited for.
 	% Note that some devices apparently may be configured to not ack incoming
-	% commands (however [ESP3] p.17 tells that "it is mandatory to wait for the
-	% RESPONSE message"); in this case this information should be registered in
-	% their enocean_device() record.
+	% commands (however `[ESP3]` p.17 tells that "it is mandatory to wait for
+	% the RESPONSE message"); in this case this information should be registered
+	% in their enocean_device() record.
 	%
 	waited_command_info :: option( waited_command_info() ),
 
@@ -2397,16 +2417,30 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 											 waited_command_info=undefined };
 
 
+                % Dropping any other unrelated event caught by accident:
+				{ decoded, OtherEvent, _MaybeDiscoverOrigin,
+						_IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
+						ReadState } ->
+
+                    trace_bridge:debug_fmt( "Dropping unrelated event ~ts read "
+                        "while waiting for the initial base ID request.",
+                        [ device_event_to_string( OtherEvent ) ] ),
+
+					wait_initial_base_request( _NewToSkipLen=0,
+                                               NewMaybeNextTelTail, ReadState );
+
+
 				{ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
 
-					cond_utils:if_defined( oceanic_debug_tty,
-						trace_bridge:debug_fmt( "Unsuccessful decoding, '~w' "
+					%cond_utils:if_defined( oceanic_debug_tty,
+						trace_bridge:debug_fmt( "Unsuccessful decoding of the "
+                            "initial base ID request: '~w' "
 							"(whereas NewToSkipLen=~B, "
                             "NewMaybeNextTelTail=~w).",
 							[ Unsuccessful, NewToSkipLen,
                               NewMaybeNextTelTail ] ),
-						basic_utils:ignore_unused(
-							[ Unsuccessful, NewMaybeNextTelTail ] ) ),
+					%   basic_utils:ignore_unused(
+					%       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
 					wait_initial_base_request( NewToSkipLen, MaybeNextTelTail,
 											   NewState )
@@ -3007,7 +3041,6 @@ interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
 % Non-matching case:
 interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 
-
 	cond_utils:if_defined( us_main_debug_home_automation,
 		trace_bridge:debug_fmt(
 			"(this event ~ts does not match the presence switching ~ts)",
@@ -3401,31 +3434,31 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
 
 
--doc "Sends the specified telegram, through the specified Oceanic server.".
--spec send( telegram(), oceanic_server_pid() ) -> void().
-send( Telegram, OcSrvPid ) ->
-	OcSrvPid ! { sendOceanic, Telegram }.
-
 
 
 -doc """
-Acknowledges (accepts) the specified teach request, by sending a (successful)
-teach response.
+Acknowledges (accepts) the specified teach-in our teach-out request, by sending
+a (successful) teach response.
 
-See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen]
+See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) `[EEP-gen]`
 p.26.
 """.
--spec acknowledge_teach_request( teach_request(), oceanic_server_pid() ) ->
-													void().
-acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_in },
-						   OcSrvPid ) ->
-	acknowledge_teach_request( TeachReq, _TeachOutcome=teach_in_accepted,
-							   OcSrvPid );
+-spec acknowledge_teach_request( teach_request_event(),
+                                 oceanic_server_pid() ) -> void().
+acknowledge_teach_request(
+        TeachReqEv=#teach_request_event{ request_type=teach_in },
+        OcSrvPid ) ->
+    % Answering unconditionally that teach-in is accepted:
+    OcSrvPid ! { acknowledgeTeachRequest,
+                    [ TeachReqEv, _TeachOutcome=teach_in_accepted ] };
 
-acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_out },
-						   OcSrvPid ) ->
-	acknowledge_teach_request( TeachReq, _TeachOutcome=teach_out_accepted,
-							   OcSrvPid ).
+acknowledge_teach_request(
+        TeachReqEv=#teach_request_event{ request_type=teach_out },
+		OcSrvPid ) ->
+    % Answering unconditionally that teach-out is accepted:
+    OcSrvPid ! { acknowledgeTeachRequest,
+                    [ TeachReqEv, _TeachOutcome=teach_out_accepted ] }.
+
 
 
 
@@ -3433,55 +3466,35 @@ acknowledge_teach_request( TeachReq=#teach_request{ request_type=teach_out },
 Acknowledges the specified teach-in request, by sending the specified teach-in
 response.
 
-See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) [EEP-gen] p.26.
+No tracking of any answer is done.
+
+See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) `[EEP-gen]` p.26.
 """.
--spec acknowledge_teach_request( teach_request(), teach_outcome(),
-								 oceanic_server_pid() ) -> void().
-acknowledge_teach_request( #teach_request{ source_eurid=RequesterEurid,
-										   comm_direction=CommDirection,
-										   echo_content=EchoContent },
-						   TeachOutcome, OcSrvPid ) ->
+-spec acknowledge_teach_request( teach_request_event(), teach_outcome(),
+								 oceanic_state() ) -> oceanic_state().
+acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
+                                                 comm_direction=_CommDirection,
+                                                 response_expected=true,
+                                                 request_type=teach_in,
+                                                 echo_content=EchoContent },
+						   TeachOutcome, State ) ->
 
-	CommDir = case CommDirection of
+    % We transmit the initiator EURID as the target (thus not ours with
+    % State#oceanic_state.emitter_eurid), and bidirectional (not unidirectional)
+    % is the relevant setting:
+    %
+    TeachInRespTel = encode_teach_in_response( TeachOutcome,
+        InitiatorEurid, _EmitterEurid=State#oceanic_state.emitter_eurid,
+        _CommDir=bidirectional, EchoContent ),
 
-		unidirectional ->
-			0;
+	cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
+       "Acknowledging teach-in request as '~ts', with telegram ~w.",
+       [ TeachOutcome, TeachInRespTel ] ) ),
 
-		bidirectional ->
-			1
+    send_raw_telegram( TeachInRespTel, State ).
 
-	end,
 
-	ReqType = case TeachOutcome of
 
-		teach_refused ->
-			0;
-
-		teach_in_accepted ->
-			1;
-
-		teach_out_accepted ->
-			2;
-
-		teach_eep_unsupported ->
-			3
-
-	end,
-
-	CmdId = 1,
-
-	FirstByte = <<CommDir:1, 0:1, ReqType:2, CmdId:4>>,
-
-	% DB5.7 to DB0.0 has same structure as Teach-in-Query, and contents are
-	% echoed back:
-	%
-	Data = <<FirstByte/binary, EchoContent/binary>>,
-
-	OptData = get_optional_data_for_sending( RequesterEurid ),
-
-	Telegram = encode_esp3_packet( _RadioPacketType=rorg_vld, Data, OptData ),
-
-	send( Telegram, OcSrvPid ).
 
 
 
@@ -3511,7 +3524,7 @@ encode_double_rocker_telegram( SourceEurid,
 	ButtonLocator = { Channel, ButPos },
 
 	encode_double_rocker_switch_telegram( SourceEurid, AppStyle, ButtonLocator,
-		ButTrans, TargetEurid ).
+                                          ButTrans, TargetEurid ).
 
 
 
@@ -3531,7 +3544,7 @@ Event sent in the context of EEP F6-02-01 or EEP F6-02-02 ("Light and Blind
 Control - Application Style 1 or 2"), for T21=1. It results thus in a RPS
 telegram, an ERP1 radio packet encapsulated into an ESP3 one.
 
-See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 
 Depending on how Oceanic was learnt by the target actuator, it will be seen
 either as a rocker (recommended) or as push-button(s): refer to
@@ -3603,8 +3616,8 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 	T21 = 1,
 	NU = 1,
 
-	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer, yet
-	% zero already works, so:
+	% Apparently Repeater Count (see `[EEP-gen]` p.14); non-zero deemed safer,
+	% yet zero already works, so:
 
 	%RC = 1,
 	RC = 0,
@@ -3622,9 +3635,9 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		begin
-			<<Db_0asint>> = Db_0,
-			<<Statusasint>> = Status,
-			Padwidth = 8,
+			<<DB_0AsInt>> = DB_0,
+			<<StatusAsInt>> = Status,
+			PadWidth = 8,
 			trace_bridge:debug_fmt(
 				"Generated packet: type=~ts RORG=~ts, DB_0=~ts, "
 				"data size=~B, optional data size=~B, status=~ts.",
@@ -3648,7 +3661,7 @@ Event sent in the context of EEP F6-02-01 or F6-02-02 ("Light and Blind Control
 - Application Style 1 or 2"), for T21=1. It results thus in a RPS telegram, an
 ERP1 radio packet encapsulated into an ESP3 one.
 
-See [EEP-spec] p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 """.
 -spec encode_double_rocker_multipress_telegram( eurid(), option( eurid() ),
 		button_counting(), button_transition() ) -> telegram().
@@ -3690,7 +3703,7 @@ encode_double_rocker_multipress_telegram( SourceEurid, ButtonCounting,
 	T21 = 1,
 	NU = 0,
 
-	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
+	% Apparently Repeater Count (see `[EEP-gen]` p.14); non-zero deemed safer:
 	%RC = 1,
 	RC = 0,
 
@@ -3724,7 +3737,90 @@ encode_double_rocker_multipress_telegram( SourceEurid, ButtonCounting,
 
 
 -doc """
+Encodes a successful Teach-In Response - UTE Message telegram (Addressed / CMD:
+0x1).
+
+This message is the reply to an EEP Teach-In Query message that was sent by an
+initiator device (e.g. a smart plug, to register any new controller of it).
+
+The content to echo is the 6 last bytes of the teach-in query, i.e. DB_{5..0}.
+
+The returned telegram allows the sender (the home automation gateway),
+supposedly in "learn mode", to be registered by the learning device as a
+controller thereof.
+
+Refer to [EEP-spec] p.255 for more information.
+""".
+-spec encode_teach_in_response( teach_outcome(), eurid(), eurid(),
+    communication_direction(), telegram_chunk() ) -> telegram().
+encode_teach_in_response( TeachOutcome, InitiatorEurid, EmitterEurid,
+                          CommDirection, EchoContent ) ->
+
+    cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
+        "Encoding teach-in response: outcome is ~p, initiator EURID is ~ts, "
+        "communication  direction is ~p, echoed content is ~w.",
+        [ TeachOutcome, eurid_to_string( InitiatorEurid ), CommDirection,
+          EchoContent ] ) ),
+
+	RorgNum = oceanic_generated:get_maybe_second_for_rorg( _Rorg=rorg_ute ),
+
+    % Supposedly not bidirectional, generally:
+	CommDir = case CommDirection of
+
+		unidirectional ->
+			0;
+
+		bidirectional ->
+			1
+
+	end,
+
+    Unused = 0,
+
+	ReqOutcome = case TeachOutcome of
+
+		teach_refused ->
+			0;
+
+		teach_in_accepted ->
+			1;
+
+        % No teach_out_accepted here:
+		%teach_out_accepted ->
+		%   2;
+
+		teach_eep_unsupported ->
+			3
+
+	end,
+
+    % Command identifier (CMD) / 0x1: EEP Teach-In:
+    CmdId = 1,
+
+    DB6 = <<CommDir:1, Unused:1, ReqOutcome:2, CmdId:4>>,
+
+	% DB5.7 to DB0.0 has the same structure as Teach-in-Query, and contents are
+	% echoed back (the two final fields had to be retro-engineered from
+	% https://github.com/kipe/enocean/blob/master/enocean/protocol/packet.py#L410
+	% as we were not able to find them aywhere in the specs):
+	%
+	Data = <<RorgNum:8, DB6/binary, EchoContent/binary, EmitterEurid:32,
+             _Status=0:8>>,
+
+    % 1+1+6+4+1=13:
+    cond_utils:assert( oceanic_check_teaching, size( Data ) =:= 13),
+
+    % The target device is the teach-initiating one:
+	OptData = get_optional_data_for_sending( _TargetEurid=InitiatorEurid ),
+
+	encode_esp3_packet( _RadioPacketType=radio_erp1_type, Data, OptData ).
+
+
+
+-doc """
 Returns the optional data suitable for sending to the specified device (if any).
+
+This is ADT (Adressed Communication, as opposed to broadcast).
 """.
 -spec get_optional_data_for_sending( option( eurid() ) ) -> telegram_opt_data().
 get_optional_data_for_sending( _MaybeTargetEurid=undefined ) ->
@@ -3733,12 +3829,14 @@ get_optional_data_for_sending( _MaybeTargetEurid=undefined ) ->
 get_optional_data_for_sending( TargetEurid ) ->
 
 	% We are sending here:
-	%SubTelNum = 3,
-	SubTelNum = 1,
+	%SubTelNum = 1,
+	SubTelNum = 3,
+
 	DBm = 16#ff,
 	SecurityLevel = 0,
 
 	_OptData= <<SubTelNum:8, TargetEurid:32, DBm:8, SecurityLevel:8>>.
+
 
 
 
@@ -3840,6 +3938,15 @@ get_button_ref_descriptions( ButRefs, OcSrvPid ) ->
 
 
 
+-doc "Sends the specified telegram, through the specified Oceanic server.".
+-spec send( telegram(), oceanic_server_pid() ) -> void().
+send( Telegram, OcSrvPid ) ->
+	OcSrvPid ! { sendOceanic, Telegram }.
+
+
+
+
+
 % Section for common commands.
 
 
@@ -3916,11 +4023,11 @@ encode_common_command_request( Cmd ) ->
 
 
 -doc """
-Encodes a common command request of type 'CO_RD_VERSION', to read version
+Encodes a common command request of type `CO_RD_VERSION`, to read version
 information from the USB gateway.
 
-See its actual specification in [ESP3], p.36, and the decode_response_tail/5 for
-WaitedCmd=co_rd_version.
+See its actual specification in `[ESP3]`, p.36, and the decode_response_tail/5
+for WaitedCmd=co_rd_version.
 """.
 -spec encode_read_version_request() -> telegram().
 encode_read_version_request() ->
@@ -3931,11 +4038,11 @@ encode_read_version_request() ->
 
 
 -doc """
-Encodes a common command request of type 'CO_RD_SYS_LOG', to read logs from the
+Encodes a common command request of type `CO_RD_SYS_LOG`, to read logs from the
 USB gateway.
 
-See its actual specification in [ESP3], p.37, and the decode_response_tail/5 for
-WaitedCmd=co_rd_sys_log.
+See its actual specification in `[ESP3]`, p.37, and the `decode_response_tail/5`
+for WaitedCmd=co_rd_sys_log.
 """.
 -spec encode_read_logs_request() -> telegram().
 encode_read_logs_request() ->
@@ -3949,8 +4056,8 @@ encode_read_logs_request() ->
 Encodes a common command request of type 'CO_RD_IDBASE', to read base ID
 information from the USB gateway.
 
-See its actual specification in [ESP3], p.40, and the decode_response_tail/5 for
-WaitedCmd=co_rd_idbase.
+See its actual specification in `[ESP3]`, p.40, and the `decode_response_tail/5`
+for WaitedCmd=co_rd_idbase.
 """.
 -spec encode_base_id_info_request() -> telegram().
 encode_base_id_info_request() ->
@@ -3964,7 +4071,7 @@ encode_base_id_info_request() ->
 Encodes a common command request, based on the specified data (and with no
 optional data defined).
 
-The actual specification of common commands starts at p.32 of [ESP3].
+The actual specification of common commands starts at p.32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data() ) -> telegram().
 encode_common_command( Data ) ->
@@ -3975,7 +4082,7 @@ encode_common_command( Data ) ->
 -doc """
 Encodes a common command, based on the specified data and optional data.
 
-The actual specification of common commands starts at p.32 of [ESP3].
+The actual specification of common commands starts at p.32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data(), telegram_opt_data() ) ->
 												telegram().
@@ -4170,11 +4277,11 @@ skipped (hence ToSkipLen; finer than only searching for start bytes)
 account (hence MaybeTelTail - which never includes the starting byte); we have
 to discriminate the value of MaybeTelTail between:
 
- - "nothing already read" (no start byte already found, no tail) - then it is
+ - `"nothing already read"` (no start byte already found, no tail) - then it is
    equal to undefined
 
- - "only the start byte was read (and chopped)" (empty tail) - then it is equal
-   to <<>>
+ - `"only the start byte was read (and chopped)"` (empty tail) - then it is
+   equal to `<<>>`
 """.
 -spec oceanic_loop( count(), option( telegram_tail() ), oceanic_state() ) ->
 											no_return().
@@ -4292,6 +4399,12 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 						   State#oceanic_state.trigger_retry_count },
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+
+
+        { acknowledgeTeachRequest, [ TeachReqEv, TeachOutcome ] } ->
+            AckState = acknowledge_teach_request( TeachReqEv, TeachOutcome,
+                                                  State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, AckState );
 
 
 		{ onSerialMessage, Msg } ->
@@ -4735,7 +4848,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 					DiscStr = case MaybeDiscoverOrigin of
 
 						undefined ->
-									"";
+							"";
 
 						Origin ->
 							text_utils:format( " (discover origin: ~ts)",
@@ -4956,6 +5069,16 @@ test_decode( Chunk ) ->
 								 get_test_state() ).
 
 
+-doc "Helper introduced only to make the decoding logic available for tests.".
+-spec test_describe( telegram_chunk() ) -> ustring().
+test_describe( Chunk ) ->
+
+    { decoded, DevEvent, _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDevice,
+      _NextMaybeTelTail=undefined, _OceanicState } = test_decode( Chunk ),
+
+    device_event_to_string( DevEvent ).
+
+
 
 -doc """
 Returns a pseudo-state, loaded from default configuration; only useful for some
@@ -5152,7 +5275,7 @@ tail beginning just after any start byte (which is 0x55, i.e. 85).
 
 Often there are no leading bytes to be dropped.
 
-Refer to [ESP3] "1.6 UART synchronization (start of packet detection)".
+Refer to `[ESP3]` "1.6 UART synchronization (start of packet detection)".
 """.
 -spec scan_for_packet_start( telegram_chunk() ) ->
 				{ telegram_tail() | 'no_content', DropCount :: count() }.
@@ -5448,9 +5571,9 @@ decode_packet( _PacketType=radio_erp1_type,
 % Here a response is received whereas no request was sent:
 %
 % (note that some smart plugs, like at least the ELTAKO FSSAF-230V, emit, once
-% triggered, a <<85,0,1,0,2,101,0,0>> telegram, carrying in terms of information
-% only that it is a response_type packet with a payload of <<0>>; hence no
-% emitter EURID available, for example - instead of sending a
+% triggered, a `<<85,0,1,0,2,101,0,0>>` telegram, carrying in terms of
+% information only that it is a response_type packet with a payload of <<0>>;
+% hence no emitter EURID available, for example - instead of sending a
 % smart_plug_status_report_event)
 %
 decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
@@ -5566,8 +5689,8 @@ Support to be added:
 - F6-05: Detectors
 - F6-10: Mechanical Handle
 
-Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-[EEP-spec] p.11.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.11.
 
 See decode_1bs_packet/3 for more information.
 
@@ -5668,8 +5791,8 @@ in practice, only "F6-01-01" ("Push Button") exists.
 This corresponds to simple "Switch Buttons" (with no rocker, hence with punctual
 press/release events).
 
-Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-[EEP-spec] p.15.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.15.
 """.
 -spec decode_rps_push_button_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
@@ -5743,8 +5866,8 @@ Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1 or
 
 It may contain 2 actions.
 
-Discussed a bit in [ESP3] "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-[EEP-spec] p.15.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
+`[EEP-spec]` p.15.
 """.
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
@@ -6209,7 +6332,7 @@ get_button_transition_enum( pressed ) ->
 -doc """
 Decodes the RPS status byte, common to many RPS telegrams.
 
-Refer to [EEP-spec] p.11 for further details.
+Refer to `[EEP-spec]` p.11 for further details.
 """.
 -spec get_rps_status_info( telegram_chunk() ) ->
 		{ ptm_switch_module_type(), nu_message_type(), repetition_count() }.
@@ -6225,7 +6348,7 @@ get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
 
 	end,
 
-	% Nu expected to be 0 (Normal-message) of 1 (Unassigned-message), yet found
+	% Nu expected to be 0 (Normal-message) or 1 (Unassigned-message), yet found
 	% to be 2 or 3:
 	%
 	NuType = case Nu of
@@ -6281,7 +6404,7 @@ nu_message_type_to_string( _Nu=unknown_type_3 ) ->
 -doc """
 Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
 
-Discussed in [EEP-spec] p.27.
+Discussed in `[EEP-spec]` p.27.
 
 DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
@@ -6363,7 +6486,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 -doc """
 Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
 
-Discussed in [EEP-spec] p.12.
+Discussed in `[EEP-spec]` p.12.
 
 DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
@@ -6463,7 +6586,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 Decodes a rorg_4bs (A5) packet for the thermometer EEP "A5-02-*", precisely here
 "A5-02-05": "Temperature Sensors" (05), range 0°C to +40°C.
 
-Refer to [EEP-spec] p.29.
+Refer to `[EEP-spec]` p.29.
 """.
 -spec decode_4bs_thermometer_packet( uint8(), uint8(), uint8(), uint8(),
 		eurid(), telegram_opt_data(), option( telegram_tail() ),
@@ -6529,7 +6652,7 @@ decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
 Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
 "Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100% (01).
 
-Refer to [EEP-spec] p.35.
+Refer to `[EEP-spec]` p.35.
 """.
 -spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
 		eurid(), telegram_opt_data(), option( telegram_tail() ),
@@ -6616,16 +6739,18 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 Decodes a rorg_ute (D4) packet, that is a R-ORG telegram for Universal
 Teach-in/out, EEP based (UTE), one way of pairing devices.
 
-Discussed in [EEP-gen] p.17; p.25 for the query and p.26 for the response.
+Discussed in `[EEP-gen]` p.17; p.25 for the query and p.26 for the response.
 """.
 -spec decode_ute_packet( telegram_data_tail(), telegram_opt_data(),
 			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 % This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
-% broadcasting (typically after one of its relevant buttons has been pressed) a
-% request that devices declare to this requester device.
+% broadcasting (typically after one of its relevant buttons has been pressed in
+% the case of a smart plug) a request that devices (e.g. a home automation
+% gateway) declare to this initiator device.
 %
 % Proceeding byte per byte is probably clearer:
 decode_ute_packet(
+        % Hence 7+4+1=12 bytes:
 		DataTail= << CommDir:1, ResExpected:1, ReqType:2, Cmd:4, % = DB_6
 					 ChanCount:8,                                % = DB_5
 					 ManufIdLSB:8,                               % = DB_4
@@ -6634,7 +6759,7 @@ decode_ute_packet(
 					 Func:8,                                     % = DB_1
 					 RORG:8,                                     % = DB_0
 					 InitiatorEurid:32,
-					 Status:8/binary>>,
+					 Status:1/binary>>,
 		OptData, NextMaybeTelTail,
 		State=#oceanic_state{ device_table=DeviceTable } ) ->
 
@@ -6649,16 +6774,16 @@ decode_ute_packet(
 
 	end,
 
-	ResponseExpected = case ResExpected of
+	{ ResponseExpected, ResponseExpectedStr } = case ResExpected of
 
 		% Usually:
 		0 ->
-			true;
+			{ true, "a response is expected" } ;
 
 		1 ->
-			false
+			{ false, "no response is expected" }
 
-	end,
+    end,
 
 	MaybeRequestType = case ReqType of
 
@@ -6668,9 +6793,12 @@ decode_ute_packet(
 		1 ->
 			teach_out;
 
-		% Unspecified (usual):
+		% Unspecified (usual); it is then supposed to be some kind of teach-in,
+		% (not teach-out):
+        %
 		2 ->
-			undefined;
+			%undefined;
+            teach_in;
 
 		% Not used:
 		3 ->
@@ -6718,14 +6846,14 @@ decode_ute_packet(
 
 			end,
 
-			trace_bridge:debug_fmt( "Decoding a Teach-In query UTE packet "
-				"from ~ts, whereas ~ts, for a ~ts communication, "
-				"response expected: ~ts, request type: ~ts "
-				"involving ~ts channels, manufacturer ID: ~ts, "
+			trace_bridge:debug_fmt( "Decoding a Teach query UTE packet "
+				"from ~ts, whereas ~ts, for a ~ts communication, ~ts, "
+				"request type: ~ts involving ~ts channel(s), "
+                "manufacturer ID: ~ts, "
 				"PTM switch module is ~ts, message type is ~ts, ~ts~ts.",
 				[ eurid_to_bin_string( InitiatorEurid, State ),
-				  get_eep_description( InitiatorEep ), CommDirection,
-				  ResponseExpected, MaybeRequestType, ChanStr,
+				  get_eep_description( MaybeEepId ), CommDirection,
+				  ResponseExpectedStr, MaybeRequestType, ChanStr,
 				  text_utils:integer_to_hexastring( ManufId ),
 				  ptm_module_to_string( PTMSwitchModuleType ),
 				  nu_message_type_to_string( NuType ),
@@ -6735,32 +6863,63 @@ decode_ute_packet(
 
 		end,
 		basic_utils:ignore_unused(
-		  [ PTMSwitchModuleType, NuType, RepCount ] ) ),
+            [ PTMSwitchModuleType, NuType, RepCount ] ) ),
 
-	<<_DB_6:8,ToEcho/binary>> = DataTail,
+    % Just needing to echo DB5.7...DB0.0, hence 6 bytes:
+	<<_DB_6:8, ToEcho:6/binary, _/binary>> = DataTail,
 
 	% Probably that destination is broadcast:
-	{ _MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-	Event = #teach_request{ source_eurid=InitiatorEurid,
-							name=MaybeName,
-							eep=MaybeEepId,
-							timestamp=Now,
-							destination_eurid=MaybeDestEurid,
-							dbm=MaybeDBm,
-							security_level=MaybeSecLvl,
-							comm_direction=CommDirection,
-							response_expected=ResponseExpected,
-							request_type=MaybeRequestType,
-							channel_taught=ChannelTaught,
-							manufacturer_id=ManufId,
-							echo_content=ToEcho },
+	TeachReqEvent = #teach_request_event{ source_eurid=InitiatorEurid,
+                                          name=MaybeName,
+                                          eep=MaybeEepId,
+                                          timestamp=Now,
+                                          last_seen=Now,
+                                          subtelegram_count=MaybeTelCount,
+                                          destination_eurid=MaybeDestEurid,
+                                          dbm=MaybeDBm,
+                                          security_level=MaybeSecLvl,
+                                          comm_direction=CommDirection,
+                                          response_expected=ResponseExpected,
+                                          request_type=MaybeRequestType,
+                                          channel_taught=ChannelTaught,
+                                          manufacturer_id=ManufId,
+                                          echo_content=ToEcho },
 
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+    TeachState = case State#oceanic_state.auto_ack_teach_queries of
 
-	{ decoded, Event, _DiscoverOrigin=teaching, _IsBackOnline=false, Device,
-	  NextMaybeTelTail, NewState }.
+        true ->
+            trace_bridge:debug( "Auto-acknowledgemet of teach query." ),
+            case MaybeRequestType of
+
+                teach_in ->
+                    acknowledge_teach_request( TeachReqEvent,
+                        _TeachOutcome=teach_in_accepted, State );
+
+                teach_out ->
+                    acknowledge_teach_request( TeachReqEvent,
+                        _TeachOutcome=teach_out_accepted, State );
+
+                undefined ->
+                    trace_bridge:debug( "Type of teach request unknown, hence "
+                        "not acknowledged." ),
+                    State
+
+            end;
+
+        false ->
+            State
+
+    end,
+
+	FinalState = TeachState#oceanic_state{ device_table=NewDeviceTable },
+
+    trace_bridge:debug( "Teach query decoded." ),
+
+	{ decoded, TeachReqEvent, _DiscoverOrigin=teaching, _IsBackOnline=false,
+      Device, NextMaybeTelTail, FinalState }.
 
 
 
@@ -6771,7 +6930,7 @@ Length Data.
 VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
 their design.
 
-Discussed in [EEP-gen] p.12.
+Discussed in `[EEP-gen]` p.12.
 
 Various packet types exist, in both directions (from/to sensor/actuator), and
 depend on the actual EEP (hence on its FUNC and TYPE) implemented by the emitter
@@ -6813,7 +6972,7 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
 			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
 				"from device whose EURID is ~ts: device not configured, "
-				"no EEP known for it.",	[ eurid_to_string( SenderEurid ) ] ),
+				"no EEP known for it.", [ eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -6884,14 +7043,14 @@ This corresponds to basic smart, non-metering plugs bidirectional actuators that
 may control (switch on/off) most electrical loads (e.g. appliances); they do not
 perform metering.
 
-Discussed in [EEP-spec] p. 132.
+Discussed in `[EEP-spec]` p. 132.
 
 Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status
 Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
-[EEP-spec] p. 135), it is an information sent (as a broadcast) by the smart plug
-about its status (either after a status request or after a state change request
-- whether or not it triggered an actual state change), typically to acknowledge
-that a requested switching was indeed triggered.
+`[EEP-spec]` p. 135), it is an information sent (as a broadcast) by the smart
+plug about its status (either after a status request or after a state change
+request - whether or not it triggered an actual state change), typically to
+acknowledge that a requested switching was indeed triggered.
 """.
 -spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
 		telegram_opt_data(), option( telegram_tail() ), enocean_device(),
@@ -7079,7 +7238,7 @@ metering information.
 
 See decode_vld_smart_plug_packet/7 for extra details.
 
-Discussed in [EEP-spec] p.143.
+Discussed in `[EEP-spec]` p.143.
 """.
 -spec decode_vld_smart_plug_with_metering_packet( vld_payload(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
@@ -7174,7 +7333,6 @@ decode_vld_smart_plug_with_metering_packet(
 
 	end,
 
-
 	MaybeCmd = oceanic_generated:get_maybe_second_for_vld_d2_00_cmd( CmdAsInt ),
 
 	MaybeDecodedOptData = decode_optional_data( OptData ),
@@ -7268,7 +7426,6 @@ decode_vld_smart_plug_with_metering_packet(
 
 		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
 									 MaybeDecodedOptData ] ) ),
-
 
 	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
@@ -7371,7 +7528,7 @@ learn_to_string( _LearnActivated=false ) ->
 -doc """
 Decodes the specified optional data, if any.
 
-Refer to [ESP3] p.18 for its description.
+Refer to `[ESP3]` p.18 for its description.
 
 The CRC for the overall full data (base+optional) is expected to have been
 checked beforehand.
@@ -7940,7 +8097,6 @@ eurid_to_short_string( Eurid ) ->
 Returns the actual EURID corresponding to the specified (plain) EURID string.
 
 For example `3076502 = oceanic:string_to_eurid("002ef196")`.
-
 """.
 -spec string_to_eurid( ustring() ) -> eurid().
 string_to_eurid( EuridStr ) ->
@@ -8275,6 +8431,7 @@ device_triggered( _DevEventTuple ) ->
 %% Registers the specified actuator trigger tracking info, to detect if no report
 %% is sent back.
 %% """.
+
 %% -spec init_actuator_trigger_tracking( eurid(), device_event_type(),
 %%         option( reported_event_info() ), oceanic_state() ) -> oceanic_state().
 %% register_trigger_track_info( ActEurid, DevEvttype, MaybeRepInfo,
@@ -8320,7 +8477,7 @@ optional_data_to_string( _SubTelNum=undefined, _DestinationEurid=undefined,
 						 _MaybeDBm=undefined, _MaybeSecurityLevel=undefined ) ->
 	" (with no optional data)";
 
-optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
+optional_data_to_string( MaybeSubTelNum, MaybeDestinationEurid, MaybeDBm,
 						 MaybeSecurityLevel ) ->
 
 	DBmstr = case MaybeDBm of
@@ -8345,7 +8502,10 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 	end,
 
 	% "Send: 3 / receive: 0", yet often seen as 1:
-	SubTelStr = case SubTelNum of
+	SubTelStr = case MaybeSubTelNum of
+
+        undefined ->
+           "an unknown number of subtelegrams";
 
 		0 ->
 			"no subtelegram";
@@ -8353,13 +8513,24 @@ optional_data_to_string( SubTelNum, DestinationEurid, MaybeDBm,
 		1 ->
 			"a single subtelegram";
 
-		_ ->
+		SubTelNum ->
 			text_utils:format( "~B subtelegrams", [ SubTelNum ] )
 
 	end,
 
-	text_utils:format( " with ~ts, targeted to device whose EURID is ~ts~ts~ts",
-		[ SubTelStr, eurid_to_string( DestinationEurid ), DBmstr, SecStr ] ).
+    DestEuridStr = case MaybeDestinationEurid of
+
+        undefined ->
+            "an unknown device";
+
+        DestEurid ->
+            text_utils:format( "device whose EURID is ~ts",
+                [ eurid_to_string( DestEurid ) ] )
+
+    end,
+
+	text_utils:format( " with ~ts, targeted to ~ts~ts~ts",
+		[ SubTelStr, DestEuridStr, DBmstr, SecStr ] ).
 
 
 
@@ -8683,6 +8854,69 @@ device_event_to_string( #double_rocker_multipress_event{
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 
+device_event_to_string( #teach_request_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+        comm_direction=CommDirection,
+        response_expected=ResponseExpected,
+        request_type=ReqType,
+        channel_taught=ChannelTaught,
+        manufacturer_id=ManufId,
+        echo_content=EchoContent } ) ->
+
+    TeachType = case ReqType of
+
+        teach_in ->
+            "in";
+
+        teach_out ->
+            "out"
+
+    end,
+
+    ExpectStr = case ResponseExpected of
+
+        true ->
+            "expected";
+
+        false ->
+            "not expected"
+
+    end,
+
+    ChannelStr = case ChannelTaught of
+
+        all ->
+            "all channels";
+
+        1 ->
+            "a single channel";
+
+        _ ->
+            text_utils:format( "~B channels", [ ChannelTaught ] )
+
+    end,
+
+	text_utils:format( "~ts teach-~ts request sent by ~ts at ~ts "
+        "(response message ~ts) about ~ts (manufacturer id #~B, echoed: ~w); "
+        "this is declared~ts; ~ts; ~ts",
+        [ CommDirection, TeachType, get_name_description( MaybeName, Eurid ),
+          time_utils:timestamp_to_string( Timestamp ), ExpectStr, ChannelStr,
+          ManufId, EchoContent,
+          optional_data_to_string( MaybeTelCount, MaybeDestEurid,
+                                            MaybeDBm, MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
+          % Defaults is smart plug without metering:
+		  get_eep_description( MaybeEepId, _DefaultDesc="D2-01-0A" ) ] );
+
+
 device_event_to_string( #read_version_response{
 		app_version=AppVersion,
 		api_version=ApiVersion,
@@ -8943,6 +9177,33 @@ device_event_to_short_string( #double_rocker_multipress_event{
 		"~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, Eurid ), TransStr,
 		  optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
+		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+device_event_to_short_string( #teach_request_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		eep=MaybeEepId,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+
+        response_expected=ResponseExpected,
+        request_type=ReqType } ) ->
+
+    TeachType = case ReqType of
+
+        teach_in ->
+            "in";
+
+        teach_out ->
+            "out"
+
+    end,
+
+	text_utils:format( "The initiator device ~ts sent a teach-~ts request "
+        "(response expected: ~ts); ~ts; EEP: ~ts.",
+		[ get_name_description( MaybeName, Eurid ), TeachType,
+          ResponseExpected,
+          optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 

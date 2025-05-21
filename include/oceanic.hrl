@@ -598,11 +598,13 @@
 %
 % Refer to [EEP-gen] p.17 for further details.
 %
--record( teach_request, {
+-record( teach_request_event, {
 
 	% Section common to all events:
 
 	% The EnOcean Unique Radio Identifier of the emitting device:
+    % (here the initiator)
+    %
 	source_eurid :: oceanic:eurid(),
 
 	% The user-specified name (if any) of the emitting device:
@@ -652,7 +654,7 @@
 	% The 5 bytes of that teach request that may be used directly for its
 	% response:
 	%
-	echo_content :: binary() } ).
+	echo_content :: oceanic:telegram_chunk() } ).
 
 
 
