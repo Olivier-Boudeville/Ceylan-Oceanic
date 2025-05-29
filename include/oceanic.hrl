@@ -125,6 +125,12 @@
 	% Tells whether this device is considered by Oceanic to be online or lost:
 	availability :: option( oceanic:availability_status() ),
 
+	% Tells whether this device was successfully registered by this gateway
+	% through teach-in with no teach-out afterwards, and thus whether this
+	% gateway should still be considered as taught by this device:
+    %
+	taught = false :: boolean(),
+
 	% The number of full telegrams successfully decoded for this device:
 	telegram_count = 0 :: basic_utils:count(),
 
@@ -139,7 +145,12 @@
 	% A timer, if any, set to detect whether this device vanished (ceased being
 	% active), possibly being sabotaged, running out of energy, etc.:
 	%
-	activity_timer = undefined :: option( oceanic:timer_ref() ) } ).
+	activity_timer = undefined :: option( oceanic:timer_ref() ),
+
+    % Extra device-level information, such as, for a double rocker, its
+    % application style.
+    %
+    extra_info = undefined :: option( oceanic:device_info() ) } ).
 
 
 

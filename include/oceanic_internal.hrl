@@ -69,6 +69,9 @@
     % registered/unregistered as a controller of the device that sent the
     % teach-in query.
     %
+    % Teach-in could be accepted iff if the initiator device is defined in the
+    % configuration.
+    %
     % Does not do anything besides sending that acknowledgement response to the
     % taught device, and recording it is taught.
     %

@@ -66,7 +66,10 @@ through an Oceanic server**.
 	send/2, stop_any_timer/1,
 	acknowledge_teach_request/2, acknowledge_teach_request/3,
 
-	trigger_actuator/3, trigger_actuators/3,
+	trigger_actuator/2, trigger_actuators/2,
+	trigger_actuator_reciprocal/2, trigger_actuators_reciprocal/2,
+
+
 
 	% For any kind of (already-encoded) command:
 	execute_command/2,
@@ -275,7 +278,7 @@ Server-internal information about a pending device-level request meant to be
 acknowledged by the actuator of the specified EURID (hence being waited for,
 with or without success), specifying the type of event to wait for
 (e.g. smart_plug_status_report_event) together with any specific event
-information expected (e.g. 'power_on'); the specified number of new attempts to
+information expected (e.g. `power_on`); the specified number of new attempts to
 be performed if the current one times-out is also specified.
 
 Allows detecting issues such as emitted yet not (correctly) received telegrams,
@@ -334,11 +337,11 @@ configuration file or transmitted by other services.
 
 -doc "A (FIFO) queue of command requests, to be sent in turn next.".
 -type command_queue() :: queue:queue( command_request() ).
-Dev
+
 
 
 -doc """
-An entry in the Oceanic configuration (see its 'oceanic_devices' key) to
+An entry in the Oceanic configuration (see its `oceanic_devices` key) to
 describe a given device of interest.
 """.
 -type device_config() ::
@@ -369,7 +372,7 @@ describe a given device of interest.
 Defines the serial, bidirectional communication between a host and EnOcean
 modules.
 
-There are two Enocean serial protocols: ESP2 and ESP3.
+ There are two Enocean serial protocols: ESP2 and ESP3.
 
 Oceanic focuses primarily on newer, richer, ESP3.
 
@@ -386,7 +389,8 @@ A telegram is a raw (non-decoded) series of bytes that have been received or are
 to be sent. Ideally a telegram would correspond to a full, unitary radio ESP3
 packet typically received from an Enocean gateway.
 
-E.g. `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>`,
+For example:
+`<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,73,0,23>>`,
 `<<85,0,7,7,1,122,246,48,0,46,225,150,48,1,255,255,255,255,57,0,181>>` or
 `<<85,0,7,7,1,122,246,0,0,46,225,150,32,1,255,255,255,255,57,0,3>>`.
 """.
@@ -433,11 +437,11 @@ an ERP1 radio packet), a prefix possibly complemented with optional data.
 
 -doc """
 The (encoded) part of a telegram with the optional data that may
-complement/extend the base data (see telegram_data()).
+complement/extend the base data (see `telegram_data/0`).
 
 Refer to `[ESP3]`. p.18.
 
-See also decoded_optional_data/0.
+See also `decoded_optional_data/0`.
 """.
 -type telegram_opt_data() :: telegram_chunk().
 
@@ -577,13 +581,13 @@ complying to the same EEP can be interchanged.
 
 
 -doc """
-The (atom) identifier of an EnOcean Equipment Profile, corresponding to
-(R-ORG)-(FUNC)-(TYPE) triplet.
+The (atom) identifier of an EnOcean Equipment Profile, corresponding to a
+`(R-ORG)-(FUNC)-(TYPE)` triplet.
 
-For example the 'single_input_contact' EEP identifier corresponds to EEP
-D5-00-01.
+For example the `single_input_contact` EEP identifier corresponds to EEP
+`D5-00-01`.
 
-Refer to get_eep_topic_specs/0 for further details.
+Refer to `get_eep_topic_specs/0` for further details.
 """.
 -type eep_id() ::
     'thermometer'
@@ -606,7 +610,7 @@ Refer to get_eep_topic_specs/0 for further details.
 
 
 -doc """
-An EEP defined as a string (e.g. "D5-00-01").
+An EEP defined as a string (e.g. `D5-00-01`).
 """.
 -type eep_string() :: ustring().
 
@@ -795,7 +799,7 @@ back of devices (e.g. `"ID: B50533EC"`).
 Our EURIDs are defined and stored in uppercase, as they are generally written on
 devices.
 
-A specific EURID is 0xff-ff-ff-ff (see the eurid_broadcast define), which
+A specific EURID is `0xff-ff-ff-ff` (see the `eurid_broadcast define`), which
 denotes a broadcast transmission (as opposed to an Addressed Transmission, ADT).
 """.
 -type eurid() :: type_utils:uint32(). % Previously was a 32-bit binary.
@@ -1114,11 +1118,20 @@ to forge telegrams that it could send, typically in order to trigger actuators.
 -type virtual_emitter_info() :: option( tuploid( device_info() ) ).
 
 
+-doc """
+Describes an operation that a device is requested to perform.
+
+For example a smart plug required to switch on.
+""".
+-type device_operation() :: 'switch_on' | 'switch_off'. % for smart plugs
+
+
 
 -doc """
 Describes an elementary information about the state change of a device.
 
-For example may correspond to Channel(), for a double-rocker change information.
+For example may correspond to `channel/0`, for a double-rocker change
+information.
 """.
 -type state_change_info() :: term().
 
@@ -1133,9 +1146,9 @@ For example may correspond to Channel(), for a double-rocker change information.
 
 
 -doc """
-Canonical version of double_rocker_state_change_spec().
+Canonical version of `double_rocker_state_change_spec/0`.
 
-For example, ``{2, bottom, released}``.
+For example, `{2, bottom, released}`.
 
 Both a user-level and an internal type.
 """.
@@ -1148,7 +1161,7 @@ Both a user-level and an internal type.
 
 
 -doc """
-Canonical version of push_button_state_change_spec().
+Canonical version of `push_button_state_change_spec/0`.
 """.
 -type canon_push_button_state_change_spec() :: button_transition().
 
@@ -1168,7 +1181,7 @@ Abbreviated as SCS.
 
 
 -doc """
-Canonical, internal version of device_state_change_spec().
+Canonical, internal version of `device_state_change_spec/0`.
 
 Abbreviated as CSCS.
 """.
@@ -1187,13 +1200,13 @@ validated.
 
 Notably used to decode incoming trigger events.
 
-For example, ``{double_rocker, {2, bottom, released}}.``.
+For example, `{double_rocker, {2, bottom, released}}.`.
 """.
 -type incoming_trigger_spec() ::
 
 	{ 'double_rocker', double_rocker_state_change_spec() }
 
-  |	{ 'push_button', push_button_state_change_spec() }
+  | { 'push_button', push_button_state_change_spec() }
 
 	% General form:
   | { device_type(), device_state_change_spec() }.
@@ -1218,7 +1231,7 @@ device specified by its EURID, or broadcast.
 Typically useful to react on the triggering events (e.g. of a presence switch,
 and alarm, etc.) of interest.
 
-For example ``{"002b6b24", {double_rocker, 1}}``, which describes that any
+For example `{"002b6b24", {double_rocker, 1}}`, which describes that any
 incoming telegram corresponding to a state change of the channel A (i.e. 1) of a
 double-rocker of EURID 002b6b24 shall be interpreted as a trigger (typically if
 the rocker is pressed).
@@ -1233,7 +1246,7 @@ User-level type.
 -doc """
 Canonicalised, internal version of listened_event_spec().
 
-For example: ``{"25af97a0", {double_rocker, {2, bottom, released}}}``.
+For example: `{"25af97a0", {double_rocker, {2, bottom, released}}}`.
 
 Abbreviated as CLES.
 """.
@@ -1254,127 +1267,37 @@ triggering device and the new device status that shall be set.
 % For outgoing, emitted events:
 
 
--doc """
-Describes how the server can trigger an actuator device: describes a
-corresponding virtual emitting device, notably in order to encode outgoing
-trigger events.
-
-For example: ``{double_rocker, 1, {2, top, pressed}}`` means that the virtual
-emitting device will be a double-rocker of application style 1 whose channel B
-(2; the second rocker) has its top button pressed.
-
-Both a user-level and an internal type.
-
-Abbreviated as OTS.
-""".
-% A difference with the incoming ones is that information regarding the emulated
-% source device (e.g. the application style of such a rocker) may be specified:
-%
--type outgoing_trigger_spec() ::
-
-	{ 'double_rocker', application_style(), double_rocker_state_change_spec() }
-  | { 'double_rocker', double_rocker_state_change_spec() }
-
-
-	% General forms:
-  | { device_type(), virtual_emitter_info(), device_state_change_spec() }
-
-  | { device_type(), device_state_change_spec() }.
-
 
 -doc """
-Canonical, internal version of outgoing_trigger_spec().
+User-level description of an event that may be emitted by this server to send a
+command to an actuator.
 
-Abbreviated as COTS.
-""".
--type canon_outgoing_trigger_spec() ::
-	{ device_type(), virtual_emitter_info(), canon_device_state_change_spec() }.
+This event applies to a single target device (it is addressed, not broadcast),
+which must have been taught in beforehand to this server.
 
+So for example this event targets a smart plug to control (based on its EURID,
+and with addressed telegrams), and tells that it should switch on.
 
-
--doc """
-User-level description of an actuator, typically when emitting an event
-targeting it.
-
-Specifies the EURID (possibly a broadcast address) to be used in order to reach
-this actuator, and possibly the device type it will be addressed at, i.e. as
-which type of device (e.g. a smart plug) the actuator is expected to react.
-
-For example: ``{"25af97a0", smart_plug}``.
-
-This is typically needed if, once an actuator trigger telegram has been emitted,
-the sender is to register a corresponding waited acknowledgement from that
-actuator: thanks to these information, incoming telegrams can be matched and
-translated into such acknowledgements.
-
-Indeed the target actuator may not be configured (or possibly may implement
-multiple EEPs), whereas detecting acknowledgements requires at least an expected
-EEP and/or a device type (as the incoming telegrams shall be filtered to match
-them with any pending, yet-to-acknowledge, triggered actuator).
-
-For example, if a smart plug is triggered, in order to be sure that the
-operation completed (e.g. that the plug has been switched on), a corresponding
-VLD status response telegram shall be waited for. So incoming telegrams shall be
-inspected in order to detect such a corresponding acknowledgement telegram -
-based on the corresponding actuator information.
-""".
--type user_actuator_info() :: canon_user_actuator_info()
-						  % No device type specified here:
-						| TargetDevice :: option( eurid_string() ).
-
-
--doc "Canonical, yet still user-level.".
--type canon_user_actuator_info() ::
-		{ TargetDevice :: option( eurid_string() ),
-		  TargetAddressedDeviceType :: option( device_type() ) }.
-
-
--doc """
-Describes an actuator, typically when emitting an event targeting it.
-
-The EURID may be a broadcast one.
-
-Internal type.
-""".
--type actuator_info() :: { eurid(), option( device_type() ) }.
-
-
-
--doc """
-User-level description of events that may be emitted by this server.
-
-Stores information about a "virtual" emitting device (e.g., if emulating a
-rocker, its application style) to be impersonated by this server and about an
-intended use thereof (e.g. which button is operated), and about the intended
-target action.
-
-For example designates which rocker/channel of which kind of double-rocker would
-be used in order to generate and send a telegram, generally aimed at an actuator
-(e.g. a smart plug) to control.
+Examples of values: `"05936ef8"`, or its longer `{"05936ef8", switch_on}` form.
 
 No (source) EURID is specified, as anyway the one of the base gateway is the one
 that shall be used.
 
-For example ``{{double_rocker,1}, {"05936ef8", smart_plug}}``, which designates
-a telegram to be sent as a double-rocker (of application style 1, and with other
-defaults) in order to trigger an actuator whose EURID is 05936ef8, and which is
-expected to act as a smart plug (and thus is to send back a corresponding
-acknowledgement telegram).
-
 Often abbreviated as EES.
 """.
--type emitted_event_spec() :: { outgoing_trigger_spec(), user_actuator_info() }.
-
+-type emitted_event_spec() :: eurid_string() % Then the default operation for
+                                             % its EEP will apply.
+                            | { eurid_string(), device_operation() }.
 
 -doc """
-Canonicalised, internal version of emitted_event_spec().
+Canonicalised, internal version of `emitted_event_spec/0`.
+
+The device may or may not be already resolved at this point (requires
+device-level information).
 
 Often abbreviated as CEES.
 """.
--type canon_emitted_event_spec() ::
-	% Internal actuator info, not user one:
-	{ canon_outgoing_trigger_spec(), actuator_info() }.
-
+-type canon_emitted_event_spec() :: { eurid(), option( device_operation() ) }.
 
 
 
@@ -1439,6 +1362,7 @@ Often abbreviated as CEES.
 			   device_event_type/0,
 
 			   device_type/0, device_info/0, virtual_emitter_info/0,
+               device_operation/0,
 
 			   state_change_info/0,
 			   device_state_change_spec/0, canon_device_state_change_spec/0,
@@ -1451,7 +1375,6 @@ Often abbreviated as CEES.
 
 			   incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
 			   listened_event_spec/0, canon_listened_event_spec/0,
-			   outgoing_trigger_spec/0, canon_outgoing_trigger_spec/0,
 			   emitted_event_spec/0, event_match_trigger_outcome/0,
 
 			   timer_ref/0 ]).
@@ -1503,6 +1426,41 @@ Often abbreviated as CEES.
 % triggered would then result in the re-emission of the corresponding telegram,
 % provided that the maximum number of retries is not reached.
 
+
+% Section about how actuators shall be controlled.
+
+% Initially, we were controlling actuators (e.g. a smart plug) only by spoofing
+% standard emitters that they would have previously learned, based on telegrams
+% that had to be broadcast (as said actuators ignores telegrams specifically
+% addressed to them - the basic emitters not being supposed to know them / to be
+% able to target them specifically).
+%
+% This would be for example a double-rocker that would have been learnt by a
+% target smart plug, and that would notify that its pseudo-button 2 on channel A
+% was pressed, so that the plug switches off.
+%
+% Yet, because of such a forced broadcast, the spoofing prevented the gateway
+% from controlling actuators independently, which was not acceptable (otherwise
+% the gateway would be able to send for example only an undiscriminate, global
+% switch on/off order).
+%
+% So we resorted to control actuators in a better way, directly, as any home
+% automation gateway, by sending to each of them specific addressed telegrams,
+% which can take place only after a more complex teach-in procedure.
+%
+% We then maintained these two kinds of control (spoofed and broadcast vs direct
+% and addressed), yet finally dropped the spoofing approach, as it had little
+% interest in itself and, additionally, as it prevented the implementation of
+% reliable communications (to overcome telegram loss; crucial for example to
+% start/stop a siren): we see that in practice spoofing means broadcast, which
+% means that any number of target devices may be reached and thus would be
+% expected to respond; short of being able to anticipate at least the number of
+% acknowledgement telegrams, a system for the automatic resending of lost
+% telegrams cannot exist without additional measures.
+%
+% So now all telegrams are expected to be sent as a real gateway (not spoofed),
+% and be addressed (not broadcast) - even if of course we kept the old spoofing
+% / emulating forgery logic (which has just been deactivated).
 
 
 
@@ -2102,14 +2060,21 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 					%   basic_utils:ignore_unused(
 					%       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
-					wait_initial_base_request( NewToSkipLen, MaybeNextTelTail,
-											   NewState )
+					wait_initial_base_request( NewToSkipLen,
+                                               NewMaybeNextTelTail, NewState )
 
 			end;
 
 		{ onSerialMessage, Msg } ->
 			trace_bridge:warning( Msg ),
 			wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State )
+
+    after 2000 ->
+
+        trace_bridge:error( "Unable to determine the base EURID of "
+                            "this gateway." ),
+
+       throw( no_base_eurid_obtained )
 
 	end.
 
@@ -2648,7 +2613,6 @@ event_matches_trigger( DevEvent, CLESs ) ->
 	end.
 
 
-
 -doc """
 Returns (any, first) CITS that matches the specified emitter EURID, among the
 specified CLES.
@@ -2815,9 +2779,13 @@ canonicalise_listened_event_specs( _LESs=[ Other | _T ], _Acc ) ->
 % Helpers for outgoing specifications.
 
 
--doc "Canonicalises the specified user-level emitting event specifications.".
+-doc """
+Canonicalises the specified user-level emitting event specifications.
+
+Is not yet able to resolve default device operation at this point.
+""".
 -spec canonicalise_emitted_event_specs( [ emitted_event_spec() ] ) ->
-											[ canon_emitted_event_spec() ].
+                                            [ canon_emitted_event_spec() ].
 % Better than "bad generator" with a list comprehension:
 canonicalise_emitted_event_specs( EESs ) when is_list( EESs ) ->
 	canonicalise_emitted_event_specs( EESs, _Acc=[] );
@@ -2832,59 +2800,19 @@ canonicalise_emitted_event_specs( _EESs=[], Acc ) ->
 	% Preferring preserving order:
 	lists:reverse( Acc );
 
-canonicalise_emitted_event_specs( _EESs=[
-		{ OTS, ActInfo={ MaybeEuridStr, MaybeTargetDeviceType } } | T ],
-                                  Acc ) ->
+canonicalise_emitted_event_specs( _EESs=[ { EuridStr, DevOp } | T ], Acc )
+                when is_list( EuridStr ) andalso is_atom( DevOp ) ->
+    Eurid = oceanic_text:string_to_eurid( EuridStr ),
+	canonicalise_emitted_event_specs( T, [ _CEES={ Eurid, DevOp } | Acc ] );
 
-	COTS = case OTS of
-
-		{ double_rocker, DRChangeSpec } ->
-			DefaultAppStyle = 1,
-
-			CanDRChangeSpec =
-				canonicalise_double_rocker_change_spec( DRChangeSpec ),
-
-			{ double_rocker, _VirtEmitInfo=DefaultAppStyle, CanDRChangeSpec };
-
-
-		{ double_rocker, AppStyle, DRChangeSpec } ->
-
-			is_valid_application_style( AppStyle ) orelse
-				throw( { invalid_double_rocker_app_style_in_emitted_spec,
-						 AppStyle } ),
-
-			CanDRChangeSpec =
-				canonicalise_double_rocker_change_spec( DRChangeSpec ),
-
-			{ double_rocker, _VirtEmitInfo=AppStyle, CanDRChangeSpec };
-
-
-		Other ->
-			throw( { unsupported_outgoing_trigger_spec, Other, ActInfo } )
-
-	end,
-
-	Eurid = oceanic_text:maybe_string_to_eurid( MaybeEuridStr ),
-
-	MaybeTargetDeviceType =:= undefined
-		orelse is_valid_device_type( MaybeTargetDeviceType )
-		orelse throw( { invalid_device_type, MaybeTargetDeviceType } ),
-
-	CanActInfo = { Eurid, MaybeTargetDeviceType },
-
-	CEES = { COTS, CanActInfo },
-
-	canonicalise_emitted_event_specs( T, [ CEES | Acc ] );
-
-
-canonicalise_emitted_event_specs( _EESs=[ { OTS, _ActInfo=MaybeEuridStr } | T ],
-                                  Acc ) ->
-	CanonActInfo = { _TargetDevice=MaybeEuridStr, _TargetDeviceType=undefined },
-	canonicalise_emitted_event_specs( [ { OTS, CanonActInfo } | T ], Acc );
-
+canonicalise_emitted_event_specs( _EESs=[ EuridStr | T ], Acc )
+                when is_list( EuridStr ) ->
+    Eurid = oceanic_text:string_to_eurid( EuridStr ),
+    % Default operations not resolvable yet:
+	canonicalise_emitted_event_specs( T, [ _CEES={ Eurid, undefined} | Acc ] );
 
 canonicalise_emitted_event_specs( _EESs=[ Other | _T ], _Acc ) ->
-	throw( { invalid_emitted_event_spec, non_pair, Other } ).
+	throw( { invalid_emitted_event_spec, Other } ).
 
 
 
@@ -2989,13 +2917,38 @@ See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) `[EEP-gen]` p.26.
 -spec acknowledge_teach_request( teach_request_event(), teach_outcome(),
 								 oceanic_state() ) -> oceanic_state().
 acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
-                                                 comm_direction=_CommDirection,
                                                  response_expected=true,
                                                  request_type=teach_in,
                                                  echo_content=EchoContent },
-						   TeachOutcome, State ) ->
+						   TeachOutcome=teach_in_accepted, State ) ->
 
-    % Responding, even if already taught.
+    % Responding in all cases, even if already taught.
+
+    DevTable = State#oceanic_state.device_table,
+
+    RegState = case table:get_value_with_default( _K=InitiatorEurid,
+            _DefV=undefined, DevTable ) of
+
+        undefined ->
+            trace_bridge:error_fmt(
+                "Taught initiator ~ts not registered (abnormal).",
+                [ oceanic_text:eurid_to_string( InitiatorEurid ) ] ),
+            State;
+
+        #enocean_device{ taught=true } ->
+            trace_bridge:warning_fmt(
+                "Initiator ~ts not found (abnormal).",
+                [ oceanic_text:eurid_to_string( InitiatorEurid ) ] ),
+            State;
+
+        % Hence not already taught:
+        EnDevice ->
+            NewEnDevice = EnDevice#enocean_device{ taught=true },
+            NewDevTable = table:add_entry( InitiatorEurid, NewEnDevice,
+                                           DevTable ),
+            State#oceanic_state{ device_table=NewDevTable }
+
+    end,
 
     % We transmit the initiator EURID as the target (thus not ours with
     % State#oceanic_state.emitter_eurid), and bidirectional (not unidirectional)
@@ -3009,25 +2962,7 @@ acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
        "Acknowledging teach-in request as '~ts', with telegram ~w.",
        [ TeachOutcome, TeachInRespTel ] ) ),
 
-    SentState = send_raw_telegram( TeachInRespTel, State ),
-
-    DevTable = SentState#oceanic_state.device_table,
-
-    case table:get_value_with_default( _K=InitiatorEurid, _DefV=undefined,
-                                       DevTable ) of
-
-        undefined ->
-            trace_bridge:error_fmt(
-                "Taught initiator ~ts not found (abnormal).",
-                [ oceanic_text:eurid_to_string( InitiatorEurid ) ] ),
-            SentState;
-
-        EnDevice ->
-
-
-
-
-
+    send_raw_telegram( TeachInRespTel, RegState ).
 
 
 
@@ -3138,49 +3073,57 @@ send( Telegram, OcSrvPid ) ->
 
 
 
+-doc """
+Triggers the actuator specified by its emitted event spec, by requesting the
+Oceanic server to emit the corresponding telegram and possibly track its
+acknowledgement.
+""".
+-spec trigger_actuator( canon_emitted_event_spec(), oceanic_server_pid() ) ->
+                                                        void().
+trigger_actuator( CEES, OcSrvPid ) ->
+    OcSrvPid ! { triggerActuator, CEES }.
+
+
 
 -doc """
 Triggers the actuators specified by their event specs, by requesting the Oceanic
 server to emit the corresponding telegrams and possibly track their
 acknowledgements.
-
-The event information expected to be sent back can be specified (it will be the
-same for all actuators); this will allow waiting for any acknowledgement from
-them, and detect failed triggers.
 """.
 -spec trigger_actuators( [ canon_emitted_event_spec() ],
-	option( reported_event_info() ), oceanic_server_pid() ) -> void().
-trigger_actuators( ActEvSpecs, MaybeExpectedReportedEventInfo, OcSrvPid ) ->
-	[ trigger_actuator( AES, MaybeExpectedReportedEventInfo, OcSrvPid )
-		|| AES <- ActEvSpecs ].
-
+                                        oceanic_server_pid() ) -> void().
+trigger_actuators( CEESs, OcSrvPid ) ->
+   OcSrvPid ! { triggerActuators, CEESs }.
 
 
 -doc """
-Triggers the actuator specified by its event spec, by requesting the Oceanic
-server to emit the corresponding telegram and possibly track its
-acknowledgement.
+Triggers the specified actuator in the inverse way of the one specified by its
+emitted event spec, by requesting the Oceanic server to emit the corresponding
+telegram and possibly track its acknowledgement.
+
+For example, if the actuator is a smart plug meant by the specified CEES to be
+switched on, here it will be switched off instead.
 """.
--spec trigger_actuator( canon_emitted_event_spec(),
-	option( reported_event_info() ), oceanic_server_pid() ) -> void().
-% If the actuator is to be addressed as smart plug:
-trigger_actuator( _CEES={ COTS,
-						  _ActInfo={ ActEurid, _MaybeActDevType=smart_plug } },
-				  MaybeExpectedReportedEventInfo,
-				  OcSrvPid ) ->
+-spec trigger_actuator_reciprocal( canon_emitted_event_spec(),
+                                        oceanic_server_pid() ) -> void().
+trigger_actuator_reciprocal( CEES, OcSrvPid ) ->
+    OcSrvPid ! { triggerActuatorReciprocal, CEES }.
 
-	TrackSpec = { _WaitedEventType=smart_plug_status_report_event,
-				  MaybeExpectedReportedEventInfo },
 
-	% This Oceanic server is to keep track of a corresponding TriggerTrackInfo:
-	OcSrvPid ! { sendDoubleRockerTelegram, [ ActEurid, COTS, TrackSpec ] };
+-doc """
+Triggers the specified actuators in the inverse way of the one specified by
+their emitted event spec, by requesting the Oceanic server to emit the
+corresponding telegram and possibly track its acknowledgement.
 
-trigger_actuator( _CEES={ _COTS,
-						  _ActInfo={ _ActEurid, MaybeActDevType } },
-				  _MaybeExpectedReportedEventInfo,
-				  _OcSrvPid ) ->
-	% If MaybeActDevType is set, could be guessed:
-	throw( { unsupported_actuator_device_type, MaybeActDevType } ).
+For example, if one of the actuators is a smart plug meant by the specified CEES
+to be switched on, here it will be switched off instead.
+""".
+-spec trigger_actuators_reciprocal( [ canon_emitted_event_spec() ],
+                                        oceanic_server_pid() ) -> void().
+trigger_actuators_reciprocal( CEESs, OcSrvPid ) ->
+   OcSrvPid ! { triggerActuatorsReciprocal, CEESs }.
+
+
 
 
 
@@ -3349,6 +3292,24 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 										 JamState ),
 
 			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
+
+
+        { triggerActuator, _CEES={ ActEurid, MaybeDevOp } } ->
+            TrigState = trigger_actuator_impl( ActEurid, MaybeDevOp, State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+
+        { triggerActuators, CEESs } ->
+            TrigState = trigger_actuators_impl( CEESs, State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+
+        { triggerActuatorReciprocal, _CEES={ ActEurid, MaybeDevOp } } ->
+            TrigState = trigger_actuator_reciprocal_impl( ActEurid,
+                MaybeDevOp, State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+
+        { triggerActuatorsReciprocal, CEESs } ->
+            TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
 		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
@@ -3749,6 +3710,135 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 
+
+% Trigger internal helpers.
+
+
+-doc """
+Triggers the specified actuator so that it performs the specified operation.
+""".
+-spec trigger_actuator_impl( eurid(), option( device_operation() ),
+                                    oceanic_state() ) -> oceanic_state().
+trigger_actuator_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
+    DevOp = get_default_operation_for( ActEurid, State ),
+    % A next clause:
+    trigger_actuator_impl( ActEurid, DevOp, State );
+
+trigger_actuator_impl( ActEurid, _DevOp=switch_on,
+                  State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+
+    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
+       SourceEurid, _TargetStatus=on, _MaybeTargetEurid=ActEurid ),
+
+    send_raw_telegram( SwitchTel, State );
+
+trigger_actuator_impl( ActEurid, _DevOp=switch_off,
+                  State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+
+    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
+       SourceEurid, _TargetStatus=off, _MaybeTargetEurid=ActEurid ),
+
+    send_raw_telegram( SwitchTel, State );
+
+trigger_actuator_impl ( ActEurid, DevOp, _State ) ->
+   throw( { unsupported_device_operation, DevOp,
+             { actuator, oceanic_text:eurid_to_string( ActEurid ) } } ).
+
+
+
+-doc """
+Triggers the specified actuators so that they perform their respective specified
+operation.
+""".
+-spec trigger_actuators_impl( [ canon_emitted_event_spec() ],
+                                    oceanic_state() ) -> oceanic_state().
+trigger_actuators_impl( _CEESs=[], State ) ->
+    State;
+
+trigger_actuators_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ], State ) ->
+    TrigState = trigger_actuator_impl( ActEurid, MaybeDevOp, State ),
+    trigger_actuators_impl( T, TrigState ).
+
+
+
+-doc """
+Triggers the specified actuator so that it performs the reciprocal of the
+specified operation.
+""".
+-spec trigger_actuator_reciprocal_impl( eurid(), option( device_operation() ),
+                                    oceanic_state() ) -> oceanic_state().
+trigger_actuator_reciprocal_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
+    DevOp = get_default_operation_for( ActEurid, State ),
+     % A next clause:
+   trigger_actuator_reciprocal_impl( ActEurid, DevOp, State );
+
+trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_on,
+        State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+
+    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
+       SourceEurid, _TargetStatus=off, _MaybeTargetEurid=ActEurid ),
+
+    send_raw_telegram( SwitchTel, State );
+
+trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_off,
+        State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+
+    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
+       SourceEurid, _TargetStatus=on, _MaybeTargetEurid=ActEurid ),
+
+    send_raw_telegram( SwitchTel, State );
+
+trigger_actuator_reciprocal_impl ( ActEurid, DevOp, _State ) ->
+   throw( { unsupported_device_reciprocal_operation, DevOp,
+             { actuator, oceanic_text:eurid_to_string( ActEurid ) } } ).
+
+
+-doc """
+Triggers the specified actuators so that they perform the reciprocal of their
+respective specified operation.
+""".
+-spec trigger_actuators_reciprocal_impl( [ canon_emitted_event_spec() ],
+                                    oceanic_state() ) -> oceanic_state().
+trigger_actuators_reciprocal_impl( _CEESs=[], State ) ->
+    State;
+
+trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
+                                   State ) ->
+    TrigState = trigger_actuator_reciprocal_impl( ActEurid, MaybeDevOp, State ),
+    trigger_actuators_reciprocal_impl( T, TrigState ).
+
+
+
+
+-doc "Returns the default operation corresponding to the specified actuator.".
+get_default_operation_for( ActEurid,
+                           #oceanic_state{ device_table=DevTable } ) ->
+    case table:get_value_with_default( _K=ActEurid,
+                                       _Def=undefined, DevTable ) of
+
+        undefined ->
+            throw( { unregistered_actuator_device, ActEurid } );
+
+        #enocean_device{ eep=Eep } ->
+            get_base_operation_for_eep( Eep )
+
+    end.
+
+
+
+-doc "Returns the base operation corresponding to the specified EEP.".
+-spec get_base_operation_for_eep( eep_id() ) -> device_operation().
+get_base_operation_for_eep( _Eep=smart_plug ) ->
+    switch_on;
+
+get_base_operation_for_eep( _Eep=smart_plug_with_metering ) ->
+    switch_on;
+
+get_base_operation_for_eep( Eep ) ->
+    throw( { no_base_operation_for_eep, Eep } ).
+
+
+
 -doc "Detects and notifies any suspected jamming attempt.".
 -spec monitor_jamming( byte_size(), oceanic_state() ) -> oceanic_state().
 monitor_jamming( ChunkSize,
@@ -4037,7 +4127,7 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt(
-			"Sending to serial server ~w actual telegram ~w "
+			"Sending to serial server ~w the actual telegram ~w "
 			"(hexadecimal form: '~ts').",
 			[ SerialPid, ActualSending,
 			  oceanic_text:telegram_to_hexastring( Telegram ) ] ) ),
@@ -5096,35 +5186,35 @@ device_triggered( _DevEventTuple ) ->
 
 
 
-%% -doc """
-%% Registers the specified actuator trigger tracking info, to detect if no report
-%% is sent back.
-%% """.
+% -doc """
+% Registers the specified actuator trigger tracking info, to detect if no report
+% is sent back.
+% """.
 
-%% -spec init_actuator_trigger_tracking( eurid(), device_event_type(),
-%%         option( reported_event_info() ), oceanic_state() ) -> oceanic_state().
-%% register_trigger_track_info( ActEurid, DevEvttype, MaybeRepInfo,
-%%         State#oceanic_state{ actuator_tracking_table=ActTrackTable,
-%%                              trigger_retry_count=TrigCount ) ->
+% -spec init_actuator_trigger_tracking( eurid(), device_event_type(),
+%         option( reported_event_info() ), oceanic_state() ) -> oceanic_state().
+% register_trigger_track_info( ActEurid, DevEvttype, MaybeRepInfo,
+%         State#oceanic_state{ actuator_tracking_table=ActTrackTable,
+%                              trigger_retry_count=TrigCount ) ->
 
-%%     % No identifier is assigned to actuations, as we cannot discriminate them.
-%%  { ok, TimerRef } = timer:send_after(
-%%      ?default_max_actuation_waiting_duration,
-%%          _Msg={ considerActuationTimeout, NewCmdCount } ),
+%     % No identifier is assigned to actuations, as we cannot discriminate them.
+%  { ok, TimerRef } = timer:send_after(
+%      ?default_max_actuation_waiting_duration,
+%          _Msg={ considerActuationTimeout, NewCmdCount } ),
 
 
-%%     TrackInfo = { ActEurid, DevEvttype, MaybeRepInfo, TimerRef,
-%%                   _NextRetries=TrigCount ),
+%     TrackInfo = { ActEurid, DevEvttype, MaybeRepInfo, TimerRef,
+%                   _NextRetries=TrigCount ),
 
-%%     TInfos = table:get_value_with_default( _K=ActEurid, _Def=[],
-%%                                            ActTrackTable ),
+%     TInfos = table:get_value_with_default( _K=ActEurid, _Def=[],
+%                                            ActTrackTable ),
 
-%%      % FIFO:
-%%      NewTInfos = list_utils:append_at_end( _Elem=TrackInfo, _List=TInfos ),
+%      % FIFO:
+%      NewTInfos = list_utils:append_at_end( _Elem=TrackInfo, _List=TInfos ),
 
-%%     NewActTrackTable = table:add_entry( ActEurid, NewTInfos, ActTrackTable ),
+%     NewActTrackTable = table:add_entry( ActEurid, NewTInfos, ActTrackTable ),
 
-%%     State#oceanic_state{ actuator_tracking_table=NewActTrackTable }.
+%     State#oceanic_state{ actuator_tracking_table=NewActTrackTable }.
 
 
 

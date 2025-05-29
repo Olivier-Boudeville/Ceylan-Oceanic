@@ -772,7 +772,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 			[ size( DataTail ), DB_3, DB_2, DB_1, DB_0,
 			  oceanic_text:eurid_to_string( SenderEurid ),
               oceanic_text:repeater_count_to_string( RC ),
-			  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+			  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                     OptData )
 			] ),
 		basic_utils:ignore_unused( [ DataTail, RC, MaybeDecodedOptData ] ) ),
 
@@ -913,7 +914,21 @@ decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
 								learn_activated=LearnActivated },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  NextMaybeTelTail, NewState }.
+	  NextMaybeTelTail, NewState };
+
+
+decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0, _SenderEurid, OptData,
+                               NextMaybeTelTail, Device, State ) ->
+
+    trace_bridge:error_fmt( "Ignoring invalid rorg_4bs (A5) packet "
+        "corresponding to the thermometer EEP, sent by ~ts; "
+        "DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w "
+        "(optional data: ~w, next tail: ~w).",
+        [ oceanic_text:device_to_string( Device ), DB_3, DB_2, DB_1, DB_0,
+          OptData, NextMaybeTelTail ] ),
+
+    { invalid, _ToSkipLen=0, NextMaybeTelTail, State }.
+
 
 
 
@@ -1128,7 +1143,7 @@ decode_ute_packet(
 				  oceanic_text:ptm_module_to_string( PTMSwitchModuleType ),
 				  oceanic_text:nu_message_type_to_string( NuType ),
 				  oceanic_text:repeater_count_to_string( RepCount ),
-				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, 
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
 				] )
 
@@ -1239,12 +1254,12 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
-			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid, 
+			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
                                                              DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
 				"from device whose EURID is ~ts: device not configured, "
-				"no EEP known for it.", 
+				"no EEP known for it.",
                 [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1318,12 +1333,12 @@ perform metering.
 
 Discussed in `[EEP-spec]` p. 132.
 
-Notably, if the command is equal to 0x4 (hence packet of type "Actuator Status
-Response", i.e. with CmdAsInt=16#4 ("CMD 0x4", 'actuator_status_response'; see
-`[EEP-spec]` p. 135), it is an information sent (as a broadcast) by the smart
-plug about its status (either after a status request or after a state change
-request - whether or not it triggered an actual state change), typically to
-acknowledge that a requested switching was indeed triggered.
+Notably, if the command is equal to 0x4 (hence packet of type `"Actuator Status
+Response"`, i.e. with `CmdAsInt=16#4` (`"CMD 0x4"`, 'actuator_status_response';
+see `[EEP-spec]` p. 135), it is an information sent (as a broadcast) by the
+smart plug about its status (either after a status request or after a state
+change request - whether or not it triggered an actual state change), typically
+to acknowledge that a requested switching was indeed triggered.
 """.
 -spec decode_vld_smart_plug_packet( vld_payload(), eurid(), telegram_chunk(),
 		telegram_opt_data(), option( telegram_tail() ), enocean_device(),
@@ -1621,7 +1636,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 			HardStr = oceanic_text:interpret_hardware_status( HardwareStatus ),
 
-			LocCtrlStr = 
+			LocCtrlStr =
                 oceanic_text:interpret_local_control( IsLocalControlEnabled ),
 
 			PowerStr = oceanic_text:interpret_power_report( OutputPower ),
@@ -1631,9 +1646,9 @@ decode_vld_smart_plug_with_metering_packet(
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, "
 				"~ts; this plug is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ), 
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
                   PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
-				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, 
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData ) ] )
 
 		end,

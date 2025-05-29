@@ -109,9 +109,7 @@ Ceylan-Oceanic.
     canon_emitted_event_spec_to_string/1,
 
     canon_emitted_event_specs_to_string/1,
-    canon_emitted_event_specs_to_string/2,
-
-    actuator_info_to_string/1, actuator_info_to_string/2 ]).
+    canon_emitted_event_specs_to_string/2 ]).
 
 
 
@@ -150,8 +148,7 @@ Ceylan-Oceanic.
 -type device_event() :: oceanic:device_event().
 -type device_description() :: oceanic:device_description().
 -type device_state_change_spec() :: oceanic:device_state_change_spec().
-%-type enum() :: oceanic:enum().
-%-type application_style() :: oceanic:application_style() .
+
 -type button_locator() :: oceanic:button_locator().
 -type button_designator() :: oceanic: button_designator().
 -type button_transition() :: oceanic:button_transition().
@@ -161,12 +158,6 @@ Ceylan-Oceanic.
 -type contact_status() :: oceanic:contact_status().
 -type ptm_switch_module_type() :: oceanic:ptm_switch_module_type().
 
-
-%-type button_counting() :: oceanic:button_counting().
-%-type canon_outgoing_trigger_spec() :: oceanic:canon_outgoing_trigger_spec().
-
--type actuator_info() :: oceanic:actuator_info().
-
 -type canon_listened_event_spec() :: oceanic:canon_listened_event_spec().
 -type canon_emitted_event_spec() :: oceanic:canon_emitted_event_spec().
 
@@ -175,37 +166,16 @@ Ceylan-Oceanic.
 
 -type virtual_emitter_info() :: oceanic:virtual_emitter_info().
 
-
-%-type teach_outcome() :: oceanic:teach_outcome().
-%-type communication_direction() :: oceanic:communication_direction().
-
-%% -type eurid() :: oceanic:eurid().
-%% -type device_event() :: oceanic:device_event().
-%% -type discovery_origin() :: oceanic:discovery_origin().
-%% -type enocean_device() :: oceanic:enocean_device().
-%% -type telegram() :: oceanic:telegram().
-%% -type telegram_chunk() :: oceanic:telegram_chunk().
-%% -type telegram_tail() :: oceanic:telegram_tail().
-%% -type telegram_data() :: oceanic:telegram_data().
-%% -type telegram_data_tail() :: oceanic:telegram_data_tail().
-%% -type telegram_opt_data() :: oceanic:telegram_opt_data().
-%% -type decoded_optional_data() :: oceanic:decoded_optional_data().
 -type oceanic_state() :: oceanic:oceanic_state().
 -type oceanic_server_pid() :: oceanic:oceanic_server_pid().
 
-%% -type vld_payload() :: oceanic:vld_payload().
 -type dbm() :: oceanic:dbm().
 -type security_level() :: oceanic:security_level().
 -type subtelegram_count() :: oceanic:subtelegram_count().
-%% -type enum() :: oceanic:enum().
 
-
-%% -type application_style() :: oceanic:application_style() .
-%% -type button_locator() :: oceanic:button_locator().
-%% -type button_transition() :: oceanic:button_transition().
 -type button_ref() :: oceanic:button_ref().
 -type nu_message_type() :: oceanic:nu_message_type() .
-%% -type repetition_count() :: oceanic:repetition_count().
+
 
 
 % Section for telegram-related conversions.
@@ -1523,20 +1493,31 @@ device_to_string( #enocean_device{ eurid=Eurid,
 								   first_seen=MaybeFirstTimestamp,
 								   last_seen=MaybeLastTimestamp,
 								   availability=MaybeAvailStatus,
+                                   taught=IsTaught,
 								   telegram_count=TeleCount,
 								   error_count=ErrCount,
 								   expected_periodicity=ActPeriod,
 								   activity_timer=MaybeActTimer } ) ->
 
+    TaughtStr = case IsTaught of
+
+        true ->
+            "taught ";
+
+        false ->
+            ""
+
+    end,
+
 	NameStr = case MaybeName of
 
 		undefined ->
-			text_utils:format( "unnamed device of EURID ~ts",
-							   [ eurid_to_bin_string( Eurid ) ] );
+			text_utils:format( "unnamed ~tsdevice of EURID ~ts",
+				 [ TaughtStr, eurid_to_bin_string( Eurid ) ] );
 
 		Name ->
-			text_utils:format( "device '~ts' (EURID: ~ts)",
-							   [ Name, eurid_to_bin_string( Eurid ) ] )
+			text_utils:format( "~tsdevice '~ts' (EURID: ~ts)",
+				[ TaughtStr, Name, eurid_to_bin_string( Eurid ) ] )
 
 	end,
 
@@ -1977,15 +1958,18 @@ canon_outgoing_trigger_spec_to_string(
 Returns a textual description of the specified canonical emitting event
 specification.
 
-No Oceanic server specified, hence EURIDs cannot be resolved in actual device
+No Oceanic server specified, hence EURIDs cannot be resolved to actual device
 descriptions.
 """.
 -spec canon_emitted_event_spec_to_string( canon_emitted_event_spec() ) ->
 												ustring().
-canon_emitted_event_spec_to_string( _CEES={ CanonOTS, ActInfo } ) ->
-	text_utils:format( "~ts, targeting ~ts",
-		[ canon_outgoing_trigger_spec_to_string( CanonOTS ),
-		  actuator_info_to_string( ActInfo ) ] ).
+canon_emitted_event_spec_to_string( _CEES={ Eurid, _MaybeDevOp=undefined } ) ->
+    text_utils:format( "actuator whose EURID is ~ts, to perform "
+                       "its default operation", [ eurid_to_string( Eurid ) ] );
+
+canon_emitted_event_spec_to_string( _CEES={ Eurid, DevOp } ) ->
+    text_utils:format( "actuator whose EURID is ~ts, to perform "
+                       "a ~ts operation", [ eurid_to_string( Eurid ), DevOp ] ).
 
 
 
@@ -1995,41 +1979,14 @@ specification, enriched thanks to the specified Oceanic server.
 """.
 -spec canon_emitted_event_spec_to_string( canon_emitted_event_spec(),
 										  oceanic_server_pid() ) -> ustring().
-canon_emitted_event_spec_to_string( _CEES={ CanonOTS, ActInfo }, OcSrvPid ) ->
-	text_utils:format( "~ts, targeting ~ts",
-		[ canon_outgoing_trigger_spec_to_string( CanonOTS ),
-		  actuator_info_to_string( ActInfo, OcSrvPid ) ] ).
+canon_emitted_event_spec_to_string( _CEES={ Eurid, _MaybeDevOp=undefined },
+                                    OcSrvPid ) ->
+    text_utils:format( "~ts, to perform its default operation",
+        [ oceanic:get_device_description( Eurid, OcSrvPid ) ] );
 
-
-
--doc """
-Returns a basic textual description of the specified actuator information.
-""".
--spec actuator_info_to_string( actuator_info() ) -> ustring().
-actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined } ) ->
-	text_utils:format(
-		"actuator whose EURID is ~ts (not addressed as a specific type)",
-		[ eurid_to_string( Eurid ) ] );
-
-actuator_info_to_string( { Eurid, AddrDeviceType } ) ->
-	text_utils:format( "actuator whose EURID is ~ts, addressed as a ~ts type",
-					   [ eurid_to_string( Eurid ), AddrDeviceType ] ).
-
-
--doc """
-Returns a textual description of the specified actuator information, enhanced
-thanks to the Oceanic server.
-""".
--spec actuator_info_to_string( actuator_info(), oceanic_server_pid() ) ->
-                                        ustring().
-actuator_info_to_string( { Eurid, _MaybeDeviceType=undefined }, OcSrvPid ) ->
-	text_utils:format( "actuator ~ts (not addressed as a specific type)",
-		[ oceanic:get_device_description( Eurid, OcSrvPid ) ] );
-
-actuator_info_to_string( { Eurid, AddrDeviceType }, OcSrvPid ) ->
-	text_utils:format( "actuator ~ts, addressed as a ~ts type",
-		[ oceanic:get_device_description( Eurid, OcSrvPid ), AddrDeviceType ] ).
-
+canon_emitted_event_spec_to_string( _CEES={ Eurid, DevOp }, OcSrvPid ) ->
+    text_utils:format( "~ts, to perform a ~ts operation",
+        [ oceanic:get_device_description( Eurid, OcSrvPid ), DevOp ] ).
 
 
 -doc """

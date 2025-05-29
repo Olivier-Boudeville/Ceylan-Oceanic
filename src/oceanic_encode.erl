@@ -41,17 +41,38 @@ Module centralising **all encoding** made by Ceylan-Oceanic.
 
 
 -export([ encode_esp3_packet/2,
+
           encode_double_rocker_telegram/3,
           encode_double_rocker_switch_telegram/5,
           encode_double_rocker_multipress_telegram/4,
 
           encode_teach_in_response/5,
+
+          encode_switch_dimmer_set_output/3,
+
           get_optional_data_for_sending/1,
           get_designated_button_enum/2, get_button_transition_enum/1 ]).
 
 
-% Exported only for testing:
--export([  ]).
+
+
+
+% Implementation notes.
+
+% Smart plugs are described by Enocean as "Electronic switches and dimmers with
+% Energy Measurement and Local Control", i.e. EEP D2-01-* (see [EEP] p.131),
+% hence based on VLD telegrams.
+%
+% We support mainly the D2-01 type 0B, in the objective of simply having a
+% gateway be able to switch on/off a given smart plug.
+%
+% Such a smart plug is to be controlled as a home automation gateway, rather
+% than for example by emulating a double rocker, which would imply only
+% broadcast operations and thus no possibility of controlling actuators
+% separately. This requires going through first a pass of teach-in.
+%
+% We are mostly interested here in the following commands:
+% - "CMD 0x1 - Actuator Set Output" (see [EEP] p.132)
 
 
 % Type shorthands:
@@ -74,6 +95,8 @@ Module centralising **all encoding** made by Ceylan-Oceanic.
 -type canon_outgoing_trigger_spec() :: oceanic:canon_outgoing_trigger_spec().
 -type teach_outcome() :: oceanic:teach_outcome().
 -type communication_direction() :: oceanic:communication_direction().
+-type device_status() :: oceanic:device_status() .
+
 
 
 % Section for encoding, in ESP3 packets.
@@ -157,18 +180,18 @@ position).
 As this encoding is done exclusively on the caller side (the Oceanic server not
 being involved), it is up to the caller to specify the source EURID (and
 application style). We recommend that the caller fetches from the Oceanic server
-its EURID (see get_oceanic_eurid/1) once for all, and uses it afterwards
+its EURID (see `get_oceanic_eurid/1`) once for all, and uses it afterwards
 (otherwise, no emitted telegram will be taken into account by receivers).
 
-Event sent in the context of EEP F6-02-01 or EEP F6-02-02 ("Light and Blind
-Control - Application Style 1 or 2"), for T21=1. It results thus in a RPS
+Event sent in the context of EEP F6-02-01 or EEP F6-02-02 (`"Light and Blind
+Control - Application Style 1 or 2"`), for `T21=1`. It results thus in a RPS
 telegram, an ERP1 radio packet encapsulated into an ESP3 one.
 
 See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 
 Depending on how Oceanic was learnt by the target actuator, it will be seen
 either as a rocker (recommended) or as push-button(s): refer to
-http://oceanic.esperide.org/#buttons-vs-rocker-transition-vs-state for more
+[http://oceanic.esperide.org/#buttons-vs-rocker-transition-vs-state] for more
 information.
 
 In the future, the encoding of two buttons transitions (second action) could be
@@ -267,7 +290,6 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 				  text_utils:integer_to_bits( StatusAsInt, PadWidth ) ] )
 		end ),
 
-	% Radio, hence 1 here:
 	encode_esp3_packet( RadioPacketType, Data, MaybeOptData ).
 
 
@@ -277,9 +299,9 @@ Encodes a double-rocker multipress telegram, from the specified device to the
 specified one (if any), reporting the specified transition for the specified
 button.
 
-Event sent in the context of EEP F6-02-01 or F6-02-02 ("Light and Blind Control
-- Application Style 1 or 2"), for T21=1. It results thus in a RPS telegram, an
-ERP1 radio packet encapsulated into an ESP3 one.
+Event sent in the context of EEP F6-02-01 or F6-02-02 (`"Light and Blind Control
+- Application Style 1 or 2"`), for `T21=1`. It results thus in a RPS telegram,
+an ERP1 radio packet encapsulated into an ESP3 one.
 
 See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
 """.
@@ -323,7 +345,7 @@ encode_double_rocker_multipress_telegram( SourceEurid, ButtonCounting,
 	T21 = 1,
 	NU = 0,
 
-	% Apparently Repeater Count (see `[EEP-gen]` p.14); non-zero deemed safer:
+	% Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
 	%RC = 1,
 	RC = 0,
 
@@ -363,13 +385,13 @@ Encodes a successful Teach-In Response - UTE Message telegram (Addressed / CMD:
 This message is the reply to an EEP Teach-In Query message that was sent by an
 initiator device (e.g. a smart plug, to register any new controller of it).
 
-The content to echo is the 6 last bytes of the teach-in query, i.e. DB_{5..0}.
+The content to echo is the 6 last bytes of the teach-in query, i.e. `DB_{5..0}`.
 
 The returned telegram allows the sender (the home automation gateway),
-supposedly in "learn mode", to be registered by the learning device as a
+supposedly in learn mode, to be registered by the learning device as a
 controller thereof.
 
-Refer to [EEP-spec] p.255 for more information.
+Refer to `[EEP-spec]` p.255 for more information.
 """.
 -spec encode_teach_in_response( teach_outcome(), eurid(), eurid(),
     communication_direction(), telegram_chunk() ) -> telegram().
@@ -436,6 +458,66 @@ encode_teach_in_response( TeachOutcome, InitiatorEurid, EmitterEurid,
 	OptData = get_optional_data_for_sending( _TargetEurid=InitiatorEurid ),
 
 	encode_esp3_packet( _RadioPacketType=radio_erp1_type, Data, OptData ).
+
+
+
+-doc """
+Encodes a telegram to set the output of a switch/dimmer.
+
+It is based on the `"CMD 0x1 - Actuator Set Output"` command (see `[EEP]`
+p.132).
+
+If this telegram is to be addressed (to a particular device, as opposed to being
+broadcast), the target device (e.g. a smart plug) must have already registered
+(through teach-in) the emitter (typically this gateway).
+""".
+-spec encode_switch_dimmer_set_output( eurid(), device_status(),
+                                       option( eurid() ) ) -> telegram().
+encode_switch_dimmer_set_output( SourceEurid, TargetStatus,
+                                 MaybeTargetEurid ) ->
+
+    cond_utils:if_defined( oceanic_debug_encoding,
+        trace_bridge:debug_fmt( "Encoding a switch/dimmer set output telegram, "
+            "to be sent by ~ts to ~ts, for a target status ~ts.",
+            [ oceanic_text:eurid_to_string( SourceEurid ),
+              oceanic_text:eurid_to_string( MaybeTargetEurid ),
+              TargetStatus ] ) ),
+
+	RorgNum = oceanic_generated:get_maybe_second_for_rorg( _Rorg=rorg_vld ),
+
+
+    CmdId = 1,
+
+    DB_2 = <<0:4, CmdId:4 >>,
+
+
+    DimValue = 0, % 0x00:Switch to new output value
+
+    IOChannels = 16#1e, % All output channels supported by the device
+
+    DB_1 = <<DimValue:3, IOChannels:5>>,
+
+
+    OutputValue = case TargetStatus of
+
+        on ->
+            16#64; % 100% / on
+
+        off ->
+            0
+
+    end,
+
+    DB_0 = <<0:1, OutputValue:7>>,
+
+    Status = 0,
+
+	Data = <<RorgNum:8, DB_2:1/binary, DB_1:1/binary, DB_0:1/binary,
+             SourceEurid:32, Status:8>>,
+
+	MaybeOptData = get_optional_data_for_sending( MaybeTargetEurid ),
+
+	encode_esp3_packet( _RadioPacketType=radio_erp1_type, Data, MaybeOptData ).
 
 
 
