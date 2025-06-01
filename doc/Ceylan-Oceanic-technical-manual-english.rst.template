@@ -884,24 +884,27 @@ ___________________________________________________
 
 In practice, in addition to the documentation, we found clearer to respect the following procedures:
 
-- to reset: press left-button for about 3 "large" seconds, then the LED blinks continuously, then press the right-button for about 5 seconds, until the LED turns off
+- to reset: press left button for about 3 "large" seconds, then the LED blinks continuously, then press the right-button for about 5 seconds, until the LED turns off
 
 - to learn a device as:
 
-  - a push-button : press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *once*; the LED will blink once and stay fixed until a telegram is received and learnt: if for example we pressed the top bottom to generate such telegram, this button will act as a on/off toggle, whereas its associated bottom button will have no effect
+  - a push-button : press left button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *once*; the LED will blink once and stay fixed until a telegram is received and learnt: if for example we pressed the top bottom to generate such telegram, this button will act as a on/off toggle, whereas its associated bottom button will have no effect
 
   - a "direction push-button" (supposedly a synonym of rocker): press left-button for about 1 "large" second, then the LED is on continuously, then press the right-button shortly *twice*; the LED will blink twice and stay fixed until a telegram is received and learnt; in that case, even if we pressed only for example the top button (which from now on corresponds to "set on"), the bottom one will also be taken into account (even if it was involved in the learning stage) and will correspond to "set off"
 
 Afterwards, the LED will blink once a telegram of a learnt device is received (whether or not this specified action has been learnt).
 
-As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting" mode.
+As mentioned in the previous section, we prefer the "direction push-button" mode, i.e. the rocker-based, "state setting", idempotent mode.
 
 We never managed to determine an EURID for that plug, and are not sure it has even one; same applies for any EEP.
 
 
 In terms of behaviour:
 
-- two options exist to control this plug: either with a broadcast telegram, or with a telegram targeting any (thus arbitrary) EURID (as mentioned, no EURID is known for that plug - and it will process a telegram regardless of the target EURID it comprises); we recommend the second, more selective approach, and to assign this plug a pseudo-EURID (not used by any other device), to better discriminate them
+- two options exist to control this plug: either with a broadcast telegram, or with a telegram targeting any (thus arbitrary) EURID (as mentioned, no EURID is known for that plug - and it will process a telegram regardless of the target EURID that it comprises; apparently this plug only relies on the source EURID, as if all telegrams were broadcast ones); we recommend the second, more selective approach, and to assign this plug a pseudo-EURID (not used by any other device), to better discriminate them (so that no other, normal device will act on telegrams aimed at that plug)
+
+- even once having learnt a gateway thanks to a prior button press, luckily this plug will not react to telegrams emitted by this gateway about setting the output of a switch/dimmer (as if it was taught in): that plug seems to ignore gateways and only interact with actual triggering devices (like push-buttons); so a gateway should be able to control Eltako plugs (as a whole) based on spoofing, without interfering with any other (gateway-switched) plugs
+
 - when issuing a command (e.g switch on or switch off), generally we do our best to send a first telegram to denote the press of a rocker-like trigger, then, shortly after, a second one to denote the release of that trigger; however:
 
   - we first had better results in sending multipress events (telling that no button is then pressed) rather than release (reciprocal of press) ones (as at least some push buttons/rockers do)
