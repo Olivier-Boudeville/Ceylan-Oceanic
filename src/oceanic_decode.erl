@@ -1149,7 +1149,7 @@ decode_ute_packet(
 
 		end,
 		basic_utils:ignore_unused(
-            [ PTMSwitchModuleType, NuType, RepCount ] ) ),
+            [ ResponseExpectedStr, PTMSwitchModuleType, NuType, RepCount ] ) ),
 
     % Just needing to echo DB5.7...DB0.0, hence 6 bytes:
 	<<_DB_6:8, ToEcho:6/binary, _/binary>> = DataTail,

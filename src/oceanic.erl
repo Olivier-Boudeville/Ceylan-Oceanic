@@ -353,11 +353,10 @@ describe a given device of interest.
 	  EEP :: ustring() }
 
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring(), declared_device_activity_periodicity() }
+	  EEP :: ustring(), device_info_user_spec() }
 
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring(), declared_device_activity_periodicity(),
-	  Comment :: ustring() }.
+	  EEP :: ustring(), device_info_user_spec(), Comment :: ustring() }.
 
 
 
@@ -1089,10 +1088,12 @@ Note that they correspond to the tags of the corresponding records.
   | 'command_response'.
 
 
+
 -doc """
 Lists the known types of devices.
 
-Each type of device is to send at least one type of events.
+Each type of device corresponds to an EEP or a set thereof, and is to send at
+least one type of events.
 """.
 -type device_type() ::
 	'thermo_hygro_sensor'
@@ -1102,20 +1103,59 @@ Each type of device is to send at least one type of events.
   | 'double_rocker'.
 
 
+-doc """
+A convention to interact with a type of device, beyond the EEP(s) that it
+implements.
+""".
+-type device_convention() :: 'standard' % If specified, just tells that the
+                                     % the standard behaviour applies.
+                           | 'eltako'.  % Eltako-specific behaviour
+                                        % (e.g. for smart plugs).
+
+
+-doc """
+A key designating extra information relative to a device.
+
+For example the application style of a rocker.
+""".
+% In comments, the type of the values associated to each key:
+-type device_info_key() ::
+    'application_style'     % Associated value of type: application_style()
+  | 'convention'               % device_convention()
+  | 'expected_periodicity'. % declared_device_activity_periodicity()
+
+
 
 -doc """
 Any kind of information relative to a device.
 
 For example the application style of a rocker.
 """.
--type device_info() :: application_style() | term().
+% In comments, the key associated to this value, in a device info table:
+-type device_info_value() ::
+    application_style() % For 'application_style'
+  | device_convention() % For 'convention'
+  | declared_device_activity_periodicity(). % For 'expected_periodicity'
+
+
+-doc """
+A user-defined table specifying device-specific information.
+""".
+-type device_info_user_spec() ::
+    list_table( device_info_key(), device_info_value() ).
+
+
+-doc """
+An internal device-specific information.
+""".
+-type device_info_spec() :: table( device_info_key(), device_info_value() ).
 
 
 -doc """
 Information regarding a device (e.g. a double rocker) that is emulated in order
 to forge telegrams that it could send, typically in order to trigger actuators.
 """.
--type virtual_emitter_info() :: option( tuploid( device_info() ) ).
+-type virtual_emitter_info() :: option( tuploid( device_info_value() ) ).
 
 
 -doc """
@@ -1361,7 +1401,7 @@ Often abbreviated as CEES.
 			   device_description/0, back_online_info/0, device_event/0,
 			   device_event_type/0,
 
-			   device_type/0, device_info/0, virtual_emitter_info/0,
+			   device_type/0, device_convention/0, virtual_emitter_info/0,
                device_operation/0,
 
 			   state_change_info/0,
@@ -1595,6 +1635,7 @@ Definition of the overall state of an Oceanic server, including configuration
 -type milliseconds() :: unit_utils:milliseconds().
 
 -type list_table() :: list_table:list_table().
+-type list_table( K, V ) :: list_table:list_table( K, V ).
 
 -type common_command() :: oceanic_common_command:common_command().
 -type command_response() :: oceanic_common_command:command_response().
@@ -2242,13 +2283,12 @@ declare_devices( _DeviceCfgs=[], DeviceTable ) ->
 
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
 				 DeviceTable ) ->
-	declare_devices( [ { NameStr, EuridStr, EepStr,
-						 _MaybeActPeriodicity=auto } | T ],
-					 DeviceTable );
+	declare_devices( [ { NameStr, EuridStr, EepStr, _ExtraDevInfo=[] }
+                         | T ], DeviceTable );
 
 % Main clause; any config comment (as last element) dropped by the next clause:
 declare_devices( _DeviceCfgs=[
-					DC={ NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
+					DC={ NameStr, EuridStr, EepStr, ExtraDevInfo } | T ],
 				 DeviceTable ) ->
 
 	text_utils:is_string( NameStr ) orelse
@@ -2296,7 +2336,25 @@ declare_devices( _DeviceCfgs=[
 
 	end,
 
-	ActPeriod = case MaybeActPeriodicity of
+    % Checks its structure first:
+    DevInfoTable = case list_table:check_proper( ExtraDevInfo ) of
+
+        ok ->
+            table:new( ExtraDevInfo );
+
+        DupTable ->
+            trace_bridge:error_fmt( "Invalid device information, "
+                "duplicates found: ~ts", [ table:to_string( DupTable ) ] ),
+            throw( { duplicate_in_device_information, table:keys( DupTable ),
+                     NameStr } )
+
+    end,
+
+    { UserActPeriod, ShrunkDevInfoTable } =
+        table:extract_entry_with_default( _K=expected_periodicity,
+                                          _Def=auto, DevInfoTable ),
+
+    ActPeriod = case UserActPeriod of
 
 		none ->
 			none;
@@ -2331,7 +2389,8 @@ declare_devices( _DeviceCfgs=[
 								 name=text_utils:ensure_binary( NameStr ),
 								 eep=MaybeEepId,
 								 discovered_through=configuration,
-								 expected_periodicity=ActPeriod },
+								 expected_periodicity=ActPeriod,
+                                 extra_info=ShrunkDevInfoTable },
 
 	table:has_entry( Eurid, DeviceTable ) andalso
 		trace_bridge:warning_fmt( "Overriding entry for device "
@@ -2346,9 +2405,9 @@ declare_devices( _DeviceCfgs=[
 
 % Dropping comment (useful only for the user configuration):
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr,
-								 MaybeActPeriodicity, CommentStr } | T ],
+								 ExtraDevInfo, CommentStr } | T ],
 				 DeviceTable ) when is_list( CommentStr ) ->
-	declare_devices( [ { NameStr, EuridStr, EepStr, MaybeActPeriodicity } | T ],
+	declare_devices( [ { NameStr, EuridStr, EepStr, ExtraDevInfo } | T ],
 					 DeviceTable );
 
 
@@ -2980,7 +3039,8 @@ execute_command( CmdTelegram, OcSrvPid ) ->
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt( "Sending a command to execute, as ~ts, "
 			"on behalf of requester ~w.",
-			[ oceanic_text:telegram_to_string( CmdTelegram ), RequesterPid ] ) ),
+			[ oceanic_text:telegram_to_string( CmdTelegram ),
+              RequesterPid ] ) ),
 
 	OcSrvPid ! { executeCommand, CmdTelegram, RequesterPid },
 
@@ -3294,21 +3354,47 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
 
 
-        { triggerActuator, _CEES={ ActEurid, MaybeDevOp } } ->
+        { triggerActuator, CEES={ ActEurid, MaybeDevOp } } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Triggering actuator as ~w.",
+                                        [ CEES ] ),
+                basic_utils:ignore_unused( CEES ) ),
+
             TrigState = trigger_actuator_impl( ActEurid, MaybeDevOp, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
+
         { triggerActuators, CEESs } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Triggering actuators as ~w.",
+                                        [ CEESs ] ) ),
+
             TrigState = trigger_actuators_impl( CEESs, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
-        { triggerActuatorReciprocal, _CEES={ ActEurid, MaybeDevOp } } ->
+
+        { triggerActuatorReciprocal, CEES={ ActEurid, MaybeDevOp } } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Triggering reciprocally "
+                                        "actuator as ~w.", [ CEES ] ),
+                basic_utils:ignore_unused( CEES ) ),
+
             TrigState = trigger_actuator_reciprocal_impl( ActEurid,
                 MaybeDevOp, State ),
+
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
+
         { triggerActuatorsReciprocal, CEESs } ->
-            TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
+
+             cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Triggering reciprocally "
+                                        "actuators as ~w.", [ CEESs ] ) ),
+
+           TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
@@ -3725,20 +3811,102 @@ trigger_actuator_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
     trigger_actuator_impl( ActEurid, DevOp, State );
 
 trigger_actuator_impl( ActEurid, _DevOp=switch_on,
-                  State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+                       State=#oceanic_state{ emitter_eurid=SourceEurid,
+                                             device_table=DeviceTable } ) ->
 
-    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
-       SourceEurid, _TargetStatus=on, _MaybeTargetEurid=ActEurid ),
+    % If the target device is known, and if its extra information tell that it
+    % should be managed specifically, do so:
+    %
+    Convention = get_device_convention( ActEurid, DeviceTable ),
+
+    SwitchTel = case Convention of
+
+        % Here we act as a normal, taught-in gateway:
+        standard ->
+            oceanic_encode:encode_switch_dimmer_set_output( SourceEurid,
+                _TargetStatus=on, _MaybeTargetEurid=ActEurid );
+
+        % Here spoofing a (previously-learnt, possibly virtual) double rocker:
+        eltako ->
+
+            % Currently relying on hardcoded defaults:
+
+            % We designate the left rocker button:
+            ButtonChannel = 1,
+            %ButtonChannel = 2,
+
+            ButtonPos = top,
+
+            ButtonLoc = { ButtonChannel, ButtonPos },
+
+            % Meaning "F6-02-01":
+            EepId = double_rocker_switch_style_1,
+
+            SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
+
+            % Not need to send afterwards a correspoding "released" telegram:
+            oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+                SourceAppStyle, ButtonLoc, _ButTrans=pressed,
+                _MaybeTargetEurid=ActEurid )
+
+    end,
+
+    cond_utils:if_defined( oceanic_debug_activity,
+        trace_bridge:debug_fmt( "Sending to actuator ~ts a switch-on telegram "
+            "based on the ~ts convention.",
+            [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
     send_raw_telegram( SwitchTel, State );
+
 
 trigger_actuator_impl( ActEurid, _DevOp=switch_off,
-                  State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+                       State=#oceanic_state{ emitter_eurid=SourceEurid,
+                                             device_table=DeviceTable } ) ->
 
-    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
-       SourceEurid, _TargetStatus=off, _MaybeTargetEurid=ActEurid ),
+    % If the target device is known, and if its extra information tell that it
+    % should be managed specifically, do so:
+    %
+    Convention = get_device_convention( ActEurid, DeviceTable ),
+
+    SwitchTel = case Convention of
+
+        % Here we act as a normal, taught-in gateway:
+        standard ->
+            oceanic_encode:encode_switch_dimmer_set_output( SourceEurid,
+                _TargetStatus=off, _MaybeTargetEurid=ActEurid );
+
+        % Here spoofing a (previously-learnt, possibly virtual) double rocker:
+        eltako ->
+
+            % Currently relying on hardcoded defaults:
+
+            % We designate the left rocker button:
+            ButtonChannel = 1,
+            %ButtonChannel = 2,
+
+            ButtonPos = bottom,
+
+            ButtonLoc = { ButtonChannel, ButtonPos },
+
+            % Meaning "F6-02-01":
+            EepId = double_rocker_switch_style_1,
+
+            SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
+
+            % Not need to send afterwards a correspoding "released" telegram:
+            oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+                SourceAppStyle, ButtonLoc, _ButTrans=pressed,
+                _MaybeTargetEurid=ActEurid )
+
+    end,
+
+    cond_utils:if_defined( oceanic_debug_activity,
+        trace_bridge:debug_fmt( "Sending to actuator ~ts a switch-off telegram "
+            "based on the ~ts convention.",
+            [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
     send_raw_telegram( SwitchTel, State );
+
 
 trigger_actuator_impl ( ActEurid, DevOp, _State ) ->
    throw( { unsupported_device_operation, DevOp,
@@ -3769,27 +3937,17 @@ specified operation.
                                     oceanic_state() ) -> oceanic_state().
 trigger_actuator_reciprocal_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
     DevOp = get_default_operation_for( ActEurid, State ),
-     % A next clause:
-   trigger_actuator_reciprocal_impl( ActEurid, DevOp, State );
+    % A next clause:
+    trigger_actuator_reciprocal_impl( ActEurid, DevOp, State );
 
-trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_on,
-        State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
+trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_on, State ) ->
+    trigger_actuator_impl( ActEurid, switch_off, State );
 
-    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
-       SourceEurid, _TargetStatus=off, _MaybeTargetEurid=ActEurid ),
-
-    send_raw_telegram( SwitchTel, State );
-
-trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_off,
-        State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
-
-    SwitchTel = oceanic_encode:encode_switch_dimmer_set_output(
-       SourceEurid, _TargetStatus=on, _MaybeTargetEurid=ActEurid ),
-
-    send_raw_telegram( SwitchTel, State );
+trigger_actuator_reciprocal_impl( ActEurid, _DevOp=switch_off, State ) ->
+    trigger_actuator_impl( ActEurid, switch_on, State );
 
 trigger_actuator_reciprocal_impl ( ActEurid, DevOp, _State ) ->
-   throw( { unsupported_device_reciprocal_operation, DevOp,
+    throw( { unsupported_device_reciprocal_operation, DevOp,
              { actuator, oceanic_text:eurid_to_string( ActEurid ) } } ).
 
 
@@ -3808,6 +3966,24 @@ trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
     trigger_actuators_reciprocal_impl( T, TrigState ).
 
 
+
+-doc """
+Returns the convention according to which a gateway shall interact with the
+specified device.
+""".
+-spec get_device_convention( eurid(), device_table() ) -> device_convention().
+get_device_convention( TargetEurid, DeviceTable ) ->
+    case table:get_value_with_default( _K=TargetEurid,
+            _Def=undefined, DeviceTable ) of
+
+        undefined ->
+            standard;
+
+        #enocean_device{ extra_info=DevInfoTable } ->
+             % For example standard, eltako, etc.:
+             table:get_value_with_default( convention, standard, DevInfoTable )
+
+    end.
 
 
 -doc "Returns the default operation corresponding to the specified actuator.".

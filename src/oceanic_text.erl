@@ -37,12 +37,6 @@ Ceylan-Oceanic.
 -include("oceanic_internal.hrl").
 
 
--export_type([
-
- ]).
-
-
-
 
 % Telegram-related conversions:
 
@@ -1497,7 +1491,8 @@ device_to_string( #enocean_device{ eurid=Eurid,
 								   telegram_count=TeleCount,
 								   error_count=ErrCount,
 								   expected_periodicity=ActPeriod,
-								   activity_timer=MaybeActTimer } ) ->
+								   activity_timer=MaybeActTimer,
+                                   extra_info=ExtraInfoTable } ) ->
 
     TaughtStr = case IsTaught of
 
@@ -1681,9 +1676,12 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 	end,
 
-	text_utils:format( "~ts applying ~ts; it has ~ts~ts~ts~ts; ~ts; ~ts",
+    ExtraInfoStr = table:to_string( ExtraInfoTable, _DescriptionType=bullet ),
+
+	text_utils:format( "~ts applying ~ts; it has ~ts~ts~ts~ts; ~ts; ~ts; "
+        "regarding extra information: ~ts",
 		[ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr,
-		  AvailStr, PeriodStr ] ).
+		  AvailStr, PeriodStr, ExtraInfoStr ] ).
 
 
 
