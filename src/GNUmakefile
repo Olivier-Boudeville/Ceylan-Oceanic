@@ -11,6 +11,8 @@ MODULES_DIRS = scripts
 #
 EXTRA_BEAM_FILES = oceanic_generated.beam
 
+oceanic_generated.beam: oceanic_text.beam
+
 
 # As shall be the default rule:
 all:
