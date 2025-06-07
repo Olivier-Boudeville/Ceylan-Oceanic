@@ -45,10 +45,12 @@
 	%
 	serial_server_pid :: oceanic:serial_server_pid(),
 
+
 	% The (binary) path to the Enocean gateway (USB dongle), kept so that the
 	% serial link can be reset if needed:
 	%
 	device_path :: oceanic:bin_device_path(),
+
 
 	% To identify the pseudo-device emitter of any telegram to be sent by
 	% Oceanic; by default this will be the actual base ID advertised by the
@@ -58,6 +60,7 @@
 	%
 	emitter_eurid = oceanic_text:string_to_eurid( ?default_emitter_eurid )
                                     :: oceanic:eurid(),
+
 
 	% A table recording all information regarding the known Enocean devices:
 	device_table :: oceanic:device_table(),
@@ -77,19 +80,41 @@
     %
     auto_ack_teach_queries = 'true' :: boolean(),
 
-	% We enqueue command requests that shall result in an acknowledgement (most
-	% of them; possibly all of them), as such acks, at least generally, just
-	% contain a corresponding return code - nothing else that could be
-	% associated to a sender, a request, etc.; we used to ensure that at any
-	% time up to one of such commands was in the air, and stored in this queue
-	% the next ones for a later sending thereof in turn.
+
+	% We enqueue (low-level) commands sent to the Enocean module; they shall
+	% result in an acknowledgement from the module (most of them; possibly all
+	% of them).
+    %
+    % Such acks, at least generally, just contain a corresponding return code -
+    % nothing else that could be associated to a sender, a request, etc. - so we
+    % ensure that at any time up to one of such commands is in the air (anyway
+    % the module has a single thread of operation), and store in this queue the
+    % next ones for a later sending thereof in turn, when the module is ready.
 	%
-	% We could see for example that sending an ERP1 packet for the F6-02-01 EEP
-	% does result in the receiving of a response packet (with a success return
-	% code).
+	% We could see for example that sending an ERP1 packet that orresponds to
+	% the F6-02-01 EEP results in the receiving by this server of a response
+	% packet from the Enocean module.
 	%
-	% So this queue contains any pending, not-yet-sent ESP3 commands (be
-	% them requests for ERP1 commands, common commands, etc.):
+    % Indeed most operations, starting from telegram sending, result in the
+    % Enocean module to send the host (this server) a command response of packet
+    % type 2 which holds as payload only a single byte, the return code; in case
+    % of success (by far the most general case) its value is RET_OK (i.e. 0;
+    % resulting on the full 16-byte telegram being
+    % <<85,0,1,0,2,101,0,0,85,0,1,0,2,101,0,0>>, hence data: <<0>> and optional
+    % data: <<>>).
+    %
+    % So this acknowledgement does not say anything for example about any device
+    % having received a telegram (the gateway will receive it even if no other
+    % device exists), but it is useful for error management and possibly flow
+    % control (not to overwhelm the module, if ever it was possible).
+    %
+    % Refer  to `[ESP3]` p.17 for further information.
+    %
+	% This queue therefore contains any pending, not-yet-sent ESP3 commands (be
+	% them requests for ERP1 commands, common commands, etc.); this is not a
+	% queue for higher-level, applicative requests (which are separately
+	% managed, each having a counterpart common command here, insofar as sending
+	% a telegram implies a command to be issued).
 	%
 	command_queue :: oceanic:command_queue(),
 
@@ -97,10 +122,12 @@
 	% Information about any currently waited command request that shall result
 	% in an acknowledgement; so corresponds to any pending, sent but not yet
 	% acknowledged ESP3 command whose response telegram is still waited for.
+    %
 	% Note that some devices apparently may be configured to not ack incoming
 	% commands (however `[ESP3]` p.17 tells that "it is mandatory to wait for
 	% the RESPONSE message"); in this case this information should be registered
-	% in their enocean_device() record.
+	% in their enocean_device() record (by default acknowledgements are
+	% expected).
 	%
 	waited_command_info :: option( oceanic:waited_command_info() ),
 
