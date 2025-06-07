@@ -56,8 +56,11 @@ A maybe-event was returned, as for example a common command response that is
 received whereas no request was sent shall be discarded.
 
 A maybe-discovery origin is also returned, so that an already discovered device
-is not reported as being discovered more than once ('undefined' is returned once
+is not reported as being discovered more than once (`undefined` is returned once
 already discovered).
+
+Note that it is expected (see the use of `type_utils:get_last_tuple_element/1`)
+that the last element of the returned tuples is the Oceanic state.
 """.
 -type decoding_outcome() ::
 
@@ -218,14 +221,7 @@ decode_packet( _PacketType=radio_erp1_type,
 	end;
 
 
-% Here a response is received whereas no request was sent:
-%
-% (note that some smart plugs, like at least the ELTAKO FSSAF-230V, emit, once
-% triggered, a `<<85,0,1,0,2,101,0,0>>` telegram, carrying in terms of
-% information only that it is a response_type packet with a payload of <<0>>;
-% hence no emitter EURID available, for example - instead of sending a
-% smart_plug_status_report_event)
-%
+% Here a response is received whereas no command was issued:
 decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 			   State=#oceanic_state{ waited_command_info=undefined,
 									 discarded_count=DiscCount } ) ->
@@ -233,6 +229,8 @@ decode_packet( _PacketType=response_type, Data, OptData, NextMaybeTelTail,
 	trace_bridge:warning_fmt( "Received a command response "
 		"(data: ~w, optional data: ~w) whereas there is no pending request, "
 		"dropping it.", [ Data, OptData ] ),
+
+    % (timer already cancelled by caller)
 
 	{ decoded, _MaybeDeviceEvent=command_processed,
 	  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
@@ -245,8 +243,7 @@ decode_packet( _PacketType=response_type,
 			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData,
                NextMaybeTelTail,
 			   State=#oceanic_state{
-					waited_command_info={ WaitedCmdReq, MaybeTimerRef },
-					command_count=CmdCount } ) ->
+					waited_command_info={ WaitedCmdReq, MaybeTimerRef } } ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a command response, whereas "
@@ -258,12 +255,14 @@ decode_packet( _PacketType=response_type,
 
 	RespState = State#oceanic_state{ waited_command_info=undefined },
 
-	case oceanic_generated:get_maybe_first_for_return_code( ReturnCode ) of
+	DecodingOutcome = case oceanic_generated:get_maybe_first_for_return_code(
+            ReturnCode ) of
 
 		undefined ->
 			trace_bridge:warning_fmt( "Unable to decode response whose return "
 				"code is invalid (~B), dropping packet and pending "
-				"command (#~B).", [ ReturnCode, CmdCount ] ),
+				"command (#~B).",
+                [ ReturnCode, State#oceanic_state.command_count ] ),
 			{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
 
 
@@ -274,36 +273,28 @@ decode_packet( _PacketType=response_type,
 		% Not a decoding failure, but more a protocol-level one that shall be
 		% notified to the requester.
 		%
-		% Expected in [error_return, not_supported_return,
+		% Expected in [error_return, unsupported_return,
 		%              wrong_parameter_return, operation_denied]:
 		%
+        % (a bit like notify_requester/4)
+        %
 		FailureReturn ->
+            oceanic_common_command:manage_failure_return( FailureReturn,
+                WaitedCmdReq, DataTail, OptData, NextMaybeTelTail, RespState )
 
-			trace_bridge:error_fmt( "Received a failure response (~ts), "
-				"presumably to the pending ~ts.",
-				[ FailureReturn,
-                  oceanic_text:command_request_to_string( WaitedCmdReq ) ] ),
+	end,
 
-			Requester = WaitedCmdReq#command_request.requester,
+    % Maybe then a new command can be launched:
 
-			case Requester of
+    DecodedState = type_utils:get_last_tuple_element( DecodingOutcome ),
 
-				internal ->
-					{ invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
+    NextState = oceanic:handle_next_command(
+        DecodedState#oceanic_state.command_queue, DecodedState ),
 
-				RequesterPid ->
+    % Recreate a proper decoding outcome:
+    type_utils:set_last_tuple_element( DecodingOutcome, NextState );
 
-					RequesterPid !
-						{ oceanic_command_outcome, _Outcome=FailureReturn },
 
-					% Waiting information already cleared:
-					{ decoded, command_processed,
-					  _MaybeDiscoverOrigin=undefined, _IsBackOnline=false,
-					  _MaybeDevice=undefined, NextMaybeTelTail, RespState }
-
-			end
-
-	end;
 
 
 decode_packet( PacketType, _Data, _OptData, NextMaybeTelTail, State ) ->
@@ -1404,7 +1395,7 @@ decode_vld_smart_plug_packet(
 			failure;
 
 		3 ->
-			not_supported
+			unsupported
 
 	end,
 
@@ -1588,7 +1579,7 @@ decode_vld_smart_plug_with_metering_packet(
 			failure;
 
 		3 ->
-			not_supported
+			unsupported
 
 	end,
 
