@@ -127,6 +127,8 @@ through an Oceanic server**.
           record_device_success/2, record_known_device_success/2,
           record_device_failure/2, record_known_device_failure/2,
 
+          handle_next_command/2,
+
           canonicalise_listened_event_specs/1,
           canonicalise_listened_event_specs/2,
           canonicalise_emitted_event_specs/1,
@@ -147,6 +149,9 @@ through an Oceanic server**.
 		  test_decode/1, test_describe/1,
           secure_tty/1, try_integrate_next_telegram/4 ]).
 
+
+% For silencing unused warnings:
+-export([ send_raw_telegram/2 ]).
 
 
 %
@@ -186,8 +191,13 @@ events.
 
 
 -doc """
-The PID of the requester of a common command, or the 'internal' atom to tell
-that this is a request emitted by Oceanic for its own economy.
+The PID of the requester of a common command (then notified as a message), or
+the 'internal' atom to tell that this is a request emitted by Oceanic for its
+own economy (then notified as a term).
+
+A requester process uses this server for command sending on its behalf, and is
+to be notified of the outcome of it (see
+oceanic_common_command:send_common_command/2).
 """.
 -type requester() :: pid() | 'internal'.
 
@@ -277,7 +287,7 @@ For example `{smart_plug_status_report_event, power_off}`.
 Server-internal information about a pending device-level request meant to be
 acknowledged by the actuator of the specified EURID (hence being waited for,
 with or without success), specifying the type of event to wait for
-(e.g. smart_plug_status_report_event) together with any specific event
+(e.g. `smart_plug_status_report_event`) together with any specific event
 information expected (e.g. `power_on`); the specified number of new attempts to
 be performed if the current one times-out is also specified.
 
@@ -335,7 +345,7 @@ configuration file or transmitted by other services.
 
 
 
--doc "A (FIFO) queue of command requests, to be sent in turn next.".
+-doc "A (FIFO) queue of commands to be sent in turn next.".
 -type command_queue() :: queue:queue( command_request() ).
 
 
@@ -724,7 +734,7 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 -type hardware_status() :: 'nominal'
 						 | 'warning'
 						 | 'failure'
-						 | 'not_supported'. % Hence unknown
+						 | 'unsupported'. % Hence unknown
 
 
 -doc "The power currently output by a device (e.g. a smart plug).".
@@ -763,7 +773,7 @@ Described in `[EEP-spec]` p.127.
 The type of a VLD message, in the context of the D2-01 EEPs: `"Electronic
 switches and dimmers with Energy Measurement and Local Control"`.
 
-Refer to the 'vld_d2_00_cmd' topic.
+Refer to the `vld_d2_00_cmd` topic.
 
 It is also designated by the CMD field of these VLD telegrams, the 4 last bits
 of the first byte of the payload (hence 16 possible values).
@@ -854,10 +864,10 @@ The type of a (typically ESP3) packet.
 
 Refer to `[ESP3]` p.12.
 
-After a radio_erp1, radio_sub_tel or remote_man_command packet, a response
+After a `radio_erp1`, `radio_sub_tel` or `remote_man_command` packet, a response
 packet is expected.
 
-See also the 'packet_type' topic in the oceanic_generated module.
+See also the `packet_type` topic in the oceanic_generated module.
 """.
 -type packet_type() ::
 	  'reserved' | 'radio_erp1' | 'response'
@@ -911,8 +921,18 @@ This is a basic_utils:four_digit_version().
 
 
 
--doc "Type information regarding a command.".
--type command_type() :: 'device_command' | common_command().
+-doc """
+Type information regarding a command.
+
+This allows discriminating pure telegram sendings from the activation of common
+commands (e.g. to learn the base ID from the Enocean module).
+""".
+-type command_type() ::
+    'device_request'  % A higher-level command sent to a device expected to
+                      % send back an applicative answer (e.g. a status report
+                      % sent back by a smart plug after it was switched on)
+  | 'telegram_sending'
+  | common_command_type(). % A command sent to the Enocean module itself.
 
 
 
@@ -999,8 +1019,9 @@ Refer to `[EEP-spec]` p.15 for further details.
 
 
 -doc """
-Event sent in the context of EEPs D2-01-* (e.g 0A), corresponding to an Actuator
-Status Response (command 0x4), so that a smart plug reports its current state.
+Event sent in the context of EEPs `D2-01-*` (e.g `0A`), corresponding to an
+Actuator Status Response (command `0x4`), so that a smart plug reports its
+current state.
 
 Refer to `[EEP-spec]` p.135 for further details.
 """.
@@ -1014,8 +1035,8 @@ Refer to `[EEP-spec]` p.135 for further details.
 
 
 -doc """
-Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
-- Application Style 1 or 2"), for T21=1.
+Event sent in the context of EEP `F6-02-01` and `F6-02-02` ("Light and Blind
+Control - Application Style 1 or 2"), for `T21=1`.
 
 Refer to `[EEP-spec]` p.16 for further details.
 """.
@@ -1343,7 +1364,11 @@ Often abbreviated as CEES.
 
 
 
--doc "A timer reference.".
+-doc """
+A timer reference.
+
+For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
+""".
 -type timer_ref() :: timer:tref().
 
 
@@ -1392,7 +1417,7 @@ Often abbreviated as CEES.
 			   packet/0, crc/0, esp3_packet/0, packet_type/0,
 			   payload/0, vld_payload/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
-			   command_type/0, command_request/0, command_outcome/0,
+			   command_request/0, command_outcome/0,
 
 			   thermo_hygro_event/0, single_input_contact_event/0,
 			   push_button_switch_event/0,
@@ -1637,10 +1662,9 @@ Definition of the overall state of an Oceanic server, including configuration
 -type list_table() :: list_table:list_table().
 -type list_table( K, V ) :: list_table:list_table( K, V ).
 
--type common_command() :: oceanic_common_command:common_command().
 -type command_response() :: oceanic_common_command:command_response().
-
--type  decoding_outcome() :: oceanic_decode:decoding_outcome().
+-type common_command_type() :: oceanic_common_command:common_command_type().
+-type decoding_outcome() :: oceanic_decode:decoding_outcome().
 
 
 
@@ -1974,27 +1998,25 @@ get_base_state( SerialServerPid ) ->
         oceanic_common_command:encode_common_command_request( CommonCmd ),
 
 	% For decoding re-use (try_integrate_next_telegram/4), we have to have a
-	% state anyway:
-
-	InitCmdReq = #command_request{ command_type=CommonCmd,
-								   command_telegram=CmdTelegram,
-								   requester=internal },
+	% state anyway.
 
     EmptyTable = table:new(),
 
 	InitialState = #oceanic_state{
 		serial_server_pid=SerialServerPid,
+        % Starting with a bogus value, not wanting an option/1 type:
 		emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
 		device_table=EmptyTable,
 		command_queue=queue:new(),
-		waited_command_info={ InitCmdReq, _MaybeTimerRef=undefined },
+        waited_command_info=undefined,
 		last_traffic_seen=time_utils:get_timestamp() },
 
-	SentState = send_raw_telegram( CmdTelegram, InitialState ),
+    ExecState = execute_command_impl( _CmdType=CommonCmd, CmdTelegram,
+                                      _Requester=internal, InitialState ),
 
 	% Blank start:
-	wait_initial_base_request( _ToSkipLen=0, _MaybeAccChunk=undefined,
-							   SentState ).
+	wait_initial_base_command( _ToSkipLen=0, _MaybeAccChunk=undefined,
+							   ExecState ).
 
 
 
@@ -2002,9 +2024,9 @@ get_base_state( SerialServerPid ) ->
 Returns an initialised, Oceanic state, once the initial base ID request has been
 properly answered.
 """.
--spec wait_initial_base_request( count(), option( telegram_tail() ),
+-spec wait_initial_base_command( count(), option( telegram_tail() ),
 								 oceanic_state() ) -> oceanic_state().
-wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
+wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
 
 	cond_utils:if_defined( oceanic_debug_tty,
 		trace_bridge:debug_fmt( "Waiting initial base request "
@@ -2043,26 +2065,6 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 
 					end,
 
-					% Checks that this is a response to the request made in
-					% get_base_state/1, before clearing it:
-					%
-					case State#oceanic_state.waited_command_info of
-
-						{ _InitCmdReq=#command_request{
-									command_type=co_rd_idbase,
-									% Not to be checked: command_telegram
-									requester=internal },
-						   _MaybeTimerRef=undefined } ->
-							ok;
-
-						OtherWaitedCmdInfo ->
-							trace_bridge:error_fmt( "Unexpected "
-								"read_base_id_info_response, whereas waited "
-								"command information is ~p.",
-								[ OtherWaitedCmdInfo ] )
-
-					end,
-
 					cond_utils:if_defined( oceanic_debug_tty,
 						trace_bridge:debug_fmt( "Successfully ~ts.",
 							[ oceanic_text:device_event_to_string( Event ) ] ),
@@ -2085,7 +2087,7 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
                         "while waiting for the initial base ID request.",
                         [ oceanic_text:device_event_to_string( OtherEvent ) ] ),
 
-					wait_initial_base_request( _NewToSkipLen=0,
+					wait_initial_base_command( _NewToSkipLen=0,
                                                NewMaybeNextTelTail, ReadState );
 
 
@@ -2101,15 +2103,30 @@ wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State ) ->
 					%   basic_utils:ignore_unused(
 					%       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
-					wait_initial_base_request( NewToSkipLen,
-                                               NewMaybeNextTelTail, NewState )
+					wait_initial_base_command( NewToSkipLen,
+                                               NewMaybeNextTelTail, NewState );
+
+                { considerCommandTimeout, CmdCount } ->
+                    throw( { timeout_initial_base_request, CmdCount } )
 
 			end;
 
 		{ onSerialMessage, Msg } ->
-			trace_bridge:warning( Msg ),
-			wait_initial_base_request( ToSkipLen, MaybeNextTelTail, State )
+			trace_bridge:warning_fmt( "Unexpected serial message while waiting "
+                "base command: ~p; ignoring it.", [ Msg ] ),
 
+			wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
+
+        % Commented-out, as not wanting to intercept messages to be processed
+        % next (like {getOceanicEurid, CallerPid}):
+        %
+        %Other ->
+		%   trace_bridge:warning_fmt( "Unexpected message while waiting "
+        %        "base command: ~p; ignoring it.", [ Other ] ),
+        %
+		%   wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
+
+    % Extra time-out for additional safety:
     after 2000 ->
 
         trace_bridge:error( "Unable to determine the base EURID of "
@@ -2943,8 +2960,8 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 Acknowledges (accepts) the specified teach-in our teach-out request, by sending
 a (successful) teach-in response.
 
-See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: 0x1) `[EEP-gen]`
-p.26.
+See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: `0x1`)
+`[EEP-gen]` p.26.
 """.
 -spec acknowledge_teach_request( teach_request_event(),
                                  oceanic_server_pid() ) -> void().
@@ -2971,7 +2988,8 @@ response.
 
 No tracking of any answer is done.
 
-See EEP Teach-In Response - UTE Message (Broadcast / CMD: 0x1) `[EEP-gen]` p.26.
+See EEP Teach-In Response - UTE Message (Broadcast / CMD: `0x1`) `[EEP-gen]`
+p.26.
 """.
 -spec acknowledge_teach_request( teach_request_event(), teach_outcome(),
 								 oceanic_state() ) -> oceanic_state().
@@ -3020,8 +3038,7 @@ acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
 	cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
        "Acknowledging teach-in request as '~ts', with telegram ~w.",
        [ TeachOutcome, TeachInRespTel ] ) ),
-
-    send_raw_telegram( TeachInRespTel, RegState ).
+    send_tracked_telegram( TeachInRespTel, _Requester=internal, RegState ).
 
 
 
@@ -3302,9 +3319,10 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			%
 			trace_bridge:info_fmt( "### Waiting at ~ts for any message "
 				"including a telegram chunk, whereas having ~ts to skip, "
-				"and having accumulated ~ts.",
+				"and having accumulated ~ts (waited command info: ~w).",
 				[ time_utils:get_textual_timestamp(), SkipStr,
-				  text_utils:ellipse( TelTailStr, _MaxLen=120 ) ] )
+				  text_utils:ellipse( TelTailStr, _MaxLen=120 ),
+                  State#oceanic_state.waited_command_info ] )
 
 		end ),
 
@@ -3415,17 +3433,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			% trigger all tested actuators (they are then not blocked waiting
 			% for a 'released' message):
 			%
-			Telegram = oceanic_encode:encode_double_rocker_telegram( BaseEurid,
-                COTS, ActEurid ),
+			RockerTelegram = oceanic_encode:encode_double_rocker_telegram(
+                BaseEurid, COTS, ActEurid ),
 
-			NewState = send_raw_telegram( Telegram, State ),
+			SentState = send_tracked_telegram( RockerTelegram,
+                                               _Requester=internal, State ),
 
 			% TODO: register and monitor TrackInfo
 			_TrackInfo = { _From=ActEurid, DevEvType,
                            MaybeExpectedReportedEvInfo,
 						   State#oceanic_state.trigger_retry_count },
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
 
 
         { acknowledgeTeachRequest, [ TeachReqEv, TeachOutcome ] } ->
@@ -3497,23 +3516,25 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
+        % FIXME: not convincing, other queue to be used:
 		{ executeCommand, CmdTelegram, RequesterPid } ->
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Requested to execute command as ~ts, "
-					"on behalf of requester ~w.",
+			cond_utils:if_defined( oceanic_debug_commands,
+				trace_bridge:debug_fmt( "Requested to execute command as "
+                    "telegram ~ts, on behalf of requester ~w.",
 					[ oceanic_text:telegram_to_string( CmdTelegram ),
                       RequesterPid ] ) ),
 
-			ExecState = execute_command_helper( _CmdType=device_command,
-				CmdTelegram, RequesterPid, State ),
+			ExecState = execute_command_impl( _CmdType=device_request,
+                                              CmdTelegram, RequesterPid,
+                                              State ),
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
 
 
 		{ executeCommonCommand, CommonCommand, RequesterPid } ->
 
-			cond_utils:if_defined( oceanic_debug_tty,
+			cond_utils:if_defined( oceanic_debug_commands,
 				trace_bridge:debug_fmt(
 					"Requested to execute common command '~ts', "
 					"on behalf of requester ~w.",
@@ -3523,15 +3544,17 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                 CommonCommand ),
 
 			% Response will be automatically sent back to the requester when
-			% decoding it (refer to decode_response_tail/5).
+			% decoding it (refer to
+			% oceanic_common_command:decode_response_tail/5).
 
-			ExecState = execute_command_helper( _CmdType=CommonCommand,
-				CmdTelegram, RequesterPid, State ),
+			ExecState = execute_command_impl( _CmdType=CommonCommand,
+                CmdTelegram, RequesterPid, State ),
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
 
 
 		{ getOceanicEurid, RequesterPid } ->
+
 			RequesterPid !
 				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
 
@@ -3549,7 +3572,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 		% Sent by the timer associated to the currently pending command, a timer
-		% that just expired:
+		% that here just expired:
 		%
 		{ considerCommandTimeout, CmdCount } ->
 
@@ -3558,25 +3581,37 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 				% Surprising:
 				undefined ->
 					trace_bridge:warning_fmt( "Received a command time-out "
-						"(for command count: ~B), whereas no command is "
-						"awaited and the current count is ~B; ignoring it.",
+						"(for command count #~B), whereas no command is "
+						"awaited and the current count is #~B; ignoring it.",
 						[ CmdCount, State#oceanic_state.command_count ] ),
 					State;
 
+                % Legit time-out received, traced and then ignored:
+				_CmdInfo={ CmdReq=#command_request{ requester=internal },
+						   ThisTimerRef } ->
 
-				_CmdInfo={ CmdReq=#command_request{
-									requester=RequesterPid },
-						   _ThisTimerRef } ->
+                    trace_bridge:error_fmt( "Time-out received for "
+                            "internal command ~ts (timer reference: ~w), "
+                            "and ignored.",
+							[ oceanic_text:command_request_to_string(
+                                CmdReq ), ThisTimerRef ] ),
+
+					State#oceanic_state{ waited_command_info=undefined };
+
+
+				_CmdInfo={ CmdReq=#command_request{ requester=RequesterPid },
+						   ThisTimerRef } ->
 
 					cond_utils:if_defined( oceanic_check_commands,
 						CmdCount = State#oceanic_state.command_count ),
 
-					cond_utils:if_defined( oceanic_debug_tty,
+					cond_utils:if_defined( oceanic_debug_commands,
 						trace_bridge:debug_fmt( "Sending to requester "
-							"a time-out regarding command ~ts.",
-							[ oceanic_text:command_request_to_string(
+							"a time-out (reference: ~w) regarding command ~ts.",
+							[ ThisTimerRef,
+                              oceanic_text:command_request_to_string(
                                 CmdReq ) ] ),
-						basic_utils:ignore_unused( CmdReq ) ),
+						basic_utils:ignore_unused( [ CmdReq, ThisTimerRef ] ) ),
 
 					RequesterPid !
 						{ oceanic_command_outcome, _Outcome=time_out },
@@ -3647,8 +3682,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		% Mostly useful for testing purpose:
 		{ sendOceanic, Telegram } ->
-			NewState = send_raw_telegram( Telegram, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+			SentState = send_tracked_telegram( Telegram, _Requester=internal,
+                                               State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
+
+		% Mostly useful for testing purpose:
+        %
+        % (requester to receive back a {onOceanicSendingOutcome,
+        %  oceanic_common_command:common_command_status()} message)
+        %
+		{ sendOceanic, Telegram, RequesterPid } ->
+			SentState = send_tracked_telegram( Telegram, RequesterPid, State ),
+			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
 
 
 		{ testSerialAvailability, [], SenderPid } ->
@@ -3785,7 +3830,6 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			trace_bridge:debug_fmt(
 				"Oceanic server ~w terminated synchronously.", [ self() ] );
 
-
 		UnexpectedMsg ->
 			trace_bridge:debug_fmt( "Oceanic server ~w received an unexpected "
 				"message: '~w', ignoring it.", [ self(), UnexpectedMsg ] ),
@@ -3856,7 +3900,7 @@ trigger_actuator_impl( ActEurid, _DevOp=switch_on,
             "based on the ~ts convention.",
             [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
-    send_raw_telegram( SwitchTel, State );
+    send_tracked_telegram( SwitchTel, _Requester=internal, State );
 
 
 trigger_actuator_impl( ActEurid, _DevOp=switch_off,
@@ -3905,7 +3949,7 @@ trigger_actuator_impl( ActEurid, _DevOp=switch_off,
             "based on the ~ts convention.",
             [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
-    send_raw_telegram( SwitchTel, State );
+    send_tracked_telegram( SwitchTel, _Requester=internal, State );
 
 
 trigger_actuator_impl ( ActEurid, DevOp, _State ) ->
@@ -4192,7 +4236,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 					|| LPid <- NewState#oceanic_state.event_listeners ],
 
 				integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-										 _Chunk= <<>>,  NewState )
+										 _Chunk= <<>>, NewState )
 
 			end;
 
@@ -4224,14 +4268,18 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 -doc """
 Requests to execute the specified telegram-based command, by queueing it.
 """.
--spec execute_command_helper( command_type(), telegram(), requester(),
-							  oceanic_state() ) -> oceanic_state().
-execute_command_helper( CmdType, CmdTelegram, RequesterPid,
-						State=#oceanic_state{ command_queue=CmdQueue } ) ->
+-spec execute_command_impl( command_type(), telegram(), requester(),
+                            oceanic_state() ) -> oceanic_state().
+execute_command_impl( CmdType, CmdTelegram, Requester,
+                      State=#oceanic_state{ command_queue=CmdQueue } ) ->
+
+    cond_utils:if_defined( oceanic_debug_commands, trace_bridge:debug_fmt(
+        "Enqueuing command of type '~ts' to execute: telegram is ~w, "
+        "requester is ~w.", [ CmdType, CmdTelegram, Requester ] ) ),
 
 	CmdReq = #command_request{ command_type=CmdType,
-							   command_telegram=CmdTelegram,
-							   requester=RequesterPid },
+                               command_telegram=CmdTelegram,
+							   requester=Requester },
 
 	ExpandedQueue = queue:in( CmdReq, CmdQueue ),
 
@@ -4255,13 +4303,45 @@ handle_next_command( CurrentQueue, State=#oceanic_state{
 	case queue:out( CurrentQueue ) of
 
 		{ { value, OldestCmdReq=#command_request{
-									command_telegram=CmdTelegram } },
+					command_telegram=CmdTelegram } },
 				ShrunkQueue } ->
 
-			% Not a record mistake:
+            cond_utils:if_defined( oceanic_debug_commands,
+                trace_bridge:debug_fmt( "Dequeuing next command ~w.",
+                                        [ OldestCmdReq ] ) ),
+
+            % Comment to test time-out:
+			% (not a record mistake)
 			SentState = #oceanic_state{ wait_timeout=MaxWaitMs,
 										command_count=CmdCount } =
 				send_raw_telegram( CmdTelegram, State ),
+
+            % Test code with no actual sending, meant to trigger a time-out:
+
+            MaxWaitMs = State#oceanic_state.wait_timeout,
+            CmdCount = State#oceanic_state.command_count,
+
+            % Yet even for testing we need to wait until the base EURID has been
+            % obtained:
+
+            % InitialBogusEurid =
+            %     oceanic_text:string_to_eurid( ?default_emitter_eurid ),
+            %
+            % SentState = case State#oceanic_state.emitter_eurid of
+            %
+            %     InitialBogusEurid ->
+            %         trace_bridge:warning_fmt( "Sending first telegram ~w.",
+            %             [ CmdTelegram ] ),
+            %         send_raw_telegram( CmdTelegram, State );
+            %
+            %     Emitter ->
+            %         trace_bridge:warning_fmt( "Skipping on purpose the "
+            %             "sending of telegram ~w (emitter is ~ts).",
+            %              [ CmdTelegram,
+            %                oceanic_text:eurid_to_string( Emitter ) ] ),
+            %         State
+            %
+            % end,
 
 			NewCmdCount = CmdCount+1,
 
@@ -4275,28 +4355,56 @@ handle_next_command( CurrentQueue, State=#oceanic_state{
 				%_Msg={ considerCommandTimeout, TimerRef } ),
 				_Msg={ considerCommandTimeout, NewCmdCount } ),
 
+            cond_utils:if_defined( oceanic_debug_commands,
+                trace_bridge:debug_fmt( "No command was on the air, dequeued "
+                    "command to execute #~B: ~w (timer ref: ~w).",
+                    [ NewCmdCount, OldestCmdReq, TimerRef ] ) ),
+
 			CmdInfo = { OldestCmdReq, TimerRef },
+
+            % The ack of this sending will allow to further dequeue if possible.
 
 			SentState#oceanic_state{ command_queue=ShrunkQueue,
 									 waited_command_info=CmdInfo,
 									 command_count=NewCmdCount };
 
-		% Nothing to send here:
+		% Nothing that is already queued to send here:
 		{ empty, SameCurrentQueue } ->
-			State#oceanic_state{ command_queue=SameCurrentQueue }
+
+            cond_utils:if_defined( oceanic_debug_commands,
+                trace_bridge:debug( "(no command to dequeue)" ) ),
+
+            State#oceanic_state{ command_queue=SameCurrentQueue }
 
 	end;
 
-% Here there is already a waited command, we just update the queue:
+% Here there is already a waited command, we just update with the new queue:
 handle_next_command( CurrentQueue, State ) ->
+
+    cond_utils:if_defined( oceanic_debug_commands, trace_bridge:debug_fmt(
+        "(a command is already on the air, none of the ~B ones dequeued)",
+        [ queue:len( CurrentQueue ) ] ) ),
+
 	State#oceanic_state{ command_queue=CurrentQueue }.
 
 
 
--doc "Sends from the Oceanic server the specified telegram.".
+-doc """
+Sends, from this Oceanic server, the specified telegram on behalf on the
+specified requester.
+
+Note that this lowest-level function just sends a telegram with no flow control,
+queuing, etc.; refer instead to the primitive that shall be generally used
+whenever sending a telegram, `execute_command_impl/4` (which ultimately relies
+on this function).
+
+Therefore this function is not to be called directly, see
+`send_tracked_telegram/3` instead.
+""".
 -spec send_raw_telegram( telegram(), oceanic_state() ) -> oceanic_state().
-send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
-												   sent_count=SentCount } ) ->
+send_raw_telegram( Telegram, State=#oceanic_state{
+                                        serial_server_pid=SerialPid,
+										sent_count=SentCount } ) ->
 
 	% Not useful: ActualSending = binary_to_list( Telegram ),
 	ActualSending = Telegram,
@@ -4309,9 +4417,20 @@ send_raw_telegram( Telegram, State=#oceanic_state{ serial_server_pid=SerialPid,
 			  oceanic_text:telegram_to_hexastring( Telegram ) ] ) ),
 
 	SerialPid ! { send, ActualSending },
-
 	State#oceanic_state{ sent_count=SentCount+1 }.
 
+
+-doc """
+Sends, from this Oceanic server, the specified telegram on behalf on the
+specified requester, and tracks its acknowledgement by the Enocean module (based
+on a response_type telegram sent back).
+""".
+-spec send_tracked_telegram( telegram(), requester(), oceanic_state() ) ->
+                                            oceanic_state().
+send_tracked_telegram( Telegram, Requester, State ) ->
+    % So not as simple as: send_raw_telegram(Telegram, State).
+    execute_command_impl( _CmdType=telegram_sending, Telegram, Requester,
+                          State ).
 
 
 -doc "Helper introduced only to make the decoding logic available for tests.".
@@ -4987,8 +5106,8 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 	TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
 
 	cond_utils:if_defined( oceanic_debug_activity,
-		trace_bridge:debug_fmt( "Setting an automatic timer for device "
-			"whose EURID is ~ts, for a duration of ~ts.",
+		trace_bridge:debug_fmt( "Setting an automatic activity timer for "
+            "device whose EURID is ~ts, for a duration of ~ts.",
 			[ oceanic_text:eurid_to_string( Eurid ),
 			  time_utils:duration_to_string( NextDelayMs ) ] ) ),
 
