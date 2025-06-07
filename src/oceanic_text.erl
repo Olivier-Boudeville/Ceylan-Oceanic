@@ -431,7 +431,7 @@ interpret_hardware_status( _HStatus=warning ) ->
 interpret_hardware_status( _HStatus=failure ) ->
 	"hardware status is failed";
 
-interpret_hardware_status( _HStatus=not_supported ) ->
+interpret_hardware_status( _HStatus=unsupported ) ->
 	"hardware status is unknown".
 
 
@@ -1133,7 +1133,7 @@ device_event_to_string( command_processed ) ->
 device_event_to_string( error_return ) ->
 	"the current command was reported by the target device as having failed";
 
-device_event_to_string( not_supported_return ) ->
+device_event_to_string( unsupported_return ) ->
 	"the current command was reported by the target device as "
 	"not being supported";
 
@@ -1423,7 +1423,7 @@ device_event_to_short_string( command_processed ) ->
 device_event_to_short_string( error_return ) ->
 	"The current command was reported by the target device as having failed.";
 
-device_event_to_short_string( not_supported_return ) ->
+device_event_to_short_string( unsupported_return ) ->
 	"The current command was reported by the target device as "
 	"not being supported.";
 
