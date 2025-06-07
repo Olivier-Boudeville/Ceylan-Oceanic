@@ -30,7 +30,8 @@
 -moduledoc """
 Module defining the Oceanic constants.
 
-Called by oceanic:generate_support_modules/0.
+Called by `oceanic:generate_support_modules/0`, and results in the
+`oceanic_generated` module (thus in the `oceanic_generated.beam` file).
 """.
 
 
@@ -56,7 +57,7 @@ Called by oceanic:generate_support_modules/0.
 
 
 
--doc "Returns the specification for the 'packet_type' topic.".
+-doc "Returns the specification for the `packet_type` topic.".
 -spec get_maybe_packet_type_topic_spec() -> topic_spec().
 get_maybe_packet_type_topic_spec() ->
 
@@ -84,7 +85,7 @@ get_maybe_packet_type_topic_spec() ->
 
 
 -doc """
-Returns the specification for the 'return_code' topic.
+Returns the specification for the `return_code` topic.
 
 For return codes, as defined in `[ESP3]`.
 """.
@@ -94,7 +95,10 @@ get_maybe_return_code_topic_spec() ->
 	Entries = [
 		{ ok_return,              16#00 },
 		{ error_return,           16#01 },
-		{ not_supported_return,   16#02 },
+
+        % Better than not_supported_return:
+		{ unsupported_return,   16#02 },
+
 		{ wrong_parameter_return, 16#03 },
 		{ operation_denied,       16#04 } ],
 
@@ -103,7 +107,7 @@ get_maybe_return_code_topic_spec() ->
 
 
 -doc """
-Returns the specification for the 'event_code' topic.
+Returns the specification for the `event_code` topic.
 
 For event codes, as defined in `[ESP3]`.
 """.
@@ -123,7 +127,7 @@ get_maybe_event_code_topic_spec() ->
 
 
 -doc """
-Returns the specification for the 'rorg' topic.
+Returns the specification for the `rorg` topic.
 
 For the RORG field of an ERP radio telegram type, as defined in `[EEP]` p.14.
 """.
@@ -152,7 +156,7 @@ get_maybe_rorg_topic_spec() ->
 
 
 
--doc "Returns the specification for the 'rorg_description' topic.".
+-doc "Returns the specification for the `rorg_description` topic.".
 -spec get_maybe_rorg_description_topic_spec() -> topic_spec().
 get_maybe_rorg_description_topic_spec() ->
 
@@ -180,7 +184,7 @@ get_maybe_rorg_description_topic_spec() ->
 
 
 -doc """
-Returns the specification for the 'common_command' topic.
+Returns the specification for the `common_command` topic.
 
 First elements are function codes, second ones are function names.
 """.
@@ -297,7 +301,7 @@ get_maybe_common_command_topic_spec() ->
 
 
 -doc """
-Returns the specification for the 'vld_d2_00_cmd' topic.
+Returns the specification for the `vld_d2_00_cmd` topic.
 
 First elements are VLD D2-00 command identifiers, designated by the CMD field of
 these VLD telegrams, the 4 last bits of the first byte of the payload (hence 16
@@ -329,7 +333,7 @@ get_maybe_vld_d2_00_cmd_topic_spec() ->
 
 
 
--doc "Returns the specification for the 'eep' topics.".
+-doc "Returns the specification for the `eep` topics.".
 -spec get_maybe_eep_topic_specs() -> [ topic_spec() ].
 get_maybe_eep_topic_specs() ->
 
