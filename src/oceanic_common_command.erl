@@ -379,7 +379,7 @@ decode_response_tail(
         trace_bridge:debug_fmt( "Received a successful acknowledgement "
             "of the sending of telegram ~ts (on behalf of requester ~w).",
             [ oceanic_text:telegram_to_string( CmdTelegram ), Requester ] ),
-        basic_utils:ignore_unused( Requester ) ),
+        basic_utils:ignore_unused( [ CmdTelegram, Requester ] ) ),
 
     case Requester of
 
