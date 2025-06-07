@@ -28,7 +28,7 @@
 -module(oceanic_common_command).
 
 -moduledoc """
-Module centralising the management of the **Common Commands**.
+Module centralising the management of the **common commands**.
 
 Includes their encoding and decoding.
 """.
@@ -37,7 +37,8 @@ Includes their encoding and decoding.
 % About Common commands.
 
 % These exchanges take place locally, directly between the host (the computer at
-% hand) and its connected USB Enocean gateway, based on a TCM 310 chip.
+% hand) and its connected Enocean (typically USB) module, based on a TCM 310
+% chip.
 %
 % This corresponds to packet type 5; a host sends a ESP3 common command request
 % to an EnOcean module, answered with a response message.
@@ -77,37 +78,45 @@ Includes their encoding and decoding.
 
 
 -doc """
-Designates an ESP3 command, like co_wr_sleep or co_rd_repeater.
+Designates an ESP3 common command, like `co_wr_sleep` or `co_rd_repeater`, that
+is addressed to the Enocean module.
 
-Refer to oceanic_generated:get_common_command_topic_spec/0 for further
-information.
+Refer to `oceanic_{constants,generated}:get_maybe_common_command_topic_spec/0`
+for further information.
 """.
--type common_command() :: 'co_rd_version' | 'co_rd_sys_log'
-						| 'co_rd_idbase' | atom().
+-type common_command_type() ::
+        'co_rd_version'
+      | 'co_rd_sys_log'
+      | 'co_rd_idbase'
+      | atom().
 
 
 
 -doc """
 Generic causes of failure for a common command request.
 
-See also oceanic_generated:get_return_code_topic_spec/0.
+See also `oceanic_generated:get_return_code_topic_spec/0`.
 """.
 -type common_command_failure() :: 'error_return'
-								| 'not_supported_return'
+								| 'unsupported_return'
 								| 'wrong_parameter_return'
 								| 'operation_denied'
 								| 'time_out'.
 
--doc "Response to a successful 'read version' common command request.".
+-doc "The status of a command.".
+-type common_command_status() :: 'success' | common_command_failure().
+
+
+-doc "Response to a successful `read version` common command request.".
 -type read_version_response() :: #read_version_response{}.
 
 
--doc "Response to a successful 'read logs' common command request.".
+-doc "Response to a successful `read logs` common command request.".
 -type read_logs_response() :: #read_logs_response{}.
 
 
 -doc """
-Response to a successful 'read base ID information' (CO_RD_IDBASE) common
+Response to a successful `read base ID information` (`CO_RD_IDBASE`) common
 command request.
 """.
 -type read_base_id_info_response() :: #read_base_id_info_response{}.
@@ -126,8 +135,9 @@ command request.
 -type command_response() :: 'command_processed' | common_command_response().
 
 
--export_type([ common_command/0, common_command_failure/0,
-               common_command_response/0, command_response/0,
+-export_type([ common_command_type/0, common_command_failure/0,
+               common_command_status/0, common_command_response/0,
+               command_response/0,
 
                read_version_response/0, read_logs_response/0,
                read_base_id_info_response/0 ]).
@@ -139,7 +149,7 @@ command request.
           notify_requester/4,
 
           encode_common_command_request/1, encode_common_command/2,
-          decode_response_tail/5 ]).
+          decode_response_tail/5, manage_failure_return/6 ]).
 
 
 
@@ -197,7 +207,7 @@ notify_requester( Response, RequesterPid, NextMaybeTelTail, State ) ->
 
 
 -doc """
-Returns the version information held by the USB gateway, thanks to a (local)
+Returns the version information held by the Enocean module, thanks to a (local)
 common command.
 """.
 -spec read_version( oceanic_server_pid() ) ->
@@ -208,8 +218,8 @@ read_version( OcSrvPid ) ->
 
 
 -doc """
-Returns the log information held by the USB gateway, thanks to a (local) common
-command.
+Returns the log information held by the Enocean module, thanks to a (local)
+common command.
 """.
 -spec read_logs( oceanic_server_pid() ) ->
 						read_logs_response() | common_command_failure().
@@ -219,8 +229,8 @@ read_logs( OcSrvPid ) ->
 
 
 -doc """
-Returns the information held by the USB gateway about its base ID, thanks to a
-(local) common command.
+Returns the information held by the Enocean module about its base ID, thanks to
+a (local) common command.
 """.
 -spec read_base_id_info( oceanic_server_pid() ) ->
 						read_base_id_info_response() | common_command_failure().
@@ -230,11 +240,11 @@ read_base_id_info( OcSrvPid ) ->
 
 
 -doc "Sends the specified common command and returns its outcome.".
--spec send_common_command( common_command(), oceanic_server_pid() ) ->
+-spec send_common_command( common_command_type(), oceanic_server_pid() ) ->
 			common_command_response() | common_command_failure().
-send_common_command( CommonCmd, OcSrvPid ) ->
+send_common_command( CommonCmdType, OcSrvPid ) ->
 
-	OcSrvPid ! { executeCommonCommand, CommonCmd, self() },
+	OcSrvPid ! { executeCommonCommand, CommonCmdType, self() },
 	receive
 
 		{ oceanic_command_outcome, Outcome } ->
@@ -243,37 +253,37 @@ send_common_command( CommonCmd, OcSrvPid ) ->
 		% To debug:
 		%Other ->
 		%   trace_bridge:warning_fmt( "Received for common command '~ts': ~p",
-		%                            [ CommonCmd, Other ] )
+		%                            [ CommonCmdType, Other ] )
 
 	end.
 
 
 
 -doc """
-Encodes the specified common command request, to be executed by the USB gateway.
+Encodes the specified common command, to be executed by the Enocean module.
 """.
--spec encode_common_command_request( common_command() ) -> telegram().
+-spec encode_common_command_request( common_command_type() ) -> telegram().
 % Future commands may have to be special-cased (e.g. if having parameters):
-encode_common_command_request( _Cmd=co_rd_version ) ->
+encode_common_command_request( _CmdType=co_rd_version ) ->
 	encode_read_version_request();
 
-encode_common_command_request( _Cmd=co_rd_sys_log ) ->
+encode_common_command_request( _CmdType=co_rd_sys_log ) ->
 	encode_read_logs_request();
 
-encode_common_command_request( _Cmd=co_rd_idbase ) ->
+encode_common_command_request( _CmdType=co_rd_idbase ) ->
 	encode_base_id_info_request();
 
-encode_common_command_request( Cmd ) ->
-	throw( { unknown_common_command, Cmd } ).
+encode_common_command_request( CmdType ) ->
+	throw( { unknown_common_command_type, CmdType } ).
 
 
 
 -doc """
 Encodes a common command request of type `CO_RD_VERSION`, to read version
-information from the USB gateway.
+information from the Enocean module.
 
-See its actual specification in `[ESP3]`, p.36, and the decode_response_tail/5
-for WaitedCmd=co_rd_version.
+See its actual specification in `[ESP3]`, p.36, and the `decode_response_tail/5`
+for `WaitedCmd=co_rd_version`.
 """.
 -spec encode_read_version_request() -> telegram().
 encode_read_version_request() ->
@@ -285,10 +295,10 @@ encode_read_version_request() ->
 
 -doc """
 Encodes a common command request of type `CO_RD_SYS_LOG`, to read logs from the
-USB gateway.
+Enocean module.
 
 See its actual specification in `[ESP3]`, p.37, and the `decode_response_tail/5`
-for WaitedCmd=co_rd_sys_log.
+for `WaitedCmd=co_rd_sys_log`.
 """.
 -spec encode_read_logs_request() -> telegram().
 encode_read_logs_request() ->
@@ -299,8 +309,8 @@ encode_read_logs_request() ->
 
 
 -doc """
-Encodes a common command request of type 'CO_RD_IDBASE', to read base ID
-information from the USB gateway.
+Encodes a common command request of type `CO_RD_IDBASE`, to read base ID
+information from the Enocean module.
 
 See its actual specification in `[ESP3]`, p.40, and the `decode_response_tail/5`
 for WaitedCmd=co_rd_idbase.
@@ -339,7 +349,8 @@ encode_common_command( Data, OptData ) ->
 
 
 % Section for the decoding of packets of the Common Command type.
-
+%
+% Waited information expected to be already cleared, and timer cancelled.
 
 
 -doc """
@@ -354,6 +365,45 @@ caller.
 -spec decode_response_tail( command_request(), telegram_data_tail(),
 							telegram_opt_data(), option( telegram_tail() ),
 							oceanic_state() ) -> decoding_outcome().
+% For (our) telegram_sending:
+decode_response_tail(
+		#command_request{ command_type=telegram_sending,
+                          command_telegram=CmdTelegram,
+						  requester=Requester },
+		_RemainingDataTail= <<>>,
+		_OptData= <<>>, NextMaybeTelTail,
+        State ) ->
+
+    % Returned code already checked to be ok_return, so:
+    cond_utils:if_defined( oceanic_debug_commands,
+        trace_bridge:debug_fmt( "Received a successful acknowledgement "
+            "of the sending of telegram ~ts (on behalf of requester ~w).",
+            [ oceanic_text:telegram_to_string( CmdTelegram ), Requester ] ),
+        basic_utils:ignore_unused( Requester ) ),
+
+    case Requester of
+
+        internal ->
+            ok;
+
+        RequesterPid ->
+            RequesterPid ! { onOceanicSendingOutcome, success }
+
+    end,
+
+    % Ignoring here any actual requester (e.g. not sending
+    % {oceanic_command_outcome, Response }), as the convention is that it is
+    % specifically notified (by a call to its onEnoceanDeviceEvent/4 method)
+    % only in case of (final) failure:
+    %
+	%notify_requester( Response, _SetRequester=internal, NextMaybeTelTail,
+    %                  State );
+
+    { decoded, _Event=command_processed, _MaybeDiscoverOrigin=undefined,
+      _IsBackOnline=undefined, _MaybeDevice=undefined, NextMaybeTelTail,
+      State };
+
+
 % For co_rd_version:
 decode_response_tail(
 		#command_request{ command_type=co_rd_version,
@@ -374,6 +424,7 @@ decode_response_tail(
 	notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
+% Non-matched data tail:
 decode_response_tail( #command_request{ command_type=co_rd_version }, DataTail,
 					  _OptData= <<>>, NextMaybeTelTail, State ) ->
 
@@ -450,11 +501,61 @@ decode_response_tail( OtherCmdReq, DataTail, OptData, NextMaybeTelTail,
                       State ) ->
 
 	trace_bridge:error_fmt( "Responses to ~ts are currently "
-		"unsupported (dropping response and waited request).",
-		[ oceanic_text:command_request_to_string( OtherCmdReq ) ] ),
-
-	trace_bridge:debug_fmt( "Extra information: DataTail=~ts, OptData=~ts.",
-		[ oceanic_text:telegram_to_string( DataTail ),
+		"unsupported (dropping response and waited request).~n"
+        "Extra information: DataTail=~ts, OptData=~ts.",
+		[ oceanic_text:command_request_to_string( OtherCmdReq ),
+		  oceanic_text:telegram_to_string( DataTail ),
           oceanic_text:telegram_to_string( OptData ) ] ),
 
 	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
+
+
+
+-doc "Manages a response packet reporting an error return code.".
+-spec manage_failure_return( common_command_failure(),
+        command_request(), telegram_data_tail(), telegram_opt_data(),
+        option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+manage_failure_return( FailureReturn,
+                       WaitedCmdReq=#command_request{ command_type=CmdType,
+                                                      requester=Requester },
+                       DataTail, OptData, NextMaybeTelTail, State ) ->
+
+	trace_bridge:error_fmt( "Received a failure response (~ts), presumably "
+        "to the pending ~ts (data tail: ~w, optional data: ~w).",
+        [ FailureReturn,
+          oceanic_text:command_request_to_string( WaitedCmdReq ),
+          DataTail, OptData ] ),
+
+    case CmdType of
+
+        % Our special case:
+        telegram_sending ->
+
+            case Requester of
+
+                internal ->
+                    ok;
+
+                RequesterPid ->
+                    RequesterPid ! { onOceanicSendingOutcome, FailureReturn }
+
+            end;
+
+        % Other, base cases:
+        _ ->
+            case Requester of
+
+                internal ->
+                    ok;
+
+                RequesterPid ->
+                    RequesterPid ! { oceanic_command_outcome,
+                                     _Outcome=FailureReturn }
+
+            end
+
+    end,
+
+    % Waiting information already cleared:
+    { decoded, _Event=command_processed, _MaybeDiscoverOrigin=undefined,
+      _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State }.
