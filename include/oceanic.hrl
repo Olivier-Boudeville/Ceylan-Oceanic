@@ -161,14 +161,14 @@
 % (e.g. a mere aknowledgement).
 
 
-% Record allowing to keep track of a submitted command request.
+% Record allowing to keep track of a submitted command.
 -record( command_request, {
 
 	% An identifier corresponding to the count of this command could be added
 	% (yet only up to one can be in the air at a given time).
 
 	% Type information about that pending command, to designate it:
-	command_type :: oceanic:command_type(),
+	command_type :: oceanic_common_command:common_command_type(),
 
 	% The telegram corresponding to that command:
 	command_telegram :: oceanic:telegram(),
@@ -712,14 +712,17 @@
 
 
 
-% Record for responses to common commands (seen as events).
-%
-% By convention all of them start with the same field:
-%  - the identifier of the requester of that command:
-%           requester :: oceanic:requester()
+% Record for responses to commands (seen as events), notably common ones.
 
 
-% Response to a successful 'read version' common command request.
+% Response to a successful 'telegram sending' command.
+-record( telegram_sending_response, {
+
+    send_status :: oceanic_common_command:common_command_status() } ).
+
+
+
+% Response to a successful 'read version' common command.
 -record( read_version_response, {
 
 	% The version of the application.
@@ -738,7 +741,7 @@
 
 
 
-% Response to a successful 'read logs' common command request.
+% Response to a successful 'read logs' common command.
 -record( read_logs_response, {
 
 	% This reverse order (like the read_version_response one) is preferred:
@@ -754,7 +757,7 @@
 
 
 % Response to a successful 'read base ID information' (CO_RD_IDBASE) common
-% command request.
+% command.
 %
 -record( read_base_id_info_response, {
 
