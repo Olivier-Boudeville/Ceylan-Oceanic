@@ -127,6 +127,7 @@ through an Oceanic server**.
           record_device_success/2, record_known_device_success/2,
           record_device_failure/2, record_known_device_failure/2,
 
+          get_device_convention/2,
           handle_next_command/2,
 
           canonicalise_listened_event_specs/1,
@@ -311,16 +312,6 @@ Extra information to validate a type of device event for an acknowledgement.
     'power_on' | 'power_off'.
 
 
--doc """
-A table keeping track of the requests that have been sent to actuators but do
-not have been acknowledged yet.
-
-The trigger_track_info() list is a FIFO (a logical queue), i.e. elements are
-stored in reverse order, i.e. the ones corresponding to the latest sendings
-first.
-""".
--type actuator_tracking_table() :: table( eurid(), [ trigger_track_info() ] ).
-
 
 
 -doc """
@@ -335,6 +326,24 @@ configuration file or transmitted by other services.
 -include("oceanic_internal.hrl").
 
 
+-doc "Allows to keep track of an ongoing request.".
+-type request_tracking() :: #request_tracking{}.
+
+
+-doc """
+Tracking information regarding a currently pending request (typically an
+actuation).
+
+This corresponds to a higher-level request sent to a device expected to send
+back an applicative answer (e.g. a status report sent back by a smart plug after
+it was switched on).
+
+A timer is used to trigger a time-out, should no acknowledgement be received on
+time.
+""".
+-type waited_request_info() :: { request_tracking(), timer_ref() }.
+
+
 -doc "Information regarding an Enocean device, as known by the Oceanic server.".
 -type enocean_device() :: #enocean_device{}.
 
@@ -346,8 +355,10 @@ configuration file or transmitted by other services.
 
 
 -doc "A (FIFO) queue of commands to be sent in turn next.".
--type command_queue() :: queue:queue( command_request() ).
+-type command_queue() :: queue:queue( command_tracking() ).
 
+-doc "A (FIFO) queue of requests to be sent in turn next.".
+-type request_queue() :: queue:queue( request_tracking() ).
 
 
 -doc """
@@ -924,20 +935,17 @@ This is a basic_utils:four_digit_version().
 -doc """
 Type information regarding a command.
 
-This allows discriminating pure telegram sendings from the activation of common
-commands (e.g. to learn the base ID from the Enocean module).
+This allows discriminating pure telegram sendings from the activation of (local)
+common commands (e.g. to learn the base ID from the Enocean module).
 """.
 -type command_type() ::
-    'device_request'  % A higher-level command sent to a device expected to
-                      % send back an applicative answer (e.g. a status report
-                      % sent back by a smart plug after it was switched on)
-  | 'telegram_sending'
+    'telegram_sending'
   | common_command_type(). % A command sent to the Enocean module itself.
 
 
 
--doc "Allows to keep track of an ongoing command request.".
--type command_request() :: #command_request{}.
+-doc "Allows to keep track of an ongoing command.".
+-type command_tracking() :: #command_tracking{}.
 
 
 
@@ -949,10 +957,10 @@ commands (e.g. to learn the base ID from the Enocean module).
 -doc """
 Tracking information regarding a currently pending command.
 
-A timer is used for most commands, except typically internally-triggered common
-commands.
+A timer is used for most commands - except typically internally-triggered common
+commands - should no acknowledgement be received on time.
 """.
--type waited_command_info() :: { command_request(), option( timer_ref() ) }.
+-type waited_command_info() :: { command_tracking(), option( timer_ref() ) }.
 
 
 
@@ -1417,7 +1425,7 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 			   packet/0, crc/0, esp3_packet/0, packet_type/0,
 			   payload/0, vld_payload/0,
 			   enocean_version/0, log_counter/0, log_counters/0,
-			   command_request/0, command_outcome/0,
+			   command_tracking/0, command_outcome/0,
 
 			   thermo_hygro_event/0, single_input_contact_event/0,
 			   push_button_switch_event/0,
@@ -1995,7 +2003,7 @@ get_base_state( SerialServerPid ) ->
 	CommonCmd = co_rd_idbase,
 
 	CmdTelegram =
-        oceanic_common_command:encode_common_command_request( CommonCmd ),
+        oceanic_common_command:encode_common_command_tracking( CommonCmd ),
 
 	% For decoding re-use (try_integrate_next_telegram/4), we have to have a
 	% state anyway.
@@ -2407,6 +2415,7 @@ declare_devices( _DeviceCfgs=[
 								 eep=MaybeEepId,
 								 discovered_through=configuration,
 								 expected_periodicity=ActPeriod,
+                                 request_queue=queue:new(),
                                  extra_info=ShrunkDevInfoTable },
 
 	table:has_entry( Eurid, DeviceTable ) andalso
@@ -3417,13 +3426,13 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
-				TrackSpec={ DevEvType, MaybeExpectedReportedEvInfo } ] } ->
+				_TrackSpec={ _DevEvType, _MaybeExpectedReportedEvInfo } ] } ->
 
 			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
-				"to ~ts, ~ts, with track specification ~w.",
+				"to ~ts, ~ts.",
 				[ oceanic_text:describe_device( ActEurid, State ),
-				  oceanic_text:canon_outgoing_trigger_spec_to_string( COTS ),
-                  TrackSpec ] ),
+				  oceanic_text:canon_outgoing_trigger_spec_to_string(
+                    COTS ) ] ),
 
 			BaseEurid = State#oceanic_state.emitter_eurid,
 
@@ -3436,15 +3445,36 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			RockerTelegram = oceanic_encode:encode_double_rocker_telegram(
                 BaseEurid, COTS, ActEurid ),
 
-			SentState = send_tracked_telegram( RockerTelegram,
-                                               _Requester=internal, State ),
+            DeviceTable = State#oceanic_state.device_table,
 
-			% TODO: register and monitor TrackInfo
-			_TrackInfo = { _From=ActEurid, DevEvType,
-                           MaybeExpectedReportedEvInfo,
-						   State#oceanic_state.trigger_retry_count },
+            NewState = case table:get_value_with_default( _K=ActEurid,
+                                               _Def=undefined, DeviceTable ) of
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
+                undefined ->
+                    trace_bridge:warning_fmt( "Actuator ~ts not known, not "
+                        "tracking its requests.",
+                        [ oceanic_text:eurid_to_string( ActEurid ) ] ),
+                     State;
+
+                DevRecord ->
+                    ReqTrk = #request_tracking{ request_telegram=RockerTelegram,
+                                                target_eurid=ActEurid,
+                                                operation=fixme,
+                                                sent_count=1,
+                                                % No requester PID:
+                                                requester=internal },
+                    ReqQueue = DevRecord#enocean_device.request_queue,
+                    ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
+
+                    % MaybeReqInfo and ExpandedReqQueue to be set in DevRecord
+                    % next:
+                    MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
+
+                    handle_next_request( MaybeReqInfo, ExpandedReqQueue,
+                                         DevRecord, State )
+
+            end,
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
         { acknowledgeTeachRequest, [ TeachReqEv, TeachOutcome ] } ->
@@ -3540,7 +3570,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 					"on behalf of requester ~w.",
 					[ CommonCommand, RequesterPid ] ) ),
 
-			CmdTelegram = oceanic_common_command:encode_common_command_request(
+			CmdTelegram = oceanic_common_command:encode_common_command_tracking(
                 CommonCommand ),
 
 			% Response will be automatically sent back to the requester when
@@ -3571,6 +3601,91 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
+
+		% Sent by the timer associated to a currently request for a device, a
+		% timer that here just expired:
+		%
+		{ considerRequestTimeout, ActEurid } ->
+
+            DeviceTable = State#oceanic_state.device_table,
+
+            NewState = case table:get_value_with_default( _K=ActEurid,
+                    _Def=undefined, DeviceTable ) of
+
+                % Device not known:
+                undefined ->
+					trace_bridge:error_fmt( "Received a request time-out for "
+                        "unknown actuator ~ts; ignoring it.",
+						[ oceanic_text:describe_device( ActEurid, State ) ] ),
+					State;
+
+
+                #enocean_device{ waited_request_info=undefined } ->
+					trace_bridge:error_fmt( "Received a request time-out for "
+                        "actuator ~ts, whereas it had not request on the air; "
+                        "ignoring it.",
+						[ oceanic_text:describe_device( ActEurid, State ) ] ),
+					State;
+
+
+                % Legit time-out received, traced and then ignored:
+                DevRecord=#enocean_device{
+                        waited_request_info={ ReqTrk, _TimerRef },
+                        request_queue=ReqQueue } ->
+
+                    SentCount = ReqTrk#request_tracking.sent_count,
+                    MaxCount = ReqTrk#request_tracking.max_send_count,
+
+                    case SentCount < MaxCount of
+
+                        true ->
+                            cond_utils:if_defined( oceanic_debug_requests,
+                                trace_bridge:debug_fmt( "Request time-out "
+                                    "received for actuator ~ts, re-sending it, "
+                                    "as it was already sent ~B times, while "
+                                    "maximum send count is ~B.",
+                                    [ oceanic_text:describe_device( ActEurid,
+                                                                    State ),
+                                      SentCount, MaxCount ] ) ),
+
+                            NewReqTrk = ReqTrk#request_tracking{
+                                sent_count=SentCount +1 },
+
+                            ReqQueue = DevRecord#enocean_device.request_queue,
+
+                            ExpandedReqQueue = queue:in( NewReqTrk, ReqQueue ),
+
+                            % ReqInfo cleared, and ExpandedReqQueue to be set in
+                            % DevRecord next:
+                            %
+                            handle_next_request( _MaybeReqInfo=undefined,
+                                ExpandedReqQueue, DevRecord, State );
+
+                       false ->
+                            basic_utils:assert_equal( SentCount, MaxCount ),
+
+                            trace_bridge:error_fmt( "Request time-out received "
+                                "for actuator ~ts, giving up re-sending it, "
+                                "as it reached its maximum send count of ~B.",
+                                [ oceanic_text:describe_device( ActEurid,
+                                                                State ),
+                                  MaxCount ] ),
+
+                            ReqQueue = DevRecord#enocean_device.request_queue,
+
+                            % ReqInfo cleared, and ExpandedReqQueue to be set in
+                            % DevRecord next:
+                            %
+                            handle_next_request( _MaybeReqInfo=undefined,
+                                ReqQueue, DevRecord, State )
+
+                    end
+
+            end,
+
+			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+
+
 		% Sent by the timer associated to the currently pending command, a timer
 		% that here just expired:
 		%
@@ -3580,26 +3695,26 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 				% Surprising:
 				undefined ->
-					trace_bridge:warning_fmt( "Received a command time-out "
+					trace_bridge:error_fmt( "Received a command time-out "
 						"(for command count #~B), whereas no command is "
 						"awaited and the current count is #~B; ignoring it.",
 						[ CmdCount, State#oceanic_state.command_count ] ),
 					State;
 
                 % Legit time-out received, traced and then ignored:
-				_CmdInfo={ CmdReq=#command_request{ requester=internal },
+				_CmdInfo={ CmdReq=#command_tracking{ requester=internal },
 						   ThisTimerRef } ->
 
                     trace_bridge:error_fmt( "Time-out received for "
                             "internal command ~ts (timer reference: ~w), "
                             "and ignored.",
-							[ oceanic_text:command_request_to_string(
+							[ oceanic_text:command_tracking_to_string(
                                 CmdReq ), ThisTimerRef ] ),
 
 					State#oceanic_state{ waited_command_info=undefined };
 
 
-				_CmdInfo={ CmdReq=#command_request{ requester=RequesterPid },
+				_CmdInfo={ CmdReq=#command_tracking{ requester=RequesterPid },
 						   ThisTimerRef } ->
 
 					cond_utils:if_defined( oceanic_check_commands,
@@ -3609,7 +3724,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 						trace_bridge:debug_fmt( "Sending to requester "
 							"a time-out (reference: ~w) regarding command ~ts.",
 							[ ThisTimerRef,
-                              oceanic_text:command_request_to_string(
+                              oceanic_text:command_tracking_to_string(
                                 CmdReq ) ] ),
 						basic_utils:ignore_unused( [ CmdReq, ThisTimerRef ] ) ),
 
@@ -3854,14 +3969,25 @@ trigger_actuator_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
     % A next clause:
     trigger_actuator_impl( ActEurid, DevOp, State );
 
-trigger_actuator_impl( ActEurid, _DevOp=switch_on,
+trigger_actuator_impl( ActEurid, DevOp=switch_on,
                        State=#oceanic_state{ emitter_eurid=SourceEurid,
                                              device_table=DeviceTable } ) ->
+
+    DevRecord = table:get_value_with_default( _K=ActEurid, _Def=undefined,
+                                              DeviceTable ),
+
+    DevRecord =:= undefined andalso
+        throw( { unknown_actuator_device,
+                 oceanic_text:eurid_to_string( ActEurid ) } ),
 
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
     %
-    Convention = get_device_convention( ActEurid, DeviceTable ),
+    DevInfoTable = DevRecord#enocean_device.extra_info,
+
+    % For example standard, eltako, etc.:
+    Convention = table:get_value_with_default( convention, standard,
+                                               DevInfoTable ),
 
     SwitchTel = case Convention of
 
@@ -3888,7 +4014,7 @@ trigger_actuator_impl( ActEurid, _DevOp=switch_on,
 
             SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
 
-            % Not need to send afterwards a correspoding "released" telegram:
+            % Not need to send afterwards a corresponding "released" telegram:
             oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
                 SourceAppStyle, ButtonLoc, _ButTrans=pressed,
                 _MaybeTargetEurid=ActEurid )
@@ -3896,21 +4022,46 @@ trigger_actuator_impl( ActEurid, _DevOp=switch_on,
     end,
 
     cond_utils:if_defined( oceanic_debug_activity,
-        trace_bridge:debug_fmt( "Sending to actuator ~ts a switch-on telegram "
-            "based on the ~ts convention.",
+        trace_bridge:debug_fmt( "Enqueuing a request to actuator ~ts: "
+            "switch-on telegram based on the ~ts convention.",
             [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
-    send_tracked_telegram( SwitchTel, _Requester=internal, State );
+    ReqTrk = #request_tracking{ request_telegram=SwitchTel,
+                                target_eurid=ActEurid,
+                                operation=DevOp,
+                                sent_count=1,
+                                requester=internal },
+
+    ReqQueue = DevRecord#enocean_device.request_queue,
+
+	ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
+
+    % MaybeReqInfo and ExpandedReqQueue to be set in DevRecord next:
+    MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
+
+	handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
 
 
-trigger_actuator_impl( ActEurid, _DevOp=switch_off,
+
+trigger_actuator_impl( ActEurid, DevOp=switch_off,
                        State=#oceanic_state{ emitter_eurid=SourceEurid,
                                              device_table=DeviceTable } ) ->
+
+    DevRecord = table:get_value_with_default( _K=ActEurid, _Def=undefined,
+                                              DeviceTable ),
+
+    DevRecord =:= undefined andalso
+        throw( { unknown_actuator_device,
+                 oceanic_text:eurid_to_string( ActEurid ) } ),
 
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
     %
-    Convention = get_device_convention( ActEurid, DeviceTable ),
+    DevInfoTable = DevRecord#enocean_device.extra_info,
+
+    % For example standard, eltako, etc.:
+    Convention = table:get_value_with_default( convention, standard,
+                                               DevInfoTable ),
 
     SwitchTel = case Convention of
 
@@ -3945,11 +4096,23 @@ trigger_actuator_impl( ActEurid, _DevOp=switch_off,
     end,
 
     cond_utils:if_defined( oceanic_debug_activity,
-        trace_bridge:debug_fmt( "Sending to actuator ~ts a switch-off telegram "
-            "based on the ~ts convention.",
+        trace_bridge:debug_fmt( "Enqueuing a request to actuator ~ts: "
+            "switch-off telegram based on the ~ts convention.",
             [ oceanic_text:describe_device( ActEurid, State ), Convention ] ) ),
 
-    send_tracked_telegram( SwitchTel, _Requester=internal, State );
+    ReqTrk = #request_tracking{ request_telegram=SwitchTel,
+                                target_eurid=ActEurid,
+                                operation=DevOp,
+                                sent_count=1,
+                                requester=internal },
+
+    ReqQueue = DevRecord#enocean_device.request_queue,
+
+	ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
+
+    MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
+
+	handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
 
 
 trigger_actuator_impl ( ActEurid, DevOp, _State ) ->
@@ -4012,6 +4175,87 @@ trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
 
 
 -doc """
+Handles, if appropriate, the sending of the next request, using the specified
+queue for that.
+""".
+-spec handle_next_request( option( waited_request_info() ), request_queue(),
+    enocean_device(), oceanic_state() ) -> oceanic_state().
+
+% Here no request is already waited, so we can send one directly - provided
+% there is any.
+%
+handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
+                     State ) ->
+
+	case queue:out( CurrentReqQueue ) of
+
+		{ { value, OldestReqTrk=#request_tracking{
+					request_telegram=ReqTelegram } },
+				ShrunkReqQueue } ->
+
+            cond_utils:if_defined( oceanic_debug_requests,
+                trace_bridge:debug_fmt( "Dequeuing next request ~w, "
+                    "enqueuing as a new command.", [ OldestReqTrk ] ) ),
+
+            CmdState = execute_command_impl( _CmdType=telegram_sending,
+                ReqTelegram, _Requester=internal, State ),
+
+            ActEurid = OldestReqTrk#request_tracking.target_eurid,
+
+            % Note that the request timer starts now, whereas the command queue
+            % may delay the actual telegram sending:
+            %
+            { ok, TimerRef } = timer:send_after(
+                _Duration=?default_max_request_response_waiting_duration,
+                _Msg={ considerRequestTimeout, ActEurid } ),
+
+            cond_utils:if_defined( oceanic_debug_requests,
+                trace_bridge:debug_fmt( "No request was on the air for ~ts, "
+                    "dequeued ~w posted as a command (timer ref: ~w).",
+                    [ oceanic_text:eurid_to_string( ActEurid ), OldestReqTrk,
+                      TimerRef ] ) ),
+
+			ReqInfo = { OldestReqTrk, TimerRef },
+
+            % The ack of this sending will allow to further dequeue if possible.
+
+            NewDevRecord = DevRecord#enocean_device{
+                request_queue=ShrunkReqQueue,
+                waited_request_info=ReqInfo },
+
+            NewDeviceTable = table:add_entry( _K=DevRecord#enocean_device.eurid,
+                _V=NewDevRecord, State#oceanic_state.device_table ),
+
+            CmdState#oceanic_state{ device_table=NewDeviceTable };
+
+
+		% Nothing that is already queued to send here:
+		{ empty, _SameCurrentQueue } ->
+
+            cond_utils:if_defined( oceanic_debug_requests,
+                trace_bridge:debug( "(no request to dequeue)" ) ),
+
+            State
+
+	end;
+
+% Here there is already a waited request, we just update with the new queue:
+handle_next_request( _WaitRqInfo, CurrentReqQueue, DevRecord, State ) ->
+
+    cond_utils:if_defined( oceanic_debug_requests, trace_bridge:debug_fmt(
+        "(a request is already on the air, none of the ~B ones dequeued)",
+        [ queue:len( CurrentReqQueue ) ] ) ),
+
+    NewDevRecord = DevRecord#enocean_device{ request_queue=CurrentReqQueue },
+
+    NewDeviceTable = table:add_entry( _K=DevRecord#enocean_device.eurid,
+        _V=NewDevRecord, State#oceanic_state.device_table ),
+
+    State#oceanic_state{ device_table=NewDeviceTable }.
+
+
+
+-doc """
 Returns the convention according to which a gateway shall interact with the
 specified device.
 """.
@@ -4020,6 +4264,7 @@ get_device_convention( TargetEurid, DeviceTable ) ->
     case table:get_value_with_default( _K=TargetEurid,
             _Def=undefined, DeviceTable ) of
 
+        % Device not known:
         undefined ->
             standard;
 
@@ -4028,6 +4273,7 @@ get_device_convention( TargetEurid, DeviceTable ) ->
              table:get_value_with_default( convention, standard, DevInfoTable )
 
     end.
+
 
 
 -doc "Returns the default operation corresponding to the specified actuator.".
@@ -4126,7 +4372,7 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 		  _IsBackOnline, _MaybeDevice, NextMaybeTelTail, NewState } ->
 
 			cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug(
-				"Decoded command_processed event." ) ),
+				"(decoded a command_processed event)" ) ),
 
 			% Just recurse on this tail (no chunk to append):
 			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail, _Chunk= <<>>,
@@ -4277,13 +4523,13 @@ execute_command_impl( CmdType, CmdTelegram, Requester,
         "Enqueuing command of type '~ts' to execute: telegram is ~w, "
         "requester is ~w.", [ CmdType, CmdTelegram, Requester ] ) ),
 
-	CmdReq = #command_request{ command_type=CmdType,
-                               command_telegram=CmdTelegram,
-							   requester=Requester },
+	CmdTrk = #command_tracking{ command_type=CmdType,
+                                command_telegram=CmdTelegram,
+                                requester=Requester },
 
-	ExpandedQueue = queue:in( CmdReq, CmdQueue ),
+	ExpandedCmdQueue = queue:in( CmdTrk, CmdQueue ),
 
-	handle_next_command( ExpandedQueue, State ).
+	handle_next_command( ExpandedCmdQueue, State ).
 
 
 
@@ -4294,32 +4540,32 @@ queue for that.
 -spec handle_next_command( command_queue(), oceanic_state() ) ->
 										oceanic_state().
 
-% Here no command is waited, so we can send one directly - provided there is
-% any.
+% Here no command is already waited, so we can send one directly - provided
+% there is any.
 %
-handle_next_command( CurrentQueue, State=#oceanic_state{
+handle_next_command( CurrentCmdQueue, State=#oceanic_state{
 										waited_command_info=undefined } ) ->
 
-	case queue:out( CurrentQueue ) of
+	case queue:out( CurrentCmdQueue ) of
 
-		{ { value, OldestCmdReq=#command_request{
+		{ { value, OldestCmdTrk=#command_tracking{
 					command_telegram=CmdTelegram } },
-				ShrunkQueue } ->
+				ShrunkCmdQueue } ->
 
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug_fmt( "Dequeuing next command ~w.",
-                                        [ OldestCmdReq ] ) ),
+                                        [ OldestCmdTrk ] ) ),
 
             % Comment to test time-out:
 			% (not a record mistake)
-			SentState = #oceanic_state{ wait_timeout=MaxWaitMs,
+			SentState = #oceanic_state{ command_wait_timeout=MaxWaitMs,
 										command_count=CmdCount } =
 				send_raw_telegram( CmdTelegram, State ),
 
             % Test code with no actual sending, meant to trigger a time-out:
 
-            MaxWaitMs = State#oceanic_state.wait_timeout,
-            CmdCount = State#oceanic_state.command_count,
+            %MaxWaitMs = State#oceanic_state.command_wait_timeout,
+            %CmdCount = State#oceanic_state.command_count,
 
             % Yet even for testing we need to wait until the base EURID has been
             % obtained:
@@ -4358,34 +4604,34 @@ handle_next_command( CurrentQueue, State=#oceanic_state{
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug_fmt( "No command was on the air, dequeued "
                     "command to execute #~B: ~w (timer ref: ~w).",
-                    [ NewCmdCount, OldestCmdReq, TimerRef ] ) ),
+                    [ NewCmdCount, OldestCmdTrk, TimerRef ] ) ),
 
-			CmdInfo = { OldestCmdReq, TimerRef },
+			CmdInfo = { OldestCmdTrk, TimerRef },
 
             % The ack of this sending will allow to further dequeue if possible.
 
-			SentState#oceanic_state{ command_queue=ShrunkQueue,
+			SentState#oceanic_state{ command_queue=ShrunkCmdQueue,
 									 waited_command_info=CmdInfo,
 									 command_count=NewCmdCount };
 
 		% Nothing that is already queued to send here:
-		{ empty, SameCurrentQueue } ->
+		{ empty, SameCurrentCmdQueue } ->
 
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug( "(no command to dequeue)" ) ),
 
-            State#oceanic_state{ command_queue=SameCurrentQueue }
+            State#oceanic_state{ command_queue=SameCurrentCmdQueue }
 
 	end;
 
 % Here there is already a waited command, we just update with the new queue:
-handle_next_command( CurrentQueue, State ) ->
+handle_next_command( CurrentCmdQueue, State ) ->
 
     cond_utils:if_defined( oceanic_debug_commands, trace_bridge:debug_fmt(
         "(a command is already on the air, none of the ~B ones dequeued)",
-        [ queue:len( CurrentQueue ) ] ) ),
+        [ queue:len( CurrentCmdQueue ) ] ) ),
 
-	State#oceanic_state{ command_queue=CurrentQueue }.
+	State#oceanic_state{ command_queue=CurrentCmdQueue }.
 
 
 
@@ -5474,43 +5720,6 @@ device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
 
 device_triggered( _DevEventTuple ) ->
 	false.
-
-
-
-% Section for tracking actuator reports.
-
-
-
-% -doc """
-% Registers the specified actuator trigger tracking info, to detect if no report
-% is sent back.
-% """.
-
-% -spec init_actuator_trigger_tracking( eurid(), device_event_type(),
-%         option( reported_event_info() ), oceanic_state() ) -> oceanic_state().
-% register_trigger_track_info( ActEurid, DevEvttype, MaybeRepInfo,
-%         State#oceanic_state{ actuator_tracking_table=ActTrackTable,
-%                              trigger_retry_count=TrigCount ) ->
-
-%     % No identifier is assigned to actuations, as we cannot discriminate them.
-%  { ok, TimerRef } = timer:send_after(
-%      ?default_max_actuation_waiting_duration,
-%          _Msg={ considerActuationTimeout, NewCmdCount } ),
-
-
-%     TrackInfo = { ActEurid, DevEvttype, MaybeRepInfo, TimerRef,
-%                   _NextRetries=TrigCount ),
-
-%     TInfos = table:get_value_with_default( _K=ActEurid, _Def=[],
-%                                            ActTrackTable ),
-
-%      % FIFO:
-%      NewTInfos = list_utils:append_at_end( _Elem=TrackInfo, _List=TInfos ),
-
-%     NewActTrackTable = table:add_entry( ActEurid, NewTInfos, ActTrackTable ),
-
-%     State#oceanic_state{ actuator_tracking_table=NewActTrackTable }.
-
 
 
 

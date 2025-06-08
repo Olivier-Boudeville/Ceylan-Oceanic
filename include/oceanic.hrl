@@ -64,13 +64,24 @@
 % The default maximum waiting duration, in milliseconds, for a pending command,
 % sent yet not acknowledged:
 %
--define( default_max_response_waiting_duration, 1000 ).
+-define( default_max_command_response_waiting_duration, 1000 ).
 
 
 % The default maximum waiting duration, in milliseconds, for a pending
-% actuation, triggered yet not acknowledged:
+% request, triggered yet not acknowledged:
 %
--define( default_max_actuation_waiting_duration, 1000 ).
+-define( default_max_request_response_waiting_duration, 1500 ).
+
+
+% The default maximum number of times a telegram is sent before raising a
+% time-out:
+%
+% (at least 1)
+%
+%-define( default_max_send_count, 15 ).
+% For testing:
+-define( default_max_send_count, 2 ).
+
 
 
 % The minimum timeout (in milliseconds) regarding the monitoring of device
@@ -86,12 +97,6 @@
 
 % To test detection:
 %-define( default_jamming_threshold, 10 ).
-
-
-% The default number of retries until the triggering of an actuator is
-% acknowledged:
-%
--define( default_trigger_retry_count, 4 ).
 
 
 % The default DHMS expected activity periodicity for a device (hence a telegram
@@ -126,7 +131,7 @@
 	availability :: option( oceanic:availability_status() ),
 
 	% Tells whether this device was successfully registered by this gateway
-	% through teach-in with no teach-out afterwards, and thus whether this
+	% through teach-in, with no teach-out afterwards, and thus whether this
 	% gateway should still be considered as taught by this device:
     %
 	taught = false :: boolean(),
@@ -147,6 +152,32 @@
 	%
 	activity_timer = undefined :: option( oceanic:timer_ref() ),
 
+
+    % The queue used to store the requests to be sent next to the corresponding
+    % device.
+    %
+	request_queue :: oceanic:request_queue(),
+
+	% Information about any currently waited request (typically an actuation)
+	% that shall result in an applicative-level telegram acknowledgement (e.g. a
+	% smart plug that was switched on and replies with a status telegram); so
+	% corresponds to any pending, sent but not yet acknowledged request whose
+	% response telegram is still waited for, in order to re-send this request if
+	% a time-out occurs.
+    %
+	% Note that the device targeted by the request shall if needed be configured
+	% to return a state telegram once having processed this request.
+	%
+	waited_request_info = 'undefined'
+                                :: option( oceanic:waited_request_info() ),
+
+
+	% The maximum waiting duration for a pending request, sent yet not
+	% acknowledged:
+	%
+	request_wait_timeout = ?default_max_request_response_waiting_duration
+									:: time_utils:time_out(),
+
     % Extra device-level information, such as, for a double rocker, its
     % application style.
     %
@@ -162,7 +193,7 @@
 
 
 % Record allowing to keep track of a submitted command.
--record( command_request, {
+-record( command_tracking, {
 
 	% An identifier corresponding to the count of this command could be added
 	% (yet only up to one can be in the air at a given time).
@@ -176,6 +207,28 @@
 	% The identifier of the requester of this command:
 	requester :: oceanic:requester() } ).
 
+
+
+% Record allowing to keep track of a request submitted to a device.
+-record( request_tracking, {
+
+	% The telegram corresponding to that request:
+	request_telegram :: oceanic:telegram(),
+
+    % The EURID of the device targeted by this request:
+    target_eurid :: oceanic:eurid(),
+
+    % The operation carried by the request telegram:
+    operation :: oceanic:device_operation(),
+
+    % The number of sendings already done:
+    sent_count = 0 :: basic_utils:count(),
+
+    % The maximum number of sendings that may be done before issuing a time-out:
+    max_send_count = ?default_max_send_count :: basic_utils:count(),
+
+	% The identifier of the requester of this request:
+	requester :: oceanic:requester() } ).
 
 
 

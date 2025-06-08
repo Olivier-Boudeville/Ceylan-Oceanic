@@ -243,12 +243,12 @@ decode_packet( _PacketType=response_type,
 			   _Data= <<ReturnCode:8, DataTail/binary>>, OptData,
                NextMaybeTelTail,
 			   State=#oceanic_state{
-					waited_command_info={ WaitedCmdReq, MaybeTimerRef } } ) ->
+					waited_command_info={ WaitedCmdTrk, MaybeTimerRef } } ) ->
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 		trace_bridge:debug_fmt( "Decoding a command response, whereas "
 			"awaiting ~ts.",
-            [ oceanic_text:command_request_to_string( WaitedCmdReq ) ] ) ),
+            [ oceanic_text:command_tracking_to_string( WaitedCmdTrk ) ] ) ),
 
 	% In all cases the pending request is over:
 	oceanic:stop_any_timer( MaybeTimerRef ),
@@ -267,7 +267,7 @@ decode_packet( _PacketType=response_type,
 
 
 		ok_return ->
-			oceanic_common_command:decode_response_tail( WaitedCmdReq,
+			oceanic_common_command:decode_response_tail( WaitedCmdTrk,
                 DataTail, OptData, NextMaybeTelTail, RespState );
 
 		% Not a decoding failure, but more a protocol-level one that shall be
@@ -280,7 +280,7 @@ decode_packet( _PacketType=response_type,
         %
 		FailureReturn ->
             oceanic_common_command:manage_failure_return( FailureReturn,
-                WaitedCmdReq, DataTail, OptData, NextMaybeTelTail, RespState )
+                WaitedCmdTrk, DataTail, OptData, NextMaybeTelTail, RespState )
 
 	end,
 

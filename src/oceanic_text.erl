@@ -86,7 +86,7 @@ Ceylan-Oceanic.
 
 % Higher-level management descriptions:
 
--export([ command_request_to_string/1, state_to_string/1 ]).
+-export([ command_tracking_to_string/1, state_to_string/1 ]).
 
 -export([
     cits_to_string/1, device_state_change_spec_to_string/2,
@@ -130,7 +130,7 @@ Ceylan-Oceanic.
 -type telegram_opt_data() :: oceanic:telegram_opt_data().
 -type decoded_optional_data() :: oceanic:decoded_optional_data().
 
--type command_request() :: oceanic:command_request().
+-type command_tracking() :: oceanic:command_tracking().
 
 -type eep() :: oceanic:eep().
 -type eep_id() :: oceanic:eep_id().
@@ -1492,6 +1492,8 @@ device_to_string( #enocean_device{ eurid=Eurid,
 								   error_count=ErrCount,
 								   expected_periodicity=ActPeriod,
 								   activity_timer=MaybeActTimer,
+                                   request_queue=ReqQueue,
+                                   waited_request_info=MaybeReqInfo,
                                    extra_info=ExtraInfoTable } ) ->
 
     TaughtStr = case IsTaught of
@@ -1676,12 +1678,25 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 	end,
 
+    ReqStr = text_utils:format( "it has ~B request(s) queued, while "
+        "currently " ++ case MaybeReqInfo of
+
+                            undefined ->
+                                "none is on the air";
+
+                            ReqInfo ->
+                                text_utils:format( "the ~w one is on the air",
+                                                   [ ReqInfo ] )
+
+                        end,
+                                [ queue:len( ReqQueue ) ] ),
+
     ExtraInfoStr = table:to_string( ExtraInfoTable, _DescriptionType=bullet ),
 
-	text_utils:format( "~ts applying ~ts; it has ~ts~ts~ts~ts; ~ts; ~ts; "
+	text_utils:format( "~ts applying ~ts; it has ~ts~ts~ts~ts; ~ts; ~ts; ~ts; "
         "regarding extra information: ~ts",
 		[ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr,
-		  AvailStr, PeriodStr, ExtraInfoStr ] ).
+		  AvailStr, PeriodStr, ReqStr, ExtraInfoStr ] ).
 
 
 
@@ -1696,15 +1711,15 @@ get_device_description( Device ) ->
 % Higher-level management descriptions:
 
 -doc "Returns a textual description of the specified command request.".
--spec command_request_to_string( command_request() ) -> ustring().
+-spec command_tracking_to_string( command_tracking() ) -> ustring().
 % Requester is either PID or 'internal':
-command_request_to_string( #command_request{ command_type=undefined,
+command_tracking_to_string( #command_tracking{ command_type=undefined,
 											 command_telegram=CmdTelegram,
 											 requester=Requester } ) ->
 	text_utils:format( "command based on ~ts, on behalf of "
 		"requester ~w", [ telegram_to_string( CmdTelegram ), Requester ] );
 
-command_request_to_string( #command_request{ command_type=CmdType,
+command_tracking_to_string( #command_tracking{ command_type=CmdType,
 											 command_telegram=CmdTelegram,
 											 requester=Requester } ) ->
 	text_utils:format( "command of type ~p, based on ~ts, on behalf of "
@@ -1724,7 +1739,7 @@ state_to_string( #oceanic_state{
 		device_table=DeviceTable,
 		command_queue=CmdQueue,
 		waited_command_info=MaybeWaitedCommandInfo,
-		wait_timeout=WaitTimeout,
+		command_wait_timeout=ReqWaitTimeout,
 		command_count=CmdCount,
 		sent_count=SentCount,
 		discarded_count=DiscardedCount,
@@ -1737,16 +1752,16 @@ state_to_string( #oceanic_state{
 		undefined ->
 			"not having any command pending";
 
-		{ WaitedCmdReq, TimerRef } ->
+		{ WaitedCmdTrk, TimerRef } ->
 			text_utils:format( "waiting for a pending ~ts, "
 				"associated to timer ~w",
-				[ command_request_to_string( WaitedCmdReq ), TimerRef ] )
+				[ command_tracking_to_string( WaitedCmdTrk ), TimerRef ] )
 
 	end,
 
 	QStr = text_utils:format( "based on a ~ts, with ~ts queued whereas "
 		"~ts been issued",
-		[ time_utils:time_out_to_string( WaitTimeout ),
+		[ time_utils:time_out_to_string( ReqWaitTimeout ),
 		  case queue:len( CmdQueue ) of
 
 				0 ->

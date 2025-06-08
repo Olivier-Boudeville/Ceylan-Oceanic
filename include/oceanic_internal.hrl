@@ -34,6 +34,9 @@
 -define( sync_byte, 85 ). % i.e. 0x55
 
 
+% Most number of retries in terms of request sending:
+-define( max_request_retries, 15 ).
+
 
 % Definition of the overall state of an Oceanic server, including configuration
 % (typically loaded from an ETF file).
@@ -81,9 +84,9 @@
     auto_ack_teach_queries = 'true' :: boolean(),
 
 
-	% We enqueue (low-level) commands sent to the Enocean module; they shall
-	% result in an acknowledgement from the module (most of them; possibly all
-	% of them).
+	% We enqueue (low-level) commands (not to be mixed up with higher-level
+	% requests) sent to the Enocean module; they shall result in an
+	% acknowledgement from the module (most of them; possibly all of them).
     %
     % Such acks, at least generally, just contain a corresponding return code -
     % nothing else that could be associated to a sender, a request, etc. - so we
@@ -108,7 +111,7 @@
     % device exists), but it is useful for error management and possibly flow
     % control (not to overwhelm the module, if ever it was possible).
     %
-    % Refer  to `[ESP3]` p.17 for further information.
+    % Refer to [ESP3] p.17 for further information.
     %
 	% This queue therefore contains any pending, not-yet-sent ESP3 commands (be
 	% them requests for ERP1 commands, common commands, etc.); this is not a
@@ -119,23 +122,23 @@
 	command_queue :: oceanic:command_queue(),
 
 
-	% Information about any currently waited command request that shall result
-	% in an acknowledgement; so corresponds to any pending, sent but not yet
-	% acknowledged ESP3 command whose response telegram is still waited for.
+	% Information about any currently waited (low-level) command that shall
+	% result in an acknowledgement; so corresponds to any pending, sent but not
+	% yet acknowledged ESP3 command whose response telegram is still waited for.
     %
 	% Note that some devices apparently may be configured to not ack incoming
-	% commands (however `[ESP3]` p.17 tells that "it is mandatory to wait for
-	% the RESPONSE message"); in this case this information should be registered
-	% in their enocean_device() record (by default acknowledgements are
-	% expected).
+	% commands (however [ESP3] p.17 tells that "it is mandatory to wait for the
+	% RESPONSE message"); in this case this information should be registered in
+	% their enocean_device() record (by default acknowledgements are expected).
 	%
-	waited_command_info :: option( oceanic:waited_command_info() ),
+	waited_command_info = 'undefined'
+                                :: option( oceanic:waited_command_info() ),
 
 
 	% The maximum waiting duration for a pending command, sent yet not
 	% acknowledged:
 	%
-	wait_timeout = ?default_max_response_waiting_duration
+	command_wait_timeout = ?default_max_command_response_waiting_duration
 									:: time_utils:time_out(),
 
 
@@ -166,15 +169,6 @@
 	% The threshold above which an onEnoceanJamming event is triggered:
 	jamming_threshold = ?default_jamming_threshold
                                     :: system_utils:bytes_per_second(),
-
-
-    % A table tracking the events expected to be received from actuators when
-    % they have been triggered:
-    %
-    actuator_tracking_table :: oceanic:actuator_tracking_table(),
-
-	% The number of retries until the triggering of an actuator is acknowledged:
-	trigger_retry_count = ?default_trigger_retry_count :: basic_utils:count(),
 
 	% A list of the PID of any processes listening for Enocean events:
 	event_listeners = [] :: [ oceanic:event_listener_pid() ] } ).
