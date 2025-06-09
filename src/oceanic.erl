@@ -128,7 +128,7 @@ through an Oceanic server**.
           record_device_failure/2, record_known_device_failure/2,
 
           get_device_convention/2,
-          handle_next_command/2,
+          handle_next_command/2, handle_next_request/4,
 
           canonicalise_listened_event_specs/1,
           canonicalise_listened_event_specs/2,
@@ -473,7 +473,7 @@ telegrams.
 
 Refer to `[ESP3]`. p.18.
 
-See also telegram_opt_data/0.
+See also `telegram_opt_data/0`.
 """.
 -type decoded_optional_data() ::
 	{ subtelegram_count(), % Number of subtelegrams (send: 3 / receive: 0)
@@ -3350,6 +3350,9 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 					[ Size, MaybeTelTail ] )
 		end,
 
+    % Ensure that, if all debug flags are set, at least one trace is emitted per
+    % finest clause.
+    %
 	receive
 
 		% Received data from the serial port:
@@ -3406,7 +3409,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Triggering reciprocally "
-                                        "actuator as ~w.", [ CEES ] ),
+                    "actuator based on ~w.", [ CEES ] ),
                 basic_utils:ignore_unused( CEES ) ),
 
             TrigState = trigger_actuator_reciprocal_impl( ActEurid,
@@ -3419,7 +3422,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
              cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Triggering reciprocally "
-                                        "actuators as ~w.", [ CEESs ] ) ),
+                    "actuators based on ~w.", [ CEESs ] ) ),
 
            TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
@@ -3428,11 +3431,12 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
 				_TrackSpec={ _DevEvType, _MaybeExpectedReportedEvInfo } ] } ->
 
-			trace_bridge:debug_fmt( "Server to send a double-rocker telegram "
-				"to ~ts, ~ts.",
-				[ oceanic_text:describe_device( ActEurid, State ),
-				  oceanic_text:canon_outgoing_trigger_spec_to_string(
-                    COTS ) ] ),
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Server to send a double-rocker "
+                    "telegram to ~ts, ~ts.",
+                    [ oceanic_text:describe_device( ActEurid, State ),
+                      oceanic_text:canon_outgoing_trigger_spec_to_string(
+                        COTS ) ] ) ),
 
 			BaseEurid = State#oceanic_state.emitter_eurid,
 
@@ -3448,7 +3452,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
             DeviceTable = State#oceanic_state.device_table,
 
             NewState = case table:get_value_with_default( _K=ActEurid,
-                                               _Def=undefined, DeviceTable ) of
+                    _Def=undefined, DeviceTable ) of
 
                 undefined ->
                     trace_bridge:warning_fmt( "Actuator ~ts not known, not "
@@ -3478,6 +3482,11 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
         { acknowledgeTeachRequest, [ TeachReqEv, TeachOutcome ] } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Acknowledging teach request ~w "
+                    "(outcome: ~w).", [ TeachReqEv, TeachOutcome ] ) ),
+
             AckState = acknowledge_teach_request( TeachReqEv, TeachOutcome,
                                                   State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, AckState );
@@ -3490,6 +3499,12 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		% To track lost devices:
 		{ onActivityTimeout, LostEurid, PeriodicityMs } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Activity timeout for EURID ~ts "
+                    "(periodicity: ~B)",
+                    [ oceanic_text:eurid_to_string( LostEurid ),
+                      PeriodicityMs ] ) ),
 
 			DeviceTable = State#oceanic_state.device_table,
 
@@ -3546,22 +3561,6 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-        % FIXME: not convincing, other queue to be used:
-		{ executeCommand, CmdTelegram, RequesterPid } ->
-
-			cond_utils:if_defined( oceanic_debug_commands,
-				trace_bridge:debug_fmt( "Requested to execute command as "
-                    "telegram ~ts, on behalf of requester ~w.",
-					[ oceanic_text:telegram_to_string( CmdTelegram ),
-                      RequesterPid ] ) ),
-
-			ExecState = execute_command_impl( _CmdType=device_request,
-                                              CmdTelegram, RequesterPid,
-                                              State ),
-
-			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
-
-
 		{ executeCommonCommand, CommonCommand, RequesterPid } ->
 
 			cond_utils:if_defined( oceanic_debug_commands,
@@ -3585,6 +3584,9 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		{ getOceanicEurid, RequesterPid } ->
 
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(getting Oceanic EURID)" ) ),
+
 			RequesterPid !
 				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
 
@@ -3593,6 +3595,9 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 		{ getDeviceDescription, Eurid, RequesterPid } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(getting device description)" ) ),
 
 			BinDesc = oceanic_text:describe_device( Eurid, State ),
 
@@ -3640,7 +3645,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
                         true ->
                             cond_utils:if_defined( oceanic_debug_requests,
-                                trace_bridge:debug_fmt( "Request time-out "
+                                trace_bridge:warning_fmt( "Request time-out "
                                     "received for actuator ~ts, re-sending it, "
                                     "as it was already sent ~B times, while "
                                     "maximum send count is ~B.",
@@ -3649,7 +3654,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                                       SentCount, MaxCount ] ) ),
 
                             NewReqTrk = ReqTrk#request_tracking{
-                                sent_count=SentCount +1 },
+                                sent_count=SentCount+1 },
 
                             ReqQueue = DevRecord#enocean_device.request_queue,
 
@@ -3662,22 +3667,11 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                                 ExpandedReqQueue, DevRecord, State );
 
                        false ->
+
                             basic_utils:assert_equal( SentCount, MaxCount ),
 
-                            trace_bridge:error_fmt( "Request time-out received "
-                                "for actuator ~ts, giving up re-sending it, "
-                                "as it reached its maximum send count of ~B.",
-                                [ oceanic_text:describe_device( ActEurid,
-                                                                State ),
-                                  MaxCount ] ),
-
-                            ReqQueue = DevRecord#enocean_device.request_queue,
-
-                            % ReqInfo cleared, and ExpandedReqQueue to be set in
-                            % DevRecord next:
-                            %
-                            handle_next_request( _MaybeReqInfo=undefined,
-                                ReqQueue, DevRecord, State )
+                            manage_request_failure( ActEurid, DevRecord,
+                                                    MaxCount, State )
 
                     end
 
@@ -3781,6 +3775,10 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 		{ addConfigurationSettings, OcSettings } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(adding configuration settings)" ) ),
+
 			NewState = apply_conf_settings( OcSettings, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
@@ -3797,6 +3795,10 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 		% Mostly useful for testing purpose:
 		{ sendOceanic, Telegram } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(sending telegram)" ) ),
+
 			SentState = send_tracked_telegram( Telegram, _Requester=internal,
                                                State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
@@ -3807,11 +3809,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
         %  oceanic_common_command:common_command_status()} message)
         %
 		{ sendOceanic, Telegram, RequesterPid } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(sending telegram for requester)" ) ),
+
 			SentState = send_tracked_telegram( Telegram, RequesterPid, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
 
 
 		{ testSerialAvailability, [], SenderPid } ->
+
+           cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug( "(testing serial availability)" ) ),
 
 			State#oceanic_state.serial_server_pid ! report,
 
@@ -3946,14 +3955,61 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 				"Oceanic server ~w terminated synchronously.", [ self() ] );
 
 		UnexpectedMsg ->
-			trace_bridge:debug_fmt( "Oceanic server ~w received an unexpected "
-				"message: '~w', ignoring it.", [ self(), UnexpectedMsg ] ),
+			trace_bridge:warning_fmt( "Oceanic server ~w received an "
+				"unexpected message: '~w', ignoring it.",
+                [ self(), UnexpectedMsg ] ),
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, State )
 
 	end.
 
 
+
+-doc """
+Manages the failure to acknowledge all attempts of a request sent to the
+specified actuator.
+""".
+-spec manage_request_failure( eurid(), enocean_device(), count(),
+                              oceanic_state() ) -> oceanic_state().
+manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
+
+    % Special-casing Eltako smart plugs for their request failure, as if they
+    % are already in the target state (e.g. off, for example initially, when all
+    % lights are switched off unconditionally), they will never send back a
+    % telegram when requested to switch, and thus the request will appear
+    % failed.
+    %
+    % As a result, as soon as a switch ack sent by such plugs is lost, the
+    % corresponding request will be reported failed.
+
+    DevInfoTable = DevRecord#enocean_device.extra_info,
+
+    % For example standard, eltako, etc.:
+    Convention = table:get_value_with_default( convention, standard,
+                                               DevInfoTable ),
+
+    Msg = text_utils:format( "Request time-out received for actuator ~ts, "
+        "giving up re-sending it, as it reached its maximum send count of ~B.",
+         [ oceanic_text:describe_device( ActEurid, State ), FailedCount ] ),
+
+    case Convention of
+
+        eltako ->
+            trace_bridge:warning( Msg ++ " Either the single acknowledgement "
+                "it sent has been lost, or this Eltako smart plug was already "
+                "in its target state (of course if this plug is functional)." );
+
+        _ ->
+           trace_bridge:error( Msg )
+
+    end,
+
+    ReqQueue = DevRecord#enocean_device.request_queue,
+
+    % ReqInfo cleared, and ExpandedReqQueue to be set in
+    % DevRecord next:
+    %
+    handle_next_request( _MaybeReqInfo=undefined, ReqQueue, DevRecord, State ).
 
 
 % Trigger internal helpers.
@@ -3991,11 +4047,6 @@ trigger_actuator_impl( ActEurid, DevOp=switch_on,
 
     SwitchTel = case Convention of
 
-        % Here we act as a normal, taught-in gateway:
-        standard ->
-            oceanic_encode:encode_switch_dimmer_set_output( SourceEurid,
-                _TargetStatus=on, _MaybeTargetEurid=ActEurid );
-
         % Here spoofing a (previously-learnt, possibly virtual) double rocker:
         eltako ->
 
@@ -4017,7 +4068,12 @@ trigger_actuator_impl( ActEurid, DevOp=switch_on,
             % Not need to send afterwards a corresponding "released" telegram:
             oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
                 SourceAppStyle, ButtonLoc, _ButTrans=pressed,
-                _MaybeTargetEurid=ActEurid )
+                _MaybeTargetEurid=ActEurid );
+
+        % Here we act as a normal, taught-in gateway:
+        _ -> % Most probably 'standard'
+            oceanic_encode:encode_switch_dimmer_set_output( SourceEurid,
+                _TargetStatus=on, _MaybeTargetEurid=ActEurid )
 
     end,
 
@@ -4178,6 +4234,7 @@ trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
 Handles, if appropriate, the sending of the next request, using the specified
 queue for that.
 """.
+% MaybeWaitRqInfo shall apply from now:
 -spec handle_next_request( option( waited_request_info() ), request_queue(),
     enocean_device(), oceanic_state() ) -> oceanic_state().
 
@@ -4211,9 +4268,10 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
 
             cond_utils:if_defined( oceanic_debug_requests,
                 trace_bridge:debug_fmt( "No request was on the air for ~ts, "
-                    "dequeued ~w posted as a command (timer ref: ~w).",
+                    "dequeued ~w posted as a command (size of shrunk "
+                    "queue: ~B; timer ref: ~w).",
                     [ oceanic_text:eurid_to_string( ActEurid ), OldestReqTrk,
-                      TimerRef ] ) ),
+                      queue:len( ShrunkReqQueue ), TimerRef ] ) ),
 
 			ReqInfo = { OldestReqTrk, TimerRef },
 
@@ -4235,18 +4293,27 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
             cond_utils:if_defined( oceanic_debug_requests,
                 trace_bridge:debug( "(no request to dequeue)" ) ),
 
-            State
+            NewDevRecord = DevRecord#enocean_device{
+                waited_request_info=undefined },
+
+            NewDeviceTable = table:add_entry( _K=DevRecord#enocean_device.eurid,
+                _V=NewDevRecord, State#oceanic_state.device_table ),
+
+            State#oceanic_state{ device_table=NewDeviceTable }
 
 	end;
 
-% Here there is already a waited request, we just update with the new queue:
-handle_next_request( _WaitRqInfo, CurrentReqQueue, DevRecord, State ) ->
+% Here there is already a waited request, we just update with the new queue and
+% wait info:
+%
+handle_next_request( WaitRqInfo, CurrentReqQueue, DevRecord, State ) ->
 
     cond_utils:if_defined( oceanic_debug_requests, trace_bridge:debug_fmt(
         "(a request is already on the air, none of the ~B ones dequeued)",
         [ queue:len( CurrentReqQueue ) ] ) ),
 
-    NewDevRecord = DevRecord#enocean_device{ request_queue=CurrentReqQueue },
+    NewDevRecord = DevRecord#enocean_device{ request_queue=CurrentReqQueue,
+                                             waited_request_info=WaitRqInfo },
 
     NewDeviceTable = table:add_entry( _K=DevRecord#enocean_device.eurid,
         _V=NewDevRecord, State#oceanic_state.device_table ),
@@ -4491,9 +4558,9 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 		% decode:
 		%
 		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
-			when DecodingError =:= unsupported
-				 orelse DecodingError =:= unconfigured
-				 orelse DecodingError =:= invalid ->
+                            when DecodingError =:= unsupported
+                                 orelse DecodingError =:= unconfigured
+                                 orelse DecodingError =:= invalid ->
 			integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
 									 _Chunk= <<>>, NewState );
 
@@ -4502,8 +4569,8 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 		% ongoing recursion:
 		%
 		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
-				when DecodingError =:= not_reached
-					 orelse DecodingError =:= incomplete  ->
+                            when DecodingError =:= not_reached
+                                 orelse DecodingError =:= incomplete  ->
 			{ NewToSkipLen, NextMaybeTelTail, NewState }
 
 	end.
@@ -5515,8 +5582,14 @@ get_app_style_from_eep( _EEPId=double_rocker_switch_style_1 ) ->
 	1;
 
 get_app_style_from_eep( _EEPId=double_rocker_switch_style_2 ) ->
-	2.
+	2;
 
+% Useful at least to decode state feedback from Eltako:
+get_app_style_from_eep( _EEPId=smart_plug ) ->
+    % Preferred to 1 in order to consider that the A button (not the B one) is
+    % operated:
+    %
+    2.
 
 
 -doc """

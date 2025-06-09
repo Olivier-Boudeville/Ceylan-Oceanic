@@ -81,6 +81,8 @@ So Enocean, whose slogan could be "*no wire, no battery*", is rather unique. No 
 
 Finally, at least most of the Enocean specifications are `freely available <https://www.enocean-alliance.org/specifications/>`_.
 
+Oceanic provides a rather wide support of the Enocean specifications, from universal teach-in to the control of various actuators, knowing that the support of extra EEP / devices is rather straightforward to add. Oceanic provides also higher-level features, such as the automatic queuing and checking of the exchanges with the local Enocean module, and reliable actuator control despite possible telegram loss, with per-device request queuing and automatic re-sending of requests until they are acknowledged.
+
 Besides Erlang, Ceylan-Oceanic relies only on `Ceylan-Myriad <https://github.com/Olivier-Boudeville/Ceylan-Myriad>`_ and is a rather autonomous part of the `Ceylan <https://github.com/Olivier-Boudeville/Ceylan>`_ project. Ceylan-Oceanic can be readily built and run on most Unices, including of course GNU/Linux. An example of use of Oceanic is our `US-Main home automation server <https://us-main.esperide.org/#home-automation>`_.
 
 .. No: especially its `sensor manager <https://github.com/Olivier-Boudeville/us-main/blob/master/src/class_USSensorManager.erl>`_.

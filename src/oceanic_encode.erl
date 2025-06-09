@@ -203,6 +203,14 @@ added (not that useful though).
 encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
 		ButtonLocator, ButtonTransition, MaybeTargetEurid ) ->
 
+    cond_utils:if_defined( oceanic_debug_encoding,
+        trace_bridge:debug_fmt( "Encoding a double-rocker switch telegram, "
+            "to be sent by ~ts to ~ts: application style ~w, "
+            "button locator ~w, transition ~w.",
+            [ oceanic_text:eurid_to_string( SourceEurid ),
+              oceanic_text:eurid_to_string( MaybeTargetEurid ),
+              SourceAppStyle, ButtonLocator, ButtonTransition ] ) ),
+
 	% No EEP to be determined from double_rocker_switch (implicit in packet).
 
 	% Best understood backwards, from the end of this function.
@@ -484,7 +492,6 @@ encode_switch_dimmer_set_output( SourceEurid, TargetStatus,
               TargetStatus ] ) ),
 
 	RorgNum = oceanic_generated:get_maybe_second_for_rorg( _Rorg=rorg_vld ),
-
 
     CmdId = 1,
 

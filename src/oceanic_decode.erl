@@ -139,6 +139,7 @@ that the last element of the returned tuples is the Oceanic state.
 -type ptm_switch_module_type() :: oceanic:ptm_switch_module_type().
 -type nu_message_type() :: oceanic:nu_message_type() .
 -type repetition_count() :: oceanic:repetition_count().
+-type power_report() :: oceanic:power_report().
 
 
 
@@ -335,12 +336,11 @@ Support to be added:
 Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 `[EEP-spec]` p.11.
 
-See decode_1bs_packet/3 for more information.
-
-DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
+See `decode_1bs_packet/3` for more information.
 """.
 -spec decode_rps_packet( telegram_data_tail(), telegram_opt_data(),
 		option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 				   Status:1/binary>>, OptData, NextMaybeTelTail,
 				   State=#oceanic_state{ device_table=DeviceTable } ) ->
@@ -403,6 +403,14 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 		{ value, Device=#enocean_device{ eep=push_button } } ->
 			decode_rps_push_button_packet( DB_0, SenderEurid, Status,
 				OptData, NextMaybeTelTail, Device, State );
+
+        % Some smart plugs may send such packets, with EEP D2-01-0A:
+        % <<85,0,7,7,1,122,246,80,255,136,14,128,48,1,255,255,255,255,57,0,218>>
+		{ value, Device=#enocean_device{ eep=smart_plug } } ->
+			%decode_rps_push_button_packet( DB_0, SenderEurid, Status,
+			decode_rps_double_rocker_packet( DB_0, SenderEurid, Status,
+				OptData, NextMaybeTelTail, Device, State );
+
 
 		{ value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -527,6 +535,12 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 	AppStyle = oceanic:get_app_style_from_eep( EepId ),
 
+	cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug_fmt(
+        "Decoding a RPS F6-02-01 double-rocker switch from ~ts; app style: ~w, "
+        "T21: ~w, NU: ~w.",
+        [ oceanic_text:eurid_to_string( SenderEurid ), AppStyle, T21, NU ] ) ),
+
+
 	case { T21, NU } of
 
 		{ _T21=1, _NU=1 } ->
@@ -552,14 +566,23 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			% EEP was known, hence device already was known as well:
 			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
 			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeEepId } = oceanic:record_known_device_success( Device, DeviceTable ),
+			  MaybeEepId } = oceanic:record_known_device_success( Device,
+                                                                  DeviceTable ),
 
-			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+			RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
 			MaybeDecodedOptData = decode_optional_data( OptData ),
 
 			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            % Examining whether this telegram may be received in answer to a
+            % past (smart-plug related, switching for Eltako) request, which can
+            % thus be acknowledged and unmonitored:
+            %
+            ReqState = handle_possible_eltako_switching_request_answer(
+                NewDevice, FirstButtonLocator, ButtonTransition, SenderEurid,
+                RecState ),
 
 			Event = #double_rocker_switch_event{
 				source_eurid=SenderEurid,
@@ -577,7 +600,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 				second_action_valid=IsSecondActionValid },
 
 			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-			  NextMaybeTelTail, NewState };
+			  NextMaybeTelTail, ReqState };
 
 
 		{ _T21=1, _NU=0 } ->
@@ -607,7 +630,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			% EEP was known, hence device already was known as well:
 			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
 			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeEepId } = oceanic:record_known_device_success( Device, DeviceTable ),
+			  MaybeEepId } = oceanic:record_known_device_success( Device,
+                                                                  DeviceTable ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -615,6 +639,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            % Not considering that is a potential smart plug feedback.
 
 			Event = #double_rocker_multipress_event{
 				source_eurid=SenderEurid,
@@ -653,14 +679,92 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 
 
+-doc """
+Handles the corresponding received telegram as a possible answer to a request
+that is still on the air for any Eltako smart plug.
+
+A problem is that a state feedback is sent by these plugs iff they actually
+switched; so for example if requesting such a switched-on plug to switch on, it
+will send back no telegram, and the request will be considered as failed.
+
+So initially a failed (first) request may be wrongly reported.
+""".
+-spec handle_possible_eltako_switching_request_answer( enocean_device(),
+        button_locator(), button_transition(), eurid(), oceanic_state() ) ->
+                                            oceanic_state().
+% No request waited:
+handle_possible_eltako_switching_request_answer(
+        Device=#enocean_device{ waited_request_info=undefined },
+        _ButtonLocator, _ButtonTransition, _SenderEurid, State ) ->
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "(no request was waited for ~ts)",
+            [ oceanic_text:get_device_description( Device ) ] ),
+        basic_utils:ignore_unused( Device ) ),
+
+    State;
+
+% switch_on request waited:
+handle_possible_eltako_switching_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=switch_on }, TimerRef } },
+        _ButtonLocator={ _Channel=1, _ButPos=top }, _ButtonTransition=pressed,
+        SenderEurid, State )  ->
+
+    { ok, cancel } = timer:cancel( TimerRef ),
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "Switch on request acknowledged for ~ts.",
+            [ oceanic_text:get_device_description( Device ) ] ) ),
+
+    oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+        Device#enocean_device.request_queue, Device, State );
+
+% switch_on request waited:
+handle_possible_eltako_switching_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=switch_off }, TimerRef } },
+        _ButtonLocator={ _Channel=1, _ButPos=bottom },
+        _ButtonTransition=pressed, SenderEurid, State )  ->
+
+    { ok, cancel } = timer:cancel( TimerRef ),
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "Switch off request acknowledged for ~ts.",
+            [ oceanic_text:get_device_description( Device ) ] ) ),
+
+    oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+        Device#enocean_device.request_queue, Device, State );
+
+
+handle_possible_eltako_switching_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=Operation }, _TimerRef } },
+        ButtonLocator, ButtonTransition, SenderEurid, State ) ->
+
+    %{ ok, cancel } = timer:cancel( TimerRef ),
+
+    trace_bridge:warning_fmt( "Unmatching request conditions for the ~ts "
+        "of ~ts: button locator is ~w, transition is ~w; nothing done.",
+        [ Operation, oceanic_text:get_device_description( Device ),
+          ButtonLocator, ButtonTransition ] ),
+
+    %oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+    %    Device#enocean_device.request_queue, Device, State ).
+
+    State.
+
+
 
 -doc """
 Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
 
 Discussed in `[EEP-spec]` p.27.
-
-DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
+% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 -spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
 			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
@@ -739,12 +843,12 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
 
 -doc """
-Decodes a rorg_4bs (A5) packet, that is a R-ORG telegram on four bytes.
+Decodes a rorg_4bs (A5) packet (for example a thermometer report), that is a
+R-ORG telegram on four bytes.
 
 Discussed in `[EEP-spec]` p.12.
-
-DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 """.
+% DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 -spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
 			option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
@@ -854,13 +958,46 @@ Refer to `[EEP-spec]` p.29.
         enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
 		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
-		Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
+		Device, State ) ->
 
     % Always 0 and 12 with our sensor:
     %trace_bridge:debug_fmt( "For temperature: DB_1=~w, DB_0=~w.",
     %                        [ ScaledTemperature, DB_0 ] ),
 
-	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110111 =:= 0 ),
+	case DB_0 band 2#11110111 =:= 0 of
+
+        true ->
+            decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0,
+                SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        % Despite CRC:
+        false ->
+            trace_bridge:warning_fmt( "Received from device ~ts a faulty "
+                "content (DB_0=~B), dropping telegram.",
+                [ oceanic_text:eurid_to_string( SenderEurid ), DB_0 ] ),
+
+            { invalid, _ToSkipLen=0, NextMaybeTelTail, State }
+
+    end;
+
+decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0, _SenderEurid, OptData,
+                               NextMaybeTelTail, Device, State ) ->
+
+    trace_bridge:warning_fmt( "Ignoring invalid rorg_4bs (A5) packet "
+        "corresponding to the thermometer EEP, sent by ~ts; "
+        "DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w "
+        "(optional data: ~w, next tail: ~w).",
+        [ oceanic_text:device_to_string( Device ), DB_3, DB_2, DB_1, DB_0,
+          OptData, NextMaybeTelTail ] ),
+
+    { invalid, _ToSkipLen=0, NextMaybeTelTail, State }.
+
+
+
+% (helper)
+decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
+        OptData, NextMaybeTelTail, Device,
+        State=#oceanic_state{ device_table=DeviceTable } ) ->
 
     % Not using round/1:
 	%Temperature = ScaledTemperature / 255.0 * 40,
@@ -905,20 +1042,7 @@ decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
 								learn_activated=LearnActivated },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  NextMaybeTelTail, NewState };
-
-
-decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0, _SenderEurid, OptData,
-                               NextMaybeTelTail, Device, State ) ->
-
-    trace_bridge:error_fmt( "Ignoring invalid rorg_4bs (A5) packet "
-        "corresponding to the thermometer EEP, sent by ~ts; "
-        "DB_3=~w, DB_2=~w, DB_1=~w, DB_0=~w "
-        "(optional data: ~w, next tail: ~w).",
-        [ oceanic_text:device_to_string( Device ), DB_3, DB_2, DB_1, DB_0,
-          OptData, NextMaybeTelTail ] ),
-
-    { invalid, _ToSkipLen=0, NextMaybeTelTail, State }.
+	  NextMaybeTelTail, NewState }.
 
 
 
@@ -1201,8 +1325,8 @@ decode_ute_packet(
 
 
 -doc """
-Decodes a rorg_vld (D2) packet, that is a R-ORG telegram containing Variable
-Length Data.
+Decodes a rorg_vld (D2) packet (for example used by smart plugs), that is a
+R-ORG telegram containing Variable Length Data.
 
 VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
 their design.
@@ -1338,7 +1462,7 @@ decode_vld_smart_plug_packet(
 		% 3 bytes (no OutputValue available):
 		_Payload= <<PowerFailureEnabled:1, PowerFailureDetected:1, _:2,
 					CmdAsInt:4, OverCurrentSwitchOff:1, ErrorLevel:2,
-					_IOChannel:5, LocalControl:1, _OutputValue:7>>,
+					_IOChannel:5, LocalControl:1, OutputValue:7>>,
 		SenderEurid, _Status, OptData, NextMaybeTelTail, Device,
 		State=#oceanic_state{ device_table=DeviceTable } )
 						when CmdAsInt =:= 16#4 ->
@@ -1350,8 +1474,7 @@ decode_vld_smart_plug_packet(
 	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
-
+	RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
 	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
 			case PowerFailureEnabled of
@@ -1399,7 +1522,7 @@ decode_vld_smart_plug_packet(
 
 	end,
 
-	% IOChannel not decoded yet.
+	% IOChannel not decoded yet (purpose unclear).
 
 	IsLocalControlEnabled = case LocalControl of
 
@@ -1411,6 +1534,34 @@ decode_vld_smart_plug_packet(
 
 	end,
 
+    % This is not a metering plug yet it *may* return some appropriate
+    % information here to determine whether on or off:
+
+	MaxLevel = 16#64,
+
+    % For a non-metering plug, knowing whether it is on or off does not seem
+    % very clear; supposing this information is not in I/O channel but in:
+    %
+	OutputPower = case OutputValue of
+
+		0 ->
+			off;
+
+		V when V =< MaxLevel ->
+			round( V / MaxLevel * 100.0 );
+
+		% 16#7e: not used.
+
+		16#7f ->
+			not_available
+
+	end,
+
+    trace_bridge:warning_fmt(
+        "Non-metering plug ~ts reports an output power of ~w.",
+        [ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+          OutputPower ] ),
+
 	MaybeCmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
 
 	MaybeDecodedOptData = decode_optional_data( OptData ),
@@ -1419,31 +1570,41 @@ decode_vld_smart_plug_packet(
 
 		begin
 			PFStr = oceanic_text:interpret_power_failure( IsPowerFailureEnabled,
-											 IsPowerFailureDetected ),
+				IsPowerFailureDetected ),
 
 			OCStr = oceanic_text:interpret_overcurrent_trigger(
 				IsOverCurrentSwitchOffTrigger ),
 
 			HardStr = oceanic_text:interpret_hardware_status( HardwareStatus ),
 
-			LocCtrlStr = oceanic_text:interpret_local_control( IsLocalControlEnabled ),
+			LocCtrlStr = oceanic_text:interpret_local_control(
+                IsLocalControlEnabled ),
 
 			trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ), PFStr, OCStr,
-				  HardStr, LocCtrlStr,
-				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+                  PFStr, OCStr, HardStr, LocCtrlStr,
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                         OptData )
 				] )
 
 		end,
 
 		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
-			 MaybeDecodedOptData, IsPowerFailureEnabled,
-			 IsPowerFailureDetected ] ) ),
+			MaybeDecodedOptData, IsPowerFailureEnabled,
+			IsPowerFailureDetected ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 	   resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+
+    % Examining whether this telegram may be received in answer to a past
+    % (smart-plug related, standard switching) request, which can thus be
+    % acknowledged and unmonitored:
+    %
+    ReqState = handle_possible_power_request_answer( NewDevice, OutputPower,
+        SenderEurid, RecState ),
 
 	Event = #smart_plug_status_report_event{
 		source_eurid=SenderEurid,
@@ -1462,7 +1623,7 @@ decode_vld_smart_plug_packet(
 		output_power=undefined },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  NextMaybeTelTail, NewState };
+	  NextMaybeTelTail, ReqState };
 
 
 % For other, not supported yet, smart plug command packets:
@@ -1494,7 +1655,8 @@ decode_vld_smart_plug_packet(
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
 				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
-				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                         OptData )
 				] )
 		end,
 
@@ -1535,7 +1697,7 @@ decode_vld_smart_plug_with_metering_packet(
 	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+	RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
 	{ IsPowerFailureEnabled, IsPowerFailureDetected } =
 			case PowerFailureEnabled of
@@ -1583,7 +1745,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 	end,
 
-	% IOChannel not decoded yet.
+	% IOChannel not decoded yet (purpose unclear).
 
 	IsLocalControlEnabled = case LocalControl of
 
@@ -1620,7 +1782,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 		begin
 			PFStr = oceanic_text:interpret_power_failure( IsPowerFailureEnabled,
-											 IsPowerFailureDetected ),
+				IsPowerFailureDetected ),
 
 			OCStr = oceanic_text:interpret_overcurrent_trigger(
 				IsOverCurrentSwitchOffTrigger ),
@@ -1651,6 +1813,12 @@ decode_vld_smart_plug_with_metering_packet(
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
+    % Examining whether this telegram may be received in answer to a past
+    % request, which can thus be acknowledged and unmonitored:
+    %
+    ReqState = handle_possible_power_request_answer( NewDevice, OutputPower,
+        SenderEurid, RecState ),
+
 	Event = #smart_plug_status_report_event{
 		source_eurid=SenderEurid,
 		name=MaybeDeviceName,
@@ -1668,7 +1836,7 @@ decode_vld_smart_plug_with_metering_packet(
 		output_power=OutputPower },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-	  NextMaybeTelTail, NewState };
+	  NextMaybeTelTail, ReqState };
 
 
 % For other, not supported yet, smart plug with metering command packets:
@@ -1700,7 +1868,8 @@ decode_vld_smart_plug_with_metering_packet(
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
 				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
-				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData, OptData )
+				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
+                                                         OptData )
 				] )
 		end,
 
@@ -1709,6 +1878,74 @@ decode_vld_smart_plug_with_metering_packet(
 
 	{ unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
+
+
+-doc """
+Handles the corresponding received telegram as a possible answer to a request
+that is still on the air for any standard smart plug.
+""".
+-spec handle_possible_power_request_answer( enocean_device(), power_report(),
+    eurid(), oceanic_state() ) -> oceanic_state().
+% No request waited:
+handle_possible_power_request_answer(
+        Device=#enocean_device{ waited_request_info=undefined },
+        _PowerReport, _SenderEurid, State ) ->
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "(no request was waited for ~ts)",
+            [ oceanic_text:get_device_description( Device ) ] ),
+        basic_utils:ignore_unused( Device ) ),
+
+    State;
+
+% switch_on request waited:
+handle_possible_power_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=switch_on }, TimerRef } },
+        _PowerReport=Level, SenderEurid, State ) when is_integer( Level ) ->
+
+    { ok, cancel } = timer:cancel( TimerRef ),
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "Switch on request acknowledged for ~ts.",
+            [ oceanic_text:get_device_description( Device ) ] ) ),
+
+    oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+        Device#enocean_device.request_queue, Device, State );
+
+
+% switch_off request waited:
+handle_possible_power_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=switch_off }, TimerRef } },
+        _PowerReport=off, SenderEurid, State ) ->
+
+    { ok, cancel } = timer:cancel( TimerRef ),
+
+    cond_utils:if_defined( oceanic_debug_requests,
+        trace_bridge:debug_fmt( "Switch off request acknowledged for ~ts.",
+            [ oceanic_text:get_device_description( Device ) ] ) ),
+
+    oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+        Device#enocean_device.request_queue, Device, State );
+
+
+handle_possible_power_request_answer(
+        Device=#enocean_device{ waited_request_info={
+            #request_tracking{ target_eurid=SenderEurid,
+                               operation=Operation }, TimerRef } },
+        _PowerReport=not_available, SenderEurid, State ) ->
+
+    { ok, cancel } = timer:cancel( TimerRef ),
+
+    trace_bridge:warning_fmt( "No power report available, supposing the "
+        "waited ~ts request to be acknowledged for ~ts.",
+        [ Operation, oceanic_text:get_device_description( Device ) ] ),
+
+    oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
+        Device#enocean_device.request_queue, Device, State ).
 
 
 

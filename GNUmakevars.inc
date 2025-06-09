@@ -62,12 +62,13 @@ endif
 #
 # Defining debug flags (at least the most verbose are by default commented-out):
 ifeq ($(ENABLE_DEBUG),true)
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_tty
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_decoding
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_encoding
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_commands
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_activity
-	#OCEANIC_DEBUG_FLAGS += -Doceanic_debug_teaching
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_tty
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_decoding
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_encoding
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_commands
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_activity
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_teaching
+	# OCEANIC_DEBUG_FLAGS += -Doceanic_debug_requests
 endif
 
 
@@ -79,6 +80,7 @@ ifeq ($(EXECUTION_TARGET),development)
 	OCEANIC_CHECK_FLAGS += -Doceanic_check_commands
 	OCEANIC_CHECK_FLAGS += -Doceanic_check_activity
 	OCEANIC_CHECK_FLAGS += -Doceanic_check_teaching
+	OCEANIC_DEBUG_FLAGS += -Doceanic_check_requests
 endif
 
 

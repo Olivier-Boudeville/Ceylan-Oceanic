@@ -376,8 +376,8 @@ decode_response_tail(
 
     % Returned code already checked to be ok_return, so:
     cond_utils:if_defined( oceanic_debug_commands,
-        trace_bridge:debug_fmt( "Received a successful acknowledgement "
-            "of the sending of telegram ~ts (on behalf of requester ~w).",
+        trace_bridge:debug_fmt( "Received a successful command acknowledgement "
+            "regarding the sending of ~ts (on behalf of requester ~w).",
             [ oceanic_text:telegram_to_string( CmdTelegram ), Requester ] ),
         basic_utils:ignore_unused( [ CmdTelegram, Requester ] ) ),
 

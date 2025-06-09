@@ -78,9 +78,9 @@
 %
 % (at least 1)
 %
-%-define( default_max_send_count, 15 ).
+-define( default_max_send_count, 25 ).
 % For testing:
--define( default_max_send_count, 2 ).
+%-define( default_max_send_count, 5 ).
 
 
 
