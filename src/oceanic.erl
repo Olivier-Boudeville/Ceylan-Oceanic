@@ -96,10 +96,12 @@ through an Oceanic server**.
 % Event-related API, to achieve some kind of polymorphism on the corresponding
 % records:
 %
--export([ get_event_type/1, get_source_eurid/1, get_channel/1,
+-export([ get_event_type/1, get_source_eurid/1,
+          get_channel/1,
 		  get_button_reference/1,
 
-		  get_maybe_device_name/1, get_best_device_name_from/1,
+		  get_maybe_device_name/1, get_maybe_device_short_name/1,
+          get_best_device_name_from/1,
 
 		  get_maybe_eep/1, resolve_eep/1, get_broadcast_eurid/0,
 		  get_timestamp/1, get_last_seen_info/1,
@@ -126,6 +128,8 @@ through an Oceanic server**.
 -export([ compute_crc/1, compute_next_timeout/4,
           record_device_success/2, record_known_device_success/2,
           record_device_failure/2, record_known_device_failure/2,
+
+          get_designated_eurid/2, get_designated_device/2,
 
           get_device_convention/2,
           handle_next_command/2, handle_next_request/4,
@@ -204,14 +208,35 @@ oceanic_common_command:send_common_command/2).
 
 
 
--doc "A user-defined device name, a lot more convenient than a EURID.".
+-doc """
+A user-defined (full) device name, descriptive and a lot more convenient than a
+EURID.
+""".
 -type device_name() :: bin_string().
 
 
+-doc """
+A user-defined short device name, useful to designate a device in the context of
+an action, so generally defined more in functional terms (its role rather than
+its type, like `tv_controller`).
 
--doc "A user-defined device name, a lot more convenient than a EURID.".
+This provides a user-friendly identifier, alternatively to an EURID.
+
+Note that `undefined` is not a valid short name.
+""".
+-type device_short_name() :: atom().
+
+
+-doc "A user-defined device name, typically in configuration settings.".
 -type device_plain_name() :: ustring().
 
+
+-doc """
+The naming of a device, typically as specified in the configuration settings so
+that a short name can be translated.
+""".
+-type device_naming() :: device_plain_name()
+                       | { device_plain_name(), device_short_name() }.
 
 
 -doc "A user-defined device name, a lot more convenient than a EURID.".
@@ -220,11 +245,28 @@ oceanic_common_command:send_common_command/2).
 
 
 -doc """
-An element designating a device, either thanks to an EURID (as an integer), or
-thanks to a user-defined name (as any kind of string).
+A user-level element designating a device, thanks to its name (as a string) and
+possibly a short name (as an atom).
 """.
--type device_designator() :: eurid() | device_any_name().
+-type device_designator_spec() :: device_plain_name()
+                                | { device_plain_name(), device_short_name() }.
 
+
+-doc """
+A user-level device designator, for example in listened event specifications.
+""".
+-type user_device_designator() :: eurid_string() | device_short_name().
+
+
+-doc """
+An (internal) element designating a device, either thanks to an EURID (as an
+integer), or thanks to a short name (as an atom).
+""".
+-type device_designator() :: eurid() | device_short_name().
+
+
+-doc "A pair of device designators.".
+-type designator_pair() :: { eurid(), option( device_short_name() ) }.
 
 
 -doc """
@@ -552,17 +594,17 @@ A single rocker uses only a channel, A.
 
 -doc """
 Specification of the identifier of a button, from the EURID of its device
-(e.g. a double rocker) as a string, and its own channel (e.g. 2 to designate any
-"button B").
+(e.g. a double rocker) as a string or from its short name, and its own channel
+(e.g. 2 to designate any "button B").
 """.
--type button_ref_spec() :: { eurid_string(), channel() }.
+-type button_ref_spec() :: { user_device_designator(), channel() }.
 
 
 -doc """
-Identifier of a button, from the EURID of its device (e.g. a double rocker) and
-its own channel (e.g. 2 to designate any "button B").
+Identifier of a button, from the EURID of its device (e.g. a double rocker) or
+from its short name, and its own channel (e.g. 2 to designate any "button B").
 """.
--type button_ref() :: { eurid(), channel() }.
+-type button_ref() :: { device_designator(), channel() }.
 
 
 
@@ -1191,6 +1233,8 @@ to forge telegrams that it could send, typically in order to trigger actuators.
 Describes an operation that a device is requested to perform.
 
 For example a smart plug required to switch on.
+
+See also `check_device_operation/1`.
 """.
 -type device_operation() :: 'switch_on' | 'switch_off'. % for smart plugs
 
@@ -1308,7 +1352,8 @@ the rocker is pressed).
 User-level type.
 """.
 -type listened_event_spec() ::
-	{ EmitterDevice :: option( eurid_string() ), incoming_trigger_spec() }.
+	{ EmitterDevice :: option( user_device_designator() ),
+      incoming_trigger_spec() }.
 
 
 
@@ -1320,7 +1365,7 @@ For example: `{"25af97a0", {double_rocker, {2, bottom, released}}}`.
 Abbreviated as CLES.
 """.
 -type canon_listened_event_spec() ::
-	{ EmitterDevice :: eurid(), canon_incoming_trigger_spec() }.
+	{ EmitterDevice :: device_designator(), canon_incoming_trigger_spec() }.
 
 
 -doc """
@@ -1354,9 +1399,11 @@ that shall be used.
 
 Often abbreviated as EES.
 """.
--type emitted_event_spec() :: eurid_string() % Then the default operation for
-                                             % its EEP will apply.
-                            | { eurid_string(), device_operation() }.
+-type emitted_event_spec() ::
+    user_device_designator() % Then the default operation for its EEP will
+                             % apply.
+ | { user_device_designator(), device_operation() }.
+
 
 -doc """
 Canonicalised, internal version of `emitted_event_spec/0`.
@@ -1366,7 +1413,8 @@ device-level information).
 
 Often abbreviated as CEES.
 """.
--type canon_emitted_event_spec() :: { eurid(), option( device_operation() ) }.
+-type canon_emitted_event_spec() ::
+    { device_designator(), option( device_operation() ) }.
 
 
 
@@ -1385,8 +1433,13 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 			   oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
 			   requester/0,
 
-			   device_name/0, device_plain_name/0, device_any_name/0,
-			   device_designator/0, declared_device_activity_periodicity/0,
+			   device_name/0, device_plain_name/0, device_naming/0,
+               device_any_name/0,
+               device_designator_spec/0,
+               user_device_designator/0, device_designator/0,
+               device_action/0,
+
+               declared_device_activity_periodicity/0,
 			   expected_periodicity/0, availability_status/0, device_status/0,
 
 			   trigger_track_spec/0, trigger_track_info/0,
@@ -1548,7 +1601,8 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 -type recording_info() ::
 	{ device_table(), NewDevice :: enocean_device(), Now :: timestamp(),
 	  MaybeLastSeen :: option( timestamp() ), option( discovery_origin() ),
-	  IsBackOnline :: boolean(), option( device_name() ), option( eep_id() ) }.
+	  IsBackOnline :: boolean(), option( device_name() ),
+      option( device_short_name() ), option( eep_id() ) }.
 
 
 
@@ -1660,7 +1714,6 @@ Definition of the overall state of an Oceanic server, including configuration
 
 -type timestamp() :: time_utils:timestamp().
 -type dhms_duration() :: time_utils:dhms_duration().
-%-type seconds() :: time_utils:seconds().
 
 
 -type registration_name() :: naming_utils:registration_name().
@@ -1673,6 +1726,8 @@ Definition of the overall state of an Oceanic server, including configuration
 -type command_response() :: oceanic_common_command:command_response().
 -type common_command_type() :: oceanic_common_command:common_command_type().
 -type decoding_outcome() :: oceanic_decode:decoding_outcome().
+
+-type device_action() :: oceanic_action:device_action().
 
 
 
@@ -2150,16 +2205,15 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
 Loads Oceanic configuration information from the default Ceylan preferences
 file, if any, otherwise returns a state with an empty device table.
 
-Refer to load_configuration/2 for key information.
+Refer to `load_configuration/2` for key information.
 
-See also the 'preferences' Myriad module.
+See also the `preferences` Myriad module.
 """.
 -spec load_configuration( oceanic_state() ) -> oceanic_state().
 load_configuration( State ) ->
 	case preferences:is_preferences_default_file_available() of
 
 		{ true, PrefPath } ->
-
 			LoadedState = load_configuration( PrefPath, State ),
 
 			cond_utils:if_defined( oceanic_debug_decoding,
@@ -2169,7 +2223,6 @@ load_configuration( State ) ->
 			LoadedState;
 
 		{ false, PrefPath } ->
-
 			trace_bridge:info_fmt( "No preferences file ('~ts') found, "
 				"no device information obtained from it.", [ PrefPath ] ),
 
@@ -2186,20 +2239,20 @@ specified ETF file, and returns a corresponding updated state.
 The configuration information is expected to contain up to one entry for the
 following keys (atoms):
 
-- oceanic_emitter: to specify the pseudo-device emitting any telegram to be sent
-by Oceanic (note that USB gateways have already their own base EURID that shall
-be preferred; refer to the co_rd_idbase common command)
+- `oceanic_emitter`: to specify the pseudo-device emitting any telegram to be
+sent by Oceanic (note that USB gateways have already their own base EURID that
+shall be preferred; refer to the `co_rd_idbase` common command)
 
-- oceanic_jamming_threshold: to set a non-default threshold
+- `oceanic_jamming_threshold`: to set a non-default threshold
 
-- oceanic_devices: to declare the known devices; a given device shall never be
+- `oceanic_devices`: to declare the known devices; a given device shall never be
 declared more than once
 """.
 -spec load_configuration( any_file_path(), oceanic_state() ) -> oceanic_state().
 load_configuration( ConfFilePath, State ) ->
 
-	file_utils:is_existing_file_or_link( ConfFilePath )
-		orelse throw( { oceanic_config_file_not_found, ConfFilePath } ),
+	file_utils:is_existing_file_or_link( ConfFilePath ) orelse
+        throw( { oceanic_config_file_not_found, ConfFilePath } ),
 
 	trace_bridge:info_fmt( "Reading preferences file '~ts'.",
 						   [ ConfFilePath ] ),
@@ -2233,6 +2286,7 @@ settings, and returns a corresponding updated state.
 -spec apply_conf_settings( oceanic_settings(), oceanic_state() ) ->
 								oceanic_state().
 apply_conf_settings( OcSettings, State ) ->
+
 	case extract_settings( OcSettings, _Acc=[], State ) of
 
 		{ _RemainingPairs=[], NewState } ->
@@ -2262,7 +2316,8 @@ extract_settings( _Pairs=[ { oceanic_emitter, EmitterEuridStr } | T ], Acc,
 extract_settings( _Pairs=[ { oceanic_devices, DeviceEntries } | T ], Acc,
 				  State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	NewDeviceTable = declare_devices( DeviceEntries, DeviceTable ),
+	NewDeviceTable = declare_devices( DeviceEntries, _ShortNames=[],
+                                      DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -2302,26 +2357,62 @@ extract_settings( Other, Acc, State ) ->
 
 
 -doc "Adds the specified devices in the specified device table.".
--spec declare_devices( [ device_config() ], device_table() ) -> device_table().
-declare_devices( _DeviceCfgs=[], DeviceTable ) ->
-	DeviceTable;
+-spec declare_devices( [ device_config() ], [ device_short_name() ],
+                       device_table() ) -> device_table().
+declare_devices( _DeviceCfgs=[], ShortNames, DeviceTable ) ->
 
-declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr } | T ],
-				 DeviceTable ) ->
-	declare_devices( [ { NameStr, EuridStr, EepStr, _ExtraDevInfo=[] }
-                         | T ], DeviceTable );
+    case list_utils:get_duplicates( ShortNames ) of
 
-% Main clause; any config comment (as last element) dropped by the next clause:
-declare_devices( _DeviceCfgs=[
-					DC={ NameStr, EuridStr, EepStr, ExtraDevInfo } | T ],
-				 DeviceTable ) ->
+        [] ->
+            DeviceTable;
+
+        Dups ->
+            trace_bridge:critical_fmt( "Duplicates found among the short "
+                "names of the declared devices: ~ts.",
+                [ list_utils:duplicate_info_to_string( Dups ) ] ),
+
+            throw( { duplicated_short_names, Dups } )
+
+    end;
+
+% Adding ExtraDevInfo if needed:
+declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr } | T ],
+                 DevShortNames, DeviceTable ) ->
+	declare_devices( [ { DevDesigSpec, EuridStr, EepStr, _ExtraDevInfo=[] }
+                                            | T ], DevShortNames, DeviceTable );
+
+% Main clause; any short name set, and any config comment (as last element)
+% dropped by the next clause:
+%
+declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
+                                    EuridStr, EepStr, ExtraDevInfo } | T ],
+				 DevShortNames, DeviceTable ) ->
 
 	text_utils:is_string( NameStr ) orelse
 		begin
-			trace_bridge:error_fmt( "Invalid device name ('~p') "
-				"in configuration ~p.", [ NameStr, DC ] ),
+			trace_bridge:error_fmt( "Invalid device (long) name ('~p') "
+				"in configuration entry ~p (not a string).", [ NameStr, DC ] ),
 			throw( { invalid_device_configured_name, NameStr, DC } )
 		end,
+
+	text_utils:is_atom( ShortNameAtom ) orelse
+		begin
+			trace_bridge:error_fmt( "Invalid device short name ('~p') "
+				"in configuration entry ~p (not an atom).",
+                [ ShortNameAtom, DC ] ),
+			throw( { invalid_device_configured_short_name, ShortNameAtom, DC } )
+		end,
+
+    % As multiple short names may not defined:
+    NewDevShortNames = case ShortNameAtom of
+
+        undefined ->
+           DevShortNames;
+
+        _ ->
+            [ ShortNameAtom | DevShortNames ]
+
+    end,
 
 	Eurid = try text_utils:hexastring_to_integer(
 		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
@@ -2332,7 +2423,8 @@ declare_devices( _DeviceCfgs=[
 		% Typically error:badarg:
 		catch _:E ->
 			trace_bridge:error_fmt( "Invalid EURID ('~ts') "
-				"for device named '~ts'.", [ EuridStr, NameStr ] ),
+				"for device named '~ts' in configuration entry ~p.",
+                [ EuridStr, NameStr, DC ] ),
 			throw( { invalid_device_configured_eurid, EuridStr, E, NameStr } )
 
 	end,
@@ -2340,7 +2432,7 @@ declare_devices( _DeviceCfgs=[
 	text_utils:is_string( EepStr ) orelse
 		begin
 			trace_bridge:error_fmt( "Invalid device EEP ('~p') "
-				"in configuration ~p.", [ EepStr, DC ] ),
+				"in configuration entry ~p.", [ EepStr, DC ] ),
 			throw( { invalid_device_configured_eep, EepStr, DC } )
 		end,
 
@@ -2398,8 +2490,8 @@ declare_devices( _DeviceCfgs=[
 
 				false ->
 					trace_bridge:error_fmt( "Invalid DHMS activity periodicity "
-						"('~p') for device named '~ts'.",
-						[ DHMS, NameStr ] ),
+						"('~p') for device named '~ts' in configuration "
+                        "entry ~p.", [ DHMS, NameStr, DC ] ),
 					throw( { invalid_dhms_activity_periodicity, DHMS,
 							 NameStr } )
 
@@ -2412,6 +2504,7 @@ declare_devices( _DeviceCfgs=[
 	%
 	DeviceRec = #enocean_device{ eurid=Eurid,
 								 name=text_utils:ensure_binary( NameStr ),
+                                 short_name=ShortNameAtom,
 								 eep=MaybeEepId,
 								 discovered_through=configuration,
 								 expected_periodicity=ActPeriod,
@@ -2427,29 +2520,37 @@ declare_devices( _DeviceCfgs=[
 	% Overriding allowed:
 	NewDeviceTable = table:add_entry( Eurid, DeviceRec, DeviceTable ),
 
-	declare_devices( T, NewDeviceTable );
+	declare_devices( T, NewDevShortNames, NewDeviceTable );
+
+
+% Adding ShortNameAtom if needed:
+declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr, ExtraDevInfo }
+                                 | T ], DevShortNames, DeviceTable ) ->
+	declare_devices( [ { { NameStr, _ShortNameAtom=undefined }, EuridStr,
+        EepStr, ExtraDevInfo } | T ], DevShortNames, DeviceTable );
+
 
 % Dropping comment (useful only for the user configuration):
-declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr,
+declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr,
 								 ExtraDevInfo, CommentStr } | T ],
-				 DeviceTable ) when is_list( CommentStr ) ->
-	declare_devices( [ { NameStr, EuridStr, EepStr, ExtraDevInfo } | T ],
-					 DeviceTable );
+				 DevShortNames, DeviceTable ) when is_list( CommentStr ) ->
+	declare_devices( [ { DevDesigSpec, EuridStr, EepStr, ExtraDevInfo } | T ],
+					 DevShortNames, DeviceTable );
 
 
-declare_devices( _DeviceCfgs=[ Other | _T ], _DeviceTable ) ->
+declare_devices( _DeviceCfgs=[ Other | _T ], _DevShortNames, _DeviceTable ) ->
 	throw( { invalid_device_config, Other } ).
 
 
 
 -doc """
-Decides whether an 'auto' activity periodicity mode can be retained, based on
+Decides whether an `auto` activity periodicity mode can be retained, based on
 the specified EEP (if any).
 
 We consider that devices implementing some EEPs do not send periodical state
 updates.
 
-For example contact switches shall not be left on 'auto', otherwise they are
+For example contact switches shall not be left on `auto`, otherwise they are
 likely to be considered lost after some time.
 
 If the choice made here is not relevant for a given device, declare for it an
@@ -2674,7 +2775,6 @@ get_reciprocal_state_change_spec( _DevType=push_button,	_CSCS=undefined ) ->
 
 
 
-
 -doc """
 Tells whether the specified device trigger event matches at least one if the
 CLES and, if yes, for which new status reported by this event (typically the on
@@ -2684,10 +2784,10 @@ or off button of a rocker being transitioned).
 		[ canon_listened_event_spec() ] ) -> event_match_trigger_outcome().
 event_matches_trigger( DevEvent, CLESs ) ->
 
-	DevEurid = get_source_eurid( DevEvent ),
+	{ DevEurid, MaybeDevShortName } = get_designator_pair( DevEvent ),
 
 	% Tries to find a CITS corresponding to this emitter:
-	case get_maybe_matching_cits( DevEurid, CLESs ) of
+	case get_maybe_matching_cits( DevEurid, MaybeDevShortName, CLESs ) of
 
 		undefined ->
 			false;
@@ -2698,23 +2798,30 @@ event_matches_trigger( DevEvent, CLESs ) ->
 	end.
 
 
+
 -doc """
 Returns (any, first) CITS that matches the specified emitter EURID, among the
 specified CLES.
 """.
--spec get_maybe_matching_cits( eurid(), [ canon_listened_event_spec() ] ) ->
-									option( canon_incoming_trigger_spec() ).
-get_maybe_matching_cits( _EmitterEurid, _CLESs=[] ) ->
+-spec get_maybe_matching_cits( eurid(), option( device_short_name() ),
+                               [ canon_listened_event_spec() ] ) -> 
+                                    option( canon_incoming_trigger_spec() ).
+get_maybe_matching_cits( _EmitterEurid, _MaybeDevShortName, _CLESs=[] ) ->
 	undefined;
 
-% Matching:
-get_maybe_matching_cits( EmitterEurid,
+% Matching EURID:
+get_maybe_matching_cits( EmitterEurid, _MaybeDevShortName,
 						 _CLESs=[ { EmitterEurid, CITS } | _T ] ) ->
 	CITS;
 
+% Matching short name ('undefined' not allowed in CLES):
+get_maybe_matching_cits( _EmitterEurid, DevShortName,
+						 _CLESs=[ { DevShortName, CITS } | _T ] ) ->
+	CITS;
+
 % Non-matching EmitterEurid:
-get_maybe_matching_cits( EmitterEurid, _CLESs=[ _ | T ] ) ->
-	get_maybe_matching_cits( EmitterEurid, T ).
+get_maybe_matching_cits( EmitterEurid, DevShortName, _CLESs=[ _ | T ] ) ->
+	get_maybe_matching_cits( EmitterEurid, DevShortName, T ).
 
 
 
@@ -2731,8 +2838,8 @@ interpret_cits_matching(
 		_CITS={ _DevType=double_rocker, _CSCS={ Channel, ButPos, ButTrans } },
 		DevEurid,
 		_DevEvent=#double_rocker_switch_event{
-						first_action_button={ Channel, ButPos },
-						energy_bow=ButTrans } ) ->
+			first_action_button={ Channel, ButPos },
+			energy_bow=ButTrans } ) ->
 
 	{ true, DevEurid, _NewStatus=on };
 
@@ -2745,8 +2852,8 @@ interpret_cits_matching(
 		_CITS={ _DevType=double_rocker, _CSCS={ Channel, _ButPos, ButTrans } },
 		DevEurid,
 		_DevEvent=#double_rocker_switch_event{
-						first_action_button={ Channel, _OppositeButPos },
-						energy_bow=ButTrans } ) ->
+			first_action_button={ Channel, _OppositeButPos },
+			energy_bow=ButTrans } ) ->
 
 	{ true, DevEurid, _NewStatus=off };
 
@@ -2793,7 +2900,13 @@ interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 % Helpers for incoming specifications.
 
 
--doc "Canonicalises the specified user-level listening event specifications.".
+-doc """
+Canonicalises the specified user-level listening event specifications.
+
+Checks everything but the targeted devices: device short names may still be
+specified instead of actual EURIDs: the actual enocean_device records will be
+needed for the final conversions to EURIDs.
+""".
 -spec canonicalise_listened_event_specs( [ listened_event_spec() ] ) ->
 											[ canon_listened_event_spec() ].
 % Better than "bad generator" with a list comprehension:
@@ -2810,10 +2923,10 @@ canonicalise_listened_event_specs( _LESs=[], Acc ) ->
 	% Preferring preserving order:
 	lists:reverse( Acc );
 
-canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ],
+canonicalise_listened_event_specs( _LESs=[ { MaybeUserDevDesig, ITS } | T ],
 								   Acc ) ->
 
-	Eurid = oceanic_text:maybe_string_to_eurid( MaybeEuridStr ),
+    DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
 
 	CITS = case ITS of
 
@@ -2845,13 +2958,12 @@ canonicalise_listened_event_specs( _LESs=[ { MaybeEuridStr, ITS } | T ],
 
 			end;
 
-
 		Other ->
-			throw( { invalid_listened_event_spec, Other, MaybeEuridStr } )
+			throw( { invalid_listened_event_spec, Other, MaybeUserDevDesig } )
 
 	end,
 
-	CLES = { Eurid, CITS },
+	CLES = { DevDesig, CITS },
 
 	canonicalise_listened_event_specs( T, [ CLES | Acc ] );
 
@@ -2885,20 +2997,33 @@ canonicalise_emitted_event_specs( _EESs=[], Acc ) ->
 	% Preferring preserving order:
 	lists:reverse( Acc );
 
-canonicalise_emitted_event_specs( _EESs=[ { EuridStr, DevOp } | T ], Acc )
-                when is_list( EuridStr ) andalso is_atom( DevOp ) ->
-    Eurid = oceanic_text:string_to_eurid( EuridStr ),
-	canonicalise_emitted_event_specs( T, [ _CEES={ Eurid, DevOp } | Acc ] );
+canonicalise_emitted_event_specs( _EESs=[ { MaybeUserDevDesig, DevOp } | T ],
+                                  Acc )  ->
+    DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
+    check_device_operation( DevOp ),
+	canonicalise_emitted_event_specs( T, [ _CEES={ DevDesig, DevOp } | Acc ] );
 
-canonicalise_emitted_event_specs( _EESs=[ EuridStr | T ], Acc )
-                when is_list( EuridStr ) ->
-    Eurid = oceanic_text:string_to_eurid( EuridStr ),
+canonicalise_emitted_event_specs( _EESs=[ MaybeUserDevDesig | T ], Acc ) ->
+    DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
     % Default operations not resolvable yet:
-	canonicalise_emitted_event_specs( T, [ _CEES={ Eurid, undefined} | Acc ] );
+	canonicalise_emitted_event_specs( T,
+        [ _CEES={ DevDesig, undefined} | Acc ] ).
 
-canonicalise_emitted_event_specs( _EESs=[ Other | _T ], _Acc ) ->
-	throw( { invalid_emitted_event_spec, Other } ).
 
+-doc "Returns the corresponding internal device designator.".
+-spec get_internal_device_designator( option( user_device_designator() ) ) ->
+                                            device_designator().
+get_internal_device_designator( _MaybeUserDevDesig=undefined ) ->
+    ?eurid_broadcast;
+
+get_internal_device_designator( DevShortName ) when is_atom( DevShortName ) ->
+    DevShortName;
+
+get_internal_device_designator( EuridStr ) when is_list( EuridStr ) ->
+    oceanic_text:string_to_eurid( EuridStr );
+
+get_internal_device_designator( Other ) ->
+    throw( { invalid_device_designator, Other } ).
 
 
 
@@ -3106,10 +3231,10 @@ get_oceanic_eurid( OcSrvPid ) ->
 Returns the best textual description found for the device specified from its
 EURID.
 """.
--spec get_device_description( eurid(), oceanic_server_pid() ) ->
+-spec get_device_description( device_designator(), oceanic_server_pid() ) ->
 												device_description().
-get_device_description( Eurid, OcSrvPid ) ->
-	OcSrvPid ! { getDeviceDescription, Eurid, self() },
+get_device_description( DevDesig, OcSrvPid ) ->
+	OcSrvPid ! { getDeviceDescription, DevDesig, self() },
 
 	receive
 
@@ -3208,6 +3333,110 @@ to be switched on, here it will be switched off instead.
                                         oceanic_server_pid() ) -> void().
 trigger_actuators_reciprocal( CEESs, OcSrvPid ) ->
    OcSrvPid ! { triggerActuatorsReciprocal, CEESs }.
+
+
+
+-doc "Performs the specified device action.".
+-spec perform_action( device_action(), oceanic_state() ) -> oceanic_state().
+perform_action( _DeviceAction={ DeviceOperation, DeviceDesignator }, State ) ->
+
+    case get_designated_device( DeviceDesignator, State ) of
+
+        undefined ->
+
+            trace_bridge:error_fmt( "Unknown device designated by '~w'; "
+                "operation '~w' not performed.",
+                [ DeviceDesignator, DeviceOperation ] ),
+
+            State;
+
+        DevEurid ->
+            perform_action_on( DevEurid, DeviceOperation, State )
+
+    end;
+
+perform_action( DeviceAction, State ) ->
+    trace_bridge:error_fmt( "Unsupported device action '~w', nothing done.",
+                            [ DeviceAction ] ),
+    State.
+
+
+
+-doc """
+Returns any EURID found for the specified corresponding device designator.
+""".
+-spec get_designated_eurid( device_designator(), oceanic_state() ) ->
+                                            option( eurid() ).
+get_designated_eurid( DevShortName,
+                      #oceanic_state{ device_table=DevTable } )
+                                      when is_atom( DevShortName ) ->
+    DevRecord = get_designated_device_from_short_name( DevShortName, DevTable ),
+    DevRecord#enocean_device.eurid;
+
+get_designated_eurid( DeviceEurid, _State ) when is_integer( DeviceEurid ) ->
+    DeviceEurid;
+
+get_designated_eurid( _DeviceDesignator, _State ) ->
+    %trace_bridge:error_fmt( "Invalid device designator: '~w'.",
+    %                        [ DeviceDesignator ] ),
+    undefined.
+
+
+
+-doc "Returns any device matching the specified designator.".
+-spec get_designated_device( device_designator(), oceanic_state() ) ->
+                                            option( enocean_device() ).
+get_designated_device( DevShortName,
+                       #oceanic_state{ device_table=DevTable } )
+                                      when is_atom( DevShortName ) ->
+    get_designated_device_from_short_name( DevShortName, DevTable );
+
+get_designated_device( DeviceEurid, _State ) when is_integer( DeviceEurid ) ->
+    DeviceEurid;
+
+get_designated_device( _DevDesig, _State ) ->
+    %trace_bridge:error_fmt( "Invalid device designator: '~w'.",
+    %                        [ DevDesig ] ),
+    undefined.
+
+
+
+% (helper)
+-spec get_designated_device_from_short_name( device_short_name(),
+        [ enocean_device() ] ) -> option( enocean_device() ).
+get_designated_device_from_short_name( _DevShortName, _Devs=[] ) ->
+    undefined;
+
+get_designated_device_from_short_name( DevShortName,
+        _Devs=[ Dev=#enocean_device{ short_name=DevShortName } | _T ] ) ->
+    Dev;
+
+get_designated_device_from_short_name( DevShortName, _Devs=[ _Dev | T ] ) ->
+    get_designated_device_from_short_name( DevShortName, T ).
+
+
+
+-doc "Performs the specified action on the specified device.".
+-spec perform_action_on( eurid(), device_operation(), oceanic_state() ) ->
+                                                oceanic_state().
+perform_action_on( TargetEurid, DeviceOperation, State )
+        when DeviceOperation =:= switch_on; DeviceOperation =:= switch_off ->
+
+    trace_bridge:debug_fmt( "Performing operation ~ts on device ~ts.",
+        [ DeviceOperation,
+          oceanic_text:describe_device( TargetEurid, State ) ] ),
+
+    trigger_actuator_impl( TargetEurid, DeviceOperation, State );
+
+perform_action_on( TargetEurid, DeviceOperation, State ) ->
+
+    trace_bridge:error_fmt( "Unsupported operation ~w (requested to be "
+        "performed on device ~ts); nothing done.",
+        [ DeviceOperation,
+          oceanic_text:describe_device( TargetEurid, State ) ] ),
+
+    State.
+
 
 
 
@@ -3384,14 +3613,14 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
 
 
-        { triggerActuator, CEES={ ActEurid, MaybeDevOp } } ->
+        { triggerActuator, CEES={ ActDesig, MaybeDevOp } } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Triggering actuator as ~w.",
                                         [ CEES ] ),
                 basic_utils:ignore_unused( CEES ) ),
 
-            TrigState = trigger_actuator_impl( ActEurid, MaybeDevOp, State ),
+            TrigState = trigger_actuator_impl( ActDesig, MaybeDevOp, State ),
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
@@ -3405,14 +3634,14 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
-        { triggerActuatorReciprocal, CEES={ ActEurid, MaybeDevOp } } ->
+        { triggerActuatorReciprocal, CEES={ ActDesig, MaybeDevOp } } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Triggering reciprocally "
                     "actuator based on ~w.", [ CEES ] ),
                 basic_utils:ignore_unused( CEES ) ),
 
-            TrigState = trigger_actuator_reciprocal_impl( ActEurid,
+            TrigState = trigger_actuator_reciprocal_impl( ActDesig,
                 MaybeDevOp, State ),
 
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
@@ -3428,6 +3657,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
+        { performAction, DeviceAction } ->
+
+            cond_utils:if_defined( oceanic_debug_activity,
+                trace_bridge:debug_fmt( "Requested to perform action ~w.",
+                                        [ DeviceAction ] ) ),
+
+            ActState = perform_action( DeviceAction, State ),
+
+            oceanic_loop( ToSkipLen, MaybeTelTail, ActState );
+
+
+        % ActDesig could be supported, rather than just ActEurid:
 		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
 				_TrackSpec={ _DevEvType, _MaybeExpectedReportedEvInfo } ] } ->
 
@@ -4018,23 +4259,27 @@ manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
 -doc """
 Triggers the specified actuator so that it performs the specified operation.
 """.
--spec trigger_actuator_impl( eurid(), option( device_operation() ),
+-spec trigger_actuator_impl( device_designator(), option( device_operation() ),
                                     oceanic_state() ) -> oceanic_state().
-trigger_actuator_impl( ActEurid, _MaybeDevOp=undefined, State ) ->
-    DevOp = get_default_operation_for( ActEurid, State ),
+trigger_actuator_impl( ActDesig, _MaybeDevOp=undefined, State ) ->
+    DevOp = get_default_operation_for( ActDesig, State ),
     % A next clause:
-    trigger_actuator_impl( ActEurid, DevOp, State );
+    trigger_actuator_impl( ActDesig, DevOp, State );
 
-trigger_actuator_impl( ActEurid, DevOp=switch_on,
-                       State=#oceanic_state{ emitter_eurid=SourceEurid,
-                                             device_table=DeviceTable } ) ->
+trigger_actuator_impl( ActDesig, DevOp=switch_on,
+                       State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
 
-    DevRecord = table:get_value_with_default( _K=ActEurid, _Def=undefined,
-                                              DeviceTable ),
+    DevRecord = case get_designated_device( ActDesig, State ) of
 
-    DevRecord =:= undefined andalso
-        throw( { unknown_actuator_device,
-                 oceanic_text:eurid_to_string( ActEurid ) } ),
+        undefined ->
+            throw( { unknown_actuator_device, ActDesig } );
+
+        DR ->
+            DR
+
+    end,
+
+    ActEurid = DevRecord#enocean_device.eurid,
 
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
@@ -4099,16 +4344,20 @@ trigger_actuator_impl( ActEurid, DevOp=switch_on,
 
 
 
-trigger_actuator_impl( ActEurid, DevOp=switch_off,
-                       State=#oceanic_state{ emitter_eurid=SourceEurid,
-                                             device_table=DeviceTable } ) ->
+trigger_actuator_impl( ActDesig, DevOp=switch_off,
+                       State=#oceanic_state{ emitter_eurid=SourceEurid } ) ->
 
-    DevRecord = table:get_value_with_default( _K=ActEurid, _Def=undefined,
-                                              DeviceTable ),
+    DevRecord = case get_designated_device( ActDesig, State ) of
 
-    DevRecord =:= undefined andalso
-        throw( { unknown_actuator_device,
-                 oceanic_text:eurid_to_string( ActEurid ) } ),
+        undefined ->
+            throw( { unknown_actuator_device, ActDesig } );
+
+        DR ->
+            DR
+
+    end,
+
+    ActEurid = DevRecord#enocean_device.eurid,
 
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
@@ -4343,14 +4592,32 @@ get_device_convention( TargetEurid, DeviceTable ) ->
 
 
 
--doc "Returns the default operation corresponding to the specified actuator.".
-get_default_operation_for( ActEurid,
-                           #oceanic_state{ device_table=DevTable } ) ->
-    case table:get_value_with_default( _K=ActEurid,
-                                       _Def=undefined, DevTable ) of
+-doc """
+Checks the specified device operation.
 
-        undefined ->
-            throw( { unregistered_actuator_device, ActEurid } );
+Refer to the `device_operation/0` type.
+""".
+-spec check_device_operation( term() ) -> void().
+check_device_operation( _DevOp=switch_on ) ->
+    ok;
+
+check_device_operation( _DevOp=switch_off ) ->
+    ok;
+
+check_device_operation( DevOp ) ->
+    throw( { invalid_device_operation, DevOp } ).
+
+
+
+-doc "Returns the default operation corresponding to the specified actuator.".
+-spec get_default_operation_for( device_designator(), oceanic_state() ) ->
+                                                device_operation().
+get_default_operation_for( ActDesig, State ) ->
+
+    case get_designated_device( ActDesig, State ) of
+
+         undefined ->
+            throw( { unregistered_actuator_device, ActDesig } );
 
         #enocean_device{ eep=Eep } ->
             get_base_operation_for_eep( Eep )
@@ -5202,7 +5469,8 @@ record_device_success( Eurid, DeviceTable ) ->
 
 		key_not_found ->
 			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts through listening.", [ oceanic_text:eurid_to_string( Eurid ) ] ),
+				"is ~ts through listening.",
+                [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
 			Now = time_utils:get_timestamp(),
 
@@ -5210,6 +5478,7 @@ record_device_success( Eurid, DeviceTable ) ->
 
 			NewDevice = #enocean_device{ eurid=Eurid,
 										 name=undefined,
+										 short_name=undefined,
 										 eep=undefined,
 										 discovered_through=DiscoverOrigin,
 										 first_seen=Now,
@@ -5224,7 +5493,7 @@ record_device_success( Eurid, DeviceTable ) ->
 
 			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
 			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-			  _MaybeEEPId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEEPId=undefined };
 
 
 		{ value, Device } ->
@@ -5243,6 +5512,7 @@ already-known device.
 record_known_device_success( Device=#enocean_device{
 		eurid=Eurid,
 		name=MaybeDeviceName,
+		short_name=MaybeDeviceShortName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
 		last_seen=MaybeLastSeen,
@@ -5289,7 +5559,7 @@ record_known_device_success( Device=#enocean_device{
 	% this tuple)
 	%
 	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId }.
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
 
 
 
@@ -5308,12 +5578,14 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 		key_not_found ->
 			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts through failure.", [ oceanic_text:eurid_to_string( Eurid ) ] ),
+				"is ~ts through failure.",
+                [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
 			DiscoverOrigin = listening,
 
 			NewDevice = #enocean_device{ eurid=Eurid,
 										 name=undefined,
+										 short_name=undefined,
 										 eep=undefined,
 										 discovered_through=DiscoverOrigin,
 										 first_seen=Now,
@@ -5329,7 +5601,7 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
 			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-			  _MaybeEEPId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEEPId=undefined };
 
 
 		{ value, Device } ->
@@ -5348,6 +5620,7 @@ already-known device.
 record_known_device_failure( Device=#enocean_device{
 		eurid=Eurid,
 		name=MaybeDeviceName,
+		short_name=MaybeDeviceShortName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
 		last_seen=MaybeLastSeen,
@@ -5394,7 +5667,7 @@ record_known_device_failure( Device=#enocean_device{
 	% this tuple)
 	%
 	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId }.
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
 
 
 
@@ -5604,6 +5877,11 @@ interpret_button_ref_spec( { EuridStr, Channel } )
 			 andalso is_integer( Channel ) andalso Channel > 0 ->
 	{ oceanic_text:string_to_eurid( EuridStr ), Channel };
 
+interpret_button_ref_spec( { DevShortName, Channel } )
+		when is_atom( DevShortName )
+			 andalso is_integer( Channel ) andalso Channel > 0 ->
+	{ DevShortName, Channel };
+
 interpret_button_ref_spec( Other ) ->
 	throw( { invalid_button_ref_spec, Other } ).
 
@@ -5655,6 +5933,99 @@ get_source_eurid( DevEventTuple ) ->
 	erlang:element( _PosIdx=2, DevEventTuple ).
 
 
+-doc """
+Returns the emitting device name (if any) stored in the specified device event.
+""".
+-spec get_maybe_device_name( device_event() ) -> option( device_name() ).
+get_maybe_device_name( DevEventTuple ) ->
+	erlang:element( _PosIdx=3, DevEventTuple ).
+
+
+-doc """
+Returns any short name known for the emitting device stored in the specified
+device event.
+""".
+-spec get_maybe_device_short_name( device_event() ) ->
+                                        option( device_short_name() ).
+get_maybe_device_short_name( DevEventTuple ) ->
+	erlang:element( _PosIdx=4, DevEventTuple ).
+
+
+
+-doc """
+Returns the EEP (if any is defined and registered) stored in the specified
+device event.
+""".
+-spec get_maybe_eep( device_event() ) -> option( eep_id() ).
+get_maybe_eep( DevEventTuple ) ->
+	erlang:element( _PosIdx=5, DevEventTuple ).
+
+
+-doc """
+Returns the timestamp corresponding to the specified device event.
+""".
+-spec get_timestamp( device_event() ) -> timestamp().
+get_timestamp( DevEventTuple ) ->
+	erlang:element( _PosIdx=6, DevEventTuple ).
+
+
+-doc """
+Returns the timestamp corresponding to any previously last seen telegram from
+that device.
+
+Also useful to determine whether an event corresponds to a device discovery.
+""".
+-spec get_last_seen_info( device_event() ) -> option( timestamp() ).
+get_last_seen_info( DevEventTuple ) ->
+	erlang:element( _PosIdx=7, DevEventTuple ).
+
+
+
+-doc """
+Returns the number (if any) of subtelegrams stored in the specified device
+event.
+""".
+-spec get_subtelegram_count( device_event() ) -> option( subtelegram_count() ).
+get_subtelegram_count( DevEventTuple ) ->
+	erlang:element( _PosIdx=8, DevEventTuple ).
+
+
+
+-doc """
+Returns the EURID of the target of this transmission (addressed or broadcast),
+if any, stored in the specified device event.
+""".
+-spec get_maybe_destination_eurid( device_event() ) -> option( eurid() ).
+get_maybe_destination_eurid( DevEventTuple ) ->
+	erlang:element( _PosIdx=9, DevEventTuple ).
+
+
+
+-doc """
+Returns the best RSSI value (if any) stored in the specified device event.
+""".
+-spec get_maybe_dbm( device_event() ) -> option( dbm() ).
+get_maybe_dbm( DevEventTuple ) ->
+	erlang:element( _PosIdx=10, DevEventTuple ).
+
+
+
+-doc "Returns the stored in the specified device event.".
+-spec get_maybe_security_level( device_event() ) -> option( security_level() ).
+get_maybe_security_level( DevEventTuple ) ->
+	erlang:element( _PosIdx=11, DevEventTuple ).
+
+
+
+-doc """
+Returns the designator pair stored in the specified device event.
+""".
+-spec get_designator_pair( device_event() ) -> designator_pair().
+get_designator_pair( DevEventTuple ) ->
+    { get_source_eurid( DevEventTuple ),
+      get_maybe_device_short_name( DevEventTuple ) }.
+
+
 
 -doc """
 Returns any channel referenced by the emitting device stored in the specified
@@ -5685,12 +6056,6 @@ get_button_reference( DevEventTuple ) ->
 
 
 
--doc """
-Returns the emitting device name (if any) stored in the specified device event.
-""".
--spec get_maybe_device_name( device_event() ) -> option( device_name() ).
-get_maybe_device_name( DevEventTuple ) ->
-	erlang:element( _PosIdx=3, DevEventTuple ).
 
 
 
@@ -5710,70 +6075,6 @@ get_best_device_name_from( DevEventTuple ) ->
 			BinDeviceName
 
 	end.
-
-
-
--doc """
-Returns the EEP (if any is defined and registered) stored in the specified
-device event.
-""".
--spec get_maybe_eep( device_event() ) -> option( eep_id() ).
-get_maybe_eep( DevEventTuple ) ->
-	erlang:element( _PosIdx=4, DevEventTuple ).
-
-
-
--doc "Returns the timestamp stored in the specified device event.".
--spec get_timestamp( device_event() ) -> timestamp().
-get_timestamp( DevEventTuple ) ->
-	erlang:element( _PosIdx=5, DevEventTuple ).
-
-
--doc """
-Returns the timestamp corresponding to any previously seen telegram from that
-device.
-
-Also useful to determine whether an event corresponds to a device discovery.
-""".
--spec get_last_seen_info( device_event() ) -> option( timestamp() ).
-get_last_seen_info( DevEventTuple ) ->
-	erlang:element( _PosIdx=6, DevEventTuple ).
-
-
-
--doc """
-Returns the number (if any) of subtelegrams stored in the specified device
-event.
-""".
--spec get_subtelegram_count( device_event() ) -> option( subtelegram_count() ).
-get_subtelegram_count( DevEventTuple ) ->
-	erlang:element( _PosIdx=6, DevEventTuple ).
-
-
-
--doc """
-Returns the EURID of the target of this transmission (addressed or broadcast),
-if any, stored in the specified device event.
-""".
--spec get_maybe_destination_eurid( device_event() ) -> option( eurid() ).
-get_maybe_destination_eurid( DevEventTuple ) ->
-	erlang:element( _PosIdx=7, DevEventTuple ).
-
-
-
--doc """
-Returns the best RSSI value (if any) stored in the specified device event.
-""".
--spec get_maybe_dbm( device_event() ) -> option( dbm() ).
-get_maybe_dbm( DevEventTuple ) ->
-	erlang:element( _PosIdx=8, DevEventTuple ).
-
-
-
--doc "Returns the stored in the specified device event.".
--spec get_maybe_security_level( device_event() ) -> option( security_level() ).
-get_maybe_security_level( DevEventTuple ) ->
-	erlang:element( _PosIdx=9, DevEventTuple ).
 
 
 

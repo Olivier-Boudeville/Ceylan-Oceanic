@@ -105,6 +105,9 @@
 -define( default_dhms_periodicity, { 0, 0, 25, 0 } ).
 
 
+% Position of this field in the enocean_device and *_event records:
+-define( short_name_index, 3 ).
+
 
 % Information regarding an Enocean device.
 -record( enocean_device, {
@@ -112,8 +115,11 @@
 	% The EnOcean Unique Radio Identifier of this device:
 	eurid :: oceanic:eurid(),
 
-	% The user-specified name (if any) for that device:
+	% The user-specified "full", descriptive name (if any) for that device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of this device:
 	eep :: option( oceanic:eep_id() ),
@@ -235,13 +241,16 @@
 % Definition of device events, preferably ordered by increasing EEP.
 
 
-% By convention all of them start with the same first five, always-set, fields:
+% By convention all of them start with the same first six, always-set, fields:
 %
 % - the EnOcean Unique Radio Identifier of the emitting device:
 %           source_eurid :: oceanic:eurid()
 %
 % - the user-specified name (if any) for the emitting device:
 %           name :: option( oceanic:device_name() )
+%
+% - the short name (if any) for the emitting device:
+%           short_name :: option( oceanic:device_short_name() )
 %
 % - the EEP (if any is defined and registered) of the emitting device:
 %           eep :: option( oceanic:eep_id() )
@@ -252,6 +261,7 @@
 % - the last timestamp (if any) at which a telegram from that device was
 % intercepted before; mostly an informative way of reporting device discovery
 %           last_seen :: option( time_utils:timestamp() )
+%
 %
 % From here, the four next following fields, still common to all events, are
 % maybe-values, as they are read from optional data:
@@ -284,6 +294,9 @@
 
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
@@ -339,6 +352,9 @@
 
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
@@ -410,6 +426,9 @@
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
 
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
 
@@ -462,6 +481,9 @@
 
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
@@ -516,6 +538,9 @@
 
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
@@ -593,6 +618,9 @@
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
 
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
 
@@ -659,6 +687,9 @@
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
 
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),
 
@@ -715,6 +746,9 @@
 
 	% The user-specified name (if any) of the emitting device:
 	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of the emitting device:
 	eep :: option( oceanic:eep_id() ),

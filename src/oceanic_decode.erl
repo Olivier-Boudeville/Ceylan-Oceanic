@@ -357,8 +357,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
-			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
-                                                             DeviceTable ),
+              _UndefinedDeviceShortName, _MaybeEepId } =
+                  oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
 				"from device whose EURID is ~ts: device not configured, "
@@ -377,14 +377,14 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _UndefinedEepId } = oceanic:record_device_failure( SenderEurid,
-                                                                 DeviceTable ),
+              MaybeDeviceShortName, _UndefinedEepId } =
+                  oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a RPS packet "
 				"for ~ts: no EEP known for it.",
 				[ oceanic_text:get_best_naming( MaybeDeviceName,
-                                                SenderEurid ) ] ),
+                      MaybeDeviceShortName, SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -418,13 +418,14 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _UnsupportedEepId } =
+              MaybeDeviceShortName, _UnsupportedEepId } =
 				oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
-				[ oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
 				  UnsupportedEepId,
 				  oceanic_generated:get_maybe_second_for_eep_strings(
 					UnsupportedEepId ) ] ),
@@ -475,7 +476,7 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	% EEP was known, hence device was already known as well:
 	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -487,7 +488,8 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 			"with DB_0=~w; sender is ~ts, PTM switch module is ~ts, "
 			"NU message type is ~ts, ~ts~ts.",
 			[ DB_0,
-              oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+              oceanic_text:get_best_naming( MaybeDeviceName,
+                MaybeDeviceShortName, SenderEurid ),
 			  oceanic_text:ptm_module_to_string( PTMSwitchModuleType ),
 			  oceanic_text:nu_message_type_to_string( NuType ),
 			  oceanic_text:repeater_count_to_string( RepCount ),
@@ -501,6 +503,7 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 	Event = #push_button_switch_event{ source_eurid=SenderEurid,
 									   name=MaybeDeviceName,
+                                       short_name=MaybeDeviceShortName,
 									   eep=MaybeEepId,
 									   timestamp=Now,
 									   last_seen=MaybeLastSeen,
@@ -566,8 +569,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			% EEP was known, hence device already was known as well:
 			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
 			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeEepId } = oceanic:record_known_device_success( Device,
-                                                                  DeviceTable ),
+			  MaybeDeviceShortName, MaybeEepId } =
+                oceanic:record_known_device_success( Device, DeviceTable ),
 
 			RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -587,6 +590,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			Event = #double_rocker_switch_event{
 				source_eurid=SenderEurid,
 				name=MaybeDeviceName,
+				short_name=MaybeDeviceShortName,
 				eep=MaybeEepId,
 				timestamp=Now,
 				last_seen=MaybeLastSeen,
@@ -630,8 +634,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			% EEP was known, hence device already was known as well:
 			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
 			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeEepId } = oceanic:record_known_device_success( Device,
-                                                                  DeviceTable ),
+			  MaybeDeviceShortName, MaybeEepId } =
+                  oceanic:record_known_device_success( Device, DeviceTable ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -645,6 +649,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 			Event = #double_rocker_multipress_event{
 				source_eurid=SenderEurid,
 				name=MaybeDeviceName,
+				short_name=MaybeDeviceShortName,
 				eep=MaybeEepId,
 				timestamp=Now,
 				last_seen=MaybeLastSeen,
@@ -661,8 +666,9 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
 
 		_Other ->
 			{ NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
-			  _IsBackOnline, _MaybeDeviceName, _MaybeEepId } =
-				oceanic:record_device_failure( SenderEurid, DeviceTable ),
+			  _IsBackOnline, _MaybeDeviceName, _MaybeDeviceShortName,
+              _MaybeEepId } =
+                    oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
 				"from device whose EURID is ~ts and EEP ~ts (~ts), "
@@ -801,7 +807,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 	end,
 
 	{ NewDeviceTable, NewDevice, Now, MaybePrevLastSeen, MaybeDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_device_success( SenderEurid, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -815,7 +821,8 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 			[ size( DataTail ), DB_0,
               oceanic_text:learn_to_string( LearnActivated ),
 			  ContactStatus,
-              oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+              oceanic_text:get_best_naming( MaybeDeviceName,
+                MaybeDeviceShortName, SenderEurid ),
 			  Status,
 			  oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                           OptData ) ] ),
@@ -827,6 +834,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 	Event = #single_input_contact_event{
 		source_eurid=SenderEurid,
 		name=MaybeDeviceName,
+		short_name=MaybeDeviceShortName,
 		eep=MaybeEepId,
 		timestamp=Now,
 		last_seen=MaybePrevLastSeen,
@@ -881,8 +889,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDeviceName,
-			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
-                                                             DeviceTable ),
+              _MaybeDeviceShortName, _MaybeEepId } =
+                oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device first time seen:
 			trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
@@ -900,14 +908,14 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
-                                                             DeviceTable ),
+              MaybeDeviceShortName, _MaybeEepId } =
+                oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5) packet "
 				"for ~ts: no EEP known for it.",
 				[ oceanic_text:get_best_naming( MaybeDeviceName,
-                                                SenderEurid ) ] ),
+                    MaybeDeviceShortName, SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -928,13 +936,14 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _UnsupportedEepId } =
+              MaybeDeviceShortName, _UnsupportedEepId } =
 				oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a 4BS (A5F6) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
-				[ oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
 				  UnsupportedEepId,
 				  oceanic_generated:get_maybe_second_for_eep_strings(
 					UnsupportedEepId ) ] ),
@@ -1006,7 +1015,7 @@ decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
 	LearnActivated = DB_0 band ?b3 =:= 0,
 
 	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1018,7 +1027,8 @@ decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
 			"packet, reporting a ~ts~ts; sender is ~ts~ts.",
 			[ oceanic_text:temperature_to_string( Temperature ),
 			  oceanic_text:learn_to_string( LearnActivated ),
-			  oceanic_text:get_best_naming( MaybeDeviceName, SenderEurid ),
+			  oceanic_text:get_best_naming( MaybeDeviceName,
+                 MaybeDeviceShortName, SenderEurid ),
 			  oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                           OptData ) ] ) ),
 
@@ -1027,6 +1037,7 @@ decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
 
 	Event = #thermometer_event{ source_eurid=SenderEurid,
 								name=MaybeDeviceName,
+								short_name=MaybeDeviceShortName,
 								eep=MaybeEepId,
 								timestamp=Now,
 								last_seen=MaybeLastSeen,
@@ -1079,7 +1090,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 	LearnActivated = DB_0 band ?b3 =:= 0,
 
 	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1105,7 +1116,8 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 				[ oceanic_text:relative_humidity_to_string( RelativeHumidity ),
                   TempStr,
 				  oceanic_text:learn_to_string( LearnActivated ),
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:get_best_naming( MaybeDeviceName,
+                      MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData ) ] )
 		end ),
@@ -1115,6 +1127,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 	Event = #thermo_hygro_event{ source_eurid=SenderEurid,
 								 name=MaybeDeviceName,
+								 short_name=MaybeDeviceShortName,
 								 eep=MaybeEepId,
 								 timestamp=Now,
 								 last_seen=MaybeLastSeen,
@@ -1224,7 +1237,8 @@ decode_ute_packet(
 
 	InitiatorEep = { RORG, Func, Type },
 
-	{ NewDeviceTable, Device=#enocean_device{ name=MaybeName,
+	{ NewDeviceTable, Device=#enocean_device{ name=MaybeDevName,
+                                              short_name=MaybeDevShortName,
 											  eep=MaybeEepId }, Now } =
 		oceanic:declare_device_from_teach_in( InitiatorEurid, InitiatorEep,
                                               DeviceTable ),
@@ -1274,7 +1288,8 @@ decode_ute_packet(
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
 	TeachReqEvent = #teach_request_event{ source_eurid=InitiatorEurid,
-                                          name=MaybeName,
+                                          name=MaybeDevName,
+                                          short_name=MaybeDevShortName,
                                           eep=MaybeEepId,
                                           timestamp=Now,
                                           last_seen=Now,
@@ -1369,8 +1384,8 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
-			  _MaybeEepId } = oceanic:record_device_failure( SenderEurid,
-                                                             DeviceTable ),
+              _UndefinedDeviceShortName, _MaybeEepId } =
+                oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
 				"from device whose EURID is ~ts: device not configured, "
@@ -1389,13 +1404,14 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _UndefinedEepId } =
+              MaybeDeviceShortName, _UndefinedEepId } =
 				oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a VLD packet "
 				"for ~ts: no EEP known for it.",
-				[ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ) ] ),
+				[ oceanic:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1418,13 +1434,14 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
 			{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
 			  _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
-			  _UnsupportedEepId } =
+              MaybeDeviceShortName, _UnsupportedEepId } =
 				oceanic:record_device_failure( SenderEurid, DeviceTable ),
 
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a VLD (D2) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
-				[ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				[ oceanic:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
 				  UnsupportedEepId,
 				  oceanic_generated:get_maybe_second_for_eep_strings(
 					UnsupportedEepId ) ] ),
@@ -1471,7 +1488,8 @@ decode_vld_smart_plug_packet(
 	% measurement.
 
 	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
-	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+        MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	RecState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1559,7 +1577,8 @@ decode_vld_smart_plug_packet(
 
     trace_bridge:warning_fmt(
         "Non-metering plug ~ts reports an output power of ~w.",
-        [ oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+        [ oceanic:get_best_naming( MaybeDeviceName, MaybeDeviceShortName,
+                                   SenderEurid ),
           OutputPower ] ),
 
 	MaybeCmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),
@@ -1583,7 +1602,8 @@ decode_vld_smart_plug_packet(
 			trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
                   PFStr, OCStr, HardStr, LocCtrlStr,
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
@@ -1637,7 +1657,8 @@ decode_vld_smart_plug_packet(
 
 	% Actually is currently not managed:
 	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
-	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
+	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+      MaybeDeviceShortName, _MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1654,7 +1675,8 @@ decode_vld_smart_plug_packet(
 				"Partial decoding a VLD smart plug packet "
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
 				] )
@@ -1694,7 +1716,8 @@ decode_vld_smart_plug_with_metering_packet(
 					when CmdAsInt =:= 16#4 ->
 
 	{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
-	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName, MaybeEepId } =
+	  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+        MaybeDeviceShortName, MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	RecState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1799,16 +1822,15 @@ decode_vld_smart_plug_with_metering_packet(
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, "
 				"~ts; this plug is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:get_best_naming( MaybeDeviceName,
+                      MaybeDeviceShortName, SenderEurid ),
                   PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData ) ] )
 
 		end,
 
-		basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
-			 MaybeDecodedOptData, IsPowerFailureEnabled,
-			 IsPowerFailureDetected ] ) ),
+		basic_utils:ignore_unused( [ MaybeCmd, IsPowerFailureEnabled ] ) ),
 
 	{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
 		resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -1822,6 +1844,7 @@ decode_vld_smart_plug_with_metering_packet(
 	Event = #smart_plug_status_report_event{
 		source_eurid=SenderEurid,
 		name=MaybeDeviceName,
+		short_name=MaybeDeviceShortName,
 		eep=MaybeEepId,
 		timestamp=Now,
 		last_seen=MaybeLastSeen,
@@ -1850,7 +1873,8 @@ decode_vld_smart_plug_with_metering_packet(
 
 	% Actually is currently not managed:
 	{ NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
-	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName, _MaybeEepId } =
+	  _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+      MaybeDeviceShortName, _MaybeEepId } =
 		oceanic:record_known_device_success( Device, DeviceTable ),
 
 	NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1858,7 +1882,7 @@ decode_vld_smart_plug_with_metering_packet(
 	MaybeDecodedOptData = decode_optional_data( OptData ),
 
 	%{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-	%	resolve_maybe_decoded_data( MaybeDecodedOptData ),
+	%   resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
 	cond_utils:if_defined( oceanic_debug_decoding,
 
@@ -1867,7 +1891,8 @@ decode_vld_smart_plug_with_metering_packet(
 				"Partial decoding a VLD smart plug with metering packet "
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName, SenderEurid ),
+				  oceanic:get_best_naming( MaybeDeviceName,
+                      MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
 				] )

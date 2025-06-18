@@ -62,6 +62,8 @@ Ceylan-Oceanic.
     eurid_to_bin_string/1, eurid_to_bin_string/2,
     string_to_eurid/1, maybe_string_to_eurid/1,
 
+    device_designator_to_string/1,
+
     button_ref_to_string/1, button_refs_to_string/1, string_to_eep/1,
 
     security_level_to_string/1, repeater_count_to_string/1,
@@ -76,10 +78,11 @@ Ceylan-Oceanic.
 
 % Device-related descriptions:
 
--export([ get_best_naming/2, get_best_bin_naming/2, describe_device/2,
+-export([ get_best_naming/2, get_best_naming/3, get_best_bin_naming/2,
+          describe_device/2,
 
           device_event_to_string/1, device_event_to_short_string/1,
-          get_name_description/2, device_table_to_string/1,
+          get_name_description/3, device_table_to_string/1,
           device_to_string/1 ]).
 
 
@@ -137,6 +140,8 @@ Ceylan-Oceanic.
 
 -type enocean_device() :: oceanic:enocean_device().
 -type device_name() :: oceanic:device_name().
+-type device_short_name() :: oceanic:device_short_name().
+-type device_designator() :: oceanic:device_designator().
 -type device_type() :: oceanic:device_type().
 -type device_table() :: oceanic:device_table().
 -type device_event() :: oceanic:device_event().
@@ -576,6 +581,17 @@ maybe_string_to_eurid( EuridStr ) ->
 	text_utils:hexastring_to_integer( EuridStr ).
 
 
+-doc "Returns a textual description of the specified device designator.".
+-spec device_designator_to_string( device_designator() ) -> ustring().
+device_designator_to_string( Eurid ) when is_integer( Eurid ) ->
+    text_utils:format( "device of EURID ~ts",
+                       [ eurid_to_short_string( Eurid ) ] );
+
+device_designator_to_string( DevShortName ) ->
+    text_utils:format( "device of short name ~ts",
+                       [ DevShortName ] ).
+
+
 -doc "Returns a textual description of the specified button reference.".
 -spec button_ref_to_string( button_ref() ) -> ustring().
 button_ref_to_string( _ButRef={ Eurid, Channel } ) ->
@@ -744,6 +760,25 @@ get_best_naming( BinDevName, _Eurid ) ->
 
 
 -doc """
+Returns the best naming, as any kind of string, for a device designated directly
+by its name and/or its short name, otherwise by its EURID.
+""".
+-spec get_best_naming( option( device_name() ), option( device_short_name() ),
+                       eurid() ) -> any_string().
+get_best_naming( _MaybeDevName=undefined, _MaybeDevShortName=undefined,
+                 Eurid ) ->
+	text_utils:format( "device whose EURID is ~ts",
+					   [ eurid_to_string( Eurid ) ] );
+
+get_best_naming( BinDevName, _MaybeDevShortName=undefined, _Eurid ) ->
+	text_utils:bin_format( "'~ts'", [ BinDevName ] );
+
+get_best_naming( BinDevName, DevShortName, _Eurid ) ->
+	text_utils:bin_format( "'~ts' (i.e. ~ts)", [ BinDevName, DevShortName ] ).
+
+
+
+-doc """
 Returns the best naming for a device, as a binary, depending on the available
 information.
 """.
@@ -757,11 +792,11 @@ get_best_bin_naming( BinDevName, _Eurid ) ->
 
 
 -doc """
-Returns the best short description for the device of specified EURID, based on
-server-internal information.
+Returns the best short description for the device of specified designator, based
+on server-internal information.
 """.
--spec describe_device( eurid(), wooper:state() ) -> bin_string().
-describe_device( Eurid, State ) ->
+-spec describe_device( device_designator(), wooper:state() ) -> bin_string().
+describe_device( Eurid, State ) when is_integer( Eurid ) ->
 
 	DeviceTable = State#oceanic_state.device_table,
 
@@ -779,6 +814,23 @@ describe_device( Eurid, State ) ->
 			text_utils:bin_format( "device '~ts' whose EURID is ~ts",
 								   [ BinName, eurid_to_string( Eurid ) ] )
 
+	end;
+
+describe_device( DevShortName, State ) when is_atom( DevShortName ) ->
+
+	DevTable = State#oceanic_state.device_table,
+
+    case oceanic:get_designated_device( DevShortName, DevTable ) of
+
+        undefined ->
+			text_utils:bin_format( "unknown device of short name ~ts",
+								   [ DevShortName ] );
+
+         #enocean_device{ eurid=Eurid, name=BinName } ->
+			text_utils:bin_format(
+                "device '~ts' whose short name is ~ts and EURID is ~ts",
+				[ BinName, DevShortName, eurid_to_string( Eurid ) ] )
+
 	end.
 
 
@@ -791,6 +843,7 @@ Returns a (rather complete) textual description of the specified device event.
 device_event_to_string( #thermometer_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -807,7 +860,7 @@ device_event_to_string( #thermometer_event{
 
 	text_utils:format( "thermometer sensor device ~ts which reports at ~ts "
 		"~ts ~ts; this is declared~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
           TempStr,
 		  learn_to_string( LearnActivated ),
@@ -822,6 +875,7 @@ device_event_to_string( #thermometer_event{
 device_event_to_string( #thermo_hygro_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -847,7 +901,7 @@ device_event_to_string( #thermo_hygro_event{
 
 	text_utils:format( "thermo-hygro sensor device ~ts which reports at ~ts "
 		"a ~ts ~ts~ts; this is declared~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
 
@@ -864,6 +918,7 @@ device_event_to_string( #thermo_hygro_event{
 device_event_to_string( #single_input_contact_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -877,7 +932,7 @@ device_event_to_string( #single_input_contact_event{
 	% Apparently either state transitions or just periodic state reports:
 	text_utils:format( "single-contact device ~ts is in ~ts state at ~ts~ts; "
 		"this is declared~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  learn_to_string( LearnActivated ),
@@ -890,6 +945,7 @@ device_event_to_string( #single_input_contact_event{
 device_event_to_string( #push_button_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -900,7 +956,7 @@ device_event_to_string( #push_button_switch_event{
 		transition=ButtonTransition } ) ->
 	text_utils:format(
 		"push-button device ~ts has been ~ts at ~ts~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
@@ -911,6 +967,7 @@ device_event_to_string( #push_button_switch_event{
 device_event_to_string( #smart_plug_status_report_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -932,7 +989,7 @@ device_event_to_string( #smart_plug_status_report_event{
 
 	text_utils:format( "smart plug ~ts reports at ~ts that ~ts, ~ts, ~ts, ~ts; "
 		"this plug ~ts; notified~ts; ~ts, ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
 		  PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
@@ -943,6 +1000,7 @@ device_event_to_string( #smart_plug_status_report_event{
 device_event_to_string( #double_rocker_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -981,7 +1039,7 @@ device_event_to_string( #double_rocker_switch_event{
 
 	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
 		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  button_locator_to_string( FirstButtonLocator ),
 		  get_button_transition_description( ButtonTransition ),
 		  SecondStr,
@@ -995,6 +1053,7 @@ device_event_to_string( #double_rocker_switch_event{
 device_event_to_string( #double_rocker_multipress_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -1023,7 +1082,7 @@ device_event_to_string( #double_rocker_multipress_event{
 
 	text_utils:format( "double-rocker device ~ts has ~ts simultaneously "
 		"at ~ts; this is declared~ts; ~ts; ~ts",
-		[ get_name_description( MaybeName, Eurid ), TransStr,
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ), TransStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
@@ -1034,6 +1093,7 @@ device_event_to_string( #double_rocker_multipress_event{
 device_event_to_string( #teach_request_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		timestamp=Timestamp,
 		last_seen=MaybeLastSeen,
@@ -1084,7 +1144,8 @@ device_event_to_string( #teach_request_event{
 	text_utils:format( "~ts teach-~ts request sent by ~ts at ~ts "
         "(response message ~ts) about ~ts (manufacturer id #~B, echoed: ~w); "
         "this is declared~ts; ~ts; ~ts",
-        [ CommDirection, TeachType, get_name_description( MaybeName, Eurid ),
+        [ CommDirection, TeachType,
+          get_name_description( MaybeName, MaybeShortName, Eurid ),
           time_utils:timestamp_to_string( Timestamp ), ExpectStr, ChannelStr,
           ManufId, EchoContent,
           optional_data_to_string( MaybeTelCount, MaybeDestEurid,
@@ -1176,6 +1237,7 @@ user-friendly reporting.
 device_event_to_short_string( #thermometer_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1188,7 +1250,7 @@ device_event_to_short_string( #thermometer_event{
 	% Timestamp already available:
 	text_utils:format( "The thermometer sensor device ~ts reports "
 		"a ~ts; ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ), TempStr,
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ), TempStr,
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 
 		  % Multiple A5-02-05-like candidates:
@@ -1197,6 +1259,7 @@ device_event_to_short_string( #thermometer_event{
 device_event_to_short_string( #thermo_hygro_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1218,7 +1281,7 @@ device_event_to_short_string( #thermo_hygro_event{
 	% Timestamp already available:
 	text_utils:format( "The thermo-hygro sensor device ~ts reports "
 		"a ~ts ~ts; ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  relative_humidity_to_string( RelativeHumidity ), TempStr,
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 
@@ -1229,6 +1292,7 @@ device_event_to_short_string( #thermo_hygro_event{
 device_event_to_short_string( #single_input_contact_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1237,7 +1301,7 @@ device_event_to_short_string( #single_input_contact_event{
 	% Apparently either state transitions or just periodic state reports:
 	text_utils:format( "The single-contact device ~ts is in ~ts state; "
 		"~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  get_contact_status_description( ContactStatus ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="D5-00-01" ) ] );
@@ -1246,13 +1310,14 @@ device_event_to_short_string( #single_input_contact_event{
 device_event_to_short_string( #push_button_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
 		transition=ButtonTransition } ) ->
 	text_utils:format(
 		"The push-button device ~ts has been ~ts; ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  get_button_transition_description( ButtonTransition ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
@@ -1261,6 +1326,7 @@ device_event_to_short_string( #push_button_switch_event{
 device_event_to_short_string( #smart_plug_status_report_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1271,7 +1337,7 @@ device_event_to_short_string( #smart_plug_status_report_event{
 		output_power=OutputPower } ) ->
 	text_utils:format( "The smart-plug device ~ts reports that it ~ts "
 		"(~ts, ~ts, ~ts, ~ts); ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  interpret_power_report( OutputPower ),
 		  interpret_power_failure( PFDetected ),
 		  interpret_overcurrent_trigger( OCTriggered ),
@@ -1286,6 +1352,7 @@ device_event_to_short_string( #smart_plug_status_report_event{
 device_event_to_short_string( #double_rocker_switch_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1320,7 +1387,7 @@ device_event_to_short_string( #double_rocker_switch_event{
 
 	text_utils:format( "The double-rocker device ~ts has its ~ts ~ts, "
 		"whereas its second action ~ts; ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ),
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  button_locator_to_string( FirstButtonLocator ),
 		  get_button_transition_description( ButtonTransition ),
 		  SecondStr,
@@ -1331,6 +1398,7 @@ device_event_to_short_string( #double_rocker_switch_event{
 device_event_to_short_string( #double_rocker_multipress_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1352,13 +1420,14 @@ device_event_to_short_string( #double_rocker_multipress_event{
 
 	text_utils:format( "The double-rocker device ~ts has ~ts simultaneously; "
 		"~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ), TransStr,
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ), TransStr,
 		  optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
 
 device_event_to_short_string( #teach_request_event{
 		source_eurid=Eurid,
 		name=MaybeName,
+		short_name=MaybeShortName,
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
@@ -1378,7 +1447,7 @@ device_event_to_short_string( #teach_request_event{
 
 	text_utils:format( "The initiator device ~ts sent a teach-~ts request "
         "(response expected: ~ts); ~ts; EEP: ~ts.",
-		[ get_name_description( MaybeName, Eurid ), TeachType,
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ), TeachType,
           ResponseExpected,
           optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
 		  get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
@@ -1444,14 +1513,23 @@ device_event_to_short_string( OtherEvent ) ->
 
 
 -doc "Returns a textual description of the specified device name.".
--spec get_name_description( option( device_name() ), eurid() ) -> ustring().
-get_name_description( _MaybeName=undefined, Eurid ) ->
+-spec get_name_description( option( device_name() ),
+        option( device_short_name() ), eurid() ) -> ustring().
+get_name_description( _MaybeName=undefined, _MaybeShortName=undefined,
+                      Eurid ) ->
 	text_utils:format( "whose EURID is ~ts", [ eurid_to_string( Eurid ) ] );
 
-get_name_description( Name, Eurid ) ->
-	text_utils:format( "'~ts' (whose EURID is ~ts)",
-					   [ Name, eurid_to_string( Eurid ) ] ).
+get_name_description( _MaybeName=undefined, ShortName, Eurid ) ->
+	text_utils:format( "designated as '~ts' (whose EURID is ~ts)",
+					   [ ShortName, eurid_to_string( Eurid ) ] );
 
+get_name_description( Name, _MaybeShortName=undefined, Eurid ) ->
+	text_utils:format( "'~ts' (whose EURID is ~ts)",
+					   [ Name, eurid_to_string( Eurid ) ] );
+
+get_name_description( Name, ShortName, Eurid ) ->
+	text_utils:format( "'~ts' (designated as '~ts' and whose EURID is ~ts)",
+					   [ Name, ShortName, eurid_to_string( Eurid ) ] ).
 
 
 
@@ -1888,11 +1966,10 @@ descriptions.
 """.
 -spec canon_listened_event_spec_to_string( canon_listened_event_spec() ) ->
 												ustring().
-canon_listened_event_spec_to_string( { EmitterDeviceEurid,
+canon_listened_event_spec_to_string( { EmitterDevDesig,
 		_CanonITS={ DevType, CanonDevSCS } } ) ->
-	text_utils:format( "listening to device whose EURID is ~ts "
-		"of type ~ts, for ~ts",
-		[ eurid_to_string( EmitterDeviceEurid ), DevType,
+	text_utils:format( "listening to ~ts of type ~ts, for ~ts",
+		[ device_designator_to_string( EmitterDevDesig ), DevType,
 		  device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
 
 
@@ -1903,11 +1980,10 @@ specification, enriched thanks to the specified Oceanic server.
 """.
 -spec canon_listened_event_spec_to_string( canon_listened_event_spec(),
 										   oceanic_server_pid() ) -> ustring().
-canon_listened_event_spec_to_string( { EmitterDeviceEurid,
+canon_listened_event_spec_to_string( { EmitterDevDesig,
 		_CanonITS={ DevType, CanonDevSCS } }, OcSrvPid ) ->
 	text_utils:format( "listening to ~ts of type ~ts, for ~ts",
-		[ oceanic:get_device_description( EmitterDeviceEurid,
-                                          OcSrvPid ),
+		[ oceanic:get_device_description( EmitterDevDesig, OcSrvPid ),
           DevType,
           device_state_change_spec_to_string( DevType, CanonDevSCS ) ] ).
 
@@ -1976,13 +2052,14 @@ descriptions.
 """.
 -spec canon_emitted_event_spec_to_string( canon_emitted_event_spec() ) ->
 												ustring().
-canon_emitted_event_spec_to_string( _CEES={ Eurid, _MaybeDevOp=undefined } ) ->
-    text_utils:format( "actuator whose EURID is ~ts, to perform "
-                       "its default operation", [ eurid_to_string( Eurid ) ] );
+canon_emitted_event_spec_to_string(
+        _CEES={ DevDesig, _MaybeDevOp=undefined } ) ->
+    text_utils:format( "actuator ~ts, to perform "
+        "its default operation", [ device_designator_to_string( DevDesig ) ] );
 
-canon_emitted_event_spec_to_string( _CEES={ Eurid, DevOp } ) ->
-    text_utils:format( "actuator whose EURID is ~ts, to perform "
-                       "a ~ts operation", [ eurid_to_string( Eurid ), DevOp ] ).
+canon_emitted_event_spec_to_string( _CEES={ DevDesig, DevOp } ) ->
+    text_utils:format( "actuator ~ts, to perform a ~ts operation",
+                       [ device_designator_to_string( DevDesig ), DevOp ] ).
 
 
 
@@ -1992,14 +2069,14 @@ specification, enriched thanks to the specified Oceanic server.
 """.
 -spec canon_emitted_event_spec_to_string( canon_emitted_event_spec(),
 										  oceanic_server_pid() ) -> ustring().
-canon_emitted_event_spec_to_string( _CEES={ Eurid, _MaybeDevOp=undefined },
+canon_emitted_event_spec_to_string( _CEES={ DevDesig, _MaybeDevOp=undefined },
                                     OcSrvPid ) ->
     text_utils:format( "~ts, to perform its default operation",
-        [ oceanic:get_device_description( Eurid, OcSrvPid ) ] );
+        [ oceanic:get_device_description( DevDesig, OcSrvPid ) ] );
 
-canon_emitted_event_spec_to_string( _CEES={ Eurid, DevOp }, OcSrvPid ) ->
+canon_emitted_event_spec_to_string( _CEES={ DevDesig, DevOp }, OcSrvPid ) ->
     text_utils:format( "~ts, to perform a ~ts operation",
-        [ oceanic:get_device_description( Eurid, OcSrvPid ), DevOp ] ).
+        [ oceanic:get_device_description( DevDesig, OcSrvPid ), DevOp ] ).
 
 
 -doc """
