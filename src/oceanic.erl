@@ -111,7 +111,7 @@ through an Oceanic server**.
 
 % Helper API for Oceanic user code:
 -export([ telegram_to_string/1, maybe_optional_data_to_string/2,
-          device_event_to_string/1, hexastring_to_telegram/1, get_best_naming/2,
+          device_event_to_string/1, hexastring_to_telegram/1,
           string_to_eurid/1,
 
           get_reciprocal_state_change_spec/2,
@@ -267,6 +267,13 @@ integer), or thanks to a short name (as an atom).
 
 -doc "A pair of device designators.".
 -type designator_pair() :: { eurid(), option( device_short_name() ) }.
+
+
+-doc "A user-level device action.".
+-type user_device_action() :: { device_operation(), user_device_designator() }.
+
+-doc "An (internal) device action.".
+-type device_action() :: { device_operation(), device_designator() }.
 
 
 -doc """
@@ -1436,8 +1443,8 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 			   device_name/0, device_plain_name/0, device_naming/0,
                device_any_name/0,
                device_designator_spec/0,
-               user_device_designator/0, device_designator/0,
-               device_action/0,
+               user_device_designator/0, device_designator/0, designator_pair/0,
+               user_device_action/0, device_action/0,
 
                declared_device_activity_periodicity/0,
 			   expected_periodicity/0, availability_status/0, device_status/0,
@@ -1726,8 +1733,6 @@ Definition of the overall state of an Oceanic server, including configuration
 -type command_response() :: oceanic_common_command:command_response().
 -type common_command_type() :: oceanic_common_command:common_command_type().
 -type decoding_outcome() :: oceanic_decode:decoding_outcome().
-
--type device_action() :: oceanic_action:device_action().
 
 
 
@@ -2041,6 +2046,12 @@ oceanic_start( TtyPath, EventListeners ) ->
 	InitialState = LoadedState#oceanic_state{
 		device_path=text_utils:string_to_binary( TtyPath ),
 		event_listeners=type_utils:check_pids( EventListeners ) },
+
+    % Was unconditional, yet may be emitted too early to be in the advanced
+    % traces, better done in registerTraceBridge:
+    %
+    %trace_bridge:info_fmt( "The initial state of this Oceanic server is: ~ts",
+    %                       [ oceanic_text:state_to_string( InitialState ) ] ),
 
 	oceanic_loop( _SkipLen=0, _MaybeTelTail=undefined, InitialState ).
 
@@ -2395,7 +2406,7 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
 			throw( { invalid_device_configured_name, NameStr, DC } )
 		end,
 
-	text_utils:is_atom( ShortNameAtom ) orelse
+	is_atom( ShortNameAtom ) orelse
 		begin
 			trace_bridge:error_fmt( "Invalid device short name ('~p') "
 				"in configuration entry ~p (not an atom).",
@@ -2731,14 +2742,6 @@ hexastring_to_telegram( HexaStr ) ->
     oceanic_text:hexastring_to_telegram( HexaStr ).
 
 
--doc """
-Returns the best naming, as any kind of string, for a device designated directly
-by its name (if any), otherwise by its EURID.
-""".
--spec get_best_naming( option( device_name() ), eurid() ) -> any_string().
-get_best_naming( MaybeDevName, Eurid ) ->
-    oceanic_text:get_best_naming( MaybeDevName, Eurid ).
-
 
 -doc """
 Returns the actual EURID corresponding to the specified (plain) EURID string.
@@ -2804,7 +2807,7 @@ Returns (any, first) CITS that matches the specified emitter EURID, among the
 specified CLES.
 """.
 -spec get_maybe_matching_cits( eurid(), option( device_short_name() ),
-                               [ canon_listened_event_spec() ] ) -> 
+                               [ canon_listened_event_spec() ] ) ->
                                     option( canon_incoming_trigger_spec() ).
 get_maybe_matching_cits( _EmitterEurid, _MaybeDevShortName, _CLESs=[] ) ->
 	undefined;
@@ -3012,7 +3015,7 @@ canonicalise_emitted_event_specs( _EESs=[ MaybeUserDevDesig | T ], Acc ) ->
 
 -doc "Returns the corresponding internal device designator.".
 -spec get_internal_device_designator( option( user_device_designator() ) ) ->
-                                            device_designator().
+                                                device_designator().
 get_internal_device_designator( _MaybeUserDevDesig=undefined ) ->
     ?eurid_broadcast;
 
@@ -3389,7 +3392,8 @@ get_designated_eurid( _DeviceDesignator, _State ) ->
 get_designated_device( DevShortName,
                        #oceanic_state{ device_table=DevTable } )
                                       when is_atom( DevShortName ) ->
-    get_designated_device_from_short_name( DevShortName, DevTable );
+    get_designated_device_from_short_name( DevShortName,
+                                           table:values( DevTable ) );
 
 get_designated_device( DeviceEurid, _State ) when is_integer( DeviceEurid ) ->
     DeviceEurid;
@@ -3835,12 +3839,12 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
 
-		{ getDeviceDescription, Eurid, RequesterPid } ->
+		{ getDeviceDescription, DevDesig, RequesterPid } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(getting device description)" ) ),
 
-			BinDesc = oceanic_text:describe_device( Eurid, State ),
+			BinDesc = oceanic_text:describe_device( DevDesig, State ),
 
 			RequesterPid ! { oceanic_device_description, BinDesc },
 
@@ -4029,8 +4033,11 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 		%
 		{ registerTraceBridge, BridgeSpec } ->
 			trace_bridge:register( BridgeSpec ),
+
 			trace_bridge:info_fmt( "Just registered the trace bridge "
-				"specification ~p.", [ BridgeSpec ] ),
+				"specification ~p; current state is ~ts.",
+                [ BridgeSpec, oceanic_text:state_to_string( State ) ] ),
+
 			oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 

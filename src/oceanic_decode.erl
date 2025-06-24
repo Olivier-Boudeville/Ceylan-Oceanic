@@ -1116,7 +1116,7 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 				[ oceanic_text:relative_humidity_to_string( RelativeHumidity ),
                   TempStr,
 				  oceanic_text:learn_to_string( LearnActivated ),
-				  oceanic:get_best_naming( MaybeDeviceName,
+				  oceanic_text:get_best_naming( MaybeDeviceName,
                       MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData ) ] )
@@ -1410,7 +1410,7 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a VLD packet "
 				"for ~ts: no EEP known for it.",
-				[ oceanic:get_best_naming( MaybeDeviceName,
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ) ] ),
 
 			NewState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -1440,7 +1440,7 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 			% Device probably already seen:
 			trace_bridge:debug_fmt( "Unable to decode a VLD (D2) packet "
 				"for ~ts: EEP ~ts (~ts) not supported.",
-				[ oceanic:get_best_naming( MaybeDeviceName,
+				[ oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
 				  UnsupportedEepId,
 				  oceanic_generated:get_maybe_second_for_eep_strings(
@@ -1577,7 +1577,7 @@ decode_vld_smart_plug_packet(
 
     trace_bridge:warning_fmt(
         "Non-metering plug ~ts reports an output power of ~w.",
-        [ oceanic:get_best_naming( MaybeDeviceName, MaybeDeviceShortName,
+        [ oceanic_text:get_best_naming( MaybeDeviceName, MaybeDeviceShortName,
                                    SenderEurid ),
           OutputPower ] ),
 
@@ -1602,7 +1602,7 @@ decode_vld_smart_plug_packet(
 			trace_bridge:debug_fmt( "Decoding a VLD smart plug packet "
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName,
+				  oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
                   PFStr, OCStr, HardStr, LocCtrlStr,
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
@@ -1675,7 +1675,7 @@ decode_vld_smart_plug_packet(
 				"Partial decoding a VLD smart plug packet "
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName,
+				  oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
@@ -1822,7 +1822,7 @@ decode_vld_smart_plug_with_metering_packet(
 				"for command '~ts' (~B); sender is ~ts; ~ts, ~ts, ~ts, "
 				"~ts; this plug is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName,
+				  oceanic_text:get_best_naming( MaybeDeviceName,
                       MaybeDeviceShortName, SenderEurid ),
                   PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
@@ -1891,7 +1891,7 @@ decode_vld_smart_plug_with_metering_packet(
 				"Partial decoding a VLD smart plug with metering packet "
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
-				  oceanic:get_best_naming( MaybeDeviceName,
+				  oceanic_text:get_best_naming( MaybeDeviceName,
                       MaybeDeviceShortName, SenderEurid ),
 				  oceanic:maybe_optional_data_to_string( MaybeDecodedOptData,
                                                          OptData )
