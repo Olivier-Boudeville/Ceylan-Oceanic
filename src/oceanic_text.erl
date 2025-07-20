@@ -58,7 +58,8 @@ Ceylan-Oceanic.
     temperature_to_string/1, relative_humidity_to_string/1,
     learn_to_string/1,
 
-    eurid_to_string/1, eurid_to_short_string/1,
+    eurid_to_string/1, maybe_eurid_to_string/1,
+    eurid_to_short_string/1,
     eurid_to_bin_string/1, eurid_to_bin_string/2,
     string_to_eurid/1, maybe_string_to_eurid/1,
 
@@ -487,8 +488,6 @@ learn_to_string( _LearnActivated=false ) ->
 
 
 
-
-
 -doc "Returns a raw, (plain) textual description of the specified EURID.".
 -spec eurid_to_string( eurid() ) -> ustring().
 eurid_to_string( _Eurid=?eurid_broadcast ) ->
@@ -505,6 +504,16 @@ eurid_to_string( Eurid ) ->
 	PaddedStr = text_utils:pad_string_right( HexaStr, _Width=8, $0 ),
 
 	text_utils:flatten( PaddedStr ).
+
+
+
+-doc "Returns a raw, (plain) textual description of any specified EURID.".
+-spec maybe_eurid_to_string( option( eurid() ) ) -> ustring().
+maybe_eurid_to_string( _MaybeEurid=undefined ) ->
+    "no specified EURID";
+
+maybe_eurid_to_string( Eurid ) ->
+    eurid_to_string( Eurid ).
 
 
 

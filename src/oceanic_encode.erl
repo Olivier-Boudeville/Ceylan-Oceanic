@@ -208,7 +208,7 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
             "to be sent by ~ts to ~ts: application style ~w, "
             "button locator ~w, transition ~w.",
             [ oceanic_text:eurid_to_string( SourceEurid ),
-              oceanic_text:eurid_to_string( MaybeTargetEurid ),
+              oceanic_text:maybe_eurid_to_string( MaybeTargetEurid ),
               SourceAppStyle, ButtonLocator, ButtonTransition ] ) ),
 
 	% No EEP to be determined from double_rocker_switch (implicit in packet).

@@ -430,7 +430,7 @@ decode_response_tail( #command_tracking{ command_type=co_rd_version }, DataTail,
 
 	trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
 		"common command with an invalid data tail (~ts).",
-		[ DataTail, oceanic_text:telegram_to_string( DataTail ) ] ),
+		[ oceanic_text:telegram_to_string( DataTail ) ] ),
 
 	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };
 
@@ -490,7 +490,7 @@ decode_response_tail( #command_tracking{ command_type=co_rd_idbase }, DataTail,
 	trace_bridge:error_fmt( "Received a response to a pending co_rd_idbase "
 		"common command with an invalid data tail (~ts) "
 		"and/or optional data (~ts).",
-		[ DataTail, oceanic_text:telegram_to_string( DataTail ),
+		[ oceanic_text:telegram_to_string( DataTail ),
 		  oceanic_text:telegram_to_string( OptData ) ] ),
 
 	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };

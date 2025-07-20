@@ -3044,7 +3044,7 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
 		key_not_found ->
 			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts~ts through teach-in.",
+				"is ~ts through teach-in.",
                 [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
 			#enocean_device{ eurid=Eurid,
