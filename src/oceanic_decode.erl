@@ -966,10 +966,10 @@ Refer to `[EEP-spec]` p.29.
 		eurid(), telegram_opt_data(), option( telegram_tail() ),
         enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
-		_DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
+		DB_1=ScaledTemperature, DB_0, SenderEurid, OptData, NextMaybeTelTail,
 		Device, State ) ->
 
-    % Always 0 and 12 with our sensor:
+    % Always 0 and 12 with our sensor, so never reporting anything of interest:
     %trace_bridge:debug_fmt( "For temperature: DB_1=~w, DB_0=~w.",
     %                        [ ScaledTemperature, DB_0 ] ),
 
@@ -982,8 +982,8 @@ decode_4bs_thermometer_packet( _DB_3=0, _DB_2=0,
         % Despite CRC:
         false ->
             trace_bridge:warning_fmt( "Received from device ~ts a faulty "
-                "content (DB_0=~B), dropping telegram.",
-                [ oceanic_text:eurid_to_string( SenderEurid ), DB_0 ] ),
+                "content (DB_0=~B; with DB_1=~w), dropping telegram.",
+                [ oceanic_text:eurid_to_string( SenderEurid ), DB_0, DB_1 ] ),
 
             { invalid, _ToSkipLen=0, NextMaybeTelTail, State }
 
