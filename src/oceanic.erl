@@ -131,7 +131,7 @@ through an Oceanic server**.
 
           get_designated_eurid/2, get_designated_device/2,
 
-          get_device_convention/2,
+          get_device_convention/2, check_device_operation/1,
           handle_next_command/2, handle_next_request/4,
 
           canonicalise_listened_event_specs/1,
