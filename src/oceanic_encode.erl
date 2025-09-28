@@ -616,10 +616,12 @@ get_located_button_enum( _Loc={ _Channel=2, _Pos=bottom }, _AppStyle=2 ) ->
 	3.
 
 
--doc "Returns the enumeration of the specified button transition.".
+-doc """
+Returns the enumeration corresponding to the specified button transition.
+""".
 -spec get_button_transition_enum( button_transition() ) -> enum().
-get_button_transition_enum( released ) ->
+get_button_transition_enum( just_released ) ->
 	_EnergyBow=0;
 
-get_button_transition_enum( pressed ) ->
+get_button_transition_enum( just_pressed ) ->
 	_EnergyBow=1.
