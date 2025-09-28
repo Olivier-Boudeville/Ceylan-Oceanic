@@ -97,7 +97,7 @@ get_maybe_return_code_topic_spec() ->
 		{ error_return,           16#01 },
 
         % Better than not_supported_return:
-		{ unsupported_return,   16#02 },
+		{ unsupported_return,     16#02 },
 
 		{ wrong_parameter_return, 16#03 },
 		{ operation_denied,       16#04 } ],
@@ -353,7 +353,7 @@ get_maybe_eep_topic_specs() ->
 		% Lower-range, 0°C to +40°C and 0% to 100%:
 		{ thermo_hygro_low, "A5-04-01" },
 
-		% Mid-range, -20°C to +60°C and 0% to 100%
+		% Mid-range, -20°C to +60°C and 0% to 100%:
 		{ thermo_hygro_mid, "A5-04-02" },
 
 		% Higher-range, -20°C to +60°C 10bit-measurement and 0% to 100%:
