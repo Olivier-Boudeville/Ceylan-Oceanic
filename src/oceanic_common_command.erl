@@ -85,10 +85,10 @@ Refer to `oceanic_{constants,generated}:get_maybe_common_command_topic_spec/0`
 for further information.
 """.
 -type common_command_type() ::
-        'co_rd_version'
-      | 'co_rd_sys_log'
-      | 'co_rd_idbase'
-      | atom().
+    'co_rd_version'
+  | 'co_rd_sys_log'
+  | 'co_rd_idbase'
+  | atom().
 
 
 
@@ -141,7 +141,6 @@ command request.
 
                read_version_response/0, read_logs_response/0,
                read_base_id_info_response/0 ]).
-
 
 
 
