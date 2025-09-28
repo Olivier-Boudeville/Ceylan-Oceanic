@@ -135,6 +135,7 @@ that the last element of the returned tuples is the Oceanic state.
 -type enum() :: oceanic:enum().
 -type application_style() :: oceanic:application_style() .
 -type button_locator() :: oceanic:button_locator().
+-type button_designator() :: oceanic:button_designator().
 -type button_transition() :: oceanic:button_transition().
 -type ptm_switch_module_type() :: oceanic:ptm_switch_module_type().
 -type nu_message_type() :: oceanic:nu_message_type() .
@@ -323,9 +324,9 @@ Supported:
 punctual press/release events), described here as "push buttons"
 
 - F6-02: Rocker Switch, 2 Rocker: each rocker (A or B) has a top and a bottom
-button; pressing one sends a double_rocker_switch_event() telling that a given
+button; pressing one sends a `double_rocker_switch_event/0` telling that a given
 button (possibly both) is/are being pressed, and releasing it/them sends a
-`double_rocker_multipress_event()` telling "no button released simultaneously"
+`double_rocker_multipress_event/0` telling "no button released simultaneously"
 
 Support to be added:
 - F6-03: Rocker Switch, 4 Rocker
@@ -345,8 +346,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 				   Status:1/binary>>, OptData, NextMaybeTelTail,
 				   State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	% We have to know the specific EEP of this device in order to decode this
-	% telegram:
+	% We have to know the specific (main) EEP of this device in order to decode
+	% this telegram:
 	%
 	case table:lookup_entry( SenderEurid, DeviceTable ) of
 
@@ -458,19 +459,26 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 	ButtonTransition = case DB_0AsInt band ?b4 =:= 0 of
 
 		true ->
-			released;
+			just_released;
 
 		false ->
-			pressed
+			just_pressed
 
 	end,
 
 	% (no learn bit in DB_0)
 
 	% All other bits than b4 shall be 0:
-	cond_utils:assert( oceanic_check_decoding,
-					   % Superfluous parentheses:
-					   DB_0AsInt band ( bnot ?b4 ) =:= 0 ),
+	%cond_utils:assert( oceanic_check_decoding,
+	%				   % Superfluous parentheses:
+	%				   DB_0AsInt band ( bnot ?b4 ) =:= 0 ),
+
+    OtherBits = DB_0AsInt band ( bnot ?b4 ),
+    OtherBits =:= 0 orelse
+        trace_bridge:error_fmt( "Unexpected bits when decoding push-button "
+            "packet based on DB_0=~ts: ~ts.",
+             [ text_utils:integer_to_bits( DB_0AsInt ),
+               text_utils:integer_to_bits( OtherBits ) ] ),
 
 	{ PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
@@ -511,7 +519,7 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 									   destination_eurid=MaybeDestEurid,
 									   dbm=MaybeDBm,
 									   security_level=MaybeSecLvl,
-									   transition=ButtonTransition },
+                                       transition= ButtonTransition },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
 	  NextMaybeTelTail, NewState }.
@@ -526,162 +534,273 @@ It may contain 2 actions.
 
 Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 `[EEP-spec]` p.15.
+
+Apparently, when pressing a button (e.g. AO in application style 1, i.e. the top
+left one) of a double rocker (EEP F6-02-01, be it an Avidsen, an O2Line, a
+TRIO2SYS one) :
+
+- first, when it is pressed, a packet corresponding to
+  `{button_ao,just_pressed}` (just below, for T21=1 and NU=1) is sent, resulting
+  in a double_rocker_switch_event
+
+- then when it is released, a packet corresponding to `{none,just_released}`
+  (T21=1 and NU=0, still below) is sent, resulting in a
+  double_rocker_multipress_event
+
+If instead two buttons (typically AO and BO) were simultaneously pressed then
+released, then `{button_ao,just_pressed},{button_bo,just_pressed}}` would be
+sent, and then `{none,just_released}`.
 """.
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
 		telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
 		enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
-		% (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
-		_Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
-		NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
-		State=#oceanic_state{ device_table=DeviceTable } ) ->
+ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
+       % (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
+       _Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
+       NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
+       State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	AppStyle = oceanic:get_app_style_from_eep( EepId ),
+   AppStyle = oceanic:get_app_style_from_eep( EepId ),
 
-	cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug_fmt(
-        "Decoding a RPS F6-02-01 double-rocker switch from ~ts; app style: ~w, "
-        "T21: ~w, NU: ~w.",
-        [ oceanic_text:eurid_to_string( SenderEurid ), AppStyle, T21, NU ] ) ),
-
-
-	case { T21, NU } of
-
-		{ _T21=1, _NU=1 } ->
-
-			<<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
-
-			FirstButtonLocator = get_button_locator( R1Enum, AppStyle ),
-
-			ButtonTransition = get_button_transition( EB ),
-
-			SecondButtonLocator = get_button_locator( R2Enum, AppStyle ),
-
-			IsSecondActionValid = case SA of
-
-				0 ->
-					false;
-
-				1 ->
-					true
-
-			end,
-
-			% EEP was known, hence device already was known as well:
-			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
-			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeDeviceShortName, MaybeEepId } =
-                oceanic:record_known_device_success( Device, DeviceTable ),
-
-			RecState = State#oceanic_state{ device_table=NewDeviceTable },
-
-			MaybeDecodedOptData = decode_optional_data( OptData ),
-
-			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-				resolve_maybe_decoded_data( MaybeDecodedOptData ),
-
-            % Examining whether this telegram may be received in answer to a
-            % past (smart-plug related, switching for Eltako) request, which can
-            % thus be acknowledged and unmonitored:
-            %
-            ReqState = handle_possible_eltako_switching_request_answer(
-                NewDevice, FirstButtonLocator, ButtonTransition, SenderEurid,
-                RecState ),
-
-			Event = #double_rocker_switch_event{
-				source_eurid=SenderEurid,
-				name=MaybeDeviceName,
-				short_name=MaybeDeviceShortName,
-				eep=MaybeEepId,
-				timestamp=Now,
-				last_seen=MaybeLastSeen,
-				subtelegram_count=MaybeTelCount,
-				destination_eurid=MaybeDestEurid,
-				dbm=MaybeDBm,
-				security_level=MaybeSecLvl,
-				first_action_button=FirstButtonLocator,
-				energy_bow=ButtonTransition,
-				second_action_button=SecondButtonLocator,
-				second_action_valid=IsSecondActionValid },
-
-			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-			  NextMaybeTelTail, ReqState };
+   cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug_fmt(
+         "Decoding a RPS F6-02-01 double-rocker switch from ~ts; "
+         "app style: ~w, T21: ~w, NU: ~w.",
+         [ oceanic_text:eurid_to_string( SenderEurid ), AppStyle, T21,
+           NU ] ) ),
 
 
-		{ _T21=1, _NU=0 } ->
+   case { T21, NU } of
 
-			% The 4 last bits shall be 0:
-			%cond_utils:assert( oceanic_check_decoding,
-			%                   B_0AsInt band 2#00001111 =:= 0 ),
+       { _T21=1, _NU=1 } ->
 
-			<<R1:3, EB:1, _:4>> = DB_0,
+           <<R1Enum:3, EB:1, R2Enum:3, SA:1>> = DB_0,
 
-			MaybeButtonCounting = case R1 of
+           FirstButtonLocator = get_button_locator( R1Enum, AppStyle ),
 
-				0 ->
-					none;
+           ButtonTransition = get_button_transition( EB ),
 
-				3 ->
-					three_or_four;
+           SecondButtonLocator = get_button_locator( R2Enum, AppStyle ),
 
-				% Abnormal:
-				_ ->
-					undefined
+           % Spec unclear at least about the second action: supposing it is
+           % valid, does it describe a state or a transition/action? Is the
+           % second rocker pressed or released?
 
-			end,
+           IsSecondActionValid = case SA of
 
-			ButtonTransition = get_button_transition( EB ),
+               0 ->
+                   false;
 
-			% EEP was known, hence device already was known as well:
-			{ NewDeviceTable, NewDevice, Now, MaybeLastSeen,
-			  UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
-			  MaybeDeviceShortName, MaybeEepId } =
-                  oceanic:record_known_device_success( Device, DeviceTable ),
+               1 ->
+                   true
 
-			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+           end,
 
-			MaybeDecodedOptData = decode_optional_data( OptData ),
+           % EEP was known, hence device already was known as well:
+           { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+             UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+             MaybeDeviceShortName, MaybeEepId } =
+                 oceanic:record_known_device_success( Device, DeviceTable ),
 
-			{ MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
-				resolve_maybe_decoded_data( MaybeDecodedOptData ),
+           RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            % Not considering that is a potential smart plug feedback.
+           MaybeDecodedOptData = decode_optional_data( OptData ),
 
-			Event = #double_rocker_multipress_event{
-				source_eurid=SenderEurid,
-				name=MaybeDeviceName,
-				short_name=MaybeDeviceShortName,
-				eep=MaybeEepId,
-				timestamp=Now,
-				last_seen=MaybeLastSeen,
-				subtelegram_count=MaybeTelCount,
-				destination_eurid=MaybeDestEurid,
-				dbm=MaybeDBm,
-				security_level=MaybeSecLvl,
-				button_counting=MaybeButtonCounting,
-				energy_bow=ButtonTransition },
+           { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+               resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-			{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
-			  NextMaybeTelTail, NewState };
+             % Examining whether this telegram may be received in answer to a
+             % past (smart-plug related, switching for Eltako) request, which
+             % can thus be acknowledged and unmonitored:
+             %
+             ReqState = handle_possible_eltako_switching_request_answer(
+                 NewDevice, FirstButtonLocator, ButtonTransition, SenderEurid,
+                 RecState ),
+
+           Event = #double_rocker_switch_event{
+               source_eurid=SenderEurid,
+               name=MaybeDeviceName,
+               short_name=MaybeDeviceShortName,
+               eep=MaybeEepId,
+               timestamp=Now,
+               last_seen=MaybeLastSeen,
+               subtelegram_count=MaybeTelCount,
+               destination_eurid=MaybeDestEurid,
+               dbm=MaybeDBm,
+               security_level=MaybeSecLvl,
+               first_action_button=FirstButtonLocator,
+               first_designator=get_button_designator( R1Enum ),
+               energy_bow=ButtonTransition,
+               second_action_button=SecondButtonLocator,
+               second_designator=get_button_designator( R2Enum ),
+               second_action_valid=IsSecondActionValid },
+
+           { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+             NextMaybeTelTail, ReqState };
 
 
-		_Other ->
-			{ NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
-			  _IsBackOnline, _MaybeDeviceName, _MaybeDeviceShortName,
-              _MaybeEepId } =
-                    oceanic:record_device_failure( SenderEurid, DeviceTable ),
+       { _T21=1, _NU=0 } ->
 
-			trace_bridge:warning_fmt( "Unable to decode a RPS packet "
-				"from device whose EURID is ~ts and EEP ~ts (~ts), "
-				"as T21=~B and NU=~B.",
-				[ oceanic_text:eurid_to_string( SenderEurid ), EepId,
-				  oceanic_generated:get_maybe_second_for_eep_strings( EepId ),
-				  T21, NU ] ),
+           % The 4 last bits shall be 0:
+           %cond_utils:assert( oceanic_check_decoding,
+           %                   B_0AsInt band 2#00001111 =:= 0 ),
 
-			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+           <<R1:3, EB:1, _:4>> = DB_0,
 
-			{ unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+           MaybeButtonCounting = case R1 of
 
-	end.
+               0 ->
+                   none;
+
+               3 ->
+                   three_or_four;
+
+               % Abnormal:
+               _ ->
+                   undefined
+
+           end,
+
+           ButtonTransition = get_button_transition( EB ),
+
+           % EEP was known, hence device already was known as well:
+           { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+             UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+             MaybeDeviceShortName, MaybeEepId } =
+                   oceanic:record_known_device_success( Device, DeviceTable ),
+
+           NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+           MaybeDecodedOptData = decode_optional_data( OptData ),
+
+           { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+               resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+             % Not considering that is a potential smart plug feedback.
+
+           Event = #double_rocker_multipress_event{
+               source_eurid=SenderEurid,
+               name=MaybeDeviceName,
+               short_name=MaybeDeviceShortName,
+               eep=MaybeEepId,
+               timestamp=Now,
+               last_seen=MaybeLastSeen,
+               subtelegram_count=MaybeTelCount,
+               destination_eurid=MaybeDestEurid,
+               dbm=MaybeDBm,
+               security_level=MaybeSecLvl,
+               button_counting=MaybeButtonCounting,
+               energy_bow=ButtonTransition },
+
+           { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+             NextMaybeTelTail, NewState };
+
+
+       _Other ->
+           { NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
+             _IsBackOnline, _MaybeDeviceName, _MaybeDeviceShortName,
+               _MaybeEepId } =
+                     oceanic:record_device_failure( SenderEurid, DeviceTable ),
+
+           trace_bridge:warning_fmt( "Unable to decode a RPS packet "
+               "from device whose EURID is ~ts and EEP ~ts (~ts), "
+               "as T21=~B and NU=~B.",
+               [ oceanic_text:eurid_to_string( SenderEurid ), EepId,
+                 oceanic_generated:get_maybe_second_for_eep_strings( EepId ),
+                 T21, NU ] ),
+
+           NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+           { unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+
+   end.
+
+
+% The newer interpretation is very different, quite simpler and logical, but
+% does not correspond to the specs we found.
+%
+% With it:
+% - transitions/actions/events are reported (not states)
+% - "energy bow" is a detail that does not really matter here (not in the data)
+% - bits are actually these ones:
+%   * DB0.{0..3} tell which rockers are pressed:
+%     - DB0.0: B0 pressed (true) or not (false)
+%     - DB0.1: B1 pressed or not
+%     - DB0.2: A0 pressed or not
+%     - DB0.3: A1 pressed or not
+%   * DB0.{4..7} tell which rockers are released:
+%     - DB0.4: B0 released or not
+%     - DB0.5: B1 released or not
+%     - DB0.6: A0 released or not
+%     - DB0.7: A1 released or not
+%
+% No inconsistency is expected (e.g. if DB0.(x) is true, DB0.(x+4) must be
+% false, as a rocker cannot be pressed and released at the same time).
+%
+% - T21: Teach-in bit, tells whether this telegram is a teach-in one
+% - NU: Not Used bit (no meaning in this profile)
+%
+% Nevertheless this look as an invention of a lost AI bot.
+% decode_rps_double_rocker_packet(
+%         DB_0= <<A1r:1, A0r:1, B1r:1, B0r:1, A1p:1, A0p:1, B1p:1, B0p:1>>,
+%         SenderEurid,
+%         % (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
+%         _Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
+%         NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
+%         State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+%     cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug_fmt(
+%         "Decoding a RPS F6-02-01 double-rocker switch from ~ts, "
+%         "based on DB_0=~ts.",
+%         [ oceanic_text:eurid_to_string( SenderEurid ),
+%           text_utils:integer_to_bits( DB_0 ) ],
+%         basic_utils:ignore_unused( DB_0 ) ) ),
+
+    % TO-DO: determine all impossible cases: case A1r =:= A1p...
+
+    % EEP was known, hence device already was known as well:
+    % { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+    %   UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
+    %   MaybeDeviceShortName, MaybeEepId } =
+    %     oceanic:record_known_device_success( Device, DeviceTable ),
+
+    % RecState = State#oceanic_state{ device_table=NewDeviceTable },
+
+    % MaybeDecodedOptData = decode_optional_data( OptData ),
+
+    % { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+    %     resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+    % % Examining whether this telegram may be received in answer to a
+    % % past (smart-plug related, switching for Eltako) request, which can
+    % % thus be acknowledged and unmonitored:
+    % %
+    % %ReqState = handle_possible_eltako_switching_request_answer(
+    % %    NewDevice, FirstButtonLocator, ButtonTransition, SenderEurid,
+    % %    RecState ),
+
+    % ReqState = RecState,
+
+    % Event = #double_rocker_switch_event{
+    %     source_eurid=SenderEurid,
+    %     name=MaybeDeviceName,
+    %     short_name=MaybeDeviceShortName,
+    %     eep=MaybeEepId,
+    %     timestamp=Now,
+    %     last_seen=MaybeLastSeen,
+    %     subtelegram_count=MaybeTelCount,
+    %     destination_eurid=MaybeDestEurid,
+    %     dbm=MaybeDBm,
+    %     security_level=MaybeSecLvl,
+
+    %     % In the spirit of application style 1.
+    %     % Supposedly:
+    %     rocker_1_top_state=f(A0p,A0r),
+    %     rocker_1_bottom_state=A1p,
+    %     rocker_2_top_state=...,
+    %     rocker_2_bottom_state=... },
+
+    % { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+    %   NextMaybeTelTail, ReqState }.
 
 
 
@@ -715,8 +834,8 @@ handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
                                operation=switch_on }, TimerRef } },
-        _ButtonLocator={ _Channel=1, _ButPos=top }, _ButtonTransition=pressed,
-        SenderEurid, State )  ->
+        _ButtonLocator={ _Channel=1, _ButPos=top },
+        _ButtonTransition=just_pressed, SenderEurid, State )  ->
 
     { ok, cancel } = timer:cancel( TimerRef ),
 
@@ -727,13 +846,13 @@ handle_possible_eltako_switching_request_answer(
     oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
         Device#enocean_device.request_queue, Device, State );
 
-% switch_on request waited:
+% switch_off request waited:
 handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
                                operation=switch_off }, TimerRef } },
         _ButtonLocator={ _Channel=1, _ButPos=bottom },
-        _ButtonTransition=pressed, SenderEurid, State )  ->
+        _ButtonTransition=just_pressed, SenderEurid, State )  ->
 
     { ok, cancel } = timer:cancel( TimerRef ),
 
@@ -1073,19 +1192,17 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 	cond_utils:assert( oceanic_check_decoding, DB_0 band 2#11110101 =:= 0 ),
 
-	%RelativeHumidity = round( ScaledHumidity / 250.0 * 100 ),
-	RelativeHumidity = ScaledHumidity / 250.0 * 100,
-
 	MaybeTemperature = case DB_0 band ?b1 =:= 0 of
 
 		true ->
 			undefined;
 
 		false ->
-			%round( ScaledTemperature / 250.0 * 40 )
 			ScaledTemperature / 250.0 * 40
 
 	end,
+
+	RelativeHumidity = ScaledHumidity / 250.0 * 100,
 
 	LearnActivated = DB_0 band ?b3 =:= 0,
 
@@ -1135,8 +1252,8 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 								 destination_eurid=MaybeDestEurid,
 								 dbm=MaybeDBm,
 								 security_level=MaybeSecLvl,
-								 relative_humidity=RelativeHumidity,
 								 temperature=MaybeTemperature,
+								 relative_humidity=RelativeHumidity,
 
 								 % As "A5-04-01":
 								 temperature_range=low,
@@ -1640,7 +1757,7 @@ decode_vld_smart_plug_packet(
 		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
 		hardware_status=HardwareStatus,
 		local_control_enabled=IsLocalControlEnabled,
-		output_power=undefined },
+		output_power=OutputPower },
 
 	{ decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
 	  NextMaybeTelTail, ReqState };
@@ -1888,7 +2005,7 @@ decode_vld_smart_plug_with_metering_packet(
 
 		begin
 			trace_bridge:debug_fmt(
-				"Partial decoding a VLD smart plug with metering packet "
+				"Partial decoding of a VLD smart plug with metering packet "
 				"for command '~ts' (~B); sender is ~ts~ts.",
 				[ MaybeCmd, CmdAsInt,
 				  oceanic_text:get_best_naming( MaybeDeviceName,
@@ -2054,6 +2171,24 @@ resolve_maybe_decoded_data( DecodedOptData ) ->
 
 % Could be a bijective topic as well:
 
+-doc """
+Returns the button designated by the specified enumeration (application style
+does not matter here).
+""".
+-spec get_button_designator( enum() ) -> button_designator().
+get_button_designator( _Enum=0 ) ->
+	button_ai;
+
+get_button_designator( _Enum=1 ) ->
+	button_ao;
+
+get_button_designator( _Enum=2 ) ->
+	button_bi;
+
+get_button_designator( _Enum=3 ) ->
+	button_bo.
+
+
 
 -doc """
 Returns the button designated by the specified enumeration, in the context of
@@ -2109,10 +2244,10 @@ get_button_locator( _Enum=3, _AppStyle=2 ) ->
 -doc "Returns the button transition corresponding to the specified energy bow.".
 -spec get_button_transition( enum() ) -> button_transition().
 get_button_transition( _EnergyBow=0 ) ->
-	released;
+	just_released;
 
 get_button_transition( _EnergyBow=1 ) ->
-	pressed.
+	just_pressed.
 
 
 
