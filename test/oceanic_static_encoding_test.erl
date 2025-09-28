@@ -28,7 +28,7 @@
 -module(oceanic_static_encoding_test).
 
 -moduledoc """
-Testing of the Ceylan-Oceanic <b>encoding of static telegrams/b>.
+Testing of the Ceylan-Oceanic **encoding of static telegrams**.
 """.
 
 
@@ -52,7 +52,7 @@ run() ->
 	% Hence never released:
 	Telegram = oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
 		_SourceAppStyle=1, _ButtonLoc={ _Channel=1, _ButtonPos=top },
-		_ButtonTransition=pressed, _MaybeTargetEurid=undefined ),
+		_ButtonTransition=just_pressed, _MaybeTargetEurid=undefined ),
 
 	test_facilities:display( "Generated following telegram for double-rocker: "
 		"~ts.", [ oceanic:telegram_to_string( Telegram ) ] ),
