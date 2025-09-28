@@ -122,6 +122,9 @@
     short_name :: option( oceanic:device_short_name() ),
 
 	% The EEP (if any is defined and registered) of this device:
+    %
+    % (nevertheless in the general case a device may implement multiple EEPs)
+    %
 	eep :: option( oceanic:eep_id() ),
 
 	% Tells how this device was discovered:
@@ -182,7 +185,7 @@
 	% acknowledged:
 	%
 	request_wait_timeout = ?default_max_request_response_waiting_duration
-									:: time_utils:time_out(),
+								:: time_utils:time_out(),
 
     % Extra device-level information, such as, for a double rocker, its
     % application style.
@@ -387,10 +390,11 @@
 
 	% Section specific to these events:
 
-	% The percentage of relative humidity reported:
-	relative_humidity :: math_utils:percent(),
-
 	temperature :: option( unit_utils:celsius() ),
+
+	% Therefore as a percentage of the maximum one:
+	relative_humidity :: unit_utils:relative_humidity(),
+
 
 	% The range of the temperature sensor:
 	temperature_range :: oceanic:temperature_range(),
@@ -400,7 +404,7 @@
 
 
 
-% Event sent by EEP D5-00-01: Single Input Contact.
+% Event sent by EEP D5-00-01: Single Input Contact (typically opening detector).
 %
 % D5-00 corresponds to Contacts and Switches.
 %
@@ -516,10 +520,170 @@
 
 	% Section specific to these events:
 
-	% Whether this switch button is pressed or released:
+	% Whether this switch button is just pressed or released:
 	transition :: oceanic:button_transition() } ).
 
 
+
+% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
+% Application Style 1") and EEP F6-02-02 ("Light and Blind Control - Application
+% Style 2").
+%
+% There are two rockers, A and B (channel 1 and 2), each to be understood as
+% corresponding to two buttons (I and O) - although they cannot be pressed
+% simultaneously.
+%
+% For application style:
+%  - 1: I corresponds to a bottom position, and O to a top one
+%  - 2: I corresponds to a top position, and O to a bottom one
+%
+% So there is AI and AO, and BI and BO.
+%
+% An event should correspond to at least one button transition; the (newest)
+% current state of all buttons is reported.
+%
+% Refer to [EEP-spec] p.15 for further details.
+%
+% Note that some smart plugs (e.g. Eltako ones) send such an event whenever
+% their on/off ("local control") button is pressed.
+%
+-record( double_rocker_switch_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: option( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: option( time_utils:timestamp() ),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: option( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: option( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: option( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+
+	% Depends on the precise EEP (1 for F6-02-01, 2 for F6-02-02):
+	application_style :: oceanic:application_style(),
+
+	% The button referenced by the first action:
+	first_action_button :: oceanic:button_locator(),
+
+    % Extraneous information recorded at least for the moment:
+    first_designator :: oceanic:button_designator(),
+
+	% Whether the button referenced by the first action is pressed or released:
+	energy_bow :: oceanic:button_transition(),
+
+	% The button referenced by the second action (if any):
+	second_action_button :: oceanic:button_locator(),
+
+    % Extraneous information recorded at least for the moment:
+    second_designator :: oceanic:button_designator(),
+
+	% Whether there is a second action reported:
+	second_action_valid :: boolean()
+
+    % New implementation could have been:
+
+    % Channel/position:
+
+    %rocker_1_top_state :: oceanic:button_state(),
+    %rocker_1_bottom_state :: oceanic:button_state(),
+
+    %rocker_2_top_state :: oceanic:button_state(),
+    %rocker_2_bottom_state :: oceanic:button_state()
+
+} ).
+
+
+
+% Event sent in the context of EEP F6-02-01 or F6-02-02: "Light and Blind
+% Control - Application Style 1 or 2".
+%
+% This event tells whether or not there are 3 or 4 buttons that are either
+% pressed or released.
+%
+% Refer to [EEP-spec] p.16 for further details.
+%
+-record( double_rocker_multipress_event, {
+
+	% Section common to all events:
+
+	% The EnOcean Unique Radio Identifier of the emitting device:
+	source_eurid :: oceanic:eurid(),
+
+	% The user-specified name (if any) of the emitting device:
+	name :: option( oceanic:device_name() ),
+
+	% The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
+	% The EEP (if any is defined and registered) of the emitting device:
+	eep :: option( oceanic:eep_id() ),
+
+	% The timestamp at which this event was triggered:
+	timestamp :: time_utils:timestamp(),
+
+	% The last timestamp (if any) at which a telegram from that device was
+	% intercepted before; mostly an informative way of reporting whether this
+	% device was just discovered
+	%
+	last_seen :: option( time_utils:timestamp() ),
+
+	% The number of subtelegrams, if any:
+	subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+	% The EURID of the target of this transmission (addressed or broadcast), if
+	% any:
+	%
+	destination_eurid :: option( oceanic:eurid() ),
+
+	% The best RSSI value (if any), expressed in decibels (dB) with reference to
+	% one milliwatt (mW), of all received subtelegrams:
+	%
+	dbm :: option( oceanic:dbm() ),
+
+	% The level of security (if any) of the received telegram:
+	security_level :: option( oceanic:security_level() ),
+
+
+	% Section specific to these events:
+
+	% Specifies (very roughly) the number of buttons involved:
+	button_counting :: option( oceanic:button_counting() ),
+
+	% Whether the buttons referenced by the counting are pressed or released:
+	energy_bow :: oceanic:button_state() } ).
 
 
 
@@ -585,147 +749,8 @@
 	% Whether the local control of the plug is enabled:
 	local_control_enabled :: boolean(),
 
-	% Any power currently output by the plug (if being able to perform
-	% metering):
-	%
-	output_power :: option( oceanic:power_report() ) } ).
-
-
-
-% Event sent in the context of EEP F6-02-01 ("Light and Blind Control -
-% Application Style 1") and EEP F6-02-02 ("Light and Blind Control - Application
-% Style 2").
-%
-% There are two rockers, A and B (channel 1 and 2), each to be understood as
-% corresponding to two buttons (I and O) - although they cannot be pressed
-% simultaneously.
-%
-% For application style:
-%  - 1: I corresponds to a bottom position, and O to a top one
-%  - 2: I corresponds to a top position, and O to a bottom one
-%
-% So there is AI and AO, and BI and BO.
-%
-% Refer to [EEP-spec] p.15 for further details.
-%
--record( double_rocker_switch_event, {
-
-	% Section common to all events:
-
-	% The EnOcean Unique Radio Identifier of the emitting device:
-	source_eurid :: oceanic:eurid(),
-
-	% The user-specified name (if any) of the emitting device:
-	name :: option( oceanic:device_name() ),
-
-	% The user-specified short name (if any) designating that device:
-    short_name :: option( oceanic:device_short_name() ),
-
-	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: option( oceanic:eep_id() ),
-
-	% The timestamp at which this event was triggered:
-	timestamp :: time_utils:timestamp(),
-
-	% The last timestamp (if any) at which a telegram from that device was
-	% intercepted before; mostly an informative way of reporting whether this
-	% device was just discovered
-	%
-	last_seen :: option( time_utils:timestamp() ),
-
-	% The number of subtelegrams, if any:
-	subtelegram_count :: option( oceanic:subtelegram_count() ),
-
-	% The EURID of the target of this transmission (addressed or broadcast), if
-	% any:
-	%
-	destination_eurid :: option( oceanic:eurid() ),
-
-	% The best RSSI value (if any), expressed in decibels (dB) with reference to
-	% one milliwatt (mW), of all received subtelegrams:
-	%
-	dbm :: option( oceanic:dbm() ),
-
-	% The level of security (if any) of the received telegram:
-	security_level :: option( oceanic:security_level() ),
-
-
-	% Section specific to these events:
-
-	% Depends on the precise EEP (1 for F6-02-01, 2 for F6-02-02):
-	application_style :: oceanic:application_style(),
-
-	% The button referenced by the first action:
-	first_action_button :: oceanic:button_locator(),
-
-	% Whether the button referenced by the first action is pressed or released:
-	energy_bow :: oceanic:button_transition(),
-
-	% The button referenced by the second action (if any):
-	second_action_button :: oceanic:button_locator(),
-
-	% Whether there is a second action reported:
-	second_action_valid :: boolean() } ).
-
-
-
-% Event sent in the context of EEP F6-02-01 or F6-02-02: "Light and Blind
-% Control - Application Style 1 or 2".
-%
-% This event tells whether or not there are 3 or 4 buttons that are either
-% pressed or released.
-%
-% Refer to [EEP-spec] p.16 for further details.
-%
--record( double_rocker_multipress_event, {
-
-	% Section common to all events:
-
-	% The EnOcean Unique Radio Identifier of the emitting device:
-	source_eurid :: oceanic:eurid(),
-
-	% The user-specified name (if any) of the emitting device:
-	name :: option( oceanic:device_name() ),
-
-	% The user-specified short name (if any) designating that device:
-    short_name :: option( oceanic:device_short_name() ),
-
-	% The EEP (if any is defined and registered) of the emitting device:
-	eep :: option( oceanic:eep_id() ),
-
-	% The timestamp at which this event was triggered:
-	timestamp :: time_utils:timestamp(),
-
-	% The last timestamp (if any) at which a telegram from that device was
-	% intercepted before; mostly an informative way of reporting whether this
-	% device was just discovered
-	%
-	last_seen :: option( time_utils:timestamp() ),
-
-	% The number of subtelegrams, if any:
-	subtelegram_count :: option( oceanic:subtelegram_count() ),
-
-	% The EURID of the target of this transmission (addressed or broadcast), if
-	% any:
-	%
-	destination_eurid :: option( oceanic:eurid() ),
-
-	% The best RSSI value (if any), expressed in decibels (dB) with reference to
-	% one milliwatt (mW), of all received subtelegrams:
-	%
-	dbm :: option( oceanic:dbm() ),
-
-	% The level of security (if any) of the received telegram:
-	security_level :: option( oceanic:security_level() ),
-
-
-	% Section specific to these events:
-
-	% Specifies (very roughly) the number of buttons involved:
-	button_counting :: option( oceanic:button_counting() ),
-
-	% Whether the buttons referenced by the counting are pressed or released:
-	energy_bow :: oceanic:button_transition() } ).
+	% Any power currently output by the plug:
+	output_power :: oceanic:power_report() } ).
 
 
 
