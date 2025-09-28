@@ -52,9 +52,16 @@ Ceylan-Oceanic.
 -export([
     button_designator_to_string/1, button_locator_to_string/1,
     ptm_module_to_string/1, nu_message_type_to_string/1,
+
     interpret_power_failure/1, interpret_power_failure/2,
-    interpret_overcurrent_trigger/1, interpret_hardware_status/1,
+    interpret_briefly_power_failure/1,
+
+    interpret_overcurrent_trigger/1, interpret_briefly_overcurrent_trigger/1,
+    interpret_hardware_status/1, interpret_briefly_hardware_status/1,
+
     interpret_local_control/1, interpret_power_report/1,
+    interpret_briefly_power_report/1,
+
     temperature_to_string/1, relative_humidity_to_string/1,
     learn_to_string/1,
 
@@ -66,10 +73,12 @@ Ceylan-Oceanic.
     device_designator_to_string/1,
 
     button_ref_to_string/1, button_refs_to_string/1, string_to_eep/1,
+    describe_eep/1,
 
     security_level_to_string/1, repeater_count_to_string/1,
 
-    get_button_transition_description/1, get_contact_status_description/1,
+    get_button_state_description/1, get_button_transition_description/1,
+    get_contact_status_description/1,
 
     get_eep_description/1, get_eep_description/2,
     get_eep_short_description/1, get_eep_short_description/2,
@@ -92,22 +101,21 @@ Ceylan-Oceanic.
 
 -export([ command_tracking_to_string/1, state_to_string/1 ]).
 
--export([
-    cits_to_string/1, device_state_change_spec_to_string/2,
+-export([ cits_to_string/1, device_state_change_spec_to_string/2,
 
-    canon_listened_event_spec_to_string/1,
-    canon_listened_event_spec_to_string/2,
+          canon_listened_event_spec_to_string/1,
+          canon_listened_event_spec_to_string/2,
 
-    canon_listened_event_specs_to_string/1,
-    canon_listened_event_specs_to_string/2,
+          canon_listened_event_specs_to_string/1,
+          canon_listened_event_specs_to_string/2,
 
-    virtual_emitter_info_to_string/1,
+          virtual_emitter_info_to_string/1,
 
-    canon_outgoing_trigger_spec_to_string/1,
-    canon_emitted_event_spec_to_string/1,
+          canon_outgoing_trigger_spec_to_string/1,
+          canon_emitted_event_spec_to_string/1,
 
-    canon_emitted_event_specs_to_string/1,
-    canon_emitted_event_specs_to_string/2 ]).
+          canon_emitted_event_specs_to_string/1,
+          canon_emitted_event_specs_to_string/2 ]).
 
 
 
@@ -151,6 +159,7 @@ Ceylan-Oceanic.
 
 -type button_locator() :: oceanic:button_locator().
 -type button_designator() :: oceanic: button_designator().
+-type button_state() :: oceanic:button_state().
 -type button_transition() :: oceanic:button_transition().
 
 -type hardware_status() :: oceanic:hardware_status().
@@ -415,6 +424,16 @@ interpret_power_failure( _IsPowerFailureDetected=false ) ->
 	"no power failure was detected".
 
 
+-doc "Interprets briefly the specified power failure information.".
+-spec interpret_briefly_power_failure( boolean() ) -> option( ustring() ).
+interpret_briefly_power_failure( _PowerFailureDetected=true ) ->
+	"power failure detected";
+
+interpret_briefly_power_failure( _PowerFailureDetected=false ) ->
+    undefined.
+
+
+
 
 -doc "Interprets the specified over-current switch off information.".
 -spec interpret_overcurrent_trigger( boolean() ) -> ustring().
@@ -423,6 +442,15 @@ interpret_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=true ) ->
 
 interpret_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=false ) ->
 	"no over-current has been detected".
+
+
+-doc "Interprets briefly the specified over-current switch off information.".
+-spec interpret_briefly_overcurrent_trigger( boolean() ) -> option( ustring() ).
+interpret_briefly_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=true ) ->
+	"over-current switch triggered";
+
+interpret_briefly_overcurrent_trigger( _IsOverCurrentSwitchOffTrigger=false ) ->
+    undefined.
 
 
 
@@ -440,6 +468,23 @@ interpret_hardware_status( _HStatus=failure ) ->
 interpret_hardware_status( _HStatus=unsupported ) ->
 	"hardware status is unknown".
 
+
+
+-doc "Interprets briefly the specified hardware status information.".
+-spec interpret_briefly_hardware_status( hardware_status() ) ->
+                                                option( ustring() ).
+interpret_briefly_hardware_status( _HStatus=nominal ) ->
+    undefined;
+
+interpret_briefly_hardware_status( _HStatus=warning ) ->
+	"a warning hardware status";
+
+interpret_briefly_hardware_status( _HStatus=failure ) ->
+	"a failed hardware status";
+
+interpret_briefly_hardware_status( _HStatus=unsupported ) ->
+	% Too frequent: "an unknown hardware status".
+    undefined.
 
 
 -doc "Interprets the specified local control information.".
@@ -463,18 +508,34 @@ interpret_power_report( _PwReport ) ->
 	"has an unknown powering status".
 
 
+-doc "Interprets briefly the specified power report information.".
+-spec interpret_briefly_power_report( power_report() ) -> ustring().
+interpret_briefly_power_report( _PwReport=off ) ->
+	"is off";
+
+interpret_briefly_power_report( _PwReport=100 ) ->
+	"is on";
+
+interpret_briefly_power_report( _PwReport=PInt ) when is_integer( PInt ) ->
+	text_utils:format( "powers at ~B%", [ PInt ] );
+
+interpret_briefly_power_report( _PwReport ) ->
+	"has an unknown powering status".
+
+
 
 -doc "Returns a textual description of the specified temperature.".
 -spec temperature_to_string( celsius() ) -> ustring().
-temperature_to_string( Temp ) ->
-	text_utils:format( "temperature of ~.1f°C", [ Temp ] ).
+temperature_to_string( Temperature ) ->
+	text_utils:format( "a temperature of ~ts",
+                       [ unit_utils:temperature_to_string( Temperature ) ] ).
 
 
 
 -doc "Returns a textual description of the specified relative humidity.".
 -spec relative_humidity_to_string( percent() ) -> ustring().
 relative_humidity_to_string( HPerCent ) ->
-	text_utils:format( "relative humidity of ~.1f%", [ HPerCent ] ).
+	text_utils:format( "a relative humidity of ~.1f%", [ HPerCent ] ).
 
 
 
@@ -650,6 +711,38 @@ string_to_eep( Str ) ->
 
 
 
+-doc "Returns a textual description of the specified EEP identifier.".
+-spec describe_eep( eep_id() ) -> ustring().
+describe_eep( _EEPId=thermometer ) ->
+    "thermometer";
+
+describe_eep( EEPId ) when EEPId =:= thermo_hygro_low orelse
+        EEPId =:= thermo_hygro_mid orelse EEPId =:= thermo_hygro_high ->
+    "thermo-hygrometer";
+
+describe_eep( _EEPId=push_button ) ->
+    "push-button";
+
+describe_eep( EEPId ) when EEPId =:= double_rocker_switch_style_1 orelse
+                           EEPId =:= double_rocker_switch_style_2 ->
+    "double-rocker switch";
+
+describe_eep( _EEPId=single_input_contact ) ->
+    "single contact";
+
+describe_eep( EEPId ) when EEPId =:= smart_plug orelse
+                           EEPId =:= smart_plug_with_metering ->
+    "smart plug";
+
+describe_eep( EEPId ) when EEPId =:= single_channel_module orelse
+                           EEPId =:= double_channel_module ->
+    "in-wall module";
+
+describe_eep( EEPId ) ->
+    text_utils:format( "device of type ~ts", [ EEPId ] ).
+
+
+
 % Other string-related conversions:
 
 
@@ -685,20 +778,29 @@ repeater_count_to_string( RC ) ->
 
 
 
--doc "Returns a textual description of the specified button transition.".
--spec get_button_transition_description( button_transition() ) -> ustring().
-get_button_transition_description( _Button=pressed ) ->
+-doc "Returns a textual description of the specified button state.".
+-spec get_button_state_description( button_state() ) -> ustring().
+get_button_state_description( _ButtonState=pressed ) ->
 	"pressed";
 
-get_button_transition_description( _ContactStatus=released ) ->
+get_button_state_description( _ButtonState=released ) ->
 	"released".
+
+
+-doc "Returns a textual description of the specified button transition.".
+-spec get_button_transition_description( button_transition() ) -> ustring().
+get_button_transition_description( _ButtonTrans=just_pressed ) ->
+	"just pressed";
+
+get_button_transition_description( _ButtonTrans=just_released ) ->
+	"just released".
 
 
 
 -doc "Returns a textual description of the specified contact status.".
 -spec get_contact_status_description( contact_status() ) -> ustring().
 get_contact_status_description( _ContactStatus=open ) ->
-	"opened";
+	"open";
 
 get_contact_status_description( _ContactStatus=closed ) ->
 	"closed".
@@ -864,7 +966,7 @@ device_event_to_string( #thermometer_event{
 		temperature_range=TempRange,
 		learn_activated=LearnActivated } ) ->
 
-	TempStr = text_utils:format( "a ~ts (sensitivity range: ~ts)",
+	TempStr = text_utils:format( "~ts (sensitivity range: ~ts)",
 		[ temperature_to_string( Temp ), TempRange ] ),
 
 	text_utils:format( "thermometer sensor device ~ts which reports at ~ts "
@@ -881,6 +983,7 @@ device_event_to_string( #thermometer_event{
 		  % Multiple A5-05-02-like candidates:
 		  get_eep_description( MaybeEepId ) ] );
 
+
 device_event_to_string( #thermo_hygro_event{
 		source_eurid=Eurid,
 		name=MaybeName,
@@ -892,27 +995,27 @@ device_event_to_string( #thermo_hygro_event{
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
 		security_level=MaybeSecLvl,
-		relative_humidity=RelativeHumidity,
 		temperature=MaybeTemperature,
 		temperature_range=TempRange,
+		relative_humidity=RelativeHumidity,
 		learn_activated=LearnActivated } ) ->
 
 	TempStr = case MaybeTemperature of
 
 		undefined ->
-			"(no temperature available)";
+			"no specific temperature";
 
 		Temp ->
-			text_utils:format( "and a ~ts (sensitivity range: ~ts)",
+			text_utils:format( "~ts (sensitivity range: ~ts)",
 				[ temperature_to_string( Temp ), TempRange ] )
 
 	end,
 
 	text_utils:format( "thermo-hygro sensor device ~ts which reports at ~ts "
-		"a ~ts ~ts~ts; this is declared~ts; ~ts; ~ts",
+		"~ts and ~ts~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  time_utils:timestamp_to_string( Timestamp ),
-		  relative_humidity_to_string( RelativeHumidity ), TempStr,
+		  TempStr, relative_humidity_to_string( RelativeHumidity ),
 
 		  learn_to_string( LearnActivated ),
 
@@ -923,6 +1026,7 @@ device_event_to_string( #thermo_hygro_event{
 
 		  % Multiple A5-04-01-like candidates:
 		  get_eep_description( MaybeEepId ) ] );
+
 
 device_event_to_string( #single_input_contact_event{
 		source_eurid=Eurid,
@@ -973,38 +1077,6 @@ device_event_to_string( #push_button_switch_event{
 		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-01-01" ) ] );
 
-device_event_to_string( #smart_plug_status_report_event{
-		source_eurid=Eurid,
-		name=MaybeName,
-		short_name=MaybeShortName,
-		eep=MaybeEepId,
-		timestamp=Timestamp,
-		last_seen=MaybeLastSeen,
-		subtelegram_count=MaybeTelCount,
-		destination_eurid=MaybeDestEurid,
-		dbm=MaybeDBm,
-		security_level=MaybeSecLvl,
-		power_failure_detected=IsPowerFailureDetected,
-		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
-		hardware_status=HardwareStatus,
-		local_control_enabled=IsLocalControlEnabled,
-		output_power=OutputPower } ) ->
-
-	PFStr = interpret_power_failure( IsPowerFailureDetected ),
-	OCStr = interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
-	HardStr = interpret_hardware_status( HardwareStatus ),
-	LocCtrlStr = interpret_local_control( IsLocalControlEnabled ),
-	PowerStr = interpret_power_report( OutputPower ),
-
-	text_utils:format( "smart plug ~ts reports at ~ts that ~ts, ~ts, ~ts, ~ts; "
-		"this plug ~ts; notified~ts; ~ts, ~ts",
-		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
-		  time_utils:timestamp_to_string( Timestamp ),
-		  PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
-		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
-								   MaybeSecLvl ),
-		  last_seen_to_string( MaybeLastSeen ),
-		  get_eep_description( MaybeEepId, _DefaultDesc=undefined ) ] );
 
 device_event_to_string( #double_rocker_switch_event{
 		source_eurid=Eurid,
@@ -1018,8 +1090,10 @@ device_event_to_string( #double_rocker_switch_event{
 		dbm=MaybeDBm,
 		security_level=MaybeSecLvl,
 		first_action_button=FirstButtonLocator,
+        first_designator=FirstButtonDesignator,
 		energy_bow=ButtonTransition,
 		second_action_button=SecondButtonLocator,
+        second_designator=SecondButtonDesignator,
 		second_action_valid=IsValid } ) ->
 
 	%% SecondStr = case IsValid of
@@ -1034,24 +1108,24 @@ device_event_to_string( #double_rocker_switch_event{
 	%% end,
 
 	% Less ambiguous:
-	SecondStr = text_utils:format( "~ts is "
-		++ case IsValid of
+	SecondStr = case IsValid of
 
 			true ->
-				"";
+				text_utils:format( "~ts (~ts) is valid",
+                    [ button_locator_to_string( SecondButtonLocator ),
+                      button_designator_to_string( SecondButtonDesignator ) ] );
 
 			false ->
-				"not "
+				"is not valid"
 
-		   end ++ "valid",
-				[ button_locator_to_string( SecondButtonLocator ) ] ),
+	end,
 
-	text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
+	text_utils:format( "double-rocker device ~ts has its ~ts (~ts) ~ts, "
 		"whereas its second action ~ts, at ~ts; this is declared~ts; ~ts; ~ts",
 		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
 		  button_locator_to_string( FirstButtonLocator ),
-		  get_button_transition_description( ButtonTransition ),
-		  SecondStr,
+          button_designator_to_string( FirstButtonDesignator ),
+		  get_button_transition_description( ButtonTransition ), SecondStr,
 		  time_utils:timestamp_to_string( Timestamp ),
 		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
 								   MaybeSecLvl ),
@@ -1097,6 +1171,40 @@ device_event_to_string( #double_rocker_multipress_event{
 								   MaybeSecLvl ),
 		  last_seen_to_string( MaybeLastSeen ),
 		  get_eep_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+
+device_event_to_string( #smart_plug_status_report_event{
+		source_eurid=Eurid,
+		name=MaybeName,
+		short_name=MaybeShortName,
+		eep=MaybeEepId,
+		timestamp=Timestamp,
+		last_seen=MaybeLastSeen,
+		subtelegram_count=MaybeTelCount,
+		destination_eurid=MaybeDestEurid,
+		dbm=MaybeDBm,
+		security_level=MaybeSecLvl,
+		power_failure_detected=IsPowerFailureDetected,
+		overcurrent_triggered=IsOverCurrentSwitchOffTrigger,
+		hardware_status=HardwareStatus,
+		local_control_enabled=IsLocalControlEnabled,
+		output_power=OutputPower } ) ->
+
+	PFStr = interpret_power_failure( IsPowerFailureDetected ),
+	OCStr = interpret_overcurrent_trigger( IsOverCurrentSwitchOffTrigger ),
+	HardStr = interpret_hardware_status( HardwareStatus ),
+	LocCtrlStr = interpret_local_control( IsLocalControlEnabled ),
+	PowerStr = interpret_power_report( OutputPower ),
+
+	text_utils:format( "smart plug ~ts reports at ~ts that ~ts, ~ts, ~ts, ~ts; "
+		"this plug ~ts; notified~ts; ~ts, ~ts",
+		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
+		  time_utils:timestamp_to_string( Timestamp ),
+		  PFStr, OCStr, HardStr, LocCtrlStr, PowerStr,
+		  optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+								   MaybeSecLvl ),
+		  last_seen_to_string( MaybeLastSeen ),
+		  get_eep_description( MaybeEepId, _DefaultDesc=undefined ) ] );
 
 
 device_event_to_string( #teach_request_event{
@@ -1224,8 +1332,8 @@ device_event_to_string( OtherEvent ) ->
 
 
 -doc """
-Returns a textual description of the specified last_seen field of a device
-event.
+Returns a textual description of the specified `last_seen` field of most device
+events.
 """.
 -spec last_seen_to_string( option( timestamp() ) ) -> ustring().
 last_seen_to_string( _MaybeLastSeenTimestamp=undefined ) ->
@@ -1253,7 +1361,7 @@ device_event_to_short_string( #thermometer_event{
 		temperature=Temp,
 		temperature_range=TempRange } ) ->
 
-	TempStr = text_utils:format( "a ~ts (sensitivity range: ~ts)",
+	TempStr = text_utils:format( "~ts (sensitivity range: ~ts)",
                                  [ temperature_to_string( Temp ), TempRange ] ),
 
 	% Timestamp already available:
@@ -1272,26 +1380,26 @@ device_event_to_short_string( #thermo_hygro_event{
 		eep=MaybeEepId,
 		destination_eurid=MaybeDestEurid,
 		dbm=MaybeDBm,
-		relative_humidity=RelativeHumidity,
 		temperature=MaybeTemperature,
-		temperature_range=TempRange } ) ->
+		temperature_range=TempRange,
+		relative_humidity=RelativeHumidity } ) ->
 
 	TempStr = case MaybeTemperature of
 
 		undefined ->
-			"(no temperature available)";
+			"no specific temperature";
 
 		Temp ->
-			text_utils:format( "and a ~ts (sensitivity range: ~ts)",
+			text_utils:format( "~ts (sensitivity range: ~ts)",
 				[ temperature_to_string( Temp ), TempRange ] )
 
 	end,
 
 	% Timestamp already available:
 	text_utils:format( "The thermo-hygro sensor device ~ts reports "
-		"a ~ts ~ts; ~ts; EEP: ~ts.",
+		"~ts and ~ts; ~ts; EEP: ~ts.",
 		[ get_name_description( MaybeName, MaybeShortName, Eurid ),
-		  relative_humidity_to_string( RelativeHumidity ), TempStr,
+		  TempStr, relative_humidity_to_string( RelativeHumidity ),
 		  optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
 
 		  % Multiple A5-04-01-like candidates:
