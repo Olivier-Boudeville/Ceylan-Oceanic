@@ -120,7 +120,9 @@ through an Oceanic server**.
 		  get_all_device_types/0, is_valid_device_type/1,
 
 		  is_valid_application_style/1, is_valid_channel/1,
-		  is_valid_button_position/1, is_valid_button_transition/1 ]).
+		  is_valid_button_position/1, is_valid_button_transition/1,
+
+          button_transition_to_state/1 ]).
 
 
 % API for internal use:
@@ -138,7 +140,14 @@ through an Oceanic server**.
           canonicalise_listened_event_specs/2,
           canonicalise_emitted_event_specs/1,
           canonicalise_emitted_event_specs/2,
+
+          get_internal_device_designator/1,
+
           declare_device_from_teach_in/3 ]).
+
+
+% Extra features:
+-export([ get_sensor_eeps/0, get_command_eeps/0, get_actuator_eeps/0 ]).
 
 
 % For execution as (e)script:
@@ -284,15 +293,22 @@ telegram sending).
 
 	dhms_duration()
 
-  | 'none'    % Typically if no spontaneous state feedback is expected to be
-			  % sent (e.g. most buttons/rockers).
+    % Typically if no spontaneous state feedback is expected to be sent
+    % (e.g. most buttons/rockers).
+    %
+  | 'none'
 
-  | 'default' % Supposes that periodical reports shall be expected and applies
-			  % a reasonable default duration.
 
-  | 'auto'.   % To be automatically determined by Oceanic; based on any known
-			  % EEP, either no periodical state report will be expected, or one
-			  % will be learnt through experience.
+    % Supposes that periodical reports shall be expected and applies a
+    % reasonable default duration.
+    %
+  | 'default'
+
+    % To be automatically determined by Oceanic; based on any known EEP, either
+	% no periodical state report will be expected, or one will be learnt through
+	% experience.
+    %
+  | 'auto'.
 
 
 
@@ -316,12 +332,15 @@ Higher-level description of a status of a device (typically an actuator).
 Useful to track trigger acknowledgements, or to specify an expected or wanted
 device status.
 """.
--type device_status() :: 'on' | 'off' % For example for a smart plug when driven
-									  % by a rocker
+-type device_status() ::
 
-					   | 'inverted' % For example for a smart plugs when driven
-									% by a push button
-					   | term().
+    % For example for a smart plug when driven by a rocker:
+    'on' | 'off'
+
+    % For example for a smart plugs when driven by a push button:
+  | 'inverted'
+
+  | term().
 
 
 -doc """
@@ -508,7 +527,7 @@ an ERP1 radio packet), a prefix possibly complemented with optional data.
 The (encoded) part of a telegram with the optional data that may
 complement/extend the base data (see `telegram_data/0`).
 
-Refer to `[ESP3]`. p.18.
+Refer to `[ESP3]` p.18.
 
 See also `decoded_optional_data/0`.
 """.
@@ -520,13 +539,13 @@ See also `decoded_optional_data/0`.
 The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
 telegrams.
 
-Refer to `[ESP3]`. p.18.
+Refer to `[ESP3]` p.18.
 
 See also `telegram_opt_data/0`.
 """.
 -type decoded_optional_data() ::
 	{ subtelegram_count(), % Number of subtelegrams (send: 3 / receive: 0)
-      DestID :: eurid(), % Either broadcast or the EURID of the target device
+      DestId :: eurid(), % Either broadcast or the EURID of the target device
       option( dbm() ),
 	  option( security_level() ) }.
 
@@ -589,7 +608,7 @@ channel B as second row).
 Instead of a letter, channels are designated here with an integer, so 1
 corresponds to channel A, 2 to channel B, etc.
 
-A single rocker uses only a channel, A.
+A single rocker uses only one channel, A.
 """.
 -type channel() :: pos_integer(). % rather than uint8().
 
@@ -656,24 +675,43 @@ The (atom) identifier of an EnOcean Equipment Profile, corresponding to a
 For example the `single_input_contact` EEP identifier corresponds to EEP
 `D5-00-01`.
 
-Refer to `get_eep_topic_specs/0` for further details.
+See also `device_type/0`.
+
+Refer to `oceanic_constants:get_maybe_eep_topic_specs/0` for further details.
 """.
 -type eep_id() ::
+    % First sensors, then commands, then actuators:
+
+    % Sensors:
+
     'thermometer'
+
   | 'thermo_hygro_low'
   | 'thermo_hygro_mid'
   | 'thermo_hygro_high'
+
+  | 'single_input_contact'   % Typically opening detectors
+
+
+  % Commands:
+
   | 'push_button'
 
-  % They include the simple rocker ones:
+  % They may include the simple rocker ones:
   | 'double_rocker_switch_style_1'
   | 'double_rocker_switch_style_2'
   | 'double_rocker_multipress' % Apparently can be an alternative to declare
                                % that a specific button was released.
 
-  | 'single_input_contact'   % Typically opening detectors
+
+    % Actuators:
+
+  | 'smart_plug'
+  | 'smart_plug_with_metering'
+
   | 'single_channel_module'
   | 'double_channel_module'
+
   | atom().
 
 
@@ -704,6 +742,16 @@ was already known through configuration).
 
 -doc """
 Designates an application style (generally 1 or 2, for variations A or B).
+
+As we understand it, for the application styles 1 and 2, the same button name
+(e.g. "AI") designates the same button (e.g. channel A, bottom), the difference
+being only the pictogram printed on it (e.g. meaning switch light on / dim light
+down / close blind vs switch light off / dim light up / open blind,
+respectively) and the fact that they should be installed in inverted positions
+apparently.
+
+So our interpretation is that application style 2 is the style 1 once I and O
+have been swapped.
 """.
 -type application_style() :: count().
 
@@ -714,13 +762,15 @@ Designates a button corresponding to a A or B channel.
 
 A given rocker behaves as two buttons (e.g. AI/AO).
 
-In application style 1, the O position is the top/up one, while the I position
-is the bottom/down one, whereas the opposite holds for application style 2.
+In application style 1, which is our reference, the O position is the top/up
+one, while the I position is the bottom/down one, whereas the opposite holds for
+application style 2.
 
-We prefer designating button based on their channel and position.
+One prefer designating buttons based on their semantics (thus this type) or
+their channel and position (as a keypad, regardless of any specific meaning).
 """.
 -type button_designator() ::
-				 % Comments apply to application style 1:
+				 % Comments apply to our reference, application style 1:
 	'button_ai'  % Switch light on  / Dim light down / Move blind closed
   | 'button_ao'  % Switch light off / Dim light up   / Move blind open
   | 'button_bi'  % Switch light on  / Dim light down / Move blind closed
@@ -747,8 +797,21 @@ For example: `{2, bottom}`.
 -type button_locator() :: { channel(), button_position() }.
 
 
--doc "Tells whether a button has been pressed (and held) or released.".
--type button_transition() :: 'pressed' | 'released'.
+-doc """
+Tells whether a button has just been pressed or released (a punctual event, not
+a durable state).
+
+Defined with `button_state/0` for a clearer semantics.
+""".
+-type button_transition() :: 'just_pressed' | 'just_released'.
+
+
+-doc """
+Tells whether the state of a button is pressed (and held) or released.
+
+Defined with `button_transition/0` for a clearer semantics, notably in events.
+""".
+-type button_state() :: 'is_pressed' | 'is_released'.
 
 
 
@@ -790,7 +853,7 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 						   | 'high'. % -20°C to +60°C (A5-04-02)
 
 
--doc "A reported hardware status for a device (e.g. smart plug).".
+-doc "A reported hardware status for a device (e.g. a smart plug).".
 -type hardware_status() :: 'nominal'
 						 | 'warning'
 						 | 'failure'
@@ -1168,27 +1231,32 @@ Note that they correspond to the tags of the corresponding records.
 
 
 -doc """
-Lists the known types of devices.
+Lists the known functional types of devices.
 
 Each type of device corresponds to an EEP or a set thereof, and is to send at
 least one type of events.
 """.
 -type device_type() ::
-	'thermo_hygro_sensor'
-  | 'single_contact' % Typically opening detectors
+	'thermometer'
+  | 'thermo_hygro_sensor'
+  | 'opening_detector' % Currently the only kind of single_contact that we know
   | 'push_button'
-  | 'smart_plug'
-  | 'double_rocker'.
+  | 'double_rocker'
+  | 'in_wall_module'
+  | 'smart_plug'.
 
 
 -doc """
 A convention to interact with a type of device, beyond the EEP(s) that it
 implements.
 """.
--type device_convention() :: 'standard' % If specified, just tells that the
-                                     % the standard behaviour applies.
-                           | 'eltako'.  % Eltako-specific behaviour
-                                        % (e.g. for smart plugs).
+-type device_convention() ::
+
+    % If specified, just tells that the standard Enocean behaviour applies.
+    'standard'
+
+    % Eltako-specific behaviour (e.g. for smart plugs).
+  | 'eltako'.
 
 
 -doc """
@@ -1199,7 +1267,7 @@ For example the application style of a rocker.
 % In comments, the type of the values associated to each key:
 -type device_info_key() ::
     'application_style'     % Associated value of type: application_style()
-  | 'convention'               % device_convention()
+  | 'convention'            % device_convention()
   | 'expected_periodicity'. % declared_device_activity_periodicity()
 
 
@@ -1261,14 +1329,14 @@ information.
 -doc "Describes a stage change of a double-rocker.".
 -type double_rocker_state_change_spec() ::
 	canon_double_rocker_state_change_spec()
-  | { channel(), button_position() } % then transition is 'pressed'
-  | channel(). % then position is 'top' and transition is 'pressed'
+  | { channel(), button_position() } % then transition is 'just_pressed'
+  | channel(). % then position is 'top' and transition is 'just_pressed'
 
 
 -doc """
 Canonical version of `double_rocker_state_change_spec/0`.
 
-For example, `{2, bottom, released}`.
+For example, `{2, bottom, just_released}`.
 
 Both a user-level and an internal type.
 """.
@@ -1320,7 +1388,7 @@ validated.
 
 Notably used to decode incoming trigger events.
 
-For example, `{double_rocker, {2, bottom, released}}.`.
+For example, `{double_rocker, {2, bottom, just_released}}.`.
 """.
 -type incoming_trigger_spec() ::
 
@@ -1367,7 +1435,7 @@ User-level type.
 -doc """
 Canonicalised, internal version of listened_event_spec().
 
-For example: `{"25af97a0", {double_rocker, {2, bottom, released}}}`.
+For example: `{"25af97a0", {double_rocker, {2, bottom, just_released}}}`.
 
 Abbreviated as CLES.
 """.
@@ -1471,7 +1539,7 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 
 			   application_style/0, button_designator/0,
 			   button_position/0, button_locator/0,
-			   button_transition/0, button_counting/0,
+			   button_transition/0, button_state/0, button_counting/0,
 
 			   contact_status/0,
 			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
@@ -1715,6 +1783,8 @@ Definition of the overall state of an Oceanic server, including configuration
 -type any_string() :: text_utils:any_string().
 
 -type byte_size() :: system_utils:byte_size().
+
+-type set( T ) :: set_utils:set( T ).
 
 -type uint8() :: type_utils:uint8().
 -type tuploid(T) :: type_utils:tuploid(T).
@@ -2418,7 +2488,7 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
     NewDevShortNames = case ShortNameAtom of
 
         undefined ->
-           DevShortNames;
+            DevShortNames;
 
         _ ->
             [ ShortNameAtom | DevShortNames ]
@@ -2568,45 +2638,45 @@ If the choice made here is not relevant for a given device, declare for it an
 explicit (non-auto) periodicity.
 """.
 -spec decide_auto_periodicity( option( eep_id() ) ) -> expected_periodicity().
-decide_auto_periodicity( _MaybeEEPId=undefined ) ->
+decide_auto_periodicity( _MaybeEepId=undefined ) ->
 	% Not known, supposed not talkative:
 	none;
 
-decide_auto_periodicity( _EEPId=thermometer ) ->
+decide_auto_periodicity( _EepId=thermometer ) ->
 	auto;
 
-decide_auto_periodicity( _EEPId=thermo_hygro_low ) ->
+decide_auto_periodicity( _EepId=thermo_hygro_low ) ->
 	auto;
 
-decide_auto_periodicity( _EEPId=thermo_hygro_mid ) ->
+decide_auto_periodicity( _EepId=thermo_hygro_mid ) ->
 	auto;
 
-decide_auto_periodicity( _EEPId=thermo_hygro_high ) ->
+decide_auto_periodicity( _EepId=thermo_hygro_high ) ->
 	auto;
 
-decide_auto_periodicity( _EEPId=push_button ) ->
+decide_auto_periodicity( _EepId=push_button ) ->
 	none;
 
-decide_auto_periodicity( _EEPId=double_rocker_switch_style_1 ) ->
+decide_auto_periodicity( _EepId=double_rocker_switch_style_1 ) ->
 	none;
 
-decide_auto_periodicity( _EEPId=double_rocker_switch_style_2 ) ->
+decide_auto_periodicity( _EepId=double_rocker_switch_style_2 ) ->
 	none;
 
-decide_auto_periodicity( _EEPId=double_rocker_multipress ) ->
+decide_auto_periodicity( _EepId=double_rocker_multipress ) ->
 	none;
 
 % Typically opening detectors:
-decide_auto_periodicity( _EEPId=single_input_contact ) ->
+decide_auto_periodicity( _EepId=single_input_contact ) ->
 	auto;
 
-decide_auto_periodicity( _EEPId=single_channel_module ) ->
+decide_auto_periodicity( _EepId=single_channel_module ) ->
 	none;
 
-decide_auto_periodicity( _EEPId=double_channel_module ) ->
+decide_auto_periodicity( _EepId=double_channel_module ) ->
 	none;
 
-decide_auto_periodicity( _OtherEEPId ) ->
+decide_auto_periodicity( _OtherEepId ) ->
 	none.
 
 
@@ -2617,8 +2687,8 @@ decide_auto_periodicity( _OtherEEPId ) ->
 -doc "Returns a list of all known device types.".
 -spec get_all_device_types() -> [ device_type() ].
 get_all_device_types() ->
-	[ thermo_hygro_sensor, single_contact, push_button, smart_plug,
-	  double_rocker ].
+	[ thermometer, thermo_hygro_sensor, opening_detector, push_button,
+	  double_rocker, smart_plug ].
 
 
 
@@ -2626,6 +2696,7 @@ get_all_device_types() ->
 -spec is_valid_device_type( term() ) -> boolean().
 is_valid_device_type( DT ) ->
 	lists:member( DT, get_all_device_types() ).
+
 
 
 % General helpers, for incoming/outgoing specifications.
@@ -2664,14 +2735,26 @@ is_valid_button_position( _Other ) ->
 
 -doc "Tells whether the specified term is a valid button transition.".
 -spec is_valid_button_transition( term() ) -> boolean().
-is_valid_button_transition( _ButPos=pressed ) ->
+is_valid_button_transition( _ButPos=just_pressed ) ->
 	true;
 
-is_valid_button_transition( _ButPos=released ) ->
+is_valid_button_transition( _ButPos=just_released ) ->
 	true;
 
 is_valid_button_transition( _Other ) ->
 	false.
+
+
+-doc """
+Returns the button state corresponding to the specified button transition, when
+it has been applied.
+""".
+-spec button_transition_to_state( button_transition() ) -> button_state().
+button_transition_to_state( _ButTrans=just_pressed ) ->
+    is_pressed;
+
+button_transition_to_state( _ButTrans=just_released ) ->
+    is_released.
 
 
 
@@ -2699,7 +2782,7 @@ canonicalise_double_rocker_change_spec( DRCS={ Channel, ButPos, ButTrans } ) ->
 
 canonicalise_double_rocker_change_spec( { Channel, ButPos } ) ->
 	canonicalise_double_rocker_change_spec(
-	  { Channel, ButPos, _ButTrans=pressed } );
+	  { Channel, ButPos, _ButTrans=just_pressed } );
 
 canonicalise_double_rocker_change_spec( _DRChangeSpec=Channel ) ->
 	canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
@@ -2863,9 +2946,9 @@ interpret_cits_matching(
 
 % Here a push-button change spec matches, i.e. the specified button transition
 % does; acting as a rocker (alternating between two states, on and off) based on
-% a single button transition (either pressed or released, not both, otherwise a
-% user action would trigger press then release, and this would lead to a double
-% transition)
+% a single button transition (either 'just_pressed' or 'just_released', not
+% both, otherwise a user action would trigger press then release, and this would
+% lead to a double transition)
 %
 interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS=ButtonTransition },
 		DevEurid,
@@ -2940,7 +3023,7 @@ canonicalise_listened_event_specs( _LESs=[ { MaybeUserDevDesig, ITS } | T ],
 			{ double_rocker, CanDRChangeSpec };
 
 		push_button ->
-			{ push_button, pressed };
+			{ push_button, just_pressed };
 
 		P={ push_button, ButTrans } ->
 			is_valid_button_transition( ButTrans ) orelse
@@ -3686,10 +3769,10 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 			BaseEurid = State#oceanic_state.emitter_eurid,
 
 			% Note that this results in the target button of the target rocker
-			% to undergo a single transition (generally 'pressed'), not a double
-			% one (e.g. 'pressed' then 'released'), as it showed sufficient to
-			% trigger all tested actuators (they are then not blocked waiting
-			% for a 'released' message):
+			% to undergo a single transition (generally 'just_pressed'), not a
+			% double one (e.g. 'just_pressed' then 'just_released'), as it
+			% showed sufficient to trigger all tested actuators (they are then
+			% not blocked waiting for a 'just_released' message):
 			%
 			RockerTelegram = oceanic_encode:encode_double_rocker_telegram(
                 BaseEurid, COTS, ActEurid ),
@@ -4317,9 +4400,11 @@ trigger_actuator_impl( ActDesig, DevOp=switch_on,
 
             SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
 
-            % Not need to send afterwards a corresponding "released" telegram:
+            % No need to send afterwards a corresponding 'just_released'
+            % telegram:
+            %
             oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
-                SourceAppStyle, ButtonLoc, _ButTrans=pressed,
+                SourceAppStyle, ButtonLoc, _ButTrans=just_pressed,
                 _MaybeTargetEurid=ActEurid );
 
         % Here we act as a normal, taught-in gateway:
@@ -4400,9 +4485,9 @@ trigger_actuator_impl( ActDesig, DevOp=switch_off,
 
             SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
 
-            % Not need to send afterwards a correspoding "released" telegram:
+            % Not need to send afterwards a correspoding just_released telegram:
             oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
-                SourceAppStyle, ButtonLoc, _ButTrans=pressed,
+                SourceAppStyle, ButtonLoc, _ButTrans=just_pressed,
                 _MaybeTargetEurid=ActEurid )
 
     end,
@@ -4604,12 +4689,12 @@ Checks the specified device operation.
 
 Refer to the `device_operation/0` type.
 """.
--spec check_device_operation( term() ) -> void().
+-spec check_device_operation( term() ) -> device_operation().
 check_device_operation( _DevOp=switch_on ) ->
-    ok;
+    switch_on;
 
 check_device_operation( _DevOp=switch_off ) ->
-    ok;
+    switch_off;
 
 check_device_operation( DevOp ) ->
     throw( { invalid_device_operation, DevOp } ).
@@ -5500,7 +5585,7 @@ record_device_success( Eurid, DeviceTable ) ->
 
 			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
 			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-              _MaybeDeviceShortName=undefined, _MaybeEEPId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
 
 
 		{ value, Device } ->
@@ -5522,7 +5607,7 @@ record_known_device_success( Device=#enocean_device{
 		short_name=MaybeDeviceShortName,
 		eep=MaybeEepId,
 		first_seen=MaybeFirstSeen,
-		last_seen=MaybeLastSeen,
+		%last_seen=MaybeLastSeen,
 		availability=MaybePrevAvail,
 		telegram_count=TeleCount,
 		expected_periodicity=Periodicity,
@@ -5541,6 +5626,12 @@ record_known_device_success( Device=#enocean_device{
 		% Has already been seen:
 		FirstSeen ->
 			IsBack = MaybePrevAvail =:= lost,
+
+            % By convention, for an already known device, we return always an
+            % undefined discover origin (in the resulting tuple), so that
+            % integrate_all_telegrams/4 can tell apart more easily the new
+            % devices:
+            %
 			{ FirstSeen, _MaybeDiscoverOrigin=undefined, IsBack }
 
 	end,
@@ -5558,15 +5649,10 @@ record_known_device_success( Device=#enocean_device{
 
 	% The discovery origin must have already been reported (should a second
 	% message be sent at the same second, hence at the same timestamp, to avoid
-	% multiple "on detection messages" for a given device:
+	% multiple "on detection messages" for a given device).
 	%
-	% (MaybeLastSeen here, not NewFirstSeen, to be able to select a proper
-	% listener onEnocean* message afterwards; we also return always an undefined
-	% discover origin to avoid that the more generic caller has to reassemble
-	% this tuple)
-	%
-	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
+	{ NewDeviceTable, UpdatedDevice, Now, NewFirstSeen, ReportedDiscoverOrigin,
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
 
 
 
@@ -5608,7 +5694,7 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
 			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-              _MaybeDeviceShortName=undefined, _MaybeEEPId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
 
 
 		{ value, Device } ->
@@ -5858,14 +5944,14 @@ resolve_eep( EepTriplet ) ->
 
 -doc "Returns the application style corresponding to the specified EEP.".
 -spec get_app_style_from_eep( eep_id() ) -> application_style().
-get_app_style_from_eep( _EEPId=double_rocker_switch_style_1 ) ->
+get_app_style_from_eep( _EepId=double_rocker_switch_style_1 ) ->
 	1;
 
-get_app_style_from_eep( _EEPId=double_rocker_switch_style_2 ) ->
+get_app_style_from_eep( _EepId=double_rocker_switch_style_2 ) ->
 	2;
 
 % Useful at least to decode state feedback from Eltako:
-get_app_style_from_eep( _EEPId=smart_plug ) ->
+get_app_style_from_eep( _EepId=smart_plug ) ->
     % Preferred to 1 in order to consider that the A button (not the B one) is
     % operated:
     %
@@ -5911,6 +5997,44 @@ interpret_button_ref_specs( ButRefSpecs ) ->
 -spec get_broadcast_eurid() -> eurid().
 get_broadcast_eurid() ->
 	?eurid_broadcast.
+
+
+
+% Always ensures that sensor, command and actuator devices form a partition of
+% the values of type eep_id/0.
+
+
+-doc """
+Returns the set of the EEPs known to correspond to sensors, i.e. devices
+reporting measurements and events.
+""".
+-spec get_sensor_eeps() -> set( eep_id() ).
+get_sensor_eeps() ->
+    % Refer to oceanic_{constants,generated}:get_maybe_eep_topic_specs/0:
+    set_utils:new( [ thermometer, thermo_hygro_low, thermo_hygro_mid,
+                     thermo_hygro_high, single_input_contact ] ).
+
+
+-doc """
+Returns a list of the EEP known to correspond to commands, i.e. devices able to
+send action triggers.
+""".
+-spec get_command_eeps() -> set( eep_id() ).
+get_command_eeps() ->
+    % Refer to oceanic_{constants,generated}:get_maybe_eep_topic_specs/0:
+    set_utils:new( [ push_button, double_rocker_switch_style_1,
+                     double_rocker_switch_style_2, double_rocker_multipress ] ).
+
+
+-doc """
+Returns a list of the EEP known to correspond to actuators, i.e. devices able to
+take actions.
+""".
+-spec get_actuator_eeps() -> set( eep_id() ).
+get_actuator_eeps() ->
+    % Refer to oceanic_{constants,generated}:get_maybe_eep_topic_specs/0:
+   set_utils:new(  [ smart_plug, smart_plug_with_metering,
+                     single_channel_module, double_channel_module ] ).
 
 
 
@@ -6090,14 +6214,15 @@ Tells whether the specified device event indicates that this device can be
 interpreted as being triggered by the user.
 """.
 -spec device_triggered( device_event() ) -> boolean().
-device_triggered( #push_button_switch_event{ transition=pressed } ) ->
+device_triggered( #push_button_switch_event{ transition=just_pressed } ) ->
 	true;
 
 device_triggered( #double_rocker_switch_event{ energy_bow=pressed } ) ->
-	true;
+   true;
 
+% Unclear:
 device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
-	true;
+   true;
 
 device_triggered( _DevEventTuple ) ->
 	false.
