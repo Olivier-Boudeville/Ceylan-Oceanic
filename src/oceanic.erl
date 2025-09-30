@@ -6102,7 +6102,7 @@ get_timestamp( DevEventTuple ) ->
 
 -doc """
 Returns the timestamp corresponding to any previously last seen telegram from
-that device.
+that device, otherwise `undefined`.
 
 Also useful to determine whether an event corresponds to a device discovery.
 """.
