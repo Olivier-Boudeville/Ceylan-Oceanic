@@ -59,97 +59,97 @@ module for the decoding of the file recorded by the current test.
 -spec actual_test( device_path(), option( file_path() ) ) -> void().
 actual_test( TtyPath, MaybeRecordFilePath ) ->
 
-	test_facilities:display( "Starting the Enocean recording test based on the "
-							 "gateway TTY '~ts'.", [ TtyPath ] ),
+    test_facilities:display( "Starting the Enocean recording test based on the "
+                             "gateway TTY '~ts'.", [ TtyPath ] ),
 
-	% We hijack the Oceanic logic by interacting directly from this test process
-	% with the serial server:
-	%
-	_SerialPid = oceanic:secure_tty( TtyPath ),
+    % We hijack the Oceanic logic by interacting directly from this test process
+    % with the serial server:
+    %
+    _SerialPid = oceanic:secure_tty( TtyPath ),
 
-	MaybeFile = case MaybeRecordFilePath of
+    MaybeFile = case MaybeRecordFilePath of
 
-		undefined ->
-			undefined;
+        undefined ->
+            undefined;
 
-		RecordFilePath ->
-			test_facilities:display( "Received telegrams will be written "
-									 "to '~ts'.", [ RecordFilePath ] ),
+        RecordFilePath ->
+            test_facilities:display( "Received telegrams will be written "
+                                     "to '~ts'.", [ RecordFilePath ] ),
 
-			file_utils:open( RecordFilePath, _Opts=[ append ] )
+            file_utils:open( RecordFilePath, _Opts=[ append ] )
 
-	end,
+    end,
 
-	% Never returns:
-	listen( MaybeFile ).
+    % Never returns:
+    listen( MaybeFile ).
 
-	% Record file never closed.
+    % Record file never closed.
 
-	% No specific call to oceanic:stop/*.
+    % No specific call to oceanic:stop/*.
 
 
 
 -doc "Listens endlessly.".
 listen( MaybeFile ) ->
 
-	Hint = " (hit CTRL-C to stop)...",
+    Hint = " (hit CTRL-C to stop)...",
 
-	test_facilities:display( "Test waiting for the next telegram to be received"
-							 ++ Hint ),
+    test_facilities:display( "Test waiting for the next telegram to be received"
+                             ++ Hint ),
 
-	receive
+    receive
 
-		% Receives data from the serial port:
-		{ data, NewChunk } ->
-			test_facilities:display( "~nTest received as chunk ~ts.~n" ++ Hint,
-				[ oceanic:telegram_to_string( NewChunk ) ] ),
+        % Receives data from the serial port:
+        { data, NewChunk } ->
+            test_facilities:display( "~nTest received as chunk ~ts.~n" ++ Hint,
+                [ oceanic:telegram_to_string( NewChunk ) ] ),
 
-			MaybeFile =:= undefined orelse
-				file_utils:write_ustring( MaybeFile,
-					"{ \"~ts\", ~w, \"~ts\" }.~n",
-					[ time_utils:get_textual_timestamp(), NewChunk,
-					  text_utils:binary_to_hexastring( NewChunk ) ] ),
+            MaybeFile =:= undefined orelse
+                file_utils:write_ustring( MaybeFile,
+                    "{ \"~ts\", ~w, \"~ts\" }.~n",
+                    [ time_utils:get_textual_timestamp(), NewChunk,
+                      text_utils:binary_to_hexastring( NewChunk ) ] ),
 
-			listen( MaybeFile )
+            listen( MaybeFile )
 
-	end.
+    end.
 
 
 
 -doc "Returns the path to the file used for recording.".
 -spec get_record_file_path() -> file_path().
 get_record_file_path() ->
-	"enocean-test-recording.etf".
+    "enocean-test-recording.etf".
 
 
 
 -spec run() -> no_return().
 run() ->
 
-	test_facilities:start( ?MODULE ),
+    test_facilities:start( ?MODULE ),
 
-	TtyPath = oceanic:get_default_tty_path(),
+    TtyPath = oceanic:get_default_tty_path(),
 
-	case oceanic:has_tty( TtyPath ) of
+    case oceanic:has_tty( TtyPath ) of
 
-		true ->
-			case executable_utils:is_batch() of
+        true ->
+            case executable_utils:is_batch() of
 
-				true ->
-					test_facilities:display( "(not running the device "
-						"recording test, being in batch mode)" );
+                true ->
+                    test_facilities:display( "(not running the device "
+                        "recording test, being in batch mode)" );
 
-				false ->
-					actual_test( TtyPath, get_record_file_path() )
+                false ->
+                    actual_test( TtyPath, get_record_file_path() )
 
-			end;
+            end;
 
-		% For example in continuous integration:
-		{ false, Reason } ->
-			test_facilities:display( "Warning: no suitable TTY environment "
-				"found (cause: ~p; searched for device '~ts'), no test done.",
-				[ Reason, TtyPath ] )
+        % For example in continuous integration:
+        { false, Reason } ->
+            test_facilities:display( "Warning: no suitable TTY environment "
+                "found (cause: ~p; searched for device '~ts'), no test done.",
+                [ Reason, TtyPath ] )
 
-	end,
+    end,
 
-	test_facilities:stop().
+    test_facilities:stop().

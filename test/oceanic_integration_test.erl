@@ -49,16 +49,16 @@ prerequisites shall be already available.
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 
-	OcSrvPid = oceanic:start_link( TtyPath ),
+    OcSrvPid = oceanic:start_link( TtyPath ),
 
-	%WaitCount = 5,
+    %WaitCount = 5,
 
-	% Infinite listening:
-	WaitCount = -1,
+    % Infinite listening:
+    WaitCount = -1,
 
-	wait_for_test_events( WaitCount, OcSrvPid ),
+    wait_for_test_events( WaitCount, OcSrvPid ),
 
-	oceanic:stop( OcSrvPid ).
+    oceanic:stop( OcSrvPid ).
 
 
 
@@ -69,97 +69,97 @@ The PID of the Oceanic server is just for test purpose.
 """.
 -spec wait_for_test_events( count(), oceanic:oceanic_server_pid() ) -> void().
 wait_for_test_events( _Count=0, _OcSrvPid ) ->
-	test_facilities:display( "(all intended events received)" );
+    test_facilities:display( "(all intended events received)" );
 
 wait_for_test_events( Count, OcSrvPid ) ->
 
-	case Count > 0 of
+    case Count > 0 of
 
-		true ->
-			test_facilities:display(
-				"~n  (test still waiting for ~B Enocean events)", [ Count ] );
+        true ->
+            test_facilities:display(
+                "~n  (test still waiting for ~B Enocean events)", [ Count ] );
 
-		false ->
-			test_facilities:display( "~n  (test waiting indefinitely for "
-				"Enocean events; hit CTRL-C to stop)", [] )
+        false ->
+            test_facilities:display( "~n  (test waiting indefinitely for "
+                "Enocean events; hit CTRL-C to stop)", [] )
 
-	end,
+    end,
 
-	receive
+    receive
 
-		{ onEnoceanConfiguredDeviceFirstSeen,
-						[ Event, _BackOnlineInfo, OcSrvPid ] } ->
+        { onEnoceanConfiguredDeviceFirstSeen,
+                        [ Event, _BackOnlineInfo, OcSrvPid ] } ->
 
-			test_facilities:display( "Test received at ~ts the following "
-				"first-seen device event: ~ts.",
-				[ time_utils:get_textual_timestamp(),
-				  oceanic:device_event_to_string( Event ) ] ),
+            test_facilities:display( "Test received at ~ts the following "
+                "first-seen device event: ~ts.",
+                [ time_utils:get_textual_timestamp(),
+                  oceanic:device_event_to_string( Event ) ] ),
 
-			wait_for_test_events( Count-1, OcSrvPid );
-
-
-		{ onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, OcSrvPid ] } ->
-
-			test_facilities:display( "Test received at ~ts the following "
-				"device event: ~ts.",
-				[ time_utils:get_textual_timestamp(),
-				  oceanic:device_event_to_string( Event ) ] ),
-
-			wait_for_test_events( Count-1, OcSrvPid );
+            wait_for_test_events( Count-1, OcSrvPid );
 
 
-		{ onEnoceanJamming, [ AlertTrafficLevel, OcSrvPid ] } ->
+        { onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, OcSrvPid ] } ->
 
-			test_facilities:display( "Received at ~ts a possible jamming "
-				"detection from ~w (at ~B bytes per second).",
-				[ time_utils:get_textual_timestamp(), OcSrvPid,
-				  AlertTrafficLevel ] ),
+            test_facilities:display( "Test received at ~ts the following "
+                "device event: ~ts.",
+                [ time_utils:get_textual_timestamp(),
+                  oceanic:device_event_to_string( Event ) ] ),
 
-			wait_for_test_events( Count, OcSrvPid );
+            wait_for_test_events( Count-1, OcSrvPid );
 
 
-		Other ->
+        { onEnoceanJamming, [ AlertTrafficLevel, OcSrvPid ] } ->
 
-			test_facilities:display( "Received following unexpected (ignored) "
-									 "message:~n ~p", [ Other ] ),
+            test_facilities:display( "Received at ~ts a possible jamming "
+                "detection from ~w (at ~B bytes per second).",
+                [ time_utils:get_textual_timestamp(), OcSrvPid,
+                  AlertTrafficLevel ] ),
 
-			wait_for_test_events( Count, OcSrvPid )
+            wait_for_test_events( Count, OcSrvPid );
 
-	end.
+
+        Other ->
+
+            test_facilities:display( "Received following unexpected (ignored) "
+                                     "message:~n ~p", [ Other ] ),
+
+            wait_for_test_events( Count, OcSrvPid )
+
+    end.
 
 
 
 -spec run() -> no_return().
 run() ->
 
-	test_facilities:start( ?MODULE ),
+    test_facilities:start( ?MODULE ),
 
-	test_facilities:display( "The version of this currently tested Oceanic "
-		"library is ~ts (i.e. ~w).", [ oceanic:get_oceanic_version_string(),
-									   oceanic:get_oceanic_version() ] ),
+    test_facilities:display( "The version of this currently tested Oceanic "
+        "library is ~ts (i.e. ~w).", [ oceanic:get_oceanic_version_string(),
+                                       oceanic:get_oceanic_version() ] ),
 
-	TtyPath = oceanic:get_default_tty_path(),
+    TtyPath = oceanic:get_default_tty_path(),
 
-	case oceanic:has_tty( TtyPath ) of
+    case oceanic:has_tty( TtyPath ) of
 
-		true ->
-			case executable_utils:is_batch() of
+        true ->
+            case executable_utils:is_batch() of
 
-				true ->
-					test_facilities:display( "(not running the integration "
-						"test, being in batch mode)" );
+                true ->
+                    test_facilities:display( "(not running the integration "
+                        "test, being in batch mode)" );
 
-				false ->
-					actual_test( TtyPath )
+                false ->
+                    actual_test( TtyPath )
 
-			end;
+            end;
 
-		% For example in continuous integration:
-		{ false, Reason } ->
-			test_facilities:display( "Warning: no suitable TTY environment "
-				"found (cause: ~p; searched for device '~ts'), no test done.",
-				[ Reason, TtyPath ] )
+        % For example in continuous integration:
+        { false, Reason } ->
+            test_facilities:display( "Warning: no suitable TTY environment "
+                "found (cause: ~p; searched for device '~ts'), no test done.",
+                [ Reason, TtyPath ] )
 
-	end,
+    end,
 
-	test_facilities:stop().
+    test_facilities:stop().

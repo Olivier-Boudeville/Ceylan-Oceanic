@@ -48,48 +48,48 @@ through an Oceanic server**.
 % Base API:
 -export([
 
-	% Version-related functions.
-	get_oceanic_version/0, get_oceanic_version_string/0,
+    % Version-related functions.
+    get_oceanic_version/0, get_oceanic_version_string/0,
 
-	get_default_tty_path/0, has_tty/0, has_tty/1,
+    get_default_tty_path/0, has_tty/0, has_tty/1,
 
-	is_available/1,
+    is_available/1,
 
-	start/0, start/1, start/2,
-	start_link/0, start_link/1, start_link/2,
+    start/0, start/1, start/2,
+    start_link/0, start_link/1, start_link/2,
 
-	get_server_registration_name/0, get_server_pid/0,
+    get_server_registration_name/0, get_server_pid/0,
 
-	load_configuration/1, load_configuration/2,
-	add_configuration_settings/2,
+    load_configuration/1, load_configuration/2,
+    add_configuration_settings/2,
 
-	send/2, stop_any_timer/1,
-	acknowledge_teach_request/2, acknowledge_teach_request/3,
+    send/2, stop_any_timer/1,
+    acknowledge_teach_request/2, acknowledge_teach_request/3,
 
-	trigger_actuator/2, trigger_actuators/2,
-	trigger_actuator_reciprocal/2, trigger_actuators_reciprocal/2,
+    trigger_actuator/2, trigger_actuators/2,
+    trigger_actuator_reciprocal/2, trigger_actuators_reciprocal/2,
 
 
 
-	% For any kind of (already-encoded) command:
-	execute_command/2,
+    % For any kind of (already-encoded) command:
+    execute_command/2,
 
-	% Useful to properly encode telegrams:
-	get_oceanic_eurid/1,
+    % Useful to properly encode telegrams:
+    get_oceanic_eurid/1,
 
-	% General-purpose:
-	get_device_description/2,
-	get_button_ref_description/2, get_button_ref_descriptions/2,
+    % General-purpose:
+    get_device_description/2,
+    get_button_ref_description/2, get_button_ref_descriptions/2,
 
-	is_serial_available/1, restart_serial_interface/1,
+    is_serial_available/1, restart_serial_interface/1,
 
-	stop/0, stop/1, synchronous_stop/1,
+    stop/0, stop/1, synchronous_stop/1,
 
-	get_app_style_from_eep/1,
+    get_app_style_from_eep/1,
 
-	interpret_button_ref_spec/1, interpret_button_ref_specs/1,
+    interpret_button_ref_spec/1, interpret_button_ref_specs/1,
 
-	get_device_table/1 ] ).
+    get_device_table/1 ] ).
 
 
 
@@ -98,15 +98,15 @@ through an Oceanic server**.
 %
 -export([ get_event_type/1, get_source_eurid/1,
           get_channel/1,
-		  get_button_reference/1,
+          get_button_reference/1,
 
-		  get_maybe_device_name/1, get_maybe_device_short_name/1,
+          get_maybe_device_name/1, get_maybe_device_short_name/1,
           get_best_device_name_from/1,
 
-		  get_maybe_eep/1, resolve_eep/1, get_broadcast_eurid/0,
-		  get_timestamp/1, get_last_seen_info/1,
-		  get_subtelegram_count/1, get_maybe_destination_eurid/1,
-		  get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
+          get_maybe_eep/1, resolve_eep/1, get_broadcast_eurid/0,
+          get_timestamp/1, get_last_seen_info/1,
+          get_subtelegram_count/1, get_maybe_destination_eurid/1,
+          get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
 
 
 % Helper API for Oceanic user code:
@@ -115,12 +115,12 @@ through an Oceanic server**.
           string_to_eurid/1,
 
           get_reciprocal_state_change_spec/2,
-		  event_matches_trigger/2,
+          event_matches_trigger/2,
 
-		  get_all_device_types/0, is_valid_device_type/1,
+          get_all_device_types/0, is_valid_device_type/1,
 
-		  is_valid_application_style/1, is_valid_channel/1,
-		  is_valid_button_position/1, is_valid_button_transition/1,
+          is_valid_application_style/1, is_valid_channel/1,
+          is_valid_button_position/1, is_valid_button_transition/1,
 
           button_transition_to_state/1 ]).
 
@@ -160,7 +160,7 @@ through an Oceanic server**.
 
 % Exported only for testing:
 -export([ get_test_state/0, get_test_state/1,
-		  test_decode/1, test_describe/1,
+          test_decode/1, test_describe/1,
           secure_tty/1, try_integrate_next_telegram/4 ]).
 
 
@@ -178,7 +178,7 @@ The outcome of an availability check for Oceanic itself, as a whole (at least a
 suitable gateway is needed).
 """.
 -type oceanic_availability_outcome() ::
-	{ 'true', SerialRootDir :: directory_path() }
+    { 'true', SerialRootDir :: directory_path() }
   | { 'false', Reason :: ustring(), basic_utils:error_term() }.
 
 
@@ -291,7 +291,7 @@ telegram sending).
 """.
 -type declared_device_activity_periodicity() ::
 
-	dhms_duration()
+    dhms_duration()
 
     % Typically if no spontaneous state feedback is expected to be sent
     % (e.g. most buttons/rockers).
@@ -305,8 +305,8 @@ telegram sending).
   | 'default'
 
     % To be automatically determined by Oceanic; based on any known EEP, either
-	% no periodical state report will be expected, or one will be learnt through
-	% experience.
+    % no periodical state report will be expected, or one will be learnt through
+    % experience.
     %
   | 'auto'.
 
@@ -314,7 +314,7 @@ telegram sending).
 
 -doc "An expected periodicity of events.".
 -type expected_periodicity() ::
-	milliseconds() % Typically an upper bound
+    milliseconds() % Typically an upper bound
   | 'none'         % Typically if no state feedback or no monitoring wanted
   | 'auto'.        % To be managed by Oceanic
 
@@ -365,10 +365,10 @@ for example if wanting to switch on a smart plug and be sure that it succeeded.
 """.
 % A configurable time-out could be added as well.
 -type trigger_track_info() :: { ActEurid :: eurid(),
-								device_event_type(),
-								option( reported_event_info() ),
+                                device_event_type(),
+                                option( reported_event_info() ),
                                 option( timer_ref() ),
-								NextRetries :: count() }.
+                                NextRetries :: count() }.
 
 
 -doc """
@@ -435,23 +435,23 @@ describe a given device of interest.
 """.
 -type device_config() ::
 
-	% Then the activity periodicity will be learnt, if appropriate (e.g. contact
-	% switches send transition events but generally no periodical events):
-	%
-	{ UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring() }
+    % Then the activity periodicity will be learnt, if appropriate (e.g. contact
+    % switches send transition events but generally no periodical events):
+    %
+    { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
+      EEP :: ustring() }
 
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring(), device_info_user_spec() }
+      EEP :: ustring(), device_info_user_spec() }
 
   | { UserDefinedName :: ustring(), EURIDStr :: eurid_string(),
-	  EEP :: ustring(), device_info_user_spec(), Comment :: ustring() }.
+      EEP :: ustring(), device_info_user_spec(), Comment :: ustring() }.
 
 
 
 -doc "The outcome of an attempt of TTY detection.".
 -type tty_detection_outcome() ::
-	'true'
+    'true'
 | { 'false', 'non_existing' | { 'not_device', entry_type() } }.
 
 
@@ -544,10 +544,10 @@ Refer to `[ESP3]` p.18.
 See also `telegram_opt_data/0`.
 """.
 -type decoded_optional_data() ::
-	{ subtelegram_count(), % Number of subtelegrams (send: 3 / receive: 0)
+    { subtelegram_count(), % Number of subtelegrams (send: 3 / receive: 0)
       DestId :: eurid(), % Either broadcast or the EURID of the target device
       option( dbm() ),
-	  option( security_level() ) }.
+      option( security_level() ) }.
 
 
 
@@ -575,10 +575,10 @@ Only applies when receiving telegrams (when sending, security is selected by
 link table entries).
 """.
 -type security_level() :: 'not_processed'
-						| 'obsolete' % A deprecated security concept
-						| 'decrypted'
-						| 'authenticated'
-						| 'decrypted_and_authenticated'.
+                        | 'obsolete' % A deprecated security concept
+                        | 'decrypted'
+                        | 'authenticated'
+                        | 'decrypted_and_authenticated'.
 
 
 
@@ -594,7 +594,7 @@ link table entries).
 
 -doc "Outcome of a teach requests.".
 -type teach_outcome() ::
-	'teach_refused'          % "General reason"
+    'teach_refused'          % "General reason"
   | 'teach_in_accepted'      % Addition success
   | 'teach_out_accepted'     % Deletion success
   | 'teach_eep_unsupported'. % EEP not supported
@@ -730,7 +730,7 @@ Discovery shall be understood here as (first-time) detection (even if the device
 was already known through configuration).
 """.
 -type discovery_origin() ::
-	'configuration'  % Loaded from Oceanic's user-defined configuration
+    'configuration'  % Loaded from Oceanic's user-defined configuration
   | 'listening'      % Passively listened from trafic
   | 'teaching'.      % Through a teach-in mechanism
 
@@ -770,8 +770,8 @@ One prefer designating buttons based on their semantics (thus this type) or
 their channel and position (as a keypad, regardless of any specific meaning).
 """.
 -type button_designator() ::
-				 % Comments apply to our reference, application style 1:
-	'button_ai'  % Switch light on  / Dim light down / Move blind closed
+                 % Comments apply to our reference, application style 1:
+    'button_ai'  % Switch light on  / Dim light down / Move blind closed
   | 'button_ao'  % Switch light off / Dim light up   / Move blind open
   | 'button_bi'  % Switch light on  / Dim light down / Move blind closed
   | 'button_bo'. % Switch light off / Dim light up   / Move blind open
@@ -831,7 +831,7 @@ A "number" of buttons, typically involved in a multipress event.
 The types of PTM switch modules (radio emitter), as defined in RPS packets.
 """.
 -type ptm_switch_module_type() :: 'ptm1xx'  % synonymous for module PTM1xx
-								| 'ptm2xx'. % synonymous for module PTM2xx
+                                | 'ptm2xx'. % synonymous for module PTM2xx
 
 
 
@@ -839,7 +839,7 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 "Nu" Message type, as defined in RPS packets.
 """.
 -type nu_message_type() :: 'normal' | 'unassigned'
-						 | 'unknown_type_2' | 'unknown_type_3'.
+                         | 'unknown_type_2' | 'unknown_type_3'.
 
 
 
@@ -850,20 +850,20 @@ The types of PTM switch modules (radio emitter), as defined in RPS packets.
 
 -doc "The range of a temperature sensor.".
 -type temperature_range() :: 'low'   % 0°C to +40°C (A5-04-01)
-						   | 'high'. % -20°C to +60°C (A5-04-02)
+                           | 'high'. % -20°C to +60°C (A5-04-02)
 
 
 -doc "A reported hardware status for a device (e.g. a smart plug).".
 -type hardware_status() :: 'nominal'
-						 | 'warning'
-						 | 'failure'
-						 | 'unsupported'. % Hence unknown
+                         | 'warning'
+                         | 'failure'
+                         | 'unsupported'. % Hence unknown
 
 
 -doc "The power currently output by a device (e.g. a smart plug).".
 -type power_report() :: 'off'
-					  | pos_integer() % Percentage of max power
-					  | 'not_available'. % Hence unknown
+                      | pos_integer() % Percentage of max power
+                      | 'not_available'. % Hence unknown
 
 
 -doc "The powering status of a device (e.g. a smart plug).".
@@ -881,7 +881,7 @@ the first byte of the payload (hence 8 possible values).
 Described in `[EEP-spec]` p.127.
 """.
 -type vld_rcp_message_type() ::
-	'a'  % ID 01
+    'a'  % ID 01
   | 'b'  % ID 02
   | 'c'  % ID 03
   | 'd'  % ID 04
@@ -904,7 +904,7 @@ of the first byte of the payload (hence 16 possible values).
 Described in `[EEP-spec]` p.131.
 """.
 -type vld_d2_00_cmd() ::
-	'actuator_set_output'
+    'actuator_set_output'
   | 'actuator_set_local'
   | 'actuator_status_query'
   | 'actuator_status_response'
@@ -993,11 +993,11 @@ packet is expected.
 See also the `packet_type` topic in the oceanic_generated module.
 """.
 -type packet_type() ::
-	  'reserved' | 'radio_erp1' | 'response'
-	| 'radio_sub_tel' | 'event' | 'common_command'
-	| 'smart_ack_command' | 'remote_man_command'
-	| 'radio_message' | 'radio_erp2' | 'radio_802_15_4'
-	| 'command_2_4'.
+      'reserved' | 'radio_erp1' | 'response'
+    | 'radio_sub_tel' | 'event' | 'common_command'
+    | 'smart_ack_command' | 'remote_man_command'
+    | 'radio_message' | 'radio_erp2' | 'radio_802_15_4'
+    | 'command_2_4'.
 
 
 
@@ -1030,7 +1030,7 @@ The version of an EnOcean application or API.
 This is a basic_utils:four_digit_version().
 """.
 -type enocean_version() :: { Main :: version_number(), Beta :: version_number(),
-	Alpha :: version_number(), Build :: version_number() }.
+    Alpha :: version_number(), Build :: version_number() }.
 
 
 
@@ -1198,15 +1198,15 @@ Any event notified by an EnOcean device.
 See also their corresponding tags, defined in device_event_type/0.
 """.
 -type device_event() ::
-	% Device events:
-	thermo_hygro_event()
+    % Device events:
+    thermo_hygro_event()
   | single_input_contact_event()
   | push_button_switch_event()
   | smart_plug_status_report_event()
   | double_rocker_switch_event()
   | double_rocker_multipress_event()
 
-	% Other events:
+    % Other events:
   | teach_request_event()
   | command_response().
 
@@ -1217,14 +1217,14 @@ Lists the known types of device events.
 Note that they correspond to the tags of the corresponding records.
 """.
 -type device_event_type() ::
-	'thermo_hygro_event'
+    'thermo_hygro_event'
   | 'single_input_contact_event'
   | 'push_button_switch_event'
   | 'smart_plug_status_report_event'
   | 'double_rocker_switch_event'
   | 'double_rocker_multipress_event'
 
-	% Other events:
+    % Other events:
   | 'teach_request_event'
   | 'command_response'.
 
@@ -1237,7 +1237,7 @@ Each type of device corresponds to an EEP or a set thereof, and is to send at
 least one type of events.
 """.
 -type device_type() ::
-	'thermometer'
+    'thermometer'
   | 'thermo_hygro_sensor'
   | 'opening_detector' % Currently the only kind of single_contact that we know
   | 'push_button'
@@ -1328,7 +1328,7 @@ information.
 
 -doc "Describes a stage change of a double-rocker.".
 -type double_rocker_state_change_spec() ::
-	canon_double_rocker_state_change_spec()
+    canon_double_rocker_state_change_spec()
   | { channel(), button_position() } % then transition is 'just_pressed'
   | channel(). % then position is 'top' and transition is 'just_pressed'
 
@@ -1341,7 +1341,7 @@ For example, `{2, bottom, just_released}`.
 Both a user-level and an internal type.
 """.
 -type canon_double_rocker_state_change_spec() ::
-	{ channel(), button_position(), button_transition() }.
+    { channel(), button_position(), button_transition() }.
 
 
 -doc "Describes a stage change of a push-button.".
@@ -1363,7 +1363,7 @@ Used both for incoming and outgoing telegrams.
 Abbreviated as SCS.
 """.
 -type device_state_change_spec() ::
-	double_rocker_state_change_spec()
+    double_rocker_state_change_spec()
   | push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
@@ -1374,7 +1374,7 @@ Canonical, internal version of `device_state_change_spec/0`.
 Abbreviated as CSCS.
 """.
 -type canon_device_state_change_spec() ::
-	canon_double_rocker_state_change_spec()
+    canon_double_rocker_state_change_spec()
   | canon_push_button_state_change_spec()
   | tuploid( state_change_info() ).
 
@@ -1392,11 +1392,11 @@ For example, `{double_rocker, {2, bottom, just_released}}.`.
 """.
 -type incoming_trigger_spec() ::
 
-	{ 'double_rocker', double_rocker_state_change_spec() }
+    { 'double_rocker', double_rocker_state_change_spec() }
 
   | { 'push_button', push_button_state_change_spec() }
 
-	% General form:
+    % General form:
   | { device_type(), device_state_change_spec() }.
 
 
@@ -1409,7 +1409,7 @@ Canonicalised, internal version of incoming_trigger_spec().
 Abbreviated as CITS.
 """.
 -type canon_incoming_trigger_spec() ::
-	{ device_type(), canon_device_state_change_spec() }.
+    { device_type(), canon_device_state_change_spec() }.
 
 
 -doc """
@@ -1427,7 +1427,7 @@ the rocker is pressed).
 User-level type.
 """.
 -type listened_event_spec() ::
-	{ EmitterDevice :: option( user_device_designator() ),
+    { EmitterDevice :: option( user_device_designator() ),
       incoming_trigger_spec() }.
 
 
@@ -1440,7 +1440,7 @@ For example: `{"25af97a0", {double_rocker, {2, bottom, just_released}}}`.
 Abbreviated as CLES.
 """.
 -type canon_listened_event_spec() ::
-	{ EmitterDevice :: device_designator(), canon_incoming_trigger_spec() }.
+    { EmitterDevice :: device_designator(), canon_incoming_trigger_spec() }.
 
 
 -doc """
@@ -1448,7 +1448,7 @@ The outcome of the match of a trigger event, possibly telling which is the
 triggering device and the new device status that shall be set.
 """.
 -type event_match_trigger_outcome() ::
-	'false'
+    'false'
   | { 'true', SourceDevice :: eurid(), device_status() }.
 
 
@@ -1505,80 +1505,80 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 
 -export_type([ oceanic_availability_outcome/0,
 
-			   oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
-			   requester/0,
+               oceanic_server_pid/0, serial_server_pid/0, event_listener_pid/0,
+               requester/0,
 
-			   device_name/0, device_plain_name/0, device_naming/0,
+               device_name/0, device_plain_name/0, device_naming/0,
                device_any_name/0,
                device_designator_spec/0,
                user_device_designator/0, device_designator/0, designator_pair/0,
                user_device_action/0, device_action/0,
 
                declared_device_activity_periodicity/0,
-			   expected_periodicity/0, availability_status/0, device_status/0,
+               expected_periodicity/0, availability_status/0, device_status/0,
 
-			   trigger_track_spec/0, trigger_track_info/0,
-			   reported_event_info/0,
+               trigger_track_spec/0, trigger_track_info/0,
+               reported_event_info/0,
 
-			   oceanic_settings/0,
-			   enocean_device/0, device_table/0,
-			   device_config/0, tty_detection_outcome/0, serial_protocol/0,
+               oceanic_settings/0,
+               enocean_device/0, device_table/0,
+               device_config/0, tty_detection_outcome/0, serial_protocol/0,
 
-			   telegram/0, telegram_chunk/0,
-			   telegram_data/0, telegram_tail/0, telegram_data_tail/0,
-			   telegram_opt_data/0, decoded_optional_data/0,
+               telegram/0, telegram_chunk/0,
+               telegram_data/0, telegram_tail/0, telegram_data_tail/0,
+               telegram_opt_data/0, decoded_optional_data/0,
 
-			   subtelegram_count/0, dbm/0, security_level/0,
-			   communication_direction/0, teach_request_type/0, teach_outcome/0,
-			   channel/0, channel_taught/0,
-			   button_ref_spec/0, button_ref/0,
-			   manufacturer_id/0,
+               subtelegram_count/0, dbm/0, security_level/0,
+               communication_direction/0, teach_request_type/0, teach_outcome/0,
+               channel/0, channel_taught/0,
+               button_ref_spec/0, button_ref/0,
+               manufacturer_id/0,
 
-			   rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
-			   discovery_origin/0, enum/0,
+               rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
+               discovery_origin/0, enum/0,
 
-			   application_style/0, button_designator/0,
-			   button_position/0, button_locator/0,
-			   button_transition/0, button_state/0, button_counting/0,
+               application_style/0, button_designator/0,
+               button_position/0, button_locator/0,
+               button_transition/0, button_state/0, button_counting/0,
 
-			   contact_status/0,
-			   ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
-			   temperature_range/0,
+               contact_status/0,
+               ptm_switch_module_type/0, nu_message_type/0, repetition_count/0,
+               temperature_range/0,
 
-			   hardware_status/0, power_report/0, power_status/0,
+               hardware_status/0, power_report/0, power_status/0,
 
-			   vld_rcp_message_type/0, vld_d2_00_cmd/0,
+               vld_rcp_message_type/0, vld_d2_00_cmd/0,
 
-			   eurid/0, eurid_string/0, eurid_bin_string/0,
-			   packet/0, crc/0, esp3_packet/0, packet_type/0,
-			   payload/0, vld_payload/0,
-			   enocean_version/0, log_counter/0, log_counters/0,
-			   command_tracking/0, command_outcome/0,
+               eurid/0, eurid_string/0, eurid_bin_string/0,
+               packet/0, crc/0, esp3_packet/0, packet_type/0,
+               payload/0, vld_payload/0,
+               enocean_version/0, log_counter/0, log_counters/0,
+               command_tracking/0, command_outcome/0,
 
-			   thermo_hygro_event/0, single_input_contact_event/0,
-			   push_button_switch_event/0,
-			   double_rocker_switch_event/0, double_rocker_multipress_event/0,
+               thermo_hygro_event/0, single_input_contact_event/0,
+               push_button_switch_event/0,
+               double_rocker_switch_event/0, double_rocker_multipress_event/0,
 
-			   device_description/0, back_online_info/0, device_event/0,
-			   device_event_type/0,
+               device_description/0, back_online_info/0, device_event/0,
+               device_event_type/0,
 
-			   device_type/0, device_convention/0, virtual_emitter_info/0,
+               device_type/0, device_convention/0, virtual_emitter_info/0,
                device_operation/0,
 
-			   state_change_info/0,
-			   device_state_change_spec/0, canon_device_state_change_spec/0,
+               state_change_info/0,
+               device_state_change_spec/0, canon_device_state_change_spec/0,
 
-			   push_button_state_change_spec/0,
-			   canon_push_button_state_change_spec/0,
+               push_button_state_change_spec/0,
+               canon_push_button_state_change_spec/0,
 
-			   double_rocker_state_change_spec/0,
-			   canon_double_rocker_state_change_spec/0,
+               double_rocker_state_change_spec/0,
+               canon_double_rocker_state_change_spec/0,
 
-			   incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
-			   listened_event_spec/0, canon_listened_event_spec/0,
-			   emitted_event_spec/0, event_match_trigger_outcome/0,
+               incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
+               listened_event_spec/0, canon_listened_event_spec/0,
+               emitted_event_spec/0, event_match_trigger_outcome/0,
 
-			   timer_ref/0 ]).
+               timer_ref/0 ]).
 
 
 
@@ -1674,9 +1674,9 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 
 -doc "Information about a recording of a device event.".
 -type recording_info() ::
-	{ device_table(), NewDevice :: enocean_device(), Now :: timestamp(),
-	  MaybeLastSeen :: option( timestamp() ), option( discovery_origin() ),
-	  IsBackOnline :: boolean(), option( device_name() ),
+    { device_table(), NewDevice :: enocean_device(), Now :: timestamp(),
+      MaybeLastSeen :: option( timestamp() ), option( discovery_origin() ),
+      IsBackOnline :: boolean(), option( device_name() ),
       option( device_short_name() ), option( eep_id() ) }.
 
 
@@ -1817,15 +1817,15 @@ Definition of the overall state of an Oceanic server, including configuration
 -doc "Returns the version of the Oceanic library being used.".
 -spec get_oceanic_version() -> three_digit_version().
 get_oceanic_version() ->
-	basic_utils:parse_version( get_oceanic_version_string() ).
+    basic_utils:parse_version( get_oceanic_version_string() ).
 
 
 
 -doc "Returns the version of the Oceanic library being used, as a string.".
 -spec get_oceanic_version_string() -> ustring().
 get_oceanic_version_string() ->
-	% As defined (uniquely) in GNUmakevars.inc:
-	?oceanic_version.
+    % As defined (uniquely) in GNUmakevars.inc:
+    ?oceanic_version.
 
 
 
@@ -1838,69 +1838,69 @@ Useful to de-risk a future launch thereof and factor code.
 -spec is_available( device_path() ) -> oceanic_availability_outcome().
 is_available( TtyPath ) ->
 
-	case has_tty( TtyPath ) of
+    case has_tty( TtyPath ) of
 
-		true ->
-			% Not necessarily in the ~/Software tree:
-			case code_utils:is_beam_in_path( serial ) of
+        true ->
+            % Not necessarily in the ~/Software tree:
+            case code_utils:is_beam_in_path( serial ) of
 
-				not_found ->
-					ReasonStr = text_utils:format(
-						"The 'serial' module is not found, whereas the ~ts~n"
-						"Has our fork of 'serial' been already installed? "
-						"Please refer to Oceanic's documentation.",
-						[ code_utils:get_code_path_as_string() ] ),
+                not_found ->
+                    ReasonStr = text_utils:format(
+                        "The 'serial' module is not found, whereas the ~ts~n"
+                        "Has our fork of 'serial' been already installed? "
+                        "Please refer to Oceanic's documentation.",
+                        [ code_utils:get_code_path_as_string() ] ),
 
-					{ false, ReasonStr, _ErrorTerm=serial_library_not_found };
-
-
-				[ SinglePath ] ->
-
-					% We have typically
-					% ~/Software/erlang-serial/ebin/serial.beam, so:
-					%
-					SerialRootDir = file_utils:get_base_path(
-						file_utils:get_base_path( SinglePath ) ),
-
-					{ true, SerialRootDir };
+                    { false, ReasonStr, _ErrorTerm=serial_library_not_found };
 
 
-				MultiplePaths ->
+                [ SinglePath ] ->
 
-					ReasonStr = text_utils:format(
-						"The 'serial' module has been found in "
-						"multiple locations (which is abnormal): ~ts.",
-						[ text_utils:strings_to_listed_string(
-							MultiplePaths ) ] ),
+                    % We have typically
+                    % ~/Software/erlang-serial/ebin/serial.beam, so:
+                    %
+                    SerialRootDir = file_utils:get_base_path(
+                        file_utils:get_base_path( SinglePath ) ),
 
-					{ false, ReasonStr,
-					  _ErrorTerm=multiple_serial_libraries_found }
-
-			end;
+                    { true, SerialRootDir };
 
 
-		{ false, non_existing } ->
+                MultiplePaths ->
 
-			ReasonStr = text_utils:format( "The specified TTY, '~ts', "
-				"does not exist. Is the device for the Enocean gateway "
-				"plugged in, and named accordingly?", [ TtyPath ] ),
+                    ReasonStr = text_utils:format(
+                        "The 'serial' module has been found in "
+                        "multiple locations (which is abnormal): ~ts.",
+                        [ text_utils:strings_to_listed_string(
+                            MultiplePaths ) ] ),
 
-			ErrorTerm = { non_existing_tty, TtyPath },
+                    { false, ReasonStr,
+                      _ErrorTerm=multiple_serial_libraries_found }
 
-			{ false, ReasonStr, ErrorTerm };
+            end;
 
 
-		{ false, { not_device, OtherType } } ->
+        { false, non_existing } ->
 
-			ReasonStr = text_utils:format( "The specified TTY for the "
-				"Enocean gateway, '~ts', is not a device but a ~ts.",
-				[ TtyPath, OtherType ] ),
+            ReasonStr = text_utils:format( "The specified TTY, '~ts', "
+                "does not exist. Is the device for the Enocean gateway "
+                "plugged in, and named accordingly?", [ TtyPath ] ),
 
-			ErrorTerm = { not_a_device, TtyPath, OtherType },
+            ErrorTerm = { non_existing_tty, TtyPath },
 
-			{ false, ReasonStr, ErrorTerm }
+            { false, ReasonStr, ErrorTerm };
 
-	end.
+
+        { false, { not_device, OtherType } } ->
+
+            ReasonStr = text_utils:format( "The specified TTY for the "
+                "Enocean gateway, '~ts', is not a device but a ~ts.",
+                [ TtyPath, OtherType ] ),
+
+            ErrorTerm = { not_a_device, TtyPath, OtherType },
+
+            { false, ReasonStr, ErrorTerm }
+
+    end.
 
 
 
@@ -1917,7 +1917,7 @@ Throws an exception if no relevant TTY can be used.
 """.
 -spec start() -> oceanic_server_pid().
 start() ->
-	start( get_default_tty_path() ).
+    start( get_default_tty_path() ).
 
 
 
@@ -1931,7 +1931,7 @@ Throws an exception if no relevant TTY can be used.
 """.
 -spec start( device_path() ) -> oceanic_server_pid().
 start( TtyPath ) ->
-	start( TtyPath, [ _EventListenerPid=self() ] ).
+    start( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
@@ -1945,7 +1945,7 @@ Throws an exception if no relevant TTY can be used.
 """.
 -spec start( device_path(), [ event_listener_pid() ] ) -> oceanic_server_pid().
 start( TtyPath, EventListeners ) ->
-	?myriad_spawn( fun() -> oceanic_start( TtyPath, EventListeners ) end ).
+    ?myriad_spawn( fun() -> oceanic_start( TtyPath, EventListeners ) end ).
 
 
 
@@ -1963,7 +1963,7 @@ Throws an exception if no relevant TTY can be used.
 """.
 -spec start_link() -> oceanic_server_pid().
 start_link() ->
-	start_link( get_default_tty_path() ).
+    start_link( get_default_tty_path() ).
 
 
 
@@ -1977,7 +1977,7 @@ Throws an exception if no relevant TTY can be used.
 """.
 -spec start_link( device_path() ) -> oceanic_server_pid().
 start_link( TtyPath ) ->
-	start_link( TtyPath, [ _EventListenerPid=self() ] ).
+    start_link( TtyPath, [ _EventListenerPid=self() ] ).
 
 
 
@@ -1990,11 +1990,11 @@ to it.
 Throws an exception if no relevant TTY can be used.
 """.
 -spec start_link( device_path(), [ event_listener_pid() ] ) ->
-											oceanic_server_pid().
+                                            oceanic_server_pid().
 start_link( TtyPath, EventListeners ) ->
-	?myriad_spawn_link( fun() ->
-							oceanic_start( TtyPath, EventListeners )
-						end ).
+    ?myriad_spawn_link( fun() ->
+                            oceanic_start( TtyPath, EventListeners )
+                        end ).
 
 
 
@@ -2008,10 +2008,10 @@ according to our conventions.
 -spec get_default_tty_path() -> device_path().
 get_default_tty_path() ->
 
-	% Better than, say:
-	%"/dev/ttyUSB0".
+    % Better than, say:
+    %"/dev/ttyUSB0".
 
-	"/dev/ttyUSBEnOcean".
+    "/dev/ttyUSBEnOcean".
 
 
 
@@ -2022,7 +2022,7 @@ Useful at least for testing.
 """.
 -spec has_tty() -> tty_detection_outcome().
 has_tty() ->
-	has_tty( get_default_tty_path() ).
+    has_tty( get_default_tty_path() ).
 
 
 
@@ -2035,23 +2035,23 @@ Useful at least for testing.
 -spec has_tty( any_device_path() ) -> tty_detection_outcome().
 has_tty( AnyTtyPath ) ->
 
-	case file_utils:exists( AnyTtyPath ) of
+    case file_utils:exists( AnyTtyPath ) of
 
-		true ->
-			case file_utils:resolve_type_of( AnyTtyPath ) of
+        true ->
+            case file_utils:resolve_type_of( AnyTtyPath ) of
 
-				device ->
-					true;
+                device ->
+                    true;
 
-				OtherType ->
-					{ false, { not_device, OtherType } }
+                OtherType ->
+                    { false, { not_device, OtherType } }
 
-			end;
+            end;
 
-		false ->
-			{ false, non_existing }
+        false ->
+            { false, non_existing }
 
-	end.
+    end.
 
 
 
@@ -2059,41 +2059,41 @@ has_tty( AnyTtyPath ) ->
 -spec secure_tty( device_path() ) -> serial_server_pid().
 secure_tty( TtyPath ) ->
 
-	SerialRootDir = case is_available( TtyPath ) of
+    SerialRootDir = case is_available( TtyPath ) of
 
-		{ true, SerialDir } ->
-			SerialDir;
+        { true, SerialDir } ->
+            SerialDir;
 
-		{ false, ReasonStr, ErrorTerm } ->
-			trace_bridge:error( ReasonStr ),
-			throw( ErrorTerm )
+        { false, ReasonStr, ErrorTerm } ->
+            trace_bridge:error( ReasonStr ),
+            throw( ErrorTerm )
 
-	end,
+    end,
 
-	% Determined explicitly, as in an escript context the 'priv' directory of
-	% erlang-serial may resolve into the one of Oceanic:
-	%
-	SerialPrivDir = file_utils:join( SerialRootDir, "priv" ),
+    % Determined explicitly, as in an escript context the 'priv' directory of
+    % erlang-serial may resolve into the one of Oceanic:
+    %
+    SerialPrivDir = file_utils:join( SerialRootDir, "priv" ),
 
-	% Symmetrical speed here (in bits per second):
-	Speed = ?esp3_speed,
+    % Symmetrical speed here (in bits per second):
+    Speed = ?esp3_speed,
 
-	% No parity (no {parity_even} / {parity_odd}).
+    % No parity (no {parity_even} / {parity_odd}).
 
-	% Parameters correspond to "57600 8N1".
+    % Parameters correspond to "57600 8N1".
 
-	% Linked process:
-	SerialPid = serial:start( [ { open, TtyPath },
-								{ speed, Speed } ],
-								%{ speed, _In=Speed, _Out=Speed } ]
-							   SerialPrivDir ),
+    % Linked process:
+    SerialPid = serial:start( [ { open, TtyPath },
+                                { speed, Speed } ],
+                                %{ speed, _In=Speed, _Out=Speed } ]
+                               SerialPrivDir ),
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug_fmt( "Using TTY '~ts' to connect to Enocean gateway,"
-			" corresponding to serial server ~w (speed: ~B bits per second).",
-			[ TtyPath, SerialPid, Speed ] ) ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug_fmt( "Using TTY '~ts' to connect to Enocean gateway,"
+            " corresponding to serial server ~w (speed: ~B bits per second).",
+            [ TtyPath, SerialPid, Speed ] ) ),
 
-	SerialPid.
+    SerialPid.
 
 
 
@@ -2105,17 +2105,17 @@ secure_tty( TtyPath ) ->
 -spec oceanic_start( device_path(), [ event_listener_pid() ] ) -> no_return().
 oceanic_start( TtyPath, EventListeners ) ->
 
-	SerialPid = secure_tty( TtyPath ),
+    SerialPid = secure_tty( TtyPath ),
 
-	BaseState = get_base_state( SerialPid ),
+    BaseState = get_base_state( SerialPid ),
 
-	LoadedState = load_configuration( BaseState ),
+    LoadedState = load_configuration( BaseState ),
 
-	naming_utils:register_as( ?oceanic_server_reg_name, _RegScope=local_only ),
+    naming_utils:register_as( ?oceanic_server_reg_name, _RegScope=local_only ),
 
-	InitialState = LoadedState#oceanic_state{
-		device_path=text_utils:string_to_binary( TtyPath ),
-		event_listeners=type_utils:check_pids( EventListeners ) },
+    InitialState = LoadedState#oceanic_state{
+        device_path=text_utils:string_to_binary( TtyPath ),
+        event_listeners=type_utils:check_pids( EventListeners ) },
 
     % Was unconditional, yet may be emitted too early to be in the advanced
     % traces, better done in registerTraceBridge:
@@ -2123,7 +2123,7 @@ oceanic_start( TtyPath, EventListeners ) ->
     %trace_bridge:info_fmt( "The initial state of this Oceanic server is: ~ts",
     %                       [ oceanic_text:state_to_string( InitialState ) ] ),
 
-	oceanic_loop( _SkipLen=0, _MaybeTelTail=undefined, InitialState ).
+    oceanic_loop( _SkipLen=0, _MaybeTelTail=undefined, InitialState ).
 
 
 
@@ -2131,36 +2131,36 @@ oceanic_start( TtyPath, EventListeners ) ->
 -spec get_base_state( serial_server_pid() ) -> oceanic_state().
 get_base_state( SerialServerPid ) ->
 
-	% We discover from start our base EURID; a direct, ad hoc logic cannot
-	% really be used, as request tracking would be in the way:
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug( "Discovering our base EURID." ) ),
+    % We discover from start our base EURID; a direct, ad hoc logic cannot
+    % really be used, as request tracking would be in the way:
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug( "Discovering our base EURID." ) ),
 
-	CommonCmd = co_rd_idbase,
+    CommonCmd = co_rd_idbase,
 
-	CmdTelegram =
+    CmdTelegram =
         oceanic_common_command:encode_common_command_tracking( CommonCmd ),
 
-	% For decoding re-use (try_integrate_next_telegram/4), we have to have a
-	% state anyway.
+    % For decoding re-use (try_integrate_next_telegram/4), we have to have a
+    % state anyway.
 
     EmptyTable = table:new(),
 
-	InitialState = #oceanic_state{
-		serial_server_pid=SerialServerPid,
+    InitialState = #oceanic_state{
+        serial_server_pid=SerialServerPid,
         % Starting with a bogus value, not wanting an option/1 type:
-		emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
-		device_table=EmptyTable,
-		command_queue=queue:new(),
+        emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
+        device_table=EmptyTable,
+        command_queue=queue:new(),
         waited_command_info=undefined,
-		last_traffic_seen=time_utils:get_timestamp() },
+        last_traffic_seen=time_utils:get_timestamp() },
 
     ExecState = execute_command_impl( _CmdType=CommonCmd, CmdTelegram,
                                       _Requester=internal, InitialState ),
 
-	% Blank start:
-	wait_initial_base_command( _ToSkipLen=0, _MaybeAccChunk=undefined,
-							   ExecState ).
+    % Blank start:
+    wait_initial_base_command( _ToSkipLen=0, _MaybeAccChunk=undefined,
+                               ExecState ).
 
 
 
@@ -2169,106 +2169,106 @@ Returns an initialised, Oceanic state, once the initial base ID request has been
 properly answered.
 """.
 -spec wait_initial_base_command( count(), option( telegram_tail() ),
-								 oceanic_state() ) -> oceanic_state().
+                                 oceanic_state() ) -> oceanic_state().
 wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug_fmt( "Waiting initial base request "
-			"(ToSkipLen=~B, MaybeNextTelTail=~w).",
-			[ ToSkipLen, MaybeNextTelTail ] ) ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug_fmt( "Waiting initial base request "
+            "(ToSkipLen=~B, MaybeNextTelTail=~w).",
+            [ ToSkipLen, MaybeNextTelTail ] ) ),
 
-	receive
+    receive
 
-		% Received data from the serial port:
-		{ data, NewChunk } ->
+        % Received data from the serial port:
+        { data, NewChunk } ->
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Read ~ts.",
-					[ oceanic_text:telegram_to_string( NewChunk ) ] ) ),
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug_fmt( "Read ~ts.",
+                    [ oceanic_text:telegram_to_string( NewChunk ) ] ) ),
 
-			case try_integrate_next_telegram( ToSkipLen, MaybeNextTelTail,
-											  NewChunk, State ) of
+            case try_integrate_next_telegram( ToSkipLen, MaybeNextTelTail,
+                                              NewChunk, State ) of
 
-				{ decoded, Event=#read_base_id_info_response{
-							% (not interested here in remaining_write_cycles)
-							base_eurid=BaseEurid }, _MaybeDiscoverOrigin,
-						_IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
-						ReadState } ->
+                { decoded, Event=#read_base_id_info_response{
+                            % (not interested here in remaining_write_cycles)
+                            base_eurid=BaseEurid }, _MaybeDiscoverOrigin,
+                        _IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
+                        ReadState } ->
 
-					% Clearer that way:
-					case NewMaybeNextTelTail of
+                    % Clearer that way:
+                    case NewMaybeNextTelTail of
 
-						undefined ->
-							ok;
+                        undefined ->
+                            ok;
 
-						DroppedChunk ->
-							trace_bridge:warning_fmt( "Dropping initially "
-								"chunk ~ts.",
-								[ oceanic_text:telegram_to_string(
+                        DroppedChunk ->
+                            trace_bridge:warning_fmt( "Dropping initially "
+                                "chunk ~ts.",
+                                [ oceanic_text:telegram_to_string(
                                     DroppedChunk ) ] )
 
-					end,
+                    end,
 
-					cond_utils:if_defined( oceanic_debug_tty,
-						trace_bridge:debug_fmt( "Successfully ~ts.",
-							[ oceanic_text:device_event_to_string( Event ) ] ),
-						basic_utils:ignore_unused( Event ) ),
+                    cond_utils:if_defined( oceanic_debug_tty,
+                        trace_bridge:debug_fmt( "Successfully ~ts.",
+                            [ oceanic_text:device_event_to_string( Event ) ] ),
+                        basic_utils:ignore_unused( Event ) ),
 
-					trace_bridge:info_fmt( "Detected the EURID of the base "
-						"emitter: ~ts.",
+                    trace_bridge:info_fmt( "Detected the EURID of the base "
+                        "emitter: ~ts.",
                         [ oceanic_text:eurid_to_string( BaseEurid ) ] ),
 
-					ReadState#oceanic_state{ emitter_eurid=BaseEurid,
-											 waited_command_info=undefined };
+                    ReadState#oceanic_state{ emitter_eurid=BaseEurid,
+                                             waited_command_info=undefined };
 
 
                 % Dropping any other unrelated event caught by accident:
-				{ decoded, OtherEvent, _MaybeDiscoverOrigin,
-						_IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
-						ReadState } ->
+                { decoded, OtherEvent, _MaybeDiscoverOrigin,
+                        _IsBackOnline, _MaybeDevice, NewMaybeNextTelTail,
+                        ReadState } ->
 
                     trace_bridge:debug_fmt( "Dropping unrelated event ~ts read "
                         "while waiting for the initial base ID request.",
                         [ oceanic_text:device_event_to_string( OtherEvent ) ] ),
 
-					wait_initial_base_command( _NewToSkipLen=0,
+                    wait_initial_base_command( _NewToSkipLen=0,
                                                NewMaybeNextTelTail, ReadState );
 
 
-				{ Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
+                { Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
 
-					%cond_utils:if_defined( oceanic_debug_tty,
-						trace_bridge:debug_fmt( "Unsuccessful decoding of the "
+                    %cond_utils:if_defined( oceanic_debug_tty,
+                        trace_bridge:debug_fmt( "Unsuccessful decoding of the "
                             "initial base ID request: '~w' "
-							"(whereas NewToSkipLen=~B, "
+                            "(whereas NewToSkipLen=~B, "
                             "NewMaybeNextTelTail=~w).",
-							[ Unsuccessful, NewToSkipLen,
+                            [ Unsuccessful, NewToSkipLen,
                               NewMaybeNextTelTail ] ),
-					%   basic_utils:ignore_unused(
-					%       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
+                    %   basic_utils:ignore_unused(
+                    %       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
-					wait_initial_base_command( NewToSkipLen,
+                    wait_initial_base_command( NewToSkipLen,
                                                NewMaybeNextTelTail, NewState );
 
                 { considerCommandTimeout, CmdCount } ->
                     throw( { timeout_initial_base_request, CmdCount } )
 
-			end;
+            end;
 
-		{ onSerialMessage, Msg } ->
-			trace_bridge:warning_fmt( "Unexpected serial message while waiting "
+        { onSerialMessage, Msg } ->
+            trace_bridge:warning_fmt( "Unexpected serial message while waiting "
                 "base command: ~p; ignoring it.", [ Msg ] ),
 
-			wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
+            wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
 
         % Commented-out, as not wanting to intercept messages to be processed
         % next (like {getOceanicEurid, CallerPid}):
         %
         %Other ->
-		%   trace_bridge:warning_fmt( "Unexpected message while waiting "
+        %   trace_bridge:warning_fmt( "Unexpected message while waiting "
         %        "base command: ~p; ignoring it.", [ Other ] ),
         %
-		%   wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
+        %   wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
 
     % Extra time-out for additional safety:
     after 2000 ->
@@ -2278,7 +2278,7 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
 
        throw( no_base_eurid_obtained )
 
-	end.
+    end.
 
 
 
@@ -2292,24 +2292,24 @@ See also the `preferences` Myriad module.
 """.
 -spec load_configuration( oceanic_state() ) -> oceanic_state().
 load_configuration( State ) ->
-	case preferences:is_preferences_default_file_available() of
+    case preferences:is_preferences_default_file_available() of
 
-		{ true, PrefPath } ->
-			LoadedState = load_configuration( PrefPath, State ),
+        { true, PrefPath } ->
+            LoadedState = load_configuration( PrefPath, State ),
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Initial state: ~ts",
-					[ oceanic_text:state_to_string( LoadedState ) ] ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Initial state: ~ts",
+                    [ oceanic_text:state_to_string( LoadedState ) ] ) ),
 
-			LoadedState;
+            LoadedState;
 
-		{ false, PrefPath } ->
-			trace_bridge:info_fmt( "No preferences file ('~ts') found, "
-				"no device information obtained from it.", [ PrefPath ] ),
+        { false, PrefPath } ->
+            trace_bridge:info_fmt( "No preferences file ('~ts') found, "
+                "no device information obtained from it.", [ PrefPath ] ),
 
-			State
+            State
 
-	end.
+    end.
 
 
 
@@ -2332,18 +2332,18 @@ declared more than once
 -spec load_configuration( any_file_path(), oceanic_state() ) -> oceanic_state().
 load_configuration( ConfFilePath, State ) ->
 
-	file_utils:is_existing_file_or_link( ConfFilePath ) orelse
+    file_utils:is_existing_file_or_link( ConfFilePath ) orelse
         throw( { oceanic_config_file_not_found, ConfFilePath } ),
 
-	trace_bridge:info_fmt( "Reading preferences file '~ts'.",
-						   [ ConfFilePath ] ),
+    trace_bridge:info_fmt( "Reading preferences file '~ts'.",
+                           [ ConfFilePath ] ),
 
-	Pairs = file_utils:read_etf_file( ConfFilePath ),
+    Pairs = file_utils:read_etf_file( ConfFilePath ),
 
-	% Not all pairs may be about Oceanic, so extra ones may exist:
-	{ _RemainingPairs, NewState } = extract_settings( Pairs, _Acc=[], State ),
+    % Not all pairs may be about Oceanic, so extra ones may exist:
+    { _RemainingPairs, NewState } = extract_settings( Pairs, _Acc=[], State ),
 
-	NewState.
+    NewState.
 
 
 
@@ -2354,9 +2354,9 @@ Oceanic server.
 Refer to load_configuration/2 for key information.
 """.
 -spec add_configuration_settings( oceanic_settings(), oceanic_server_pid() ) ->
-		void().
+        void().
 add_configuration_settings( OcSettings, OcSrvPid ) ->
-	OcSrvPid ! { addConfigurationSettings, OcSettings }.
+    OcSrvPid ! { addConfigurationSettings, OcSettings }.
 
 
 
@@ -2365,75 +2365,75 @@ Registers internally the specified Oceanic configuration, overriding any prior
 settings, and returns a corresponding updated state.
 """.
 -spec apply_conf_settings( oceanic_settings(), oceanic_state() ) ->
-								oceanic_state().
+                                oceanic_state().
 apply_conf_settings( OcSettings, State ) ->
 
-	case extract_settings( OcSettings, _Acc=[], State ) of
+    case extract_settings( OcSettings, _Acc=[], State ) of
 
-		{ _RemainingPairs=[], NewState } ->
-			NewState;
+        { _RemainingPairs=[], NewState } ->
+            NewState;
 
-		{ RemainingPairs, NewState } ->
-			trace_bridge:error_fmt( "Received invalid Oceanic settings, which "
-				"have been ignored: ~p.", [ RemainingPairs ] ),
-			NewState
+        { RemainingPairs, NewState } ->
+            trace_bridge:error_fmt( "Received invalid Oceanic settings, which "
+                "have been ignored: ~p.", [ RemainingPairs ] ),
+            NewState
 
-	end.
+    end.
 
 
 
 % Extracts the relevant Oceanic settings, and returns any remaining element.
 extract_settings( _Pairs=[], Acc, State ) ->
-	{ Acc, State };
+    { Acc, State };
 
 
 extract_settings( _Pairs=[ { oceanic_emitter, EmitterEuridStr } | T ], Acc,
-				  State ) ->
-	EmitterEurid = text_utils:hexastring_to_integer( EmitterEuridStr ),
-	NewState = State#oceanic_state{ emitter_eurid=EmitterEurid },
-	extract_settings( T, Acc, NewState );
+                  State ) ->
+    EmitterEurid = text_utils:hexastring_to_integer( EmitterEuridStr ),
+    NewState = State#oceanic_state{ emitter_eurid=EmitterEurid },
+    extract_settings( T, Acc, NewState );
 
 
 extract_settings( _Pairs=[ { oceanic_devices, DeviceEntries } | T ], Acc,
-				  State=#oceanic_state{ device_table=DeviceTable } ) ->
+                  State=#oceanic_state{ device_table=DeviceTable } ) ->
 
-	NewDeviceTable = declare_devices( DeviceEntries, _ShortNames=[],
+    NewDeviceTable = declare_devices( DeviceEntries, _ShortNames=[],
                                       DeviceTable ),
 
-	NewState = State#oceanic_state{ device_table=NewDeviceTable },
+    NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-	extract_settings( T, Acc, NewState );
+    extract_settings( T, Acc, NewState );
 
 
 extract_settings(
-		_Pairs=[ { oceanic_jamming_threshold, UserJamThreshold } | T ],
-		Acc, State ) when is_integer( UserJamThreshold )
-						  andalso UserJamThreshold > 0 ->
+        _Pairs=[ { oceanic_jamming_threshold, UserJamThreshold } | T ],
+        Acc, State ) when is_integer( UserJamThreshold )
+                          andalso UserJamThreshold > 0 ->
 
-	NewState = State#oceanic_state{ jamming_threshold=UserJamThreshold },
+    NewState = State#oceanic_state{ jamming_threshold=UserJamThreshold },
 
-	extract_settings( T, Acc, NewState );
+    extract_settings( T, Acc, NewState );
 
 
 extract_settings( _Pairs=[ { oceanic_jamming_threshold, Other } | T ], Acc,
-				  State )  ->
+                  State )  ->
 
-	trace_bridge:error_fmt( "Ignoring the following incorrect jamming "
-		"threshold: ~p.", [ Other ] ),
+    trace_bridge:error_fmt( "Ignoring the following incorrect jamming "
+        "threshold: ~p.", [ Other ] ),
 
-	extract_settings( T, Acc, State );
+    extract_settings( T, Acc, State );
 
 
 % Typically an entry unrelated to Oceanic:
 extract_settings( _Pairs=[ _E={ _K, _V } | T ], Acc, State )  ->
-	%trace_bridge:debug_fmt( "Ignoring the following entry: ~p.", [ E ] ),
-	extract_settings( T, Acc, State );
+    %trace_bridge:debug_fmt( "Ignoring the following entry: ~p.", [ E ] ),
+    extract_settings( T, Acc, State );
 
 
 extract_settings( Other, Acc, State ) ->
-	trace_bridge:error_fmt( "Ignoring the following incorrect (non-list) "
-		"Oceanic settings: ~p.", [ Other ] ),
-	{ Acc, State }.
+    trace_bridge:error_fmt( "Ignoring the following incorrect (non-list) "
+        "Oceanic settings: ~p.", [ Other ] ),
+    { Acc, State }.
 
 
 
@@ -2459,7 +2459,7 @@ declare_devices( _DeviceCfgs=[], ShortNames, DeviceTable ) ->
 % Adding ExtraDevInfo if needed:
 declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr } | T ],
                  DevShortNames, DeviceTable ) ->
-	declare_devices( [ { DevDesigSpec, EuridStr, EepStr, _ExtraDevInfo=[] }
+    declare_devices( [ { DevDesigSpec, EuridStr, EepStr, _ExtraDevInfo=[] }
                                             | T ], DevShortNames, DeviceTable );
 
 % Main clause; any short name set, and any config comment (as last element)
@@ -2467,22 +2467,22 @@ declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr } | T ],
 %
 declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
                                     EuridStr, EepStr, ExtraDevInfo } | T ],
-				 DevShortNames, DeviceTable ) ->
+                 DevShortNames, DeviceTable ) ->
 
-	text_utils:is_string( NameStr ) orelse
-		begin
-			trace_bridge:error_fmt( "Invalid device (long) name ('~p') "
-				"in configuration entry ~p (not a string).", [ NameStr, DC ] ),
-			throw( { invalid_device_configured_name, NameStr, DC } )
-		end,
+    text_utils:is_string( NameStr ) orelse
+        begin
+            trace_bridge:error_fmt( "Invalid device (long) name ('~p') "
+                "in configuration entry ~p (not a string).", [ NameStr, DC ] ),
+            throw( { invalid_device_configured_name, NameStr, DC } )
+        end,
 
-	is_atom( ShortNameAtom ) orelse
-		begin
-			trace_bridge:error_fmt( "Invalid device short name ('~p') "
-				"in configuration entry ~p (not an atom).",
+    is_atom( ShortNameAtom ) orelse
+        begin
+            trace_bridge:error_fmt( "Invalid device short name ('~p') "
+                "in configuration entry ~p (not an atom).",
                 [ ShortNameAtom, DC ] ),
-			throw( { invalid_device_configured_short_name, ShortNameAtom, DC } )
-		end,
+            throw( { invalid_device_configured_short_name, ShortNameAtom, DC } )
+        end,
 
     % As multiple short names may not defined:
     NewDevShortNames = case ShortNameAtom of
@@ -2495,44 +2495,44 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
 
     end,
 
-	Eurid = try text_utils:hexastring_to_integer(
-		text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
+    Eurid = try text_utils:hexastring_to_integer(
+        text_utils:ensure_string( EuridStr ), _ExpectPrefix=false ) of
 
-			Int ->
-				Int
+            Int ->
+                Int
 
-		% Typically error:badarg:
-		catch _:E ->
-			trace_bridge:error_fmt( "Invalid EURID ('~ts') "
-				"for device named '~ts' in configuration entry ~p.",
+        % Typically error:badarg:
+        catch _:E ->
+            trace_bridge:error_fmt( "Invalid EURID ('~ts') "
+                "for device named '~ts' in configuration entry ~p.",
                 [ EuridStr, NameStr, DC ] ),
-			throw( { invalid_device_configured_eurid, EuridStr, E, NameStr } )
+            throw( { invalid_device_configured_eurid, EuridStr, E, NameStr } )
 
-	end,
+    end,
 
-	text_utils:is_string( EepStr ) orelse
-		begin
-			trace_bridge:error_fmt( "Invalid device EEP ('~p') "
-				"in configuration entry ~p.", [ EepStr, DC ] ),
-			throw( { invalid_device_configured_eep, EepStr, DC } )
-		end,
+    text_utils:is_string( EepStr ) orelse
+        begin
+            trace_bridge:error_fmt( "Invalid device EEP ('~p') "
+                "in configuration entry ~p.", [ EepStr, DC ] ),
+            throw( { invalid_device_configured_eep, EepStr, DC } )
+        end,
 
-	EepBinStr = text_utils:string_to_binary( EepStr ),
+    EepBinStr = text_utils:string_to_binary( EepStr ),
 
-	MaybeEepId = case oceanic_generated:get_maybe_first_for_eep_strings(
-			EepBinStr ) of
+    MaybeEepId = case oceanic_generated:get_maybe_first_for_eep_strings(
+            EepBinStr ) of
 
-		undefined ->
-			trace_bridge:warning_fmt( "The EEP of the configured "
-				"device '~ts' (EURID: ~ts), i.e. '~ts', is not known "
-				"of Oceanic and will be ignored.",
-				[ NameStr, EuridStr, EepBinStr ] ),
-			undefined;
+        undefined ->
+            trace_bridge:warning_fmt( "The EEP of the configured "
+                "device '~ts' (EURID: ~ts), i.e. '~ts', is not known "
+                "of Oceanic and will be ignored.",
+                [ NameStr, EuridStr, EepBinStr ] ),
+            undefined;
 
-		KnownEepId ->
-			KnownEepId
+        KnownEepId ->
+            KnownEepId
 
-	end,
+    end,
 
     % Checks its structure first:
     DevInfoTable = case list_table:check_proper( ExtraDevInfo ) of
@@ -2554,73 +2554,73 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
 
     ActPeriod = case UserActPeriod of
 
-		none ->
-			none;
+        none ->
+            none;
 
-		default ->
-			1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
+        default ->
+            1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
 
-		auto ->
-			decide_auto_periodicity( MaybeEepId );
+        auto ->
+            decide_auto_periodicity( MaybeEepId );
 
-		DHMS ->
-			case time_utils:is_dhms_duration( DHMS ) of
+        DHMS ->
+            case time_utils:is_dhms_duration( DHMS ) of
 
-				true ->
-					1000 * time_utils:dhms_to_seconds( DHMS );
+                true ->
+                    1000 * time_utils:dhms_to_seconds( DHMS );
 
-				false ->
-					trace_bridge:error_fmt( "Invalid DHMS activity periodicity "
-						"('~p') for device named '~ts' in configuration "
+                false ->
+                    trace_bridge:error_fmt( "Invalid DHMS activity periodicity "
+                        "('~p') for device named '~ts' in configuration "
                         "entry ~p.", [ DHMS, NameStr, DC ] ),
-					throw( { invalid_dhms_activity_periodicity, DHMS,
-							 NameStr } )
+                    throw( { invalid_dhms_activity_periodicity, DHMS,
+                             NameStr } )
 
-			end
+            end
 
-	end,
+    end,
 
-	% Device table indexed by device eurid(), which is duplicated in the record
-	% values for convenience:
-	%
-	DeviceRec = #enocean_device{ eurid=Eurid,
-								 name=text_utils:ensure_binary( NameStr ),
+    % Device table indexed by device eurid(), which is duplicated in the record
+    % values for convenience:
+    %
+    DeviceRec = #enocean_device{ eurid=Eurid,
+                                 name=text_utils:ensure_binary( NameStr ),
                                  short_name=ShortNameAtom,
-								 eep=MaybeEepId,
-								 discovered_through=configuration,
-								 expected_periodicity=ActPeriod,
+                                 eep=MaybeEepId,
+                                 discovered_through=configuration,
+                                 expected_periodicity=ActPeriod,
                                  request_queue=queue:new(),
                                  extra_info=ShrunkDevInfoTable },
 
-	table:has_entry( Eurid, DeviceTable ) andalso
-		trace_bridge:warning_fmt( "Overriding entry for device "
-			"whose EURID is ~ts (with: ~ts)",
-			[ oceanic_text:eurid_to_string( Eurid ),
+    table:has_entry( Eurid, DeviceTable ) andalso
+        trace_bridge:warning_fmt( "Overriding entry for device "
+            "whose EURID is ~ts (with: ~ts)",
+            [ oceanic_text:eurid_to_string( Eurid ),
               oceanic_text:device_to_string( DeviceRec ) ] ),
 
-	% Overriding allowed:
-	NewDeviceTable = table:add_entry( Eurid, DeviceRec, DeviceTable ),
+    % Overriding allowed:
+    NewDeviceTable = table:add_entry( Eurid, DeviceRec, DeviceTable ),
 
-	declare_devices( T, NewDevShortNames, NewDeviceTable );
+    declare_devices( T, NewDevShortNames, NewDeviceTable );
 
 
 % Adding ShortNameAtom if needed:
 declare_devices( _DeviceCfgs=[ { NameStr, EuridStr, EepStr, ExtraDevInfo }
                                  | T ], DevShortNames, DeviceTable ) ->
-	declare_devices( [ { { NameStr, _ShortNameAtom=undefined }, EuridStr,
+    declare_devices( [ { { NameStr, _ShortNameAtom=undefined }, EuridStr,
         EepStr, ExtraDevInfo } | T ], DevShortNames, DeviceTable );
 
 
 % Dropping comment (useful only for the user configuration):
 declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr,
-								 ExtraDevInfo, CommentStr } | T ],
-				 DevShortNames, DeviceTable ) when is_list( CommentStr ) ->
-	declare_devices( [ { DevDesigSpec, EuridStr, EepStr, ExtraDevInfo } | T ],
-					 DevShortNames, DeviceTable );
+                                 ExtraDevInfo, CommentStr } | T ],
+                 DevShortNames, DeviceTable ) when is_list( CommentStr ) ->
+    declare_devices( [ { DevDesigSpec, EuridStr, EepStr, ExtraDevInfo } | T ],
+                     DevShortNames, DeviceTable );
 
 
 declare_devices( _DeviceCfgs=[ Other | _T ], _DevShortNames, _DeviceTable ) ->
-	throw( { invalid_device_config, Other } ).
+    throw( { invalid_device_config, Other } ).
 
 
 
@@ -2639,45 +2639,45 @@ explicit (non-auto) periodicity.
 """.
 -spec decide_auto_periodicity( option( eep_id() ) ) -> expected_periodicity().
 decide_auto_periodicity( _MaybeEepId=undefined ) ->
-	% Not known, supposed not talkative:
-	none;
+    % Not known, supposed not talkative:
+    none;
 
 decide_auto_periodicity( _EepId=thermometer ) ->
-	auto;
+    auto;
 
 decide_auto_periodicity( _EepId=thermo_hygro_low ) ->
-	auto;
+    auto;
 
 decide_auto_periodicity( _EepId=thermo_hygro_mid ) ->
-	auto;
+    auto;
 
 decide_auto_periodicity( _EepId=thermo_hygro_high ) ->
-	auto;
+    auto;
 
 decide_auto_periodicity( _EepId=push_button ) ->
-	none;
+    none;
 
 decide_auto_periodicity( _EepId=double_rocker_switch_style_1 ) ->
-	none;
+    none;
 
 decide_auto_periodicity( _EepId=double_rocker_switch_style_2 ) ->
-	none;
+    none;
 
 decide_auto_periodicity( _EepId=double_rocker_multipress ) ->
-	none;
+    none;
 
 % Typically opening detectors:
 decide_auto_periodicity( _EepId=single_input_contact ) ->
-	auto;
+    auto;
 
 decide_auto_periodicity( _EepId=single_channel_module ) ->
-	none;
+    none;
 
 decide_auto_periodicity( _EepId=double_channel_module ) ->
-	none;
+    none;
 
 decide_auto_periodicity( _OtherEepId ) ->
-	none.
+    none.
 
 
 
@@ -2687,15 +2687,15 @@ decide_auto_periodicity( _OtherEepId ) ->
 -doc "Returns a list of all known device types.".
 -spec get_all_device_types() -> [ device_type() ].
 get_all_device_types() ->
-	[ thermometer, thermo_hygro_sensor, opening_detector, push_button,
-	  double_rocker, smart_plug ].
+    [ thermometer, thermo_hygro_sensor, opening_detector, push_button,
+      double_rocker, smart_plug ].
 
 
 
 -doc "Tells whether the specified term is a valid device type.".
 -spec is_valid_device_type( term() ) -> boolean().
 is_valid_device_type( DT ) ->
-	lists:member( DT, get_all_device_types() ).
+    lists:member( DT, get_all_device_types() ).
 
 
 
@@ -2704,45 +2704,45 @@ is_valid_device_type( DT ) ->
 -doc "Tells whether the specified term is a valid application style.".
 -spec is_valid_application_style( term() ) -> boolean().
 is_valid_application_style( AppStyle ) when is_integer( AppStyle )
-											andalso AppStyle > 0 ->
-	true;
+                                            andalso AppStyle > 0 ->
+    true;
 
 is_valid_application_style( _Other ) ->
-	false.
+    false.
 
 
 -doc "Tells whether the specified term is a valid channel.".
 -spec is_valid_channel( term() ) -> boolean().
 is_valid_channel( Channel ) when is_integer( Channel ) andalso Channel > 0 ->
-	true;
+    true;
 
 is_valid_channel( _Other ) ->
-	false.
+    false.
 
 
 -doc "Tells whether the specified term is a valid button position.".
 -spec is_valid_button_position( term() ) -> boolean().
 is_valid_button_position( _ButPos=top ) ->
-	true;
+    true;
 
 is_valid_button_position( _ButPos=bottom ) ->
-	true;
+    true;
 
 is_valid_button_position( _Other ) ->
-	false.
+    false.
 
 
 
 -doc "Tells whether the specified term is a valid button transition.".
 -spec is_valid_button_transition( term() ) -> boolean().
 is_valid_button_transition( _ButPos=just_pressed ) ->
-	true;
+    true;
 
 is_valid_button_transition( _ButPos=just_released ) ->
-	true;
+    true;
 
 is_valid_button_transition( _Other ) ->
-	false.
+    false.
 
 
 -doc """
@@ -2762,30 +2762,30 @@ button_transition_to_state( _ButTrans=just_released ) ->
 Canonicalises the specified user-level double-rocker change specification.
 """.
 -spec canonicalise_double_rocker_change_spec(
-		double_rocker_state_change_spec() ) ->
-			canon_double_rocker_state_change_spec().
+        double_rocker_state_change_spec() ) ->
+            canon_double_rocker_state_change_spec().
 % Full version:
 canonicalise_double_rocker_change_spec( DRCS={ Channel, ButPos, ButTrans } ) ->
 
-	is_valid_channel( Channel ) orelse
-		throw( { invalid_double_rocker_channel_in_change_spec, Channel } ),
+    is_valid_channel( Channel ) orelse
+        throw( { invalid_double_rocker_channel_in_change_spec, Channel } ),
 
-	is_valid_button_position( ButPos ) orelse
-		throw( { invalid_double_rocker_button_position_in_change_spec,
-				 ButPos } ),
+    is_valid_button_position( ButPos ) orelse
+        throw( { invalid_double_rocker_button_position_in_change_spec,
+                 ButPos } ),
 
-	is_valid_button_transition( ButTrans ) orelse
-		throw( { invalid_double_rocker_button_transition_in_change_spec,
-				 ButTrans } ),
+    is_valid_button_transition( ButTrans ) orelse
+        throw( { invalid_double_rocker_button_transition_in_change_spec,
+                 ButTrans } ),
 
-	DRCS;
+    DRCS;
 
 canonicalise_double_rocker_change_spec( { Channel, ButPos } ) ->
-	canonicalise_double_rocker_change_spec(
-	  { Channel, ButPos, _ButTrans=just_pressed } );
+    canonicalise_double_rocker_change_spec(
+      { Channel, ButPos, _ButTrans=just_pressed } );
 
 canonicalise_double_rocker_change_spec( _DRChangeSpec=Channel ) ->
-	canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
+    canonicalise_double_rocker_change_spec( { Channel, _ButPos=top } ).
 
 
 
@@ -2802,7 +2802,7 @@ Returns a textual description of the specified decoded maybe-optional data,
 otherwise from the corresponding raw data.
 """.
 -spec maybe_optional_data_to_string( option( decoded_optional_data() ),
-									 telegram_opt_data() ) -> ustring().
+                                     telegram_opt_data() ) -> ustring().
 maybe_optional_data_to_string( MaybeDecodedOptData, OptData ) ->
     oceanic_text:maybe_optional_data_to_string( MaybeDecodedOptData, OptData ).
 
@@ -2845,19 +2845,19 @@ Typically used to determine how to untrigger an actuator (e.g. switch a smart
 plug off).
 """.
 -spec get_reciprocal_state_change_spec( device_type(),
-		canon_device_state_change_spec() ) -> canon_device_state_change_spec().
+        canon_device_state_change_spec() ) -> canon_device_state_change_spec().
 get_reciprocal_state_change_spec( _DevType=double_rocker,
-								  _CSCS={ Channel, _ButPos=top, ButTrans } ) ->
-	% By convention, same transition, other button of the rocker:
-	{ Channel, bottom, ButTrans };
+                                  _CSCS={ Channel, _ButPos=top, ButTrans } ) ->
+    % By convention, same transition, other button of the rocker:
+    { Channel, bottom, ButTrans };
 
 get_reciprocal_state_change_spec( _DevType=double_rocker,
-		_CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
-	{ Channel, top, ButTrans };
+        _CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
+    { Channel, top, ButTrans };
 
 % Just alternating:
-get_reciprocal_state_change_spec( _DevType=push_button,	_CSCS=undefined ) ->
-	undefined.
+get_reciprocal_state_change_spec( _DevType=push_button, _CSCS=undefined ) ->
+    undefined.
 
 
 
@@ -2867,21 +2867,21 @@ CLES and, if yes, for which new status reported by this event (typically the on
 or off button of a rocker being transitioned).
 """.
 -spec event_matches_trigger( device_event(),
-		[ canon_listened_event_spec() ] ) -> event_match_trigger_outcome().
+        [ canon_listened_event_spec() ] ) -> event_match_trigger_outcome().
 event_matches_trigger( DevEvent, CLESs ) ->
 
-	{ DevEurid, MaybeDevShortName } = get_designator_pair( DevEvent ),
+    { DevEurid, MaybeDevShortName } = get_designator_pair( DevEvent ),
 
-	% Tries to find a CITS corresponding to this emitter:
-	case get_maybe_matching_cits( DevEurid, MaybeDevShortName, CLESs ) of
+    % Tries to find a CITS corresponding to this emitter:
+    case get_maybe_matching_cits( DevEurid, MaybeDevShortName, CLESs ) of
 
-		undefined ->
-			false;
+        undefined ->
+            false;
 
-		CITS ->
-			interpret_cits_matching( CITS, DevEurid, DevEvent )
+        CITS ->
+            interpret_cits_matching( CITS, DevEurid, DevEvent )
 
-	end.
+    end.
 
 
 
@@ -2893,21 +2893,21 @@ specified CLES.
                                [ canon_listened_event_spec() ] ) ->
                                     option( canon_incoming_trigger_spec() ).
 get_maybe_matching_cits( _EmitterEurid, _MaybeDevShortName, _CLESs=[] ) ->
-	undefined;
+    undefined;
 
 % Matching EURID:
 get_maybe_matching_cits( EmitterEurid, _MaybeDevShortName,
-						 _CLESs=[ { EmitterEurid, CITS } | _T ] ) ->
-	CITS;
+                         _CLESs=[ { EmitterEurid, CITS } | _T ] ) ->
+    CITS;
 
 % Matching short name ('undefined' not allowed in CLES):
 get_maybe_matching_cits( _EmitterEurid, DevShortName,
-						 _CLESs=[ { DevShortName, CITS } | _T ] ) ->
-	CITS;
+                         _CLESs=[ { DevShortName, CITS } | _T ] ) ->
+    CITS;
 
 % Non-matching EmitterEurid:
 get_maybe_matching_cits( EmitterEurid, DevShortName, _CLESs=[ _ | T ] ) ->
-	get_maybe_matching_cits( EmitterEurid, DevShortName, T ).
+    get_maybe_matching_cits( EmitterEurid, DevShortName, T ).
 
 
 
@@ -2916,18 +2916,18 @@ Reports any trigger matching and corresponding device new logical status, based
 on the specified CITS and device event.
 """.
 -spec interpret_cits_matching( canon_incoming_trigger_spec(), eurid(),
-				device_event() ) -> event_match_trigger_outcome().
+                device_event() ) -> event_match_trigger_outcome().
 % Here a double-rocker change spec matches (therefore in terms of device type,
 % channel, button position and transition):
 %
 interpret_cits_matching(
-		_CITS={ _DevType=double_rocker, _CSCS={ Channel, ButPos, ButTrans } },
-		DevEurid,
-		_DevEvent=#double_rocker_switch_event{
-			first_action_button={ Channel, ButPos },
-			energy_bow=ButTrans } ) ->
+        _CITS={ _DevType=double_rocker, _CSCS={ Channel, ButPos, ButTrans } },
+        DevEurid,
+        _DevEvent=#double_rocker_switch_event{
+            first_action_button={ Channel, ButPos },
+            energy_bow=ButTrans } ) ->
 
-	{ true, DevEurid, _NewStatus=on };
+    { true, DevEurid, _NewStatus=on };
 
 
 % Here, same as previous clause, a double-rocker change spec matches (therefore
@@ -2935,13 +2935,13 @@ interpret_cits_matching(
 % hence opposite - button position:
 %
 interpret_cits_matching(
-		_CITS={ _DevType=double_rocker, _CSCS={ Channel, _ButPos, ButTrans } },
-		DevEurid,
-		_DevEvent=#double_rocker_switch_event{
-			first_action_button={ Channel, _OppositeButPos },
-			energy_bow=ButTrans } ) ->
+        _CITS={ _DevType=double_rocker, _CSCS={ Channel, _ButPos, ButTrans } },
+        DevEurid,
+        _DevEvent=#double_rocker_switch_event{
+            first_action_button={ Channel, _OppositeButPos },
+            energy_bow=ButTrans } ) ->
 
-	{ true, DevEurid, _NewStatus=off };
+    { true, DevEurid, _NewStatus=off };
 
 
 % Here a push-button change spec matches, i.e. the specified button transition
@@ -2951,18 +2951,18 @@ interpret_cits_matching(
 % lead to a double transition)
 %
 interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS=ButtonTransition },
-		DevEurid,
-		_DevEvent=#push_button_switch_event{ transition=ButtonTransition } ) ->
+        DevEurid,
+        _DevEvent=#push_button_switch_event{ transition=ButtonTransition } ) ->
 
-	{ true, DevEurid, _NewStatus=inverted };
+    { true, DevEurid, _NewStatus=inverted };
 
 
 % Non-listened button transition for this push-button:
 interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
-		_DevEurid,
-		_DevEvent=#push_button_switch_event{} ) ->
+        _DevEurid,
+        _DevEvent=#push_button_switch_event{} ) ->
 
-	false;
+    false;
 
 
 % Add here clauses if wanting to match other CITS/events.
@@ -2970,14 +2970,14 @@ interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
 % Non-matching case:
 interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 
-	cond_utils:if_defined( us_main_debug_home_automation,
-		trace_bridge:debug_fmt(
-			"(this event ~ts does not match the presence switching ~ts)",
-			[ oceanic_text:device_event_to_string( DevEvent ),
-			  oceanic:cits_to_string( CITS ) ] ),
-		basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
+    cond_utils:if_defined( us_main_debug_home_automation,
+        trace_bridge:debug_fmt(
+            "(this event ~ts does not match the presence switching ~ts)",
+            [ oceanic_text:device_event_to_string( DevEvent ),
+              oceanic:cits_to_string( CITS ) ] ),
+        basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
 
-	false.
+    false.
 
 
 
@@ -2994,67 +2994,67 @@ specified instead of actual EURIDs: the actual enocean_device records will be
 needed for the final conversions to EURIDs.
 """.
 -spec canonicalise_listened_event_specs( [ listened_event_spec() ] ) ->
-											[ canon_listened_event_spec() ].
+                                            [ canon_listened_event_spec() ].
 % Better than "bad generator" with a list comprehension:
 canonicalise_listened_event_specs( LESs ) when is_list( LESs ) ->
-	canonicalise_listened_event_specs( LESs, _Acc=[] );
+    canonicalise_listened_event_specs( LESs, _Acc=[] );
 
 canonicalise_listened_event_specs( Other ) ->
-	throw( { invalid_listened_event_specs, non_list, Other } ).
+    throw( { invalid_listened_event_specs, non_list, Other } ).
 
 
 
 % (sub-helper)
 canonicalise_listened_event_specs( _LESs=[], Acc ) ->
-	% Preferring preserving order:
-	lists:reverse( Acc );
+    % Preferring preserving order:
+    lists:reverse( Acc );
 
 canonicalise_listened_event_specs( _LESs=[ { MaybeUserDevDesig, ITS } | T ],
-								   Acc ) ->
+                                   Acc ) ->
 
     DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
 
-	CITS = case ITS of
+    CITS = case ITS of
 
-		{ double_rocker, DRChangeSpec } ->
-			CanDRChangeSpec =
-				canonicalise_double_rocker_change_spec( DRChangeSpec ),
+        { double_rocker, DRChangeSpec } ->
+            CanDRChangeSpec =
+                canonicalise_double_rocker_change_spec( DRChangeSpec ),
 
-			{ double_rocker, CanDRChangeSpec };
+            { double_rocker, CanDRChangeSpec };
 
-		push_button ->
-			{ push_button, just_pressed };
+        push_button ->
+            { push_button, just_pressed };
 
-		P={ push_button, ButTrans } ->
-			is_valid_button_transition( ButTrans ) orelse
-				throw( { invalid_button_transition, ButTrans } ),
-			P;
+        P={ push_button, ButTrans } ->
+            is_valid_button_transition( ButTrans ) orelse
+                throw( { invalid_button_transition, ButTrans } ),
+            P;
 
-		{ OtherDeviceType, ChangeSpec } when is_atom( OtherDeviceType ) ->
-			case is_valid_device_type( OtherDeviceType ) of
+        { OtherDeviceType, ChangeSpec } when is_atom( OtherDeviceType ) ->
+            case is_valid_device_type( OtherDeviceType ) of
 
-				% Valid yet not supported (yet):
-				true ->
-					throw( { unsupported_listened_device_type, OtherDeviceType,
-							 ChangeSpec } );
+                % Valid yet not supported (yet):
+                true ->
+                    throw( { unsupported_listened_device_type, OtherDeviceType,
+                             ChangeSpec } );
 
-				false ->
-					throw( { invalid_listened_device_type, OtherDeviceType,
-							 ChangeSpec } )
+                false ->
+                    throw( { invalid_listened_device_type, OtherDeviceType,
+                             ChangeSpec } )
 
-			end;
+            end;
 
-		Other ->
-			throw( { invalid_listened_event_spec, Other, MaybeUserDevDesig } )
+        Other ->
+            throw( { invalid_listened_event_spec, Other, MaybeUserDevDesig } )
 
-	end,
+    end,
 
-	CLES = { DevDesig, CITS },
+    CLES = { DevDesig, CITS },
 
-	canonicalise_listened_event_specs( T, [ CLES | Acc ] );
+    canonicalise_listened_event_specs( T, [ CLES | Acc ] );
 
 canonicalise_listened_event_specs( _LESs=[ Other | _T ], _Acc ) ->
-	throw( { invalid_listened_event_spec, non_pair, Other } ).
+    throw( { invalid_listened_event_spec, non_pair, Other } ).
 
 
 
@@ -3071,28 +3071,28 @@ Is not yet able to resolve default device operation at this point.
                                             [ canon_emitted_event_spec() ].
 % Better than "bad generator" with a list comprehension:
 canonicalise_emitted_event_specs( EESs ) when is_list( EESs ) ->
-	canonicalise_emitted_event_specs( EESs, _Acc=[] );
+    canonicalise_emitted_event_specs( EESs, _Acc=[] );
 
 canonicalise_emitted_event_specs( Other ) ->
-	throw( { invalid_emitted_event_specs, non_list, Other } ).
+    throw( { invalid_emitted_event_specs, non_list, Other } ).
 
 
 
 % (sub-helper)
 canonicalise_emitted_event_specs( _EESs=[], Acc ) ->
-	% Preferring preserving order:
-	lists:reverse( Acc );
+    % Preferring preserving order:
+    lists:reverse( Acc );
 
 canonicalise_emitted_event_specs( _EESs=[ { MaybeUserDevDesig, DevOp } | T ],
                                   Acc )  ->
     DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
     check_device_operation( DevOp ),
-	canonicalise_emitted_event_specs( T, [ _CEES={ DevDesig, DevOp } | Acc ] );
+    canonicalise_emitted_event_specs( T, [ _CEES={ DevDesig, DevOp } | Acc ] );
 
 canonicalise_emitted_event_specs( _EESs=[ MaybeUserDevDesig | T ], Acc ) ->
     DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
     % Default operations not resolvable yet:
-	canonicalise_emitted_event_specs( T,
+    canonicalise_emitted_event_specs( T,
         [ _CEES={ DevDesig, undefined} | Acc ] ).
 
 
@@ -3116,61 +3116,61 @@ get_internal_device_designator( Other ) ->
 
 -doc "Declares the specified taught-in device.".
 -spec declare_device_from_teach_in( eurid(), eep(), device_table() ) ->
-						{ device_table(), enocean_device(), timestamp() }.
+                        { device_table(), enocean_device(), timestamp() }.
 declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
-	MaybeEepId = resolve_eep( Eep ),
+    MaybeEepId = resolve_eep( Eep ),
 
-	Now = time_utils:get_timestamp(),
+    Now = time_utils:get_timestamp(),
 
-	NewDevice = case table:lookup_entry( Eurid, DeviceTable ) of
+    NewDevice = case table:lookup_entry( Eurid, DeviceTable ) of
 
-		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts through teach-in.",
+        key_not_found ->
+            trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+                "is ~ts through teach-in.",
                 [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
-			#enocean_device{ eurid=Eurid,
-							 name=undefined,
-							 eep=MaybeEepId,
-							 discovered_through=teaching,
-							 first_seen=Now,
-							 last_seen=Now,
-							 telegram_count=1,
-							 error_count=0,
-							 expected_periodicity=none };
+            #enocean_device{ eurid=Eurid,
+                             name=undefined,
+                             eep=MaybeEepId,
+                             discovered_through=teaching,
+                             first_seen=Now,
+                             last_seen=Now,
+                             telegram_count=1,
+                             error_count=0,
+                             expected_periodicity=none };
 
-		% From then, already discovered:
-		{ value, Device=#enocean_device{ eep=undefined,
-										 telegram_count=TelCount } } ->
-			Device#enocean_device{ eep=MaybeEepId,
-								   last_seen=Now,
-								   telegram_count=TelCount+1 };
+        % From then, already discovered:
+        { value, Device=#enocean_device{ eep=undefined,
+                                         telegram_count=TelCount } } ->
+            Device#enocean_device{ eep=MaybeEepId,
+                                   last_seen=Now,
+                                   telegram_count=TelCount+1 };
 
-		{ value, Device=#enocean_device{ eep=KnownEepId,
-										 telegram_count=TelCount } } ->
-			NewEepId = case KnownEepId of
+        { value, Device=#enocean_device{ eep=KnownEepId,
+                                         telegram_count=TelCount } } ->
+            NewEepId = case KnownEepId of
 
-				MaybeEepId ->
-					MaybeEepId;
+                MaybeEepId ->
+                    MaybeEepId;
 
-				_OtherEepId ->
-					trace_bridge:error_fmt( "For ~ts, received a teach-in "
-						"declaring that its EEP is ~ts, whereas it was known "
-						"as ~ts; ignoring the new EEP.",
-						[ oceanic_text:device_to_string( Device ), MaybeEepId,
-						  KnownEepId ] ),
-					KnownEepId
+                _OtherEepId ->
+                    trace_bridge:error_fmt( "For ~ts, received a teach-in "
+                        "declaring that its EEP is ~ts, whereas it was known "
+                        "as ~ts; ignoring the new EEP.",
+                        [ oceanic_text:device_to_string( Device ), MaybeEepId,
+                          KnownEepId ] ),
+                    KnownEepId
 
-			end,
+            end,
 
-			Device#enocean_device{ eep=NewEepId,
-								   last_seen=Now,
-								   telegram_count=TelCount+1 }
+            Device#enocean_device{ eep=NewEepId,
+                                   last_seen=Now,
+                                   telegram_count=TelCount+1 }
 
-	end,
+    end,
 
-	{ table:add_entry( Eurid, NewDevice, DeviceTable ), NewDevice, Now }.
+    { table:add_entry( Eurid, NewDevice, DeviceTable ), NewDevice, Now }.
 
 
 
@@ -3194,7 +3194,7 @@ acknowledge_teach_request(
 
 acknowledge_teach_request(
         TeachReqEv=#teach_request_event{ request_type=teach_out },
-		OcSrvPid ) ->
+        OcSrvPid ) ->
     % Answering unconditionally that teach-out is accepted:
     OcSrvPid ! { acknowledgeTeachRequest,
                     [ TeachReqEv, _TeachOutcome=teach_out_accepted ] }.
@@ -3212,12 +3212,12 @@ See EEP Teach-In Response - UTE Message (Broadcast / CMD: `0x1`) `[EEP-gen]`
 p.26.
 """.
 -spec acknowledge_teach_request( teach_request_event(), teach_outcome(),
-								 oceanic_state() ) -> oceanic_state().
+                                 oceanic_state() ) -> oceanic_state().
 acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
                                                  response_expected=true,
                                                  request_type=teach_in,
                                                  echo_content=EchoContent },
-						   TeachOutcome=teach_in_accepted, State ) ->
+                           TeachOutcome=teach_in_accepted, State ) ->
 
     % Responding in all cases, even if already taught.
 
@@ -3255,7 +3255,7 @@ acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
         InitiatorEurid, _EmitterEurid=State#oceanic_state.emitter_eurid,
         _CommDir=bidirectional, EchoContent ),
 
-	cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
+    cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
        "Acknowledging teach-in request as '~ts', with telegram ~w.",
        [ TeachOutcome, TeachInRespTel ] ) ),
     send_tracked_telegram( TeachInRespTel, _Requester=internal, RegState ).
@@ -3271,26 +3271,26 @@ recipient device, with a response telegram.
 -spec execute_command( telegram(), oceanic_server_pid() ) -> command_outcome().
 execute_command( CmdTelegram, OcSrvPid ) ->
 
-	RequesterPid = self(),
+    RequesterPid = self(),
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug_fmt( "Sending a command to execute, as ~ts, "
-			"on behalf of requester ~w.",
-			[ oceanic_text:telegram_to_string( CmdTelegram ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug_fmt( "Sending a command to execute, as ~ts, "
+            "on behalf of requester ~w.",
+            [ oceanic_text:telegram_to_string( CmdTelegram ),
               RequesterPid ] ) ),
 
-	OcSrvPid ! { executeCommand, CmdTelegram, RequesterPid },
+    OcSrvPid ! { executeCommand, CmdTelegram, RequesterPid },
 
-	receive
+    receive
 
-		{ oceanic_command_outcome, Outcome } ->
-			Outcome
+        { oceanic_command_outcome, Outcome } ->
+            Outcome
 
-		% To debug:
-		%Other ->
-		%   trace_bridge:warning_fmt( "Received for command: ~p", [ Other ] )
+        % To debug:
+        %Other ->
+        %   trace_bridge:warning_fmt( "Received for command: ~p", [ Other ] )
 
-	end.
+    end.
 
 
 
@@ -3302,14 +3302,14 @@ Useful when encoding telegrams.
 """.
 -spec get_oceanic_eurid( oceanic_server_pid() ) -> eurid().
 get_oceanic_eurid( OcSrvPid ) ->
-	OcSrvPid ! { getOceanicEurid, self() },
+    OcSrvPid ! { getOceanicEurid, self() },
 
-	receive
+    receive
 
-		{ oceanic_eurid, BaseEurid } ->
-			BaseEurid
+        { oceanic_eurid, BaseEurid } ->
+            BaseEurid
 
-	end.
+    end.
 
 
 
@@ -3318,16 +3318,16 @@ Returns the best textual description found for the device specified from its
 EURID.
 """.
 -spec get_device_description( device_designator(), oceanic_server_pid() ) ->
-												device_description().
+                                                device_description().
 get_device_description( DevDesig, OcSrvPid ) ->
-	OcSrvPid ! { getDeviceDescription, DevDesig, self() },
+    OcSrvPid ! { getDeviceDescription, DevDesig, self() },
 
-	receive
+    receive
 
-		{ oceanic_device_description, BinDesc } ->
-			BinDesc
+        { oceanic_device_description, BinDesc } ->
+            BinDesc
 
-	end.
+    end.
 
 
 
@@ -3336,10 +3336,10 @@ Returns the best textual description found for the specified button reference,
 as seen from the specified Oceanic server.
 """.
 -spec get_button_ref_description( button_ref(), oceanic_server_pid() ) ->
-											button_ref_description().
+                                            button_ref_description().
 get_button_ref_description( _ButRef={ Eurid, Channel }, OcSrvPid ) ->
-	text_utils:bin_format( "button ~B of ~ts",
-		[ Channel, get_device_description( Eurid, OcSrvPid ) ] ).
+    text_utils:bin_format( "button ~B of ~ts",
+        [ Channel, get_device_description( Eurid, OcSrvPid ) ] ).
 
 
 -doc """
@@ -3347,25 +3347,25 @@ Returns the best textual descriptions found for the specified button references,
 as seen from the specified Oceanic server.
 """.
 -spec get_button_ref_descriptions( [ button_ref() ], oceanic_server_pid() ) ->
-											button_ref_description().
+                                            button_ref_description().
 get_button_ref_descriptions( _ButRefs=[], _OcSrvPid ) ->
-	"no button reference set";
+    "no button reference set";
 
 get_button_ref_descriptions( _ButRefs=[ ButRef ], OcSrvPid ) ->
-	text_utils:format( "a single button reference set: ~ts",
-					   [ get_button_ref_description( ButRef, OcSrvPid ) ] );
+    text_utils:format( "a single button reference set: ~ts",
+                       [ get_button_ref_description( ButRef, OcSrvPid ) ] );
 
 get_button_ref_descriptions( ButRefs, OcSrvPid ) ->
-	Strs = [ get_button_ref_description( BR, OcSrvPid ) || BR <- ButRefs ],
-	text_utils:format( "~B button references set: ~ts",
-		[ length( Strs ), text_utils:strings_to_listed_string( Strs ) ] ).
+    Strs = [ get_button_ref_description( BR, OcSrvPid ) || BR <- ButRefs ],
+    text_utils:format( "~B button references set: ~ts",
+        [ length( Strs ), text_utils:strings_to_listed_string( Strs ) ] ).
 
 
 
 -doc "Sends the specified telegram, through the specified Oceanic server.".
 -spec send( telegram(), oceanic_server_pid() ) -> void().
 send( Telegram, OcSrvPid ) ->
-	OcSrvPid ! { sendOceanic, Telegram }.
+    OcSrvPid ! { sendOceanic, Telegram }.
 
 
 
@@ -3537,27 +3537,27 @@ Might allow to detect freezes/crashes.
 -spec is_serial_available( oceanic_server_pid() ) -> boolean().
 is_serial_available( OcSrvPid ) ->
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug( "Testing whether the serial port is available." ) ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug( "Testing whether the serial port is available." ) ),
 
-	OcSrvPid ! { testSerialAvailability, [], self() },
-	receive
+    OcSrvPid ! { testSerialAvailability, [], self() },
+    receive
 
-		onSerialAvailableReport ->
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug( "Serial interface reported as available." ),
-				ok ),
-			true;
+        onSerialAvailableReport ->
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug( "Serial interface reported as available." ),
+                ok ),
+            true;
 
-		onSerialNotAvailableReport ->
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:error(
-					"Serial interface reported as not available." ),
-				ok ),
+        onSerialNotAvailableReport ->
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:error(
+                    "Serial interface reported as not available." ),
+                ok ),
 
-			false
+            false
 
-	end.
+    end.
 
 
 
@@ -3573,18 +3573,18 @@ anymore, whereas the TTY seems to propagate them properly (based on `od -x <
 -spec restart_serial_interface( oceanic_server_pid() ) -> void().
 restart_serial_interface( OcSrvPid ) ->
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug( "Triggering a restart of the serial interface." ) ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug( "Triggering a restart of the serial interface." ) ),
 
-	OcSrvPid ! { restartSerialInterface, [], self() },
-	receive
+    OcSrvPid ! { restartSerialInterface, [], self() },
+    receive
 
-		serial_restarted ->
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug( "Serial interface restarted." ),
-				ok )
+        serial_restarted ->
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug( "Serial interface restarted." ),
+                ok )
 
-	end.
+    end.
 
 
 
@@ -3607,97 +3607,97 @@ to discriminate the value of MaybeTelTail between:
    equal to `<<>>`
 """.
 -spec oceanic_loop( count(), option( telegram_tail() ), oceanic_state() ) ->
-											no_return().
+                                            no_return().
 oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		begin
-			SkipStr = case ToSkipLen of
+    cond_utils:if_defined( oceanic_debug_decoding,
+        begin
+            SkipStr = case ToSkipLen of
 
-				0 ->
-					"no byte";
+                0 ->
+                    "no byte";
 
-				1 ->
-					"a single byte";
+                1 ->
+                    "a single byte";
 
-				_ ->
-					text_utils:format( "~B bytes", [ ToSkipLen ] )
+                _ ->
+                    text_utils:format( "~B bytes", [ ToSkipLen ] )
 
-			end,
+            end,
 
-			TelTailStr = case MaybeTelTail of
+            TelTailStr = case MaybeTelTail of
 
-				undefined ->
-					"no chunk";
+                undefined ->
+                    "no chunk";
 
-				<<>> ->
-					"just the start byte";
+                <<>> ->
+                    "just the start byte";
 
-				TelTail ->
-					text_utils:format( "a tail of ~B bytes (~p) after "
-						"the start byte", [ size( TelTail ), TelTail ] )
+                TelTail ->
+                    text_utils:format( "a tail of ~B bytes (~p) after "
+                        "the start byte", [ size( TelTail ), TelTail ] )
 
-			end,
+            end,
 
-			% To denote a limit between processings (explicit timestamp added,
-			% to be available also in erlang.log.* files):
-			%
-			trace_bridge:info_fmt( "### Waiting at ~ts for any message "
-				"including a telegram chunk, whereas having ~ts to skip, "
-				"and having accumulated ~ts (waited command info: ~w).",
-				[ time_utils:get_textual_timestamp(), SkipStr,
-				  text_utils:ellipse( TelTailStr, _MaxLen=120 ),
+            % To denote a limit between processings (explicit timestamp added,
+            % to be available also in erlang.log.* files):
+            %
+            trace_bridge:info_fmt( "### Waiting at ~ts for any message "
+                "including a telegram chunk, whereas having ~ts to skip, "
+                "and having accumulated ~ts (waited command info: ~w).",
+                [ time_utils:get_textual_timestamp(), SkipStr,
+                  text_utils:ellipse( TelTailStr, _MaxLen=120 ),
                   State#oceanic_state.waited_command_info ] )
 
-		end ),
+        end ),
 
 
-	% Useful to detect any ever-increasing accumulated tail, which would be the
-	% sign that the decoding logic got stuck for good:
-	%
-	TelTailSizeThreshold = 50,
+    % Useful to detect any ever-increasing accumulated tail, which would be the
+    % sign that the decoding logic got stuck for good:
+    %
+    TelTailSizeThreshold = 50,
 
-	MaybeTelTail =:= undefined orelse
-		begin
-			Size = size( MaybeTelTail ),
-			Size > TelTailSizeThreshold andalso
-				trace_bridge:error_fmt( "Abnormally-long accumulated telegram "
-					"tail (~B bytes); decoding logic stuck? Tail: ~n~p",
-					[ Size, MaybeTelTail ] )
-		end,
+    MaybeTelTail =:= undefined orelse
+        begin
+            Size = size( MaybeTelTail ),
+            Size > TelTailSizeThreshold andalso
+                trace_bridge:error_fmt( "Abnormally-long accumulated telegram "
+                    "tail (~B bytes); decoding logic stuck? Tail: ~n~p",
+                    [ Size, MaybeTelTail ] )
+        end,
 
     % Ensure that, if all debug flags are set, at least one trace is emitted per
     % finest clause.
     %
-	receive
+    receive
 
-		% Received data from the serial port:
-		{ data, NewChunk } ->
+        % Received data from the serial port:
+        { data, NewChunk } ->
 
-			NewChunkSize = size( NewChunk ),
+            NewChunkSize = size( NewChunk ),
 
-			% Monitoring of all receivings may be done to investigate any loss
-			% of communication after a long time:
-			%
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:notice_fmt( "Received a telegram chunk "
-					"of ~B bytes: ~w, corresponding to hexadecimal ~ts "
-					"(whereas there are ~B bytes to skip).",
-					[ NewChunkSize, NewChunk,
-					  oceanic_text:telegram_to_hexastring( NewChunk ),
+            % Monitoring of all receivings may be done to investigate any loss
+            % of communication after a long time:
+            %
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:notice_fmt( "Received a telegram chunk "
+                    "of ~B bytes: ~w, corresponding to hexadecimal ~ts "
+                    "(whereas there are ~B bytes to skip).",
+                    [ NewChunkSize, NewChunk,
+                      oceanic_text:telegram_to_hexastring( NewChunk ),
                       ToSkipLen ] ) ),
 
-			JamState = monitor_jamming( NewChunkSize, State ),
+            JamState = monitor_jamming( NewChunkSize, State ),
 
-			% Note that more than one telegram may be stored in a received data
-			% chunk; to avoid any accumulation, each current chunk should be
-			% decoded as much as possible (not just the first telegram):
-			%
-			{ IntegToSkipLen, IntegMaybeTelTail, IntegState } =
-				integrate_all_telegrams( ToSkipLen, MaybeTelTail, NewChunk,
-										 JamState ),
+            % Note that more than one telegram may be stored in a received data
+            % chunk; to avoid any accumulation, each current chunk should be
+            % decoded as much as possible (not just the first telegram):
+            %
+            { IntegToSkipLen, IntegMaybeTelTail, IntegState } =
+                integrate_all_telegrams( ToSkipLen, MaybeTelTail, NewChunk,
+                                         JamState ),
 
-			oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
+            oceanic_loop( IntegToSkipLen, IntegMaybeTelTail, IntegState );
 
 
         { triggerActuator, CEES={ ActDesig, MaybeDevOp } } ->
@@ -3708,7 +3708,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                 basic_utils:ignore_unused( CEES ) ),
 
             TrigState = trigger_actuator_impl( ActDesig, MaybeDevOp, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
         { triggerActuators, CEESs } ->
@@ -3718,7 +3718,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                                         [ CEESs ] ) ),
 
             TrigState = trigger_actuators_impl( CEESs, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
         { triggerActuatorReciprocal, CEES={ ActDesig, MaybeDevOp } } ->
@@ -3731,7 +3731,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
             TrigState = trigger_actuator_reciprocal_impl( ActDesig,
                 MaybeDevOp, State ),
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
         { triggerActuatorsReciprocal, CEESs } ->
@@ -3741,7 +3741,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                     "actuators based on ~w.", [ CEESs ] ) ),
 
            TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
         { performAction, DeviceAction } ->
@@ -3756,8 +3756,8 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
 
         % ActDesig could be supported, rather than just ActEurid:
-		{ sendDoubleRockerTelegram, [ ActEurid, COTS,
-				_TrackSpec={ _DevEvType, _MaybeExpectedReportedEvInfo } ] } ->
+        { sendDoubleRockerTelegram, [ ActEurid, COTS,
+                _TrackSpec={ _DevEvType, _MaybeExpectedReportedEvInfo } ] } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Server to send a double-rocker "
@@ -3766,15 +3766,15 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                       oceanic_text:canon_outgoing_trigger_spec_to_string(
                         COTS ) ] ) ),
 
-			BaseEurid = State#oceanic_state.emitter_eurid,
+            BaseEurid = State#oceanic_state.emitter_eurid,
 
-			% Note that this results in the target button of the target rocker
-			% to undergo a single transition (generally 'just_pressed'), not a
-			% double one (e.g. 'just_pressed' then 'just_released'), as it
-			% showed sufficient to trigger all tested actuators (they are then
-			% not blocked waiting for a 'just_released' message):
-			%
-			RockerTelegram = oceanic_encode:encode_double_rocker_telegram(
+            % Note that this results in the target button of the target rocker
+            % to undergo a single transition (generally 'just_pressed'), not a
+            % double one (e.g. 'just_pressed' then 'just_released'), as it
+            % showed sufficient to trigger all tested actuators (they are then
+            % not blocked waiting for a 'just_released' message):
+            %
+            RockerTelegram = oceanic_encode:encode_double_rocker_telegram(
                 BaseEurid, COTS, ActEurid ),
 
             DeviceTable = State#oceanic_state.device_table,
@@ -3806,7 +3806,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                                          DevRecord, State )
 
             end,
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
         { acknowledgeTeachRequest, [ TeachReqEv, TeachOutcome ] } ->
@@ -3817,16 +3817,16 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
             AckState = acknowledge_teach_request( TeachReqEv, TeachOutcome,
                                                   State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, AckState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, AckState );
 
 
-		{ onSerialMessage, Msg } ->
-			trace_bridge:warning( text_utils:ensure_string( Msg ) ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
+        { onSerialMessage, Msg } ->
+            trace_bridge:warning( text_utils:ensure_string( Msg ) ),
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
-		% To track lost devices:
-		{ onActivityTimeout, LostEurid, PeriodicityMs } ->
+        % To track lost devices:
+        { onActivityTimeout, LostEurid, PeriodicityMs } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Activity timeout for EURID ~ts "
@@ -3834,111 +3834,111 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                     [ oceanic_text:eurid_to_string( LostEurid ),
                       PeriodicityMs ] ) ),
 
-			DeviceTable = State#oceanic_state.device_table,
+            DeviceTable = State#oceanic_state.device_table,
 
-			NewDeviceTable =
-					case table:lookup_entry( LostEurid, DeviceTable ) of
+            NewDeviceTable =
+                    case table:lookup_entry( LostEurid, DeviceTable ) of
 
-				key_not_found ->
-					% Really abnormal:
-					trace_bridge:error_fmt( "A sensor whose EURID is '~ts' was "
-						"reported as lost whereas it is not known.",
-						[ oceanic_text:eurid_to_string( LostEurid ) ] ),
-					% This EURID is not specifically registered.
-					DeviceTable;
+                key_not_found ->
+                    % Really abnormal:
+                    trace_bridge:error_fmt( "A sensor whose EURID is '~ts' was "
+                        "reported as lost whereas it is not known.",
+                        [ oceanic_text:eurid_to_string( LostEurid ) ] ),
+                    % This EURID is not specifically registered.
+                    DeviceTable;
 
-				{ value, LostDevice } ->
+                { value, LostDevice } ->
 
-					cond_utils:if_defined( oceanic_debug_activity,
-						trace_bridge:debug_fmt(
-							"Activity time-out (after ~ts) for device ~ts.",
-							[ time_utils:duration_to_string( PeriodicityMs ),
-							  oceanic_text:device_to_string( LostDevice ) ] ) ),
+                    cond_utils:if_defined( oceanic_debug_activity,
+                        trace_bridge:debug_fmt(
+                            "Activity time-out (after ~ts) for device ~ts.",
+                            [ time_utils:duration_to_string( PeriodicityMs ),
+                              oceanic_text:device_to_string( LostDevice ) ] ) ),
 
-					IsNewLoss =
-						LostDevice#enocean_device.availability =:= online,
+                    IsNewLoss =
+                        LostDevice#enocean_device.availability =:= online,
 
-					LostMsg = { onEnoceanDeviceLost, [ LostEurid,
-						LostDevice#enocean_device.name,
-						oceanic_text:get_device_description( LostDevice ),
-						IsNewLoss, LostDevice#enocean_device.last_seen,
-						PeriodicityMs, self() ] },
+                    LostMsg = { onEnoceanDeviceLost, [ LostEurid,
+                        LostDevice#enocean_device.name,
+                        oceanic_text:get_device_description( LostDevice ),
+                        IsNewLoss, LostDevice#enocean_device.last_seen,
+                        PeriodicityMs, self() ] },
 
-					[ LPid ! LostMsg
-						|| LPid <- State#oceanic_state.event_listeners ],
+                    [ LPid ! LostMsg
+                        || LPid <- State#oceanic_state.event_listeners ],
 
-					MaybeNewTimerRef = reset_timer(
-						LostDevice#enocean_device.activity_timer, LostEurid,
-						LostDevice#enocean_device.expected_periodicity,
-						LostDevice#enocean_device.first_seen,
-						LostDevice#enocean_device.telegram_count,
-						LostDevice#enocean_device.error_count,
-						_Now=time_utils:get_timestamp() ),
+                    MaybeNewTimerRef = reset_timer(
+                        LostDevice#enocean_device.activity_timer, LostEurid,
+                        LostDevice#enocean_device.expected_periodicity,
+                        LostDevice#enocean_device.first_seen,
+                        LostDevice#enocean_device.telegram_count,
+                        LostDevice#enocean_device.error_count,
+                        _Now=time_utils:get_timestamp() ),
 
-					% Periodicity not updated:
-					NewLostDevice = LostDevice#enocean_device{
-						availability=lost,
-						activity_timer=MaybeNewTimerRef },
+                    % Periodicity not updated:
+                    NewLostDevice = LostDevice#enocean_device{
+                        availability=lost,
+                        activity_timer=MaybeNewTimerRef },
 
-					table:add_entry( LostEurid, NewLostDevice, DeviceTable )
+                    table:add_entry( LostEurid, NewLostDevice, DeviceTable )
 
-			end,
+            end,
 
-			NewState = State#oceanic_state{ device_table=NewDeviceTable },
+            NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		{ executeCommonCommand, CommonCommand, RequesterPid } ->
+        { executeCommonCommand, CommonCommand, RequesterPid } ->
 
-			cond_utils:if_defined( oceanic_debug_commands,
-				trace_bridge:debug_fmt(
-					"Requested to execute common command '~ts', "
-					"on behalf of requester ~w.",
-					[ CommonCommand, RequesterPid ] ) ),
+            cond_utils:if_defined( oceanic_debug_commands,
+                trace_bridge:debug_fmt(
+                    "Requested to execute common command '~ts', "
+                    "on behalf of requester ~w.",
+                    [ CommonCommand, RequesterPid ] ) ),
 
-			CmdTelegram = oceanic_common_command:encode_common_command_tracking(
+            CmdTelegram = oceanic_common_command:encode_common_command_tracking(
                 CommonCommand ),
 
-			% Response will be automatically sent back to the requester when
-			% decoding it (refer to
-			% oceanic_common_command:decode_response_tail/5).
+            % Response will be automatically sent back to the requester when
+            % decoding it (refer to
+            % oceanic_common_command:decode_response_tail/5).
 
-			ExecState = execute_command_impl( _CmdType=CommonCommand,
+            ExecState = execute_command_impl( _CmdType=CommonCommand,
                 CmdTelegram, RequesterPid, State ),
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, ExecState );
 
 
-		{ getOceanicEurid, RequesterPid } ->
+        { getOceanicEurid, RequesterPid } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(getting Oceanic EURID)" ) ),
 
-			RequesterPid !
-				{ oceanic_eurid, State#oceanic_state.emitter_eurid },
+            RequesterPid !
+                { oceanic_eurid, State#oceanic_state.emitter_eurid },
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 
-		{ getDeviceDescription, DevDesig, RequesterPid } ->
+        { getDeviceDescription, DevDesig, RequesterPid } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(getting device description)" ) ),
 
-			BinDesc = oceanic_text:describe_device( DevDesig, State ),
+            BinDesc = oceanic_text:describe_device( DevDesig, State ),
 
-			RequesterPid ! { oceanic_device_description, BinDesc },
+            RequesterPid ! { oceanic_device_description, BinDesc },
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
 
-		% Sent by the timer associated to a currently request for a device, a
-		% timer that here just expired:
-		%
-		{ considerRequestTimeout, ActEurid } ->
+        % Sent by the timer associated to a currently request for a device, a
+        % timer that here just expired:
+        %
+        { considerRequestTimeout, ActEurid } ->
 
             DeviceTable = State#oceanic_state.device_table,
 
@@ -3947,18 +3947,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
                 % Device not known:
                 undefined ->
-					trace_bridge:error_fmt( "Received a request time-out for "
+                    trace_bridge:error_fmt( "Received a request time-out for "
                         "unknown actuator ~ts; ignoring it.",
-						[ oceanic_text:describe_device( ActEurid, State ) ] ),
-					State;
+                        [ oceanic_text:describe_device( ActEurid, State ) ] ),
+                    State;
 
 
                 #enocean_device{ waited_request_info=undefined } ->
-					trace_bridge:error_fmt( "Received a request time-out for "
+                    trace_bridge:error_fmt( "Received a request time-out for "
                         "actuator ~ts, whereas it had not request on the air; "
                         "ignoring it.",
-						[ oceanic_text:describe_device( ActEurid, State ) ] ),
-					State;
+                        [ oceanic_text:describe_device( ActEurid, State ) ] ),
+                    State;
 
 
                 % Legit time-out received, traced and then ignored:
@@ -4005,294 +4005,294 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
             end,
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		% Sent by the timer associated to the currently pending command, a timer
-		% that here just expired:
-		%
-		{ considerCommandTimeout, CmdCount } ->
+        % Sent by the timer associated to the currently pending command, a timer
+        % that here just expired:
+        %
+        { considerCommandTimeout, CmdCount } ->
 
-			TimeState = case State#oceanic_state.waited_command_info of
+            TimeState = case State#oceanic_state.waited_command_info of
 
-				% Surprising:
-				undefined ->
-					trace_bridge:error_fmt( "Received a command time-out "
-						"(for command count #~B), whereas no command is "
-						"awaited and the current count is #~B; ignoring it.",
-						[ CmdCount, State#oceanic_state.command_count ] ),
-					State;
+                % Surprising:
+                undefined ->
+                    trace_bridge:error_fmt( "Received a command time-out "
+                        "(for command count #~B), whereas no command is "
+                        "awaited and the current count is #~B; ignoring it.",
+                        [ CmdCount, State#oceanic_state.command_count ] ),
+                    State;
 
                 % Legit time-out received, traced and then ignored:
-				_CmdInfo={ CmdReq=#command_tracking{ requester=internal },
-						   ThisTimerRef } ->
+                _CmdInfo={ CmdReq=#command_tracking{ requester=internal },
+                           ThisTimerRef } ->
 
                     trace_bridge:error_fmt( "Time-out received for "
                             "internal command ~ts (timer reference: ~w), "
                             "and ignored.",
-							[ oceanic_text:command_tracking_to_string(
+                            [ oceanic_text:command_tracking_to_string(
                                 CmdReq ), ThisTimerRef ] ),
 
-					State#oceanic_state{ waited_command_info=undefined };
+                    State#oceanic_state{ waited_command_info=undefined };
 
 
-				_CmdInfo={ CmdReq=#command_tracking{ requester=RequesterPid },
-						   ThisTimerRef } ->
+                _CmdInfo={ CmdReq=#command_tracking{ requester=RequesterPid },
+                           ThisTimerRef } ->
 
-					cond_utils:if_defined( oceanic_check_commands,
-						CmdCount = State#oceanic_state.command_count ),
+                    cond_utils:if_defined( oceanic_check_commands,
+                        CmdCount = State#oceanic_state.command_count ),
 
-					cond_utils:if_defined( oceanic_debug_commands,
-						trace_bridge:debug_fmt( "Sending to requester "
-							"a time-out (reference: ~w) regarding command ~ts.",
-							[ ThisTimerRef,
+                    cond_utils:if_defined( oceanic_debug_commands,
+                        trace_bridge:debug_fmt( "Sending to requester "
+                            "a time-out (reference: ~w) regarding command ~ts.",
+                            [ ThisTimerRef,
                               oceanic_text:command_tracking_to_string(
                                 CmdReq ) ] ),
-						basic_utils:ignore_unused( [ CmdReq, ThisTimerRef ] ) ),
+                        basic_utils:ignore_unused( [ CmdReq, ThisTimerRef ] ) ),
 
-					RequesterPid !
-						{ oceanic_command_outcome, _Outcome=time_out },
+                    RequesterPid !
+                        { oceanic_command_outcome, _Outcome=time_out },
 
-					State#oceanic_state{ waited_command_info=undefined }
+                    State#oceanic_state{ waited_command_info=undefined }
 
-			end,
+            end,
 
-			% May unblock a queued command:
-			NewState = handle_next_command(
-				TimeState#oceanic_state.command_queue, TimeState ),
+            % May unblock a queued command:
+            NewState = handle_next_command(
+                TimeState#oceanic_state.command_queue, TimeState ),
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
-
-
-		{ addEventListener, ListenerPid } ->
-
-			trace_bridge:info_fmt( "Adding Enocean event listener ~w.",
-								   [ ListenerPid ] ),
-
-			NewListeners = [ ListenerPid | #oceanic_state.event_listeners ],
-
-			NewState = State#oceanic_state{ event_listeners=NewListeners },
-
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		{ removeEventListener, ListenerPid } ->
+        { addEventListener, ListenerPid } ->
 
-			trace_bridge:info_fmt( "Removing Enocean event listener ~w.",
-								   [ ListenerPid ] ),
+            trace_bridge:info_fmt( "Adding Enocean event listener ~w.",
+                                   [ ListenerPid ] ),
 
-			PastListeners = State#oceanic_state.event_listeners,
+            NewListeners = [ ListenerPid | #oceanic_state.event_listeners ],
 
-			NewListeners = case list_utils:delete_if_existing( ListenerPid,
-												PastListeners ) of
+            NewState = State#oceanic_state{ event_listeners=NewListeners },
 
-				not_found ->
-					trace_bridge:error_fmt( "Requested to remove event "
-						"listener ~w whereas not registered (hence ignored).",
-						[ ListenerPid ] ),
-					PastListeners;
-
-				ShrunkListeners ->
-					ShrunkListeners
-
-			end,
-
-			NewState = State#oceanic_state{ event_listeners=NewListeners },
-
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		{ addConfigurationSettings, OcSettings } ->
+        { removeEventListener, ListenerPid } ->
+
+            trace_bridge:info_fmt( "Removing Enocean event listener ~w.",
+                                   [ ListenerPid ] ),
+
+            PastListeners = State#oceanic_state.event_listeners,
+
+            NewListeners = case list_utils:delete_if_existing( ListenerPid,
+                                                PastListeners ) of
+
+                not_found ->
+                    trace_bridge:error_fmt( "Requested to remove event "
+                        "listener ~w whereas not registered (hence ignored).",
+                        [ ListenerPid ] ),
+                    PastListeners;
+
+                ShrunkListeners ->
+                    ShrunkListeners
+
+            end,
+
+            NewState = State#oceanic_state{ event_listeners=NewListeners },
+
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+
+
+        { addConfigurationSettings, OcSettings } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(adding configuration settings)" ) ),
 
-			NewState = apply_conf_settings( OcSettings, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            NewState = apply_conf_settings( OcSettings, State ),
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		% So that the traces emitted by Oceanic thanks to trace_bridge:* are
-		% integrated in a more advanced trace system (typically Ceylan-Traces):
-		%
-		{ registerTraceBridge, BridgeSpec } ->
-			trace_bridge:register( BridgeSpec ),
+        % So that the traces emitted by Oceanic thanks to trace_bridge:* are
+        % integrated in a more advanced trace system (typically Ceylan-Traces):
+        %
+        { registerTraceBridge, BridgeSpec } ->
+            trace_bridge:register( BridgeSpec ),
 
-			trace_bridge:info_fmt( "Just registered the trace bridge "
-				"specification ~p; current state is ~ts.",
+            trace_bridge:info_fmt( "Just registered the trace bridge "
+                "specification ~p; current state is ~ts.",
                 [ BridgeSpec, oceanic_text:state_to_string( State ) ] ),
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
-		% Mostly useful for testing purpose:
-		{ sendOceanic, Telegram } ->
+        % Mostly useful for testing purpose:
+        { sendOceanic, Telegram } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(sending telegram)" ) ),
 
-			SentState = send_tracked_telegram( Telegram, _Requester=internal,
+            SentState = send_tracked_telegram( Telegram, _Requester=internal,
                                                State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
 
-		% Mostly useful for testing purpose:
+        % Mostly useful for testing purpose:
         %
         % (requester to receive back a {onOceanicSendingOutcome,
         %  oceanic_common_command:common_command_status()} message)
         %
-		{ sendOceanic, Telegram, RequesterPid } ->
+        { sendOceanic, Telegram, RequesterPid } ->
 
             cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(sending telegram for requester)" ) ),
 
-			SentState = send_tracked_telegram( Telegram, RequesterPid, State ),
-			oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
+            SentState = send_tracked_telegram( Telegram, RequesterPid, State ),
+            oceanic_loop( ToSkipLen, MaybeTelTail, SentState );
 
 
-		{ testSerialAvailability, [], SenderPid } ->
+        { testSerialAvailability, [], SenderPid } ->
 
            cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug( "(testing serial availability)" ) ),
 
-			State#oceanic_state.serial_server_pid ! report,
+            State#oceanic_state.serial_server_pid ! report,
 
-			RespMsg = receive
+            RespMsg = receive
 
-				{ onSerialMessage, _Msg= <<"Serial is functional.">> } ->
-					onSerialAvailableReport
+                { onSerialMessage, _Msg= <<"Serial is functional.">> } ->
+                    onSerialAvailableReport
 
-				  after 2000 ->
-					onSerialNotAvailableReport
+                  after 2000 ->
+                    onSerialNotAvailableReport
 
-			end,
+            end,
 
-			SenderPid ! RespMsg,
+            SenderPid ! RespMsg,
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
-
-
-		{ restartSerialInterface, [], SenderPid } ->
-
-			BinSerialPath = State#oceanic_state.device_path,
-			SerialPid = State#oceanic_state.serial_server_pid,
-
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:info_fmt( "Restarting serial interface '~ts' "
-					"(was ~w).", [ BinSerialPath, SerialPid ] ) ),
-
-			SerialPid ! { stop, self() },
-
-			% Warning, might freeze the Oceanic server:
-			receive
-
-				serial_stopped ->
-					ok
-
-			end,
-
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:info_fmt( "Past serial interface ~w successfully "
-					"stopped, starting a new one after a short delay.",
-					[ SerialPid ] ) ),
-
-			% If ever that helped:
-			timer:sleep( 1000 ),
-
-			NewSerialPid = secure_tty( BinSerialPath ),
-
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:info_fmt( "Started again, now using serial "
-					"interface ~w. ", [ NewSerialPid ] ) ),
-
-			NewState = State#oceanic_state{ serial_server_pid=NewSerialPid },
-
-			SenderPid ! serial_restarted,
-
-			oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
-		% Mostly useful for testing purpose:
-		{ decodeOceanic, Telegram, SenderPid } ->
+        { restartSerialInterface, [], SenderPid } ->
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Requested to decode telegram ~ts.",
-					[ oceanic_text:telegram_to_string( Telegram ) ] ) ),
+            BinSerialPath = State#oceanic_state.device_path,
+            SerialPid = State#oceanic_state.serial_server_pid,
 
-			% Not interfering with received bits (current state used for that,
-			% but will not be affected):
-			%
-			Res = case try_integrate_next_telegram( _ToSkipLen=0,
-					_MaybeTelTail=undefined, Telegram, State ) of
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:info_fmt( "Restarting serial interface '~ts' "
+                    "(was ~w).", [ BinSerialPath, SerialPid ] ) ),
 
-				{ decoded, DeviceEvent, _MaybeDiscoverOrigin, _IsBackOnline,
-				  _MaybeDevice, _NewMaybeTelTail, _NewState } ->
-					DeviceEvent;
+            SerialPid ! { stop, self() },
 
-				{ DecError, _NewToSkipLen, _NewMaybeTelTail, _NewState } ->
-					DecError
+            % Warning, might freeze the Oceanic server:
+            receive
 
-			end,
+                serial_stopped ->
+                    ok
 
-			SenderPid ! { decoding_result, Res },
+            end,
 
-			% Strictly unaffected:
-			oceanic_loop( ToSkipLen, MaybeTelTail, State );
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:info_fmt( "Past serial interface ~w successfully "
+                    "stopped, starting a new one after a short delay.",
+                    [ SerialPid ] ) ),
 
+            % If ever that helped:
+            timer:sleep( 1000 ),
 
-		% Asynchronous:
-		terminate ->
+            NewSerialPid = secure_tty( BinSerialPath ),
 
-			% (any pending chunk discarded)
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:info_fmt( "Started again, now using serial "
+                    "interface ~w. ", [ NewSerialPid ] ) ),
 
-			SerialPid = State#oceanic_state.serial_server_pid,
+            NewState = State#oceanic_state{ serial_server_pid=NewSerialPid },
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Stopping serial server ~w, "
-					"while in following state: ~ts.",
-					[ SerialPid, oceanic_text:state_to_string( State ) ] ) ),
+            SenderPid ! serial_restarted,
 
-			SerialPid ! stop,
-
-			trace_bridge:debug_fmt( "Oceanic server ~w terminated.",
-									[ self() ] );
+            oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
 
 
-		{ terminateSynchronously, SenderPid } ->
+        % Mostly useful for testing purpose:
+        { decodeOceanic, Telegram, SenderPid } ->
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Requested by ~w to "
-					"terminate synchronously.", [ SenderPid ] ) ),
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug_fmt( "Requested to decode telegram ~ts.",
+                    [ oceanic_text:telegram_to_string( Telegram ) ] ) ),
 
-			% (any pending chunk discarded)
+            % Not interfering with received bits (current state used for that,
+            % but will not be affected):
+            %
+            Res = case try_integrate_next_telegram( _ToSkipLen=0,
+                    _MaybeTelTail=undefined, Telegram, State ) of
 
-			SerialPid = State#oceanic_state.serial_server_pid,
+                { decoded, DeviceEvent, _MaybeDiscoverOrigin, _IsBackOnline,
+                  _MaybeDevice, _NewMaybeTelTail, _NewState } ->
+                    DeviceEvent;
 
-			SerialPid ! { stop, self() },
+                { DecError, _NewToSkipLen, _NewMaybeTelTail, _NewState } ->
+                    DecError
 
-			cond_utils:if_defined( oceanic_debug_tty,
-				trace_bridge:debug_fmt( "Stopping serial server ~w, "
-					"while in following state: ~ts.",
-					[ SerialPid, oceanic_text:state_to_string( State ) ] ) ),
+            end,
 
-			receive
+            SenderPid ! { decoding_result, Res },
 
-				serial_stopped ->
-					ok
+            % Strictly unaffected:
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
-			end,
 
-			SenderPid ! oceanic_terminated,
+        % Asynchronous:
+        terminate ->
 
-			trace_bridge:debug_fmt(
-				"Oceanic server ~w terminated synchronously.", [ self() ] );
+            % (any pending chunk discarded)
 
-		UnexpectedMsg ->
-			trace_bridge:warning_fmt( "Oceanic server ~w received an "
-				"unexpected message: '~w', ignoring it.",
+            SerialPid = State#oceanic_state.serial_server_pid,
+
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug_fmt( "Stopping serial server ~w, "
+                    "while in following state: ~ts.",
+                    [ SerialPid, oceanic_text:state_to_string( State ) ] ) ),
+
+            SerialPid ! stop,
+
+            trace_bridge:debug_fmt( "Oceanic server ~w terminated.",
+                                    [ self() ] );
+
+
+        { terminateSynchronously, SenderPid } ->
+
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug_fmt( "Requested by ~w to "
+                    "terminate synchronously.", [ SenderPid ] ) ),
+
+            % (any pending chunk discarded)
+
+            SerialPid = State#oceanic_state.serial_server_pid,
+
+            SerialPid ! { stop, self() },
+
+            cond_utils:if_defined( oceanic_debug_tty,
+                trace_bridge:debug_fmt( "Stopping serial server ~w, "
+                    "while in following state: ~ts.",
+                    [ SerialPid, oceanic_text:state_to_string( State ) ] ) ),
+
+            receive
+
+                serial_stopped ->
+                    ok
+
+            end,
+
+            SenderPid ! oceanic_terminated,
+
+            trace_bridge:debug_fmt(
+                "Oceanic server ~w terminated synchronously.", [ self() ] );
+
+        UnexpectedMsg ->
+            trace_bridge:warning_fmt( "Oceanic server ~w received an "
+                "unexpected message: '~w', ignoring it.",
                 [ self(), UnexpectedMsg ] ),
 
-			oceanic_loop( ToSkipLen, MaybeTelTail, State )
+            oceanic_loop( ToSkipLen, MaybeTelTail, State )
 
-	end.
+    end.
 
 
 
@@ -4427,12 +4427,12 @@ trigger_actuator_impl( ActDesig, DevOp=switch_on,
 
     ReqQueue = DevRecord#enocean_device.request_queue,
 
-	ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
+    ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
 
     % MaybeReqInfo and ExpandedReqQueue to be set in DevRecord next:
     MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
 
-	handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
+    handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
 
 
 
@@ -4505,11 +4505,11 @@ trigger_actuator_impl( ActDesig, DevOp=switch_off,
 
     ReqQueue = DevRecord#enocean_device.request_queue,
 
-	ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
+    ExpandedReqQueue = queue:in( ReqTrk, ReqQueue ),
 
     MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
 
-	handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
+    handle_next_request( MaybeReqInfo, ExpandedReqQueue, DevRecord, State );
 
 
 trigger_actuator_impl ( ActEurid, DevOp, _State ) ->
@@ -4585,11 +4585,11 @@ queue for that.
 handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
                      State ) ->
 
-	case queue:out( CurrentReqQueue ) of
+    case queue:out( CurrentReqQueue ) of
 
-		{ { value, OldestReqTrk=#request_tracking{
-					request_telegram=ReqTelegram } },
-				ShrunkReqQueue } ->
+        { { value, OldestReqTrk=#request_tracking{
+                    request_telegram=ReqTelegram } },
+                ShrunkReqQueue } ->
 
             cond_utils:if_defined( oceanic_debug_requests,
                 trace_bridge:debug_fmt( "Dequeuing next request ~w, "
@@ -4614,7 +4614,7 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
                     [ oceanic_text:eurid_to_string( ActEurid ), OldestReqTrk,
                       queue:len( ShrunkReqQueue ), TimerRef ] ) ),
 
-			ReqInfo = { OldestReqTrk, TimerRef },
+            ReqInfo = { OldestReqTrk, TimerRef },
 
             % The ack of this sending will allow to further dequeue if possible.
 
@@ -4628,8 +4628,8 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
             CmdState#oceanic_state{ device_table=NewDeviceTable };
 
 
-		% Nothing that is already queued to send here:
-		{ empty, _SameCurrentQueue } ->
+        % Nothing that is already queued to send here:
+        { empty, _SameCurrentQueue } ->
 
             cond_utils:if_defined( oceanic_debug_requests,
                 trace_bridge:debug( "(no request to dequeue)" ) ),
@@ -4642,7 +4642,7 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
 
             State#oceanic_state{ device_table=NewDeviceTable }
 
-	end;
+    end;
 
 % Here there is already a waited request, we just update with the new queue and
 % wait info:
@@ -4734,45 +4734,45 @@ get_base_operation_for_eep( Eep ) ->
 -doc "Detects and notifies any suspected jamming attempt.".
 -spec monitor_jamming( byte_size(), oceanic_state() ) -> oceanic_state().
 monitor_jamming( ChunkSize,
-				 State=#oceanic_state{ traffic_level=TrafficLvl,
-									   last_traffic_seen=LastTimestamp,
-									   jamming_threshold=JamThreshold,
-									   event_listeners=EventListeners } ) ->
+                 State=#oceanic_state{ traffic_level=TrafficLvl,
+                                       last_traffic_seen=LastTimestamp,
+                                       jamming_threshold=JamThreshold,
+                                       event_listeners=EventListeners } ) ->
 
-	Now = time_utils:get_timestamp(),
+    Now = time_utils:get_timestamp(),
 
-	Dur = time_utils:get_duration( LastTimestamp, Now ),
+    Dur = time_utils:get_duration( LastTimestamp, Now ),
 
-	% Relatively exponential backoff, as:
-	%  - same second: not reduced
-	%  - halved if previous second, etc.
-	%
-	AggTrafficLvl = round( TrafficLvl / (Dur+1) ) + ChunkSize,
+    % Relatively exponential backoff, as:
+    %  - same second: not reduced
+    %  - halved if previous second, etc.
+    %
+    AggTrafficLvl = round( TrafficLvl / (Dur+1) ) + ChunkSize,
 
-	NewTrafficLvl = case AggTrafficLvl > JamThreshold of
+    NewTrafficLvl = case AggTrafficLvl > JamThreshold of
 
-		true ->
-			% We notify (if possible) and reset the monitored level:
-			trace_bridge:alert_fmt( "The jamming detection threshold "
-				"(~B bytes per second) has been reached (with ~B bytes per "
-				"second); an attempt to saturate actuators may be "
-				"in progress.", [ JamThreshold, AggTrafficLvl ] ),
+        true ->
+            % We notify (if possible) and reset the monitored level:
+            trace_bridge:alert_fmt( "The jamming detection threshold "
+                "(~B bytes per second) has been reached (with ~B bytes per "
+                "second); an attempt to saturate actuators may be "
+                "in progress.", [ JamThreshold, AggTrafficLvl ] ),
 
-			% PID sent mostly to discriminate between multiple Oceanic servers:
-			JamMsg = { onEnoceanJamming, [ AggTrafficLvl, self() ] },
+            % PID sent mostly to discriminate between multiple Oceanic servers:
+            JamMsg = { onEnoceanJamming, [ AggTrafficLvl, self() ] },
 
-			[ LPid ! JamMsg || LPid <- EventListeners ],
+            [ LPid ! JamMsg || LPid <- EventListeners ],
 
-			% Single notification per detection:
-			0;
+            % Single notification per detection:
+            0;
 
-		false ->
-			AggTrafficLvl
+        false ->
+            AggTrafficLvl
 
-	end,
+    end,
 
-	State#oceanic_state{ traffic_level=NewTrafficLvl,
-						 last_traffic_seen=Now }.
+    State#oceanic_state{ traffic_level=NewTrafficLvl,
+                         last_traffic_seen=Now }.
 
 
 
@@ -4782,157 +4782,157 @@ Decodes and processes all the telegrams found, based on any current telegram
 tail and on the specified new chunk.
 """.
 -spec integrate_all_telegrams( count(), option( telegram_tail() ),
-			telegram_chunk(), oceanic_state() ) -> oceanic_state().
+            telegram_chunk(), oceanic_state() ) -> oceanic_state().
 integrate_all_telegrams( ToSkipLen, MaybeTelTail=undefined, _Chunk= <<>>,
-						 State ) ->
-	{ ToSkipLen, MaybeTelTail, State };
+                         State ) ->
+    { ToSkipLen, MaybeTelTail, State };
 
 integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 
-	case try_integrate_next_telegram( ToSkipLen, MaybeTelTail, Chunk, State ) of
+    case try_integrate_next_telegram( ToSkipLen, MaybeTelTail, Chunk, State ) of
 
-		% Commands have been already answered directly, no response echoed to
-		% any listener:
-		%
-		{ decoded, _Event=command_processed, _MaybeDiscoverOrigin,
-		  _IsBackOnline, _MaybeDevice, NextMaybeTelTail, NewState } ->
+        % Commands have been already answered directly, no response echoed to
+        % any listener:
+        %
+        { decoded, _Event=command_processed, _MaybeDiscoverOrigin,
+          _IsBackOnline, _MaybeDevice, NextMaybeTelTail, NewState } ->
 
-			cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug(
-				"(decoded a command_processed event)" ) ),
+            cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug(
+                "(decoded a command_processed event)" ) ),
 
-			% Just recurse on this tail (no chunk to append):
-			integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail, _Chunk= <<>>,
-									 NewState );
+            % Just recurse on this tail (no chunk to append):
+            integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail, _Chunk= <<>>,
+                                     NewState );
 
-		% Then just an event, possibly listened to:
-		{ decoded, Event, MaybeDiscoverOrigin, IsBackOnline, MaybeDevice,
-		  NextMaybeTelTail, NewState } ->
+        % Then just an event, possibly listened to:
+        { decoded, Event, MaybeDiscoverOrigin, IsBackOnline, MaybeDevice,
+          NextMaybeTelTail, NewState } ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				begin
-					DiscStr = case MaybeDiscoverOrigin of
+            cond_utils:if_defined( oceanic_debug_decoding,
+                begin
+                    DiscStr = case MaybeDiscoverOrigin of
 
-						undefined ->
-							"";
+                        undefined ->
+                            "";
 
-						Origin ->
-							text_utils:format( " (discover origin: ~ts)",
-											   [ Origin ] )
+                        Origin ->
+                            text_utils:format( " (discover origin: ~ts)",
+                                               [ Origin ] )
 
-					end,
-					trace_bridge:debug_fmt( "Decoded following event~ts: ~ts.",
-						[ DiscStr,
+                    end,
+                    trace_bridge:debug_fmt( "Decoded following event~ts: ~ts.",
+                        [ DiscStr,
                           oceanic_text:device_event_to_string( Event ) ] )
 
-				end ),
+                end ),
 
-			EventSrcEurid = get_source_eurid( Event ),
+            EventSrcEurid = get_source_eurid( Event ),
 
-			% Reducing noise, by not relaying the telegrams that it received
-			% (possibly through repeating) yet that were presumably sent by this
-			% gateway itself:
-			%
-			case EventSrcEurid =:= State#oceanic_state.emitter_eurid of
+            % Reducing noise, by not relaying the telegrams that it received
+            % (possibly through repeating) yet that were presumably sent by this
+            % gateway itself:
+            %
+            case EventSrcEurid =:= State#oceanic_state.emitter_eurid of
 
-				true ->
-					%trace_bridge:debug_fmt( "Skipping following self-emitted "
-					%   "event: ~ts",
+                true ->
+                    %trace_bridge:debug_fmt( "Skipping following self-emitted "
+                    %   "event: ~ts",
                     % [ oceanic_text:device_event_to_string( Event ) ] ),
 
-					integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-											 _Chunk= <<>>, NewState );
+                    integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+                                             _Chunk= <<>>, NewState );
 
-				false ->
+                false ->
 
-					DeviceMsg = case MaybeDiscoverOrigin of
+                    DeviceMsg = case MaybeDiscoverOrigin of
 
-						% Most common case (already detected, hence not set):
-						undefined ->
-							BackOnlineInfo = case IsBackOnline of
+                        % Most common case (already detected, hence not set):
+                        undefined ->
+                            BackOnlineInfo = case IsBackOnline of
 
-								true ->
-									case MaybeDevice of
+                                true ->
+                                    case MaybeDevice of
 
-										undefined ->
-											throw(
+                                        undefined ->
+                                            throw(
                                                 { unexpected_undefined_device,
                                                   Event } );
 
-										Device ->
-											oceanic_text:get_device_description(
+                                        Device ->
+                                            oceanic_text:get_device_description(
                                                 Device )
 
-									end;
+                                    end;
 
-								false ->
-									undefined
+                                false ->
+                                    undefined
 
-							end,
+                            end,
 
-						{ onEnoceanDeviceEvent,
-							[ Event, BackOnlineInfo, self() ] };
-
-
-					% Set, hence just detected:
-					DiscoverOrigin ->
-
-						BinDesc = case MaybeDevice of
-
-							undefined ->
-								throw( { unexpected_undefined_device, Event } );
-
-							Device ->
-								oceanic_text:get_device_description( Device )
-
-						end,
-
-						DevMsgType = case DiscoverOrigin of
-
-							configuration ->
-								onEnoceanConfiguredDeviceFirstSeen;
-
-							% Detected, yet not in configuration:
-							listening ->
-								onEnoceanDeviceDiscovery;
-
-							teaching ->
-								onEnoceanDeviceTeachIn
-
-						end,
-
-						{ DevMsgType, [ Event, BinDesc, self() ] }
-
-				end,
-
-				[ LPid ! DeviceMsg
-					|| LPid <- NewState#oceanic_state.event_listeners ],
-
-				integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-										 _Chunk= <<>>, NewState )
-
-			end;
+                        { onEnoceanDeviceEvent,
+                            [ Event, BackOnlineInfo, self() ] };
 
 
-		% Now the unlucky cases; first the ones that may result in extra tail to
-		% decode:
-		%
-		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
+                    % Set, hence just detected:
+                    DiscoverOrigin ->
+
+                        BinDesc = case MaybeDevice of
+
+                            undefined ->
+                                throw( { unexpected_undefined_device, Event } );
+
+                            Device ->
+                                oceanic_text:get_device_description( Device )
+
+                        end,
+
+                        DevMsgType = case DiscoverOrigin of
+
+                            configuration ->
+                                onEnoceanConfiguredDeviceFirstSeen;
+
+                            % Detected, yet not in configuration:
+                            listening ->
+                                onEnoceanDeviceDiscovery;
+
+                            teaching ->
+                                onEnoceanDeviceTeachIn
+
+                        end,
+
+                        { DevMsgType, [ Event, BinDesc, self() ] }
+
+                end,
+
+                [ LPid ! DeviceMsg
+                    || LPid <- NewState#oceanic_state.event_listeners ],
+
+                integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+                                         _Chunk= <<>>, NewState )
+
+            end;
+
+
+        % Now the unlucky cases; first the ones that may result in extra tail to
+        % decode:
+        %
+        { DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
                             when DecodingError =:= unsupported
                                  orelse DecodingError =:= unconfigured
                                  orelse DecodingError =:= invalid ->
-			integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
-									 _Chunk= <<>>, NewState );
+            integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
+                                     _Chunk= <<>>, NewState );
 
 
-		% Then the others, which are the only unlucky possible stops of the
-		% ongoing recursion:
-		%
-		{ DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
+        % Then the others, which are the only unlucky possible stops of the
+        % ongoing recursion:
+        %
+        { DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
                             when DecodingError =:= not_reached
                                  orelse DecodingError =:= incomplete  ->
-			{ NewToSkipLen, NextMaybeTelTail, NewState }
+            { NewToSkipLen, NextMaybeTelTail, NewState }
 
-	end.
+    end.
 
 
 
@@ -4949,13 +4949,13 @@ execute_command_impl( CmdType, CmdTelegram, Requester,
         "Enqueuing command of type '~ts' to execute: telegram is ~w, "
         "requester is ~w.", [ CmdType, CmdTelegram, Requester ] ) ),
 
-	CmdTrk = #command_tracking{ command_type=CmdType,
+    CmdTrk = #command_tracking{ command_type=CmdType,
                                 command_telegram=CmdTelegram,
                                 requester=Requester },
 
-	ExpandedCmdQueue = queue:in( CmdTrk, CmdQueue ),
+    ExpandedCmdQueue = queue:in( CmdTrk, CmdQueue ),
 
-	handle_next_command( ExpandedCmdQueue, State ).
+    handle_next_command( ExpandedCmdQueue, State ).
 
 
 
@@ -4964,29 +4964,29 @@ Handles, if appropriate, the sending of the next command, using the specified
 queue for that.
 """.
 -spec handle_next_command( command_queue(), oceanic_state() ) ->
-										oceanic_state().
+                                        oceanic_state().
 
 % Here no command is already waited, so we can send one directly - provided
 % there is any.
 %
 handle_next_command( CurrentCmdQueue, State=#oceanic_state{
-										waited_command_info=undefined } ) ->
+                                        waited_command_info=undefined } ) ->
 
-	case queue:out( CurrentCmdQueue ) of
+    case queue:out( CurrentCmdQueue ) of
 
-		{ { value, OldestCmdTrk=#command_tracking{
-					command_telegram=CmdTelegram } },
-				ShrunkCmdQueue } ->
+        { { value, OldestCmdTrk=#command_tracking{
+                    command_telegram=CmdTelegram } },
+                ShrunkCmdQueue } ->
 
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug_fmt( "Dequeuing next command ~w.",
                                         [ OldestCmdTrk ] ) ),
 
             % Comment to test time-out:
-			% (not a record mistake)
-			SentState = #oceanic_state{ command_wait_timeout=MaxWaitMs,
-										command_count=CmdCount } =
-				send_raw_telegram( CmdTelegram, State ),
+            % (not a record mistake)
+            SentState = #oceanic_state{ command_wait_timeout=MaxWaitMs,
+                                        command_count=CmdCount } =
+                send_raw_telegram( CmdTelegram, State ),
 
             % Test code with no actual sending, meant to trigger a time-out:
 
@@ -5015,40 +5015,40 @@ handle_next_command( CurrentCmdQueue, State=#oceanic_state{
             %
             % end,
 
-			NewCmdCount = CmdCount+1,
+            NewCmdCount = CmdCount+1,
 
-			% {error, Reason} hardly manageable here; we cannot specify a timer
-			% reference in its own message (as of course the reference does not
-			% exist yet); we could have created and stored a reference instead,
-			% but a counter has its own interest:
-			%
-			{ ok, TimerRef } = timer:send_after(
-				MaxWaitMs,
-				%_Msg={ considerCommandTimeout, TimerRef } ),
-				_Msg={ considerCommandTimeout, NewCmdCount } ),
+            % {error, Reason} hardly manageable here; we cannot specify a timer
+            % reference in its own message (as of course the reference does not
+            % exist yet); we could have created and stored a reference instead,
+            % but a counter has its own interest:
+            %
+            { ok, TimerRef } = timer:send_after(
+                MaxWaitMs,
+                %_Msg={ considerCommandTimeout, TimerRef } ),
+                _Msg={ considerCommandTimeout, NewCmdCount } ),
 
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug_fmt( "No command was on the air, dequeued "
                     "command to execute #~B: ~w (timer ref: ~w).",
                     [ NewCmdCount, OldestCmdTrk, TimerRef ] ) ),
 
-			CmdInfo = { OldestCmdTrk, TimerRef },
+            CmdInfo = { OldestCmdTrk, TimerRef },
 
             % The ack of this sending will allow to further dequeue if possible.
 
-			SentState#oceanic_state{ command_queue=ShrunkCmdQueue,
-									 waited_command_info=CmdInfo,
-									 command_count=NewCmdCount };
+            SentState#oceanic_state{ command_queue=ShrunkCmdQueue,
+                                     waited_command_info=CmdInfo,
+                                     command_count=NewCmdCount };
 
-		% Nothing that is already queued to send here:
-		{ empty, SameCurrentCmdQueue } ->
+        % Nothing that is already queued to send here:
+        { empty, SameCurrentCmdQueue } ->
 
             cond_utils:if_defined( oceanic_debug_commands,
                 trace_bridge:debug( "(no command to dequeue)" ) ),
 
             State#oceanic_state{ command_queue=SameCurrentCmdQueue }
 
-	end;
+    end;
 
 % Here there is already a waited command, we just update with the new queue:
 handle_next_command( CurrentCmdQueue, State ) ->
@@ -5057,7 +5057,7 @@ handle_next_command( CurrentCmdQueue, State ) ->
         "(a command is already on the air, none of the ~B ones dequeued)",
         [ queue:len( CurrentCmdQueue ) ] ) ),
 
-	State#oceanic_state{ command_queue=CurrentCmdQueue }.
+    State#oceanic_state{ command_queue=CurrentCmdQueue }.
 
 
 
@@ -5076,20 +5076,20 @@ Therefore this function is not to be called directly, see
 -spec send_raw_telegram( telegram(), oceanic_state() ) -> oceanic_state().
 send_raw_telegram( Telegram, State=#oceanic_state{
                                         serial_server_pid=SerialPid,
-										sent_count=SentCount } ) ->
+                                        sent_count=SentCount } ) ->
 
-	% Not useful: ActualSending = binary_to_list( Telegram ),
-	ActualSending = Telegram,
+    % Not useful: ActualSending = binary_to_list( Telegram ),
+    ActualSending = Telegram,
 
-	cond_utils:if_defined( oceanic_debug_tty,
-		trace_bridge:debug_fmt(
-			"Sending to serial server ~w the actual telegram ~w "
-			"(hexadecimal form: '~ts').",
-			[ SerialPid, ActualSending,
-			  oceanic_text:telegram_to_hexastring( Telegram ) ] ) ),
+    cond_utils:if_defined( oceanic_debug_tty,
+        trace_bridge:debug_fmt(
+            "Sending to serial server ~w the actual telegram ~w "
+            "(hexadecimal form: '~ts').",
+            [ SerialPid, ActualSending,
+              oceanic_text:telegram_to_hexastring( Telegram ) ] ) ),
 
-	SerialPid ! { send, ActualSending },
-	State#oceanic_state{ sent_count=SentCount+1 }.
+    SerialPid ! { send, ActualSending },
+    State#oceanic_state{ sent_count=SentCount+1 }.
 
 
 -doc """
@@ -5108,8 +5108,8 @@ send_tracked_telegram( Telegram, Requester, State ) ->
 -doc "Helper introduced only to make the decoding logic available for tests.".
 -spec test_decode( telegram_chunk() ) -> decoding_outcome().
 test_decode( Chunk ) ->
-	try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, Chunk,
-								 get_test_state() ).
+    try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, Chunk,
+                                 get_test_state() ).
 
 
 -doc "Helper introduced only to make the decoding logic available for tests.".
@@ -5137,14 +5137,14 @@ available, is mostly bogus.
 -spec get_test_state() -> oceanic_state().
 get_test_state() ->
 
-	TestState = #oceanic_state{
-		serial_server_pid=self() ,
-		emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
-		device_table=table:new(),
-		command_queue=queue:new(),
-		last_traffic_seen=time_utils:get_timestamp() },
+    TestState = #oceanic_state{
+        serial_server_pid=self() ,
+        emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
+        device_table=table:new(),
+        command_queue=queue:new(),
+        last_traffic_seen=time_utils:get_timestamp() },
 
-	load_configuration( TestState ).
+    load_configuration( TestState ).
 
 
 
@@ -5155,10 +5155,10 @@ some tests.
 -spec get_test_state( device_table() ) -> oceanic_state().
 get_test_state( DeviceTable ) ->
 
-	% Normally there is a real serial server:
-	BaseState = get_test_state(),
+    % Normally there is a real serial server:
+    BaseState = get_test_state(),
 
-	BaseState#oceanic_state{ device_table=DeviceTable }.
+    BaseState#oceanic_state{ device_table=DeviceTable }.
 
 
 
@@ -5167,7 +5167,7 @@ Returns the device state in the specified state; only useful for some tests.
 """.
 -spec get_device_table( oceanic_state() ) -> device_table().
 get_device_table( #oceanic_state{ device_table=DeviceTable } ) ->
-	DeviceTable.
+    DeviceTable.
 
 
 
@@ -5176,7 +5176,7 @@ Tries to integrate a new telegram chunk, that is to decode an ESP3 packet from
 the specified chunk.
 """.
 -spec try_integrate_next_telegram( count(), option( telegram_chunk() ),
-			telegram_chunk(), oceanic_state() ) -> decoding_outcome().
+            telegram_chunk(), oceanic_state() ) -> decoding_outcome().
 
 % Special-casing "nothing left to skip " is clearer; no start byte was already
 % chopped.
@@ -5184,8 +5184,8 @@ the specified chunk.
 % May happen (at least initially).
 %
 try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, NewChunk,
-							 State ) ->
-	try_decode_chunk( NewChunk, State );
+                             State ) ->
+    try_decode_chunk( NewChunk, State );
 
 % Still bytes to skip, and therefore still before any start byte is detected and
 % chopped:
@@ -5193,31 +5193,31 @@ try_integrate_next_telegram( _ToSkipLen=0, _MaybeTelTail=undefined, NewChunk,
 try_integrate_next_telegram( ToSkipLen, _MaybeTelTail=undefined, NewChunk,
                              State ) ->
 
-	ChunkSize = size( NewChunk ),
+    ChunkSize = size( NewChunk ),
 
-	case ToSkipLen - ChunkSize of
+    case ToSkipLen - ChunkSize of
 
-		% Not having reached a new relevant packet yet:
-		StillToSkip when StillToSkip >= 0 ->
-			{ not_reached, StillToSkip, _NoNextTelTail=undefined, State };
+        % Not having reached a new relevant packet yet:
+        StillToSkip when StillToSkip >= 0 ->
+            { not_reached, StillToSkip, _NoNextTelTail=undefined, State };
 
-		% ChunkSize > ToSkipLen, so the next packet already started in this new
-		% chunk.
-		%
-		% This will start by scanning for any start byte:
-		_ ->
-			<<_Skipped:ToSkipLen/binary, TargetChunk/binary>> = NewChunk,
-			try_decode_chunk( TargetChunk, State )
+        % ChunkSize > ToSkipLen, so the next packet already started in this new
+        % chunk.
+        %
+        % This will start by scanning for any start byte:
+        _ ->
+            <<_Skipped:ToSkipLen/binary, TargetChunk/binary>> = NewChunk,
+            try_decode_chunk( TargetChunk, State )
 
-	end;
+    end;
 
 % Here there is already an accumulated chunk as a tail, hence its start byte was
 % already detected and chopped:
 %
 try_integrate_next_telegram( _ToSkipLen=0, TelTail, NewChunk, State ) ->
-	% Start byte was already chopped from TelTail:
-	MoreCompleteTelTail = <<TelTail/binary, NewChunk/binary>>,
-	decode_after_start_byte( MoreCompleteTelTail, State ).
+    % Start byte was already chopped from TelTail:
+    MoreCompleteTelTail = <<TelTail/binary, NewChunk/binary>>,
+    decode_after_start_byte( MoreCompleteTelTail, State ).
 
 % Not expecting ToSkipLen>0 and MaybeTelTail =/= undefined (a function clause
 % would be triggered anyway).
@@ -5234,48 +5234,48 @@ from their first start byte included, whereas invalid ones are dropped (until
 any start byte is found).
 """.
 -spec try_decode_chunk( telegram_chunk(), oceanic_state() ) ->
-								decoding_outcome().
+                                decoding_outcome().
 try_decode_chunk( TelegramChunk, State ) ->
 
-	% (an additional source of inspiration can be [PY-EN], in
-	% enocean/protocol/packet.py, the parse_msg/1 method)
+    % (an additional source of inspiration can be [PY-EN], in
+    % enocean/protocol/packet.py, the parse_msg/1 method)
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Trying to decode ~w (of size ~B bytes)",
-								[ TelegramChunk, size( TelegramChunk ) ] ) ),
+    cond_utils:if_defined( oceanic_debug_decoding,
+        trace_bridge:debug_fmt( "Trying to decode ~w (of size ~B bytes)",
+                                [ TelegramChunk, size( TelegramChunk ) ] ) ),
 
-	% First 6 bytes correspond to the serial synchronisation:
-	% - byte #1: Packet start (?sync_byte, 0x55)
-	% - bytes #2-5 (32 bits): Header, containing:
-	%   * byte #2-3 (16 bits): byte count of DATA to interpret
-	%   * byte #4: (8 bits) byte count of OPTIONAL_DATA to interpret
-	%   * byte #5: (8 bits) packet type
-	% - byte #6: CRC of header
+    % First 6 bytes correspond to the serial synchronisation:
+    % - byte #1: Packet start (?sync_byte, 0x55)
+    % - bytes #2-5 (32 bits): Header, containing:
+    %   * byte #2-3 (16 bits): byte count of DATA to interpret
+    %   * byte #4: (8 bits) byte count of OPTIONAL_DATA to interpret
+    %   * byte #5: (8 bits) packet type
+    % - byte #6: CRC of header
 
-	case scan_for_packet_start( TelegramChunk ) of
+    case scan_for_packet_start( TelegramChunk ) of
 
-		{ no_content, DroppedCount } ->
+        { no_content, DroppedCount } ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
-					"so dropping its ~B bytes)", [ DroppedCount ] ),
-				basic_utils:ignore_unused( DroppedCount ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "(no start byte found in whole chunk, "
+                    "so dropping its ~B bytes)", [ DroppedCount ] ),
+                basic_utils:ignore_unused( DroppedCount ) ),
 
-			{ invalid, _StillToSkipLen=0, _NoTelTail=undefined, State };
+            { invalid, _StillToSkipLen=0, _NoTelTail=undefined, State };
 
 
-		{ NewTelTail, DroppedCount } ->
+        { NewTelTail, DroppedCount } ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Start byte found, retaining now "
-					"following telegram tail (of size ~B bytes; "
-					"after dropping ~B byte(s)):~n  ~p.",
-					[ size( NewTelTail ), DroppedCount, NewTelTail ] ),
-				basic_utils:ignore_unused( DroppedCount ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Start byte found, retaining now "
+                    "following telegram tail (of size ~B bytes; "
+                    "after dropping ~B byte(s)):~n  ~p.",
+                    [ size( NewTelTail ), DroppedCount, NewTelTail ] ),
+                basic_utils:ignore_unused( DroppedCount ) ),
 
-			decode_after_start_byte( NewTelTail, State )
+            decode_after_start_byte( NewTelTail, State )
 
-	end.
+    end.
 
 
 
@@ -5287,28 +5287,28 @@ begin with a start byte, which has already been chopped).
                                             decoding_outcome().
 decode_after_start_byte( NewTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Examining now following tail of ~B bytes:~n "
-			"~p.", [ size( NewTelTail ),  NewTelTail ] ) ),
+    cond_utils:if_defined( oceanic_debug_decoding,
+        trace_bridge:debug_fmt( "Examining now following tail of ~B bytes:~n "
+            "~p.", [ size( NewTelTail ),  NewTelTail ] ) ),
 
-	% This tail corresponds to a telegram that is invalid, or unsupported, or
-	% (currently) truncated, or valid (hence decoded):
-	%
-	case NewTelTail of
+    % This tail corresponds to a telegram that is invalid, or unsupported, or
+    % (currently) truncated, or valid (hence decoded):
+    %
+    case NewTelTail of
 
-		% First 32 bits available (header) and first CRC as well:
-		<<Header:4/binary, HeaderCRC, Rest/binary>> ->
-			examine_header( Header, HeaderCRC, Rest, NewTelTail, State );
+        % First 32 bits available (header) and first CRC as well:
+        <<Header:4/binary, HeaderCRC, Rest/binary>> ->
+            examine_header( Header, HeaderCRC, Rest, NewTelTail, State );
 
-		% So less than 5 bytes (yet), cannot be complete, but is kept:
-		_ ->
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug( "(no complete header to decode)" ) ),
+        % So less than 5 bytes (yet), cannot be complete, but is kept:
+        _ ->
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug( "(no complete header to decode)" ) ),
 
-			% Waiting to concatenate any additional receiving:
-			{ incomplete, _ToSkipLen=0, NewTelTail, State }
+            % Waiting to concatenate any additional receiving:
+            { incomplete, _ToSkipLen=0, NewTelTail, State }
 
-	end.
+    end.
 
 
 
@@ -5321,213 +5321,213 @@ Often there are no leading bytes to be dropped.
 Refer to `[ESP3]` "1.6 UART synchronization (start of packet detection)".
 """.
 -spec scan_for_packet_start( telegram_chunk() ) ->
-				{ telegram_tail() | 'no_content', DropCount :: count() }.
+                { telegram_tail() | 'no_content', DropCount :: count() }.
 scan_for_packet_start( TelegramChunk ) ->
-	scan_for_packet_start( TelegramChunk, _DropCount=0 ).
+    scan_for_packet_start( TelegramChunk, _DropCount=0 ).
 
 
 % (helper)
 scan_for_packet_start( _Chunk= <<>>, DropCount ) ->
-	{ no_content, DropCount };
+    { no_content, DropCount };
 
 scan_for_packet_start( _Chunk= <<?sync_byte, RemainingChunk/binary>>,
-					   DropCount ) ->
-	% No need to keep/include the start byte: repeated decoding attempts may
-	% have to be made, yet any acc'ed chunk is a post-start telegram chunk:
-	%
-	{ _NewTelTail=RemainingChunk, DropCount };
+                       DropCount ) ->
+    % No need to keep/include the start byte: repeated decoding attempts may
+    % have to be made, yet any acc'ed chunk is a post-start telegram chunk:
+    %
+    { _NewTelTail=RemainingChunk, DropCount };
 
 % Skip all bytes before first start byte:
 scan_for_packet_start( _Chunk= <<_OtherNonSyncByte, T/binary>>, DropCount ) ->
-	scan_for_packet_start( T, DropCount+1 ).
+    scan_for_packet_start( T, DropCount+1 ).
 
 
 
 -doc "Checks the telegram header and decodes all next elements accordingly.".
 -spec examine_header( esp3_header(), crc(), telegram_chunk(), telegram_tail(),
-					  oceanic_state() ) -> decoding_outcome().
+                      oceanic_state() ) -> decoding_outcome().
 examine_header( Header= <<DataLen:16, OptDataLen:8, PacketTypeNum:8>>,
-				HeaderCRC, Rest, FullTelTail, State ) ->
+                HeaderCRC, Rest, FullTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
-			"then ~B of optional data; checking first header CRC.",
-			[ PacketTypeNum, DataLen, OptDataLen ] ) ),
+    cond_utils:if_defined( oceanic_debug_decoding,
+        trace_bridge:debug_fmt( "Packet type ~B; expecting ~B bytes of data, "
+            "then ~B of optional data; checking first header CRC.",
+            [ PacketTypeNum, DataLen, OptDataLen ] ) ),
 
-	case compute_crc( Header ) of
+    case compute_crc( Header ) of
 
-		HeaderCRC ->
+        HeaderCRC ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Header CRC validated (~B).",
-										[ HeaderCRC ] ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Header CRC validated (~B).",
+                                        [ HeaderCRC ] ) ),
 
-			% +1 for the FullDataCRC size, after both data:
-			ExpectedRestSize = DataLen + OptDataLen + 1,
+            % +1 for the FullDataCRC size, after both data:
+            ExpectedRestSize = DataLen + OptDataLen + 1,
 
-			case get_packet_type( PacketTypeNum ) of
+            case get_packet_type( PacketTypeNum ) of
 
-				undefined ->
-					% Not able to decode, no need to try to decode its content
-					% as a new telegram:
+                undefined ->
+                    % Not able to decode, no need to try to decode its content
+                    % as a new telegram:
 
-					SkipLen = ExpectedRestSize,
+                    SkipLen = ExpectedRestSize,
 
-					trace_bridge:warning_fmt( "Unknown packet type (~B), "
-						"dropping corresponding content "
-						"(hence ~B bytes to be skipped).",
-						[ PacketTypeNum, SkipLen ] ),
+                    trace_bridge:warning_fmt( "Unknown packet type (~B), "
+                        "dropping corresponding content "
+                        "(hence ~B bytes to be skipped).",
+                        [ PacketTypeNum, SkipLen ] ),
 
-					% Not wanting to drop also the content of any next telegram:
-					case Rest of
+                    % Not wanting to drop also the content of any next telegram:
+                    case Rest of
 
-						<<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
-							% We already skipped what was needed; we have the
-							% next chunk, but we need any corresponding tail,
-							% so:
-							%
-							NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
+                        <<_PacketContent:SkipLen/binary, NextChunk/binary>> ->
+                            % We already skipped what was needed; we have the
+                            % next chunk, but we need any corresponding tail,
+                            % so:
+                            %
+                            NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
 
-							{ unsupported, _SkipLen=0, NextMaybeTelTail,
+                            { unsupported, _SkipLen=0, NextMaybeTelTail,
                               State };
 
-						% Rest too short here; so we have to skip more than this
-						% chunk:
-						%
-						_ ->
-							StillToSkip = SkipLen - size( Rest ),
-							{ not_reached, StillToSkip, _NoTelTail=undefined,
-							  State }
+                        % Rest too short here; so we have to skip more than this
+                        % chunk:
+                        %
+                        _ ->
+                            StillToSkip = SkipLen - size( Rest ),
+                            { not_reached, StillToSkip, _NoTelTail=undefined,
+                              State }
 
-					end;
+                    end;
 
 
-				PacketType ->
+                PacketType ->
 
-					cond_utils:if_defined( oceanic_debug_decoding,
-						trace_bridge:debug_fmt( "Detected packet type: ~ts.",
-												[ PacketType ] ) ),
+                    cond_utils:if_defined( oceanic_debug_decoding,
+                        trace_bridge:debug_fmt( "Detected packet type: ~ts.",
+                                                [ PacketType ] ) ),
 
-					ActualRestSize = size( Rest ),
+                    ActualRestSize = size( Rest ),
 
-					case ActualRestSize < ExpectedRestSize of
+                    case ActualRestSize < ExpectedRestSize of
 
-						% Not having received enough yet (will be decoded again,
-						% once at least partially completed next):
-						%
-						true ->
-							{ incomplete, _SkipLen=0, FullTelTail, State };
+                        % Not having received enough yet (will be decoded again,
+                        % once at least partially completed next):
+                        %
+                        true ->
+                            { incomplete, _SkipLen=0, FullTelTail, State };
 
-						% We have at least enough, let's extract these elements
-						% and separate them from any next bytes:
-						%
-						false ->
+                        % We have at least enough, let's extract these elements
+                        % and separate them from any next bytes:
+                        %
+                        false ->
 
-							<<Data:DataLen/binary, OptData:OptDataLen/binary,
-							  FullDataCRC:8, NextChunk/binary>> = Rest,
+                            <<Data:DataLen/binary, OptData:OptDataLen/binary,
+                              FullDataCRC:8, NextChunk/binary>> = Rest,
 
-							% Let's decode first the current packet.
+                            % Let's decode first the current packet.
 
-							% This CRC corresponds to the whole FullData, we
-							% extract it (again) rather than concatenating
-							% <<Data/binary, OptData/binary>>:
+                            % This CRC corresponds to the whole FullData, we
+                            % extract it (again) rather than concatenating
+                            % <<Data/binary, OptData/binary>>:
 
-							FullLen = DataLen + OptDataLen,
+                            FullLen = DataLen + OptDataLen,
 
-							% May happen; e.g. if two telegrams overlap:
-							case Rest of
+                            % May happen; e.g. if two telegrams overlap:
+                            case Rest of
 
-								% Post-telegram not to be lost (the second
-								% /binary is crucial to match any size):
-								%
-								<<FullData:FullLen/binary,
+                                % Post-telegram not to be lost (the second
+                                % /binary is crucial to match any size):
+                                %
+                                <<FullData:FullLen/binary,
                                   _NextChunk/binary>> ->
-									examine_full_data( FullData, FullDataCRC,
-										Data, OptData, PacketType, NextChunk,
+                                    examine_full_data( FullData, FullDataCRC,
+                                        Data, OptData, PacketType, NextChunk,
                                         State );
 
-								% Not expected to *ever* happen:
-								TooShortChunk ->
-									cond_utils:if_defined(
-										oceanic_debug_decoding,
-										trace_bridge:debug_fmt(
-											"Chunk ~p too short.",
-											[ TooShortChunk ] ),
-										basic_utils:ignore_unused(
-											TooShortChunk ) ),
+                                % Not expected to *ever* happen:
+                                TooShortChunk ->
+                                    cond_utils:if_defined(
+                                        oceanic_debug_decoding,
+                                        trace_bridge:debug_fmt(
+                                            "Chunk ~p too short.",
+                                            [ TooShortChunk ] ),
+                                        basic_utils:ignore_unused(
+                                            TooShortChunk ) ),
 
-									% By design start byte already chopped:
-									{ incomplete, _ToSkipLen=0, FullTelTail,
-									  State }
+                                    % By design start byte already chopped:
+                                    { incomplete, _ToSkipLen=0, FullTelTail,
+                                      State }
 
 
-							end
+                            end
 
-					end
+                    end
 
-			end;
+            end;
 
-		OtherHeaderCRC ->
+        OtherHeaderCRC ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
-					"dropping this telegram candidate.", [ OtherHeaderCRC ] ),
-				basic_utils:ignore_unused( OtherHeaderCRC ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Obtained other header CRC (~B), "
+                    "dropping this telegram candidate.", [ OtherHeaderCRC ] ),
+                basic_utils:ignore_unused( OtherHeaderCRC ) ),
 
-			% Rather than discarding this telegram tail as a whole, tries to
-			% scavage (very conservatively) any trailing element by extracting
-			% from it any potentially valid new telegram tail - knowing that the
-			% prior start byte has already been chopped; so we go here for any
-			% next one (and thus at least one of byte has been consumed in the
-			% process - no infinite decoding loop):
-			%
-			NextMaybeTelTail = get_maybe_next_tail( _NextChunk=FullTelTail ),
+            % Rather than discarding this telegram tail as a whole, tries to
+            % scavage (very conservatively) any trailing element by extracting
+            % from it any potentially valid new telegram tail - knowing that the
+            % prior start byte has already been chopped; so we go here for any
+            % next one (and thus at least one of byte has been consumed in the
+            % process - no infinite decoding loop):
+            %
+            NextMaybeTelTail = get_maybe_next_tail( _NextChunk=FullTelTail ),
 
-			{ invalid, _ToSkipLen=0, NextMaybeTelTail, State }
+            { invalid, _ToSkipLen=0, NextMaybeTelTail, State }
 
-	end.
+    end.
 
 
 
 -doc "Further checks and decodes a telegram now that its type is known.".
 -spec examine_full_data( telegram_chunk(), crc(), telegram_data(),
-	telegram_opt_data(), packet_type(), telegram_chunk(), oceanic_state() ) ->
+    telegram_opt_data(), packet_type(), telegram_chunk(), oceanic_state() ) ->
                                             decoding_outcome().
 examine_full_data( FullData, ExpectedFullDataCRC, Data, OptData, PacketType,
-				   NextChunk, State ) ->
+                   NextChunk, State ) ->
 
-	case compute_crc( FullData ) of
+    case compute_crc( FullData ) of
 
-		ExpectedFullDataCRC ->
+        ExpectedFullDataCRC ->
 
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Full-data CRC validated (~B).",
-										[ ExpectedFullDataCRC ] ) ),
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Full-data CRC validated (~B).",
+                                        [ ExpectedFullDataCRC ] ) ),
 
-			% First point where it can be done once for all:
-			NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
+            % First point where it can be done once for all:
+            NextMaybeTelTail = get_maybe_next_tail( NextChunk ),
 
-			oceanic_decode:decode_packet( PacketType, Data, OptData,
+            oceanic_decode:decode_packet( PacketType, Data, OptData,
                                           NextMaybeTelTail, State );
 
-		OtherCRC ->
-			cond_utils:if_defined( oceanic_debug_decoding,
-				trace_bridge:debug_fmt( "Obtained unexpected full-data CRC "
-					"(~B, instead of ~B), dropping candidate telegram.",
-					[ OtherCRC, ExpectedFullDataCRC ] ),
-				basic_utils:ignore_unused( OtherCRC ) ),
+        OtherCRC ->
+            cond_utils:if_defined( oceanic_debug_decoding,
+                trace_bridge:debug_fmt( "Obtained unexpected full-data CRC "
+                    "(~B, instead of ~B), dropping candidate telegram.",
+                    [ OtherCRC, ExpectedFullDataCRC ] ),
+                basic_utils:ignore_unused( OtherCRC ) ),
 
-			% Not expecting being fooled by data accidentally looking like a
-			% legit CRC'ed header, so supposing this is just a valid telegram
-			% that ended up being corrupted; yet for extra safety we will
-			% restart the decoding from the very first possible byte, the one
-			% after the last (chopped) start byte, i.e. from FullData (not even
-			% from the later beginning of this tail (so we are nevertheless
-			% still progressing - not wanting to recurse infinitely on a chunk):
-			%
+            % Not expecting being fooled by data accidentally looking like a
+            % legit CRC'ed header, so supposing this is just a valid telegram
+            % that ended up being corrupted; yet for extra safety we will
+            % restart the decoding from the very first possible byte, the one
+            % after the last (chopped) start byte, i.e. from FullData (not even
+            % from the later beginning of this tail (so we are nevertheless
+            % still progressing - not wanting to recurse infinitely on a chunk):
+            %
             try_decode_chunk( FullData, State )
 
-	end.
+    end.
 
 
 
@@ -5537,15 +5537,15 @@ chunk.
 """.
 -spec get_maybe_next_tail( telegram_chunk() ) -> option( telegram_tail() ).
 get_maybe_next_tail( Chunk ) ->
-	case scan_for_packet_start( Chunk ) of
+    case scan_for_packet_start( Chunk ) of
 
-		{ no_content, _DropCount } ->
-			undefined;
+        { no_content, _DropCount } ->
+            undefined;
 
-		{ TelTail, _DropCount } ->
-			TelTail
+        { TelTail, _DropCount } ->
+            TelTail
 
-	end.
+    end.
 
 
 
@@ -5557,41 +5557,41 @@ registering it if it was not already.
 -spec record_device_success( eurid(), device_table() ) -> recording_info().
 record_device_success( Eurid, DeviceTable ) ->
 
-	case table:lookup_entry( Eurid, DeviceTable ) of
+    case table:lookup_entry( Eurid, DeviceTable ) of
 
-		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts through listening.",
+        key_not_found ->
+            trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+                "is ~ts through listening.",
                 [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
-			Now = time_utils:get_timestamp(),
+            Now = time_utils:get_timestamp(),
 
-			DiscoverOrigin = listening,
+            DiscoverOrigin = listening,
 
-			NewDevice = #enocean_device{ eurid=Eurid,
-										 name=undefined,
-										 short_name=undefined,
-										 eep=undefined,
-										 discovered_through=DiscoverOrigin,
-										 first_seen=Now,
-										 last_seen=Now,
-										 availability=online,
-										 telegram_count=1,
-										 error_count=0,
-										 expected_periodicity=none },
+            NewDevice = #enocean_device{ eurid=Eurid,
+                                         name=undefined,
+                                         short_name=undefined,
+                                         eep=undefined,
+                                         discovered_through=DiscoverOrigin,
+                                         first_seen=Now,
+                                         last_seen=Now,
+                                         availability=online,
+                                         telegram_count=1,
+                                         error_count=0,
+                                         expected_periodicity=none },
 
-			% Necessarily new:
-			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
+            % Necessarily new:
+            NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
 
-			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
-			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
+            { NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
+              DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
               _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
 
 
-		{ value, Device } ->
-			record_known_device_success( Device, DeviceTable )
+        { value, Device } ->
+            record_known_device_success( Device, DeviceTable )
 
-	end.
+    end.
 
 
 
@@ -5600,58 +5600,58 @@ Records that a telegram could be successfully decoded for the specified
 already-known device.
 """.
 -spec record_known_device_success( enocean_device(), device_table() ) ->
-											recording_info().
+                                            recording_info().
 record_known_device_success( Device=#enocean_device{
-		eurid=Eurid,
-		name=MaybeDeviceName,
-		short_name=MaybeDeviceShortName,
-		eep=MaybeEepId,
-		first_seen=MaybeFirstSeen,
-		%last_seen=MaybeLastSeen,
-		availability=MaybePrevAvail,
-		telegram_count=TeleCount,
-		expected_periodicity=Periodicity,
-		activity_timer=MaybeActTimer }, DeviceTable ) ->
+        eurid=Eurid,
+        name=MaybeDeviceName,
+        short_name=MaybeDeviceShortName,
+        eep=MaybeEepId,
+        first_seen=MaybeFirstSeen,
+        %last_seen=MaybeLastSeen,
+        availability=MaybePrevAvail,
+        telegram_count=TeleCount,
+        expected_periodicity=Periodicity,
+        activity_timer=MaybeActTimer }, DeviceTable ) ->
 
-	Now = time_utils:get_timestamp(),
+    Now = time_utils:get_timestamp(),
 
-	% Report discovery only once, initially:
-	{ NewFirstSeen, ReportedDiscoverOrigin, IsBackOnline } =
-			case MaybeFirstSeen of
+    % Report discovery only once, initially:
+    { NewFirstSeen, ReportedDiscoverOrigin, IsBackOnline } =
+            case MaybeFirstSeen of
 
-		% Was never seen:
-		undefined ->
-			{ Now, Device#enocean_device.discovered_through, _IsBack=false };
+        % Was never seen:
+        undefined ->
+            { Now, Device#enocean_device.discovered_through, _IsBack=false };
 
-		% Has already been seen:
-		FirstSeen ->
-			IsBack = MaybePrevAvail =:= lost,
+        % Has already been seen:
+        FirstSeen ->
+            IsBack = MaybePrevAvail =:= lost,
 
             % By convention, for an already known device, we return always an
             % undefined discover origin (in the resulting tuple), so that
             % integrate_all_telegrams/4 can tell apart more easily the new
             % devices:
             %
-			{ FirstSeen, _MaybeDiscoverOrigin=undefined, IsBack }
+            { FirstSeen, _MaybeDiscoverOrigin=undefined, IsBack }
 
-	end,
+    end,
 
-	ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
-		TeleCount, Device#enocean_device.error_count, Now ),
+    ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
+        TeleCount, Device#enocean_device.error_count, Now ),
 
-	UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
-										   last_seen=Now,
-										   availability=online,
-										   telegram_count=TeleCount+1,
-										   activity_timer=ResetTimer },
+    UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+                                           last_seen=Now,
+                                           availability=online,
+                                           telegram_count=TeleCount+1,
+                                           activity_timer=ResetTimer },
 
-	NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
+    NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
-	% The discovery origin must have already been reported (should a second
-	% message be sent at the same second, hence at the same timestamp, to avoid
-	% multiple "on detection messages" for a given device).
-	%
-	{ NewDeviceTable, UpdatedDevice, Now, NewFirstSeen, ReportedDiscoverOrigin,
+    % The discovery origin must have already been reported (should a second
+    % message be sent at the same second, hence at the same timestamp, to avoid
+    % multiple "on detection messages" for a given device).
+    %
+    { NewDeviceTable, UpdatedDevice, Now, NewFirstSeen, ReportedDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
 
 
@@ -5665,42 +5665,42 @@ Note that many failures do not even allow identifying the emitting device.
 -spec record_device_failure( eurid(), device_table() ) -> recording_info().
 record_device_failure( Eurid, DeviceTable ) ->
 
-	Now = time_utils:get_timestamp(),
+    Now = time_utils:get_timestamp(),
 
-	case table:lookup_entry( Eurid, DeviceTable ) of
+    case table:lookup_entry( Eurid, DeviceTable ) of
 
-		key_not_found ->
-			trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
-				"is ~ts through failure.",
+        key_not_found ->
+            trace_bridge:info_fmt( "Discovering Enocean device whose EURID "
+                "is ~ts through failure.",
                 [ oceanic_text:eurid_to_string( Eurid ) ] ),
 
-			DiscoverOrigin = listening,
+            DiscoverOrigin = listening,
 
-			NewDevice = #enocean_device{ eurid=Eurid,
-										 name=undefined,
-										 short_name=undefined,
-										 eep=undefined,
-										 discovered_through=DiscoverOrigin,
-										 first_seen=Now,
-										 last_seen=Now,
-										 availability=online,
-										 telegram_count=0,
-										 error_count=1,
-										 expected_periodicity=none,
-										 activity_timer=undefined },
+            NewDevice = #enocean_device{ eurid=Eurid,
+                                         name=undefined,
+                                         short_name=undefined,
+                                         eep=undefined,
+                                         discovered_through=DiscoverOrigin,
+                                         first_seen=Now,
+                                         last_seen=Now,
+                                         availability=online,
+                                         telegram_count=0,
+                                         error_count=1,
+                                         expected_periodicity=none,
+                                         activity_timer=undefined },
 
-			% Necessarily new:
-			NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
+            % Necessarily new:
+            NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
 
-			{ NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
-			  DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
+            { NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
+              DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
               _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
 
 
-		{ value, Device } ->
-			record_known_device_failure( Device, DeviceTable )
+        { value, Device } ->
+            record_known_device_failure( Device, DeviceTable )
 
-	end.
+    end.
 
 
 
@@ -5709,155 +5709,155 @@ Records that a telegram could not be successfully decoded for the specified
 already-known device.
 """.
 -spec record_known_device_failure( enocean_device(), device_table() ) ->
-											recording_info().
+                                            recording_info().
 record_known_device_failure( Device=#enocean_device{
-		eurid=Eurid,
-		name=MaybeDeviceName,
-		short_name=MaybeDeviceShortName,
-		eep=MaybeEepId,
-		first_seen=MaybeFirstSeen,
-		last_seen=MaybeLastSeen,
-		availability=MaybePrevAvail,
-		error_count=ErrCount,
-		expected_periodicity=Periodicity,
-		activity_timer=MaybeActTimer }, DeviceTable ) ->
+        eurid=Eurid,
+        name=MaybeDeviceName,
+        short_name=MaybeDeviceShortName,
+        eep=MaybeEepId,
+        first_seen=MaybeFirstSeen,
+        last_seen=MaybeLastSeen,
+        availability=MaybePrevAvail,
+        error_count=ErrCount,
+        expected_periodicity=Periodicity,
+        activity_timer=MaybeActTimer }, DeviceTable ) ->
 
-	Now = time_utils:get_timestamp(),
+    Now = time_utils:get_timestamp(),
 
-	% Report discovery only once, initially:
-	{ NewFirstSeen, ReportedDiscoverOrigin, IsBackOnline } =
-			case MaybeFirstSeen of
+    % Report discovery only once, initially:
+    { NewFirstSeen, ReportedDiscoverOrigin, IsBackOnline } =
+            case MaybeFirstSeen of
 
-		% Was never seen:
-		undefined ->
-			{ Now, Device#enocean_device.discovered_through, _IsBack=false };
+        % Was never seen:
+        undefined ->
+            { Now, Device#enocean_device.discovered_through, _IsBack=false };
 
-		% Has already been seen:
-		FirstSeen ->
-			IsBack = MaybePrevAvail =:= lost,
-			{ FirstSeen, _MaybeDiscoverOrigin=undefined, IsBack }
+        % Has already been seen:
+        FirstSeen ->
+            IsBack = MaybePrevAvail =:= lost,
+            { FirstSeen, _MaybeDiscoverOrigin=undefined, IsBack }
 
-	end,
+    end,
 
-	ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
-		Device#enocean_device.telegram_count, ErrCount, Now ),
+    ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
+        Device#enocean_device.telegram_count, ErrCount, Now ),
 
-	UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
-										   last_seen=Now,
-										   availability=online,
-										   error_count=ErrCount+1,
-										   activity_timer=ResetTimer },
+    UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+                                           last_seen=Now,
+                                           availability=online,
+                                           error_count=ErrCount+1,
+                                           activity_timer=ResetTimer },
 
-	NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
+    NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
-	% The discovery origin must have already been reported (should a second
-	% message be sent at the same second, hence at the same timestamp, to avoid
-	% multiple "on detection messages" for a given device):
-	%
-	% (MaybeLastSeen here, not NewFirstSeen, to be able to select a proper
-	% listener onEnocean* message afterwards; we also return always an undefined
-	% discover origin to avoid that the more generic caller has to reassemble
-	% this tuple)
-	%
-	{ NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
-	  IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
+    % The discovery origin must have already been reported (should a second
+    % message be sent at the same second, hence at the same timestamp, to avoid
+    % multiple "on detection messages" for a given device):
+    %
+    % (MaybeLastSeen here, not NewFirstSeen, to be able to select a proper
+    % listener onEnocean* message afterwards; we also return always an undefined
+    % discover origin to avoid that the more generic caller has to reassemble
+    % this tuple)
+    %
+    { NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
 
 
 
 -doc "Resets any needed activity timer.".
 -spec reset_timer( option( timer_ref() ), eurid(), expected_periodicity(),
-		timestamp(), count(), count(), timestamp() ) -> option( timer_ref() ).
+        timestamp(), count(), count(), timestamp() ) -> option( timer_ref() ).
 % No periodicity:
 reset_timer( MaybeActTimer, _Eurid, _Periodicity=none, _FirstSeen,
-			 _TeleCount, _ErrCount, _Now ) ->
-	stop_any_timer( MaybeActTimer ),
-	undefined;
+             _TeleCount, _ErrCount, _Now ) ->
+    stop_any_timer( MaybeActTimer ),
+    undefined;
 
 
 % Auto periodicity:
 reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
-			 TeleCount, ErrCount, Now ) ->
+             TeleCount, ErrCount, Now ) ->
 
-	stop_any_timer( MaybeActTimer ),
+    stop_any_timer( MaybeActTimer ),
 
-	NextDelayMs = compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ),
+    NextDelayMs = compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ),
 
-	TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
+    TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
 
-	cond_utils:if_defined( oceanic_debug_activity,
-		trace_bridge:debug_fmt( "Setting an automatic activity timer for "
+    cond_utils:if_defined( oceanic_debug_activity,
+        trace_bridge:debug_fmt( "Setting an automatic activity timer for "
             "device whose EURID is ~ts, for a duration of ~ts.",
-			[ oceanic_text:eurid_to_string( Eurid ),
-			  time_utils:duration_to_string( NextDelayMs ) ] ) ),
+            [ oceanic_text:eurid_to_string( Eurid ),
+              time_utils:duration_to_string( NextDelayMs ) ] ) ),
 
-	{ ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
-	TimerRef;
+    { ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
+    TimerRef;
 
 
 % Fixed periodicity:
 reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
-			 _TeleCount, _ErrCount, _Now ) ->
+             _TeleCount, _ErrCount, _Now ) ->
 
-	stop_any_timer( MaybeActTimer ),
+    stop_any_timer( MaybeActTimer ),
 
-	TimedMsg = { onActivityTimeout, Eurid, PeriodicityMs },
+    TimedMsg = { onActivityTimeout, Eurid, PeriodicityMs },
 
-	cond_utils:if_defined( oceanic_debug_activity,
-		trace_bridge:debug_fmt( "Setting a fixed timer for device "
-			"whose EURID is ~ts, for a duration of ~ts.",
-			[ oceanic_text:eurid_to_string( Eurid ),
-			  time_utils:duration_to_string( PeriodicityMs ) ] ) ),
+    cond_utils:if_defined( oceanic_debug_activity,
+        trace_bridge:debug_fmt( "Setting a fixed timer for device "
+            "whose EURID is ~ts, for a duration of ~ts.",
+            [ oceanic_text:eurid_to_string( Eurid ),
+              time_utils:duration_to_string( PeriodicityMs ) ] ) ),
 
-	case timer:send_after( PeriodicityMs, TimedMsg ) of
+    case timer:send_after( PeriodicityMs, TimedMsg ) of
 
-		{ ok, TimerRef } ->
-			TimerRef;
+        { ok, TimerRef } ->
+            TimerRef;
 
-		{ error, Reason } ->
-			trace_bridge:error_fmt( "Failed to register a timer for sending "
-				"message '~p' after ~w milliseconds; reason: ~p.",
-				[ TimedMsg, PeriodicityMs, Reason ] ),
-			undefined
+        { error, Reason } ->
+            trace_bridge:error_fmt( "Failed to register a timer for sending "
+                "message '~p' after ~w milliseconds; reason: ~p.",
+                [ TimedMsg, PeriodicityMs, Reason ] ),
+            undefined
 
-	end.
+    end.
 
 
 
 -doc "Determines the next auto time-out for the specified parameters.".
 -spec compute_next_timeout( timestamp(), count(), count(), timestamp() ) ->
-											milliseconds().
+                                            milliseconds().
 compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
 
-	% Adding a fixed and a 120% margin to hopefully avoid most of the false
-	% alarms (many devices are *very* irregular, possibly related to their state
-	% of charge):
-	%
-	SeenDurationMs = 2200 * time_utils:get_duration( FirstSeen, Now ),
+    % Adding a fixed and a 120% margin to hopefully avoid most of the false
+    % alarms (many devices are *very* irregular, possibly related to their state
+    % of charge):
+    %
+    SeenDurationMs = 2200 * time_utils:get_duration( FirstSeen, Now ),
 
-	SeenCount = TeleCount + ErrCount,
+    SeenCount = TeleCount + ErrCount,
 
-	% A fixed (10 minute) margin can only help:
-	FixedMarginMs = 10 * 60 * 1000,
+    % A fixed (10 minute) margin can only help:
+    FixedMarginMs = 10 * 60 * 1000,
 
-	FixedMarginMs + case SeenCount of
+    FixedMarginMs + case SeenCount of
 
-		% No possible evaluation yet, starting with a larger default duration:
-		0 ->
-			2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
+        % No possible evaluation yet, starting with a larger default duration:
+        0 ->
+            2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
 
-		_ ->
-			erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
+        _ ->
+            erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
 
-	end.
+    end.
 
 
 
 % (helper)
 stop_any_timer( _MaybeTimer=undefined ) ->
-	ok;
+    ok;
 
 stop_any_timer( TimerRef ) ->
-	{ ok, cancel } = timer:cancel( TimerRef ).
+    { ok, cancel } = timer:cancel( TimerRef ).
 
 
 
@@ -5866,32 +5866,32 @@ Stops and terminates (asynchronously) the supposedly-existing Oceanic server.
 """.
 -spec stop() -> void().
 stop() ->
-	stop( get_server_pid() ).
+    stop( get_server_pid() ).
 
 
 
 -doc "Stops and terminates (asynchronously) the specified Oceanic server.".
 -spec stop( oceanic_server_pid() ) -> void().
 stop( SrvPid ) ->
-	trace_bridge:debug_fmt( "Stopping the Oceanic server ~w.", [ SrvPid ] ),
-	SrvPid ! terminate.
+    trace_bridge:debug_fmt( "Stopping the Oceanic server ~w.", [ SrvPid ] ),
+    SrvPid ! terminate.
 
 
 
 -doc "Stops and terminates synchronously the specified Oceanic server.".
 -spec synchronous_stop( oceanic_server_pid() ) -> void().
 synchronous_stop( SrvPid ) ->
-	SrvPid ! { terminateSynchronously, self() },
+    SrvPid ! { terminateSynchronously, self() },
 
-	trace_bridge:debug_fmt( "Stopping synchronously the Oceanic server ~w.",
-							[ SrvPid ] ),
+    trace_bridge:debug_fmt( "Stopping synchronously the Oceanic server ~w.",
+                            [ SrvPid ] ),
 
-	receive
+    receive
 
-		oceanic_terminated ->
-			ok
+        oceanic_terminated ->
+            ok
 
-	end.
+    end.
 
 
 
@@ -5901,25 +5901,25 @@ type.
 """.
 -spec get_packet_type( enum() ) -> option( packet_type() ).
 get_packet_type( PacketTypeNum ) ->
-	% Topic defined by the module that Oceanic generates from the
-	% oceanic_constants one:
-	%
-	oceanic_generated:get_maybe_first_for_packet_type( PacketTypeNum ).
+    % Topic defined by the module that Oceanic generates from the
+    % oceanic_constants one:
+    %
+    oceanic_generated:get_maybe_first_for_packet_type( PacketTypeNum ).
 
 
 
 -doc "Returns the registration name of the Oceanic server.".
 -spec get_server_registration_name() -> registration_name().
 get_server_registration_name() ->
-	?oceanic_server_reg_name.
+    ?oceanic_server_reg_name.
 
 
 
 -doc "Returns the PID of the (supposedly-existing) Oceanic server.".
 -spec get_server_pid() -> oceanic_server_pid().
 get_server_pid() ->
-	% Local otherwise global scope:
-	naming_utils:get_registered_pid_for( ?oceanic_server_reg_name ).
+    % Local otherwise global scope:
+    naming_utils:get_registered_pid_for( ?oceanic_server_reg_name ).
 
 
 
@@ -5929,26 +5929,26 @@ possible.
 """.
 -spec resolve_eep( eep() ) -> option( eep_id() ).
 resolve_eep( EepTriplet ) ->
-	case oceanic_generated:get_maybe_first_for_eep_triplets( EepTriplet ) of
+    case oceanic_generated:get_maybe_first_for_eep_triplets( EepTriplet ) of
 
-		undefined ->
-			trace_bridge:warning_fmt( "The EEP specified as ~w is not known "
-				"of Oceanic and will be ignored.", [ EepTriplet ] ),
-			undefined;
+        undefined ->
+            trace_bridge:warning_fmt( "The EEP specified as ~w is not known "
+                "of Oceanic and will be ignored.", [ EepTriplet ] ),
+            undefined;
 
-		KnownEepId ->
-			KnownEepId
+        KnownEepId ->
+            KnownEepId
 
-	end.
+    end.
 
 
 -doc "Returns the application style corresponding to the specified EEP.".
 -spec get_app_style_from_eep( eep_id() ) -> application_style().
 get_app_style_from_eep( _EepId=double_rocker_switch_style_1 ) ->
-	1;
+    1;
 
 get_app_style_from_eep( _EepId=double_rocker_switch_style_2 ) ->
-	2;
+    2;
 
 % Useful at least to decode state feedback from Eltako:
 get_app_style_from_eep( _EepId=smart_plug ) ->
@@ -5966,17 +5966,17 @@ If no, throws an exception.
 """.
 -spec interpret_button_ref_spec( term() ) -> button_ref().
 interpret_button_ref_spec( { EuridStr, Channel } )
-		when is_list( EuridStr )
-			 andalso is_integer( Channel ) andalso Channel > 0 ->
-	{ oceanic_text:string_to_eurid( EuridStr ), Channel };
+        when is_list( EuridStr )
+             andalso is_integer( Channel ) andalso Channel > 0 ->
+    { oceanic_text:string_to_eurid( EuridStr ), Channel };
 
 interpret_button_ref_spec( { DevShortName, Channel } )
-		when is_atom( DevShortName )
-			 andalso is_integer( Channel ) andalso Channel > 0 ->
-	{ DevShortName, Channel };
+        when is_atom( DevShortName )
+             andalso is_integer( Channel ) andalso Channel > 0 ->
+    { DevShortName, Channel };
 
 interpret_button_ref_spec( Other ) ->
-	throw( { invalid_button_ref_spec, Other } ).
+    throw( { invalid_button_ref_spec, Other } ).
 
 
 
@@ -5988,7 +5988,7 @@ If no, throws an exception.
 """.
 -spec interpret_button_ref_specs( term() ) -> [ button_ref() ].
 interpret_button_ref_specs( ButRefSpecs ) ->
-	[ interpret_button_ref_spec( BRS ) || BRS <- ButRefSpecs ].
+    [ interpret_button_ref_spec( BRS ) || BRS <- ButRefSpecs ].
 
 
 
@@ -5996,7 +5996,7 @@ interpret_button_ref_specs( ButRefSpecs ) ->
 -doc "Returns the broadcast EURID, suitable to target all devices in range.".
 -spec get_broadcast_eurid() -> eurid().
 get_broadcast_eurid() ->
-	?eurid_broadcast.
+    ?eurid_broadcast.
 
 
 
@@ -6052,8 +6052,8 @@ Returns the type of the specified device event.
 """.
 -spec get_event_type( device_event() ) -> device_event_type().
 get_event_type( DevEventTuple ) ->
-	% The record tag:
-	erlang:element( _PosIdx=1, DevEventTuple ).
+    % The record tag:
+    erlang:element( _PosIdx=1, DevEventTuple ).
 
 
 -doc """
@@ -6061,7 +6061,7 @@ Returns the EURID of the emitting device stored in the specified device event.
 """.
 -spec get_source_eurid( device_event() ) -> eurid().
 get_source_eurid( DevEventTuple ) ->
-	erlang:element( _PosIdx=2, DevEventTuple ).
+    erlang:element( _PosIdx=2, DevEventTuple ).
 
 
 -doc """
@@ -6069,7 +6069,7 @@ Returns the emitting device name (if any) stored in the specified device event.
 """.
 -spec get_maybe_device_name( device_event() ) -> option( device_name() ).
 get_maybe_device_name( DevEventTuple ) ->
-	erlang:element( _PosIdx=3, DevEventTuple ).
+    erlang:element( _PosIdx=3, DevEventTuple ).
 
 
 -doc """
@@ -6079,7 +6079,7 @@ device event.
 -spec get_maybe_device_short_name( device_event() ) ->
                                         option( device_short_name() ).
 get_maybe_device_short_name( DevEventTuple ) ->
-	erlang:element( _PosIdx=4, DevEventTuple ).
+    erlang:element( _PosIdx=4, DevEventTuple ).
 
 
 
@@ -6089,7 +6089,7 @@ device event.
 """.
 -spec get_maybe_eep( device_event() ) -> option( eep_id() ).
 get_maybe_eep( DevEventTuple ) ->
-	erlang:element( _PosIdx=5, DevEventTuple ).
+    erlang:element( _PosIdx=5, DevEventTuple ).
 
 
 -doc """
@@ -6097,7 +6097,7 @@ Returns the timestamp corresponding to the specified device event.
 """.
 -spec get_timestamp( device_event() ) -> timestamp().
 get_timestamp( DevEventTuple ) ->
-	erlang:element( _PosIdx=6, DevEventTuple ).
+    erlang:element( _PosIdx=6, DevEventTuple ).
 
 
 -doc """
@@ -6108,7 +6108,7 @@ Also useful to determine whether an event corresponds to a device discovery.
 """.
 -spec get_last_seen_info( device_event() ) -> option( timestamp() ).
 get_last_seen_info( DevEventTuple ) ->
-	erlang:element( _PosIdx=7, DevEventTuple ).
+    erlang:element( _PosIdx=7, DevEventTuple ).
 
 
 
@@ -6118,7 +6118,7 @@ event.
 """.
 -spec get_subtelegram_count( device_event() ) -> option( subtelegram_count() ).
 get_subtelegram_count( DevEventTuple ) ->
-	erlang:element( _PosIdx=8, DevEventTuple ).
+    erlang:element( _PosIdx=8, DevEventTuple ).
 
 
 
@@ -6128,7 +6128,7 @@ if any, stored in the specified device event.
 """.
 -spec get_maybe_destination_eurid( device_event() ) -> option( eurid() ).
 get_maybe_destination_eurid( DevEventTuple ) ->
-	erlang:element( _PosIdx=9, DevEventTuple ).
+    erlang:element( _PosIdx=9, DevEventTuple ).
 
 
 
@@ -6137,14 +6137,14 @@ Returns the best RSSI value (if any) stored in the specified device event.
 """.
 -spec get_maybe_dbm( device_event() ) -> option( dbm() ).
 get_maybe_dbm( DevEventTuple ) ->
-	erlang:element( _PosIdx=10, DevEventTuple ).
+    erlang:element( _PosIdx=10, DevEventTuple ).
 
 
 
 -doc "Returns the stored in the specified device event.".
 -spec get_maybe_security_level( device_event() ) -> option( security_level() ).
 get_maybe_security_level( DevEventTuple ) ->
-	erlang:element( _PosIdx=11, DevEventTuple ).
+    erlang:element( _PosIdx=11, DevEventTuple ).
 
 
 
@@ -6169,11 +6169,11 @@ returns channel 1.
 -spec get_channel( device_event() ) -> channel().
 % For multiple-rockers, only the first button reported is considered:
 get_channel( #double_rocker_switch_event{
-				first_action_button={ Channel, _Pos } } ) ->
-	Channel;
+                first_action_button={ Channel, _Pos } } ) ->
+    Channel;
 
 get_channel( _AnyOtherEvent ) ->
-	_Channel=1.
+    _Channel=1.
 
 
 
@@ -6183,7 +6183,7 @@ device event, i.e. its EURID and the channel it used.
 """.
 -spec get_button_reference( device_event() ) -> channel().
 get_button_reference( DevEventTuple ) ->
-	{ get_source_eurid( DevEventTuple ), get_channel( DevEventTuple ) }.
+    { get_source_eurid( DevEventTuple ), get_channel( DevEventTuple ) }.
 
 
 
@@ -6196,16 +6196,16 @@ device event.
 """.
 -spec get_best_device_name_from( device_event() ) -> device_name().
 get_best_device_name_from( DevEventTuple ) ->
-	case get_maybe_device_name( DevEventTuple ) of
+    case get_maybe_device_name( DevEventTuple ) of
 
-		undefined ->
-			SrcEurid = get_source_eurid( DevEventTuple ),
-			oceanic_text:eurid_to_bin_string( SrcEurid );
+        undefined ->
+            SrcEurid = get_source_eurid( DevEventTuple ),
+            oceanic_text:eurid_to_bin_string( SrcEurid );
 
-		BinDeviceName ->
-			BinDeviceName
+        BinDeviceName ->
+            BinDeviceName
 
-	end.
+    end.
 
 
 
@@ -6215,7 +6215,7 @@ interpreted as being triggered by the user.
 """.
 -spec device_triggered( device_event() ) -> boolean().
 device_triggered( #push_button_switch_event{ transition=just_pressed } ) ->
-	true;
+    true;
 
 device_triggered( #double_rocker_switch_event{ energy_bow=pressed } ) ->
    true;
@@ -6225,7 +6225,7 @@ device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
    true;
 
 device_triggered( _DevEventTuple ) ->
-	false.
+    false.
 
 
 
@@ -6236,18 +6236,18 @@ device_triggered( _DevEventTuple ) ->
 -doc "Returns the CRC code corresponding to the specified binary.".
 -spec compute_crc( binary() ) -> crc().
 compute_crc( Bin ) ->
-	compute_crc( Bin, get_crc_array(), _Checksum=0 ).
+    compute_crc( Bin, get_crc_array(), _Checksum=0 ).
 
 
 % (helper)
 compute_crc( _Bin= <<>>, _CRCArray, Checksum ) ->
-	Checksum;
+    Checksum;
 
 compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
-	% Superfluous parentheses:
-	Index = ( Checksum band 16#ff ) bxor ( HByte band 16#ff ),
-	NewChecksum = element( Index + 1, CRCArray ),
-	compute_crc( T, CRCArray, NewChecksum ).
+    % Superfluous parentheses:
+    Index = ( Checksum band 16#ff ) bxor ( HByte band 16#ff ),
+    NewChecksum = element( Index + 1, CRCArray ),
+    compute_crc( T, CRCArray, NewChecksum ).
 
 
 
@@ -6255,39 +6255,39 @@ compute_crc( _Bin= <<HByte, T/binary>>, CRCArray, Checksum ) ->
 -spec get_crc_array() -> type_utils:tuple( type_utils:uint8() ).
 get_crc_array() ->
 
-	% From https://gist.github.com/hypebeast/3833758:
-	%
-	% (9*28 + 4 = 256 values)
-	%
-	{ 16#00, 16#07, 16#0e, 16#09, 16#1c, 16#1b, 16#12, 16#15, 16#38,
-	  16#3f, 16#36, 16#31, 16#24, 16#23, 16#2a, 16#2d, 16#70, 16#77,
-	  16#7e, 16#79, 16#6c, 16#6b, 16#62, 16#65, 16#48, 16#4f, 16#46,
-	  16#41, 16#54, 16#53, 16#5a, 16#5d, 16#e0, 16#e7, 16#ee, 16#e9,
-	  16#fc, 16#fb, 16#f2, 16#f5, 16#d8, 16#df, 16#d6, 16#d1, 16#c4,
-	  16#c3, 16#ca, 16#cd, 16#90, 16#97, 16#9e, 16#99, 16#8c, 16#8b,
-	  16#82, 16#85, 16#a8, 16#af, 16#a6, 16#a1, 16#b4, 16#b3, 16#ba,
-	  16#bd, 16#c7, 16#c0, 16#c9, 16#ce, 16#db, 16#dc, 16#d5, 16#d2,
-	  16#ff, 16#f8, 16#f1, 16#f6, 16#e3, 16#e4, 16#ed, 16#ea, 16#b7,
-	  16#b0, 16#b9, 16#be, 16#ab, 16#ac, 16#a5, 16#a2, 16#8f, 16#88,
-	  16#81, 16#86, 16#93, 16#94, 16#9d, 16#9a, 16#27, 16#20, 16#29,
-	  16#2e, 16#3b, 16#3c, 16#35, 16#32, 16#1f, 16#18, 16#11, 16#16,
-	  16#03, 16#04, 16#0d, 16#0a, 16#57, 16#50, 16#59, 16#5e, 16#4b,
-	  16#4c, 16#45, 16#42, 16#6f, 16#68, 16#61, 16#66, 16#73, 16#74,
-	  16#7d, 16#7a, 16#89, 16#8e, 16#87, 16#80, 16#95, 16#92, 16#9b,
-	  16#9c, 16#b1, 16#b6, 16#bf, 16#b8, 16#ad, 16#aa, 16#a3, 16#a4,
-	  16#f9, 16#fe, 16#f7, 16#f0, 16#e5, 16#e2, 16#eb, 16#ec, 16#c1,
-	  16#c6, 16#cf, 16#c8, 16#dd, 16#da, 16#d3, 16#d4, 16#69, 16#6e,
-	  16#67, 16#60, 16#75, 16#72, 16#7b, 16#7c, 16#51, 16#56, 16#5f,
-	  16#58, 16#4d, 16#4a, 16#43, 16#44, 16#19, 16#1e, 16#17, 16#10,
-	  16#05, 16#02, 16#0b, 16#0c, 16#21, 16#26, 16#2f, 16#28, 16#3d,
-	  16#3a, 16#33, 16#34, 16#4e, 16#49, 16#40, 16#47, 16#52, 16#55,
-	  16#5c, 16#5b, 16#76, 16#71, 16#78, 16#7f, 16#6a, 16#6d, 16#64,
-	  16#63, 16#3e, 16#39, 16#30, 16#37, 16#22, 16#25, 16#2c, 16#2b,
-	  16#06, 16#01, 16#08, 16#0f, 16#1a, 16#1d, 16#14, 16#13, 16#ae,
-	  16#a9, 16#a0, 16#a7, 16#b2, 16#b5, 16#bc, 16#bb, 16#96, 16#91,
-	  16#98, 16#9f, 16#8a, 16#8d, 16#84, 16#83, 16#de, 16#d9, 16#d0,
-	  16#d7, 16#c2, 16#c5, 16#cc, 16#cb, 16#e6, 16#e1, 16#e8, 16#ef,
-	  16#fa, 16#fd, 16#f4, 16#f3 }.
+    % From https://gist.github.com/hypebeast/3833758:
+    %
+    % (9*28 + 4 = 256 values)
+    %
+    { 16#00, 16#07, 16#0e, 16#09, 16#1c, 16#1b, 16#12, 16#15, 16#38,
+      16#3f, 16#36, 16#31, 16#24, 16#23, 16#2a, 16#2d, 16#70, 16#77,
+      16#7e, 16#79, 16#6c, 16#6b, 16#62, 16#65, 16#48, 16#4f, 16#46,
+      16#41, 16#54, 16#53, 16#5a, 16#5d, 16#e0, 16#e7, 16#ee, 16#e9,
+      16#fc, 16#fb, 16#f2, 16#f5, 16#d8, 16#df, 16#d6, 16#d1, 16#c4,
+      16#c3, 16#ca, 16#cd, 16#90, 16#97, 16#9e, 16#99, 16#8c, 16#8b,
+      16#82, 16#85, 16#a8, 16#af, 16#a6, 16#a1, 16#b4, 16#b3, 16#ba,
+      16#bd, 16#c7, 16#c0, 16#c9, 16#ce, 16#db, 16#dc, 16#d5, 16#d2,
+      16#ff, 16#f8, 16#f1, 16#f6, 16#e3, 16#e4, 16#ed, 16#ea, 16#b7,
+      16#b0, 16#b9, 16#be, 16#ab, 16#ac, 16#a5, 16#a2, 16#8f, 16#88,
+      16#81, 16#86, 16#93, 16#94, 16#9d, 16#9a, 16#27, 16#20, 16#29,
+      16#2e, 16#3b, 16#3c, 16#35, 16#32, 16#1f, 16#18, 16#11, 16#16,
+      16#03, 16#04, 16#0d, 16#0a, 16#57, 16#50, 16#59, 16#5e, 16#4b,
+      16#4c, 16#45, 16#42, 16#6f, 16#68, 16#61, 16#66, 16#73, 16#74,
+      16#7d, 16#7a, 16#89, 16#8e, 16#87, 16#80, 16#95, 16#92, 16#9b,
+      16#9c, 16#b1, 16#b6, 16#bf, 16#b8, 16#ad, 16#aa, 16#a3, 16#a4,
+      16#f9, 16#fe, 16#f7, 16#f0, 16#e5, 16#e2, 16#eb, 16#ec, 16#c1,
+      16#c6, 16#cf, 16#c8, 16#dd, 16#da, 16#d3, 16#d4, 16#69, 16#6e,
+      16#67, 16#60, 16#75, 16#72, 16#7b, 16#7c, 16#51, 16#56, 16#5f,
+      16#58, 16#4d, 16#4a, 16#43, 16#44, 16#19, 16#1e, 16#17, 16#10,
+      16#05, 16#02, 16#0b, 16#0c, 16#21, 16#26, 16#2f, 16#28, 16#3d,
+      16#3a, 16#33, 16#34, 16#4e, 16#49, 16#40, 16#47, 16#52, 16#55,
+      16#5c, 16#5b, 16#76, 16#71, 16#78, 16#7f, 16#6a, 16#6d, 16#64,
+      16#63, 16#3e, 16#39, 16#30, 16#37, 16#22, 16#25, 16#2c, 16#2b,
+      16#06, 16#01, 16#08, 16#0f, 16#1a, 16#1d, 16#14, 16#13, 16#ae,
+      16#a9, 16#a0, 16#a7, 16#b2, 16#b5, 16#bc, 16#bb, 16#96, 16#91,
+      16#98, 16#9f, 16#8a, 16#8d, 16#84, 16#83, 16#de, 16#d9, 16#d0,
+      16#d7, 16#c2, 16#c5, 16#cc, 16#cb, 16#e6, 16#e1, 16#e8, 16#ef,
+      16#fa, 16#fd, 16#f4, 16#f3 }.
 
 
 
@@ -6303,23 +6303,23 @@ Secures the usability of (our fork of) erlang-serial, typically from an
 -spec secure_serial( any_directory_path() ) -> void().
 secure_serial( _AnyOceanicRootDir ) ->
 
-	SerialRootDir = file_utils:join( system_utils:get_software_base_directory(),
-									 "erlang-serial" ),
+    SerialRootDir = file_utils:join( system_utils:get_software_base_directory(),
+                                     "erlang-serial" ),
 
-	case file_utils:is_existing_directory_or_link( SerialRootDir ) of
+    case file_utils:is_existing_directory_or_link( SerialRootDir ) of
 
-		true ->
-			SerialEbinDir = file_utils:join( SerialRootDir, "ebin" ),
+        true ->
+            SerialEbinDir = file_utils:join( SerialRootDir, "ebin" ),
 
-			% Supposing it built then:
-			code_utils:declare_beam_directory( SerialEbinDir );
+            % Supposing it built then:
+            code_utils:declare_beam_directory( SerialEbinDir );
 
-		false ->
-			% oceanic:secure_tty/1 will look-up the BEAM later:
-			trace_bridge:warning_fmt( "No user 'erlang-serial' installation "
-				"found (searched for '~ts').", [ SerialRootDir ] )
+        false ->
+            % oceanic:secure_tty/1 will look-up the BEAM later:
+            trace_bridge:warning_fmt( "No user 'erlang-serial' installation "
+                "found (searched for '~ts').", [ SerialRootDir ] )
 
-	end.
+    end.
 
 
 
@@ -6333,23 +6333,23 @@ generate, here, a (single) module to share the Oceanic constants.
 -spec generate_support_modules() -> no_return().
 generate_support_modules() ->
 
-	TargetModName = oceanic_generated,
+    TargetModName = oceanic_generated,
 
-	%trace_bridge:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
+    %trace_bridge:info_fmt( "Generating module '~ts'...", [ TargetModName ] ),
 
-	AllSpecNames = [ get_maybe_packet_type_topic_spec,
-		get_maybe_return_code_topic_spec,
-		get_maybe_event_code_topic_spec, get_maybe_rorg_topic_spec,
-		get_maybe_rorg_description_topic_spec,
-		get_maybe_common_command_topic_spec,
-		get_maybe_vld_d2_00_cmd_topic_spec ],
+    AllSpecNames = [ get_maybe_packet_type_topic_spec,
+        get_maybe_return_code_topic_spec,
+        get_maybe_event_code_topic_spec, get_maybe_rorg_topic_spec,
+        get_maybe_rorg_description_topic_spec,
+        get_maybe_common_command_topic_spec,
+        get_maybe_vld_d2_00_cmd_topic_spec ],
 
-	TopicSpecs = [ oceanic_constants:F() || F <- AllSpecNames ]
-		++ oceanic_constants:get_maybe_eep_topic_specs(),
+    TopicSpecs = [ oceanic_constants:F() || F <- AllSpecNames ]
+        ++ oceanic_constants:get_maybe_eep_topic_specs(),
 
-	_ModFilename =
-		const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
+    _ModFilename =
+        const_bijective_topics:generate_in_file( TargetModName, TopicSpecs ),
 
-	%trace_bridge:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
+    %trace_bridge:info_fmt( "File '~ts' generated.", [ ModFilename ] ),
 
-	erlang:halt().
+    erlang:halt().

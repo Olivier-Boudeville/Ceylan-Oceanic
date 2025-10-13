@@ -34,8 +34,8 @@ user-friendly debugging.
 -doc "Typically for testing.".
 -spec run() -> void().
 run() ->
-	ArgTable = cmd_line_utils:get_argument_table(),
-	main( ArgTable ).
+    ArgTable = cmd_line_utils:get_argument_table(),
+    main( ArgTable ).
 
 
 
@@ -43,10 +43,10 @@ run() ->
 -doc "Returns the usage information of the corresponding application.".
 -spec get_usage() -> void().
 get_usage() ->
-	text_utils:format( "Usage: ~ts TELEGRAM_STRING [-h|--help]~n"
-		"  Decodes the telegram specified as an hexadecimal string.~n"
-		"Example: ~ts \"55000707017af630002ef1963001ffffffff4400fe\"",
-		[ ?exec_name, ?exec_name ] ).
+    text_utils:format( "Usage: ~ts TELEGRAM_STRING [-h|--help]~n"
+        "  Decodes the telegram specified as an hexadecimal string.~n"
+        "Example: ~ts \"55000707017af630002ef1963001ffffffff4400fe\"",
+        [ ?exec_name, ?exec_name ] ).
 
 
 
@@ -57,117 +57,117 @@ the associated escript.
 -spec main( cmd_line_utils:argument_table() ) -> void().
 main( ArgTable ) ->
 
-	%trace_utils:debug_fmt( "Original script-specific arguments: ~ts",
-	%   [ cmd_line_utils:argument_table_to_string( ArgTable ) ] ),
+    %trace_utils:debug_fmt( "Original script-specific arguments: ~ts",
+    %   [ cmd_line_utils:argument_table_to_string( ArgTable ) ] ),
 
-	HelpRefKey = '-help',
+    HelpRefKey = '-help',
 
-	% Standardises command-line options:
-	MergedTable = list_table:merge_in_keys( [
-		{ HelpRefKey, [ 'h' ] } ], ArgTable ),
+    % Standardises command-line options:
+    MergedTable = list_table:merge_in_keys( [
+        { HelpRefKey, [ 'h' ] } ], ArgTable ),
 
-	%trace_utils:debug_fmt( "Canonicalized script-specific arguments: ~ts",
-	%   [ cmd_line_utils:argument_table_to_string( MergedTable ) ] ),
+    %trace_utils:debug_fmt( "Canonicalized script-specific arguments: ~ts",
+    %   [ cmd_line_utils:argument_table_to_string( MergedTable ) ] ),
 
-	list_table:has_entry( HelpRefKey, MergedTable ) andalso display_usage(),
+    list_table:has_entry( HelpRefKey, MergedTable ) andalso display_usage(),
 
-	{ MaybeArgs, ShrunkArgTable } =
-		cmd_line_utils:extract_optionless_command_arguments( MergedTable ),
+    { MaybeArgs, ShrunkArgTable } =
+        cmd_line_utils:extract_optionless_command_arguments( MergedTable ),
 
-	case list_table:keys( ShrunkArgTable ) of
+    case list_table:keys( ShrunkArgTable ) of
 
-		[] ->
-			ok;
+        [] ->
+            ok;
 
-		_UnexpectedOpts ->
-			cmd_line_utils:error_fmt( 10, "unexpected user input, ~ts~n~ts",
-				[ cmd_line_utils:argument_table_to_string( ShrunkArgTable ),
-				  get_usage() ] )
-			%throw( { unexpected_command_line_options, UnexpectedOpts } )
+        _UnexpectedOpts ->
+            cmd_line_utils:error_fmt( 10, "unexpected user input, ~ts~n~ts",
+                [ cmd_line_utils:argument_table_to_string( ShrunkArgTable ),
+                  get_usage() ] )
+            %throw( { unexpected_command_line_options, UnexpectedOpts } )
 
-	end,
+    end,
 
-	% trace_utils:debug_fmt( "MaybeArgs=~p, ShrunkArgTable=~p",
-	%                        [ MaybeArgs, ShrunkArgTable ] ),
+    % trace_utils:debug_fmt( "MaybeArgs=~p, ShrunkArgTable=~p",
+    %                        [ MaybeArgs, ShrunkArgTable ] ),
 
-	case MaybeArgs of
+    case MaybeArgs of
 
-		undefined ->
-			cmd_line_utils:error_fmt( 15, "no argument specified.~n~ts",
-									  [ get_usage() ] );
-			%exit( no_argument_specified );
+        undefined ->
+            cmd_line_utils:error_fmt( 15, "no argument specified.~n~ts",
+                                      [ get_usage() ] );
+            %exit( no_argument_specified );
 
-		_SingleArg=[ TelegramStr ] ->
-			decode_telegram( TelegramStr ),
-			basic_utils:stop( _ErrorCode=0 );
+        _SingleArg=[ TelegramStr ] ->
+            decode_telegram( TelegramStr ),
+            basic_utils:stop( _ErrorCode=0 );
 
-		Args ->
-			cmd_line_utils:error_fmt( 20,
-				"extra argument(s) specified, got ~ts.~n~ts",
-				[ text_utils:strings_to_listed_string( Args ), get_usage() ] )
+        Args ->
+            cmd_line_utils:error_fmt( 20,
+                "extra argument(s) specified, got ~ts.~n~ts",
+                [ text_utils:strings_to_listed_string( Args ), get_usage() ] )
 
-	end.
+    end.
 
 
 
 -doc "Displays the usage of this service, and stops (with no error).".
 display_usage() ->
-	io:format( get_usage(), [] ),
-	basic_utils:stop( _ErrorCode=0 ).
+    io:format( get_usage(), [] ),
+    basic_utils:stop( _ErrorCode=0 ).
 
 
 
 -spec decode_telegram( ustring() ) -> void().
 decode_telegram( TelegramHexStr ) ->
 
-	Telegram = oceanic:hexastring_to_telegram( TelegramHexStr ),
+    Telegram = oceanic:hexastring_to_telegram( TelegramHexStr ),
 
-	% Quite similar to oceanic_decode_recorded_test:
+    % Quite similar to oceanic_decode_recorded_test:
 
-	TtyPath = oceanic:get_default_tty_path(),
+    TtyPath = oceanic:get_default_tty_path(),
 
-	case oceanic:has_tty( TtyPath ) of
+    case oceanic:has_tty( TtyPath ) of
 
-		true ->
+        true ->
 
-			_SerialPid = oceanic:secure_tty( TtyPath ),
+            _SerialPid = oceanic:secure_tty( TtyPath ),
 
-			io:format( "Decoding ~ts...~n",
-					   [ oceanic:telegram_to_string( Telegram ) ] ),
+            io:format( "Decoding ~ts...~n",
+                       [ oceanic:telegram_to_string( Telegram ) ] ),
 
-			BogusState = oceanic:get_test_state(),
+            BogusState = oceanic:get_test_state(),
 
-			case oceanic:try_integrate_chunk( _ToSkipLen=0,
-					_MaybeAccChunk=undefined, Telegram, BogusState ) of
+            case oceanic:try_integrate_chunk( _ToSkipLen=0,
+                    _MaybeAccChunk=undefined, Telegram, BogusState ) of
 
-				{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
-				  _MaybeDevice, _MaybeNextChunk=undefined, _NewState } ->
-					io:format( "Decoded as ~ts.",
-						[ oceanic:device_event_to_string( Event ) ] ),
-					basic_utils:stop( _ErrorCode=0 );
+                { decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
+                  _MaybeDevice, _MaybeNextChunk=undefined, _NewState } ->
+                    io:format( "Decoded as ~ts.",
+                        [ oceanic:device_event_to_string( Event ) ] ),
+                    basic_utils:stop( _ErrorCode=0 );
 
-				{ decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
-				  _MaybeDevice, NextChunk, _NewState } ->
-					io:format( "Decoded as ~ts, with following extra chunk "
-						"of ~B bytes: ~ts.",
-						[ oceanic:device_event_to_string( Event ),
-						  size( NextChunk ),
-						  oceanic:telegram_to_string( NextChunk ) ] ),
-					basic_utils:stop( _ErrorCode=0 );
+                { decoded, Event, _MaybeDiscoverOrigin, _IsBackOnline,
+                  _MaybeDevice, NextChunk, _NewState } ->
+                    io:format( "Decoded as ~ts, with following extra chunk "
+                        "of ~B bytes: ~ts.",
+                        [ oceanic:device_event_to_string( Event ),
+                          size( NextChunk ),
+                          oceanic:telegram_to_string( NextChunk ) ] ),
+                    basic_utils:stop( _ErrorCode=0 );
 
-				{ Unsuccessful, _NewToSkipLen, _NewAccChunk, _NewState } ->
-					cmd_line_utils:error_fmt( 10, "Unable to decode telegram: "
-						"~ts.", [ Unsuccessful ] )
+                { Unsuccessful, _NewToSkipLen, _NewAccChunk, _NewState } ->
+                    cmd_line_utils:error_fmt( 10, "Unable to decode telegram: "
+                        "~ts.", [ Unsuccessful ] )
 
-			end,
+            end,
 
-			% For any late printout:
-			timer:sleep( 500 );
+            % For any late printout:
+            timer:sleep( 500 );
 
-		{ false, Reason } ->
-			cmd_line_utils:error_fmt( 25, "no suitable TTY environment found "
-				"(cause: ~p; searched for device '~ts'), no decoding done.",
-				[ Reason, TtyPath ] )
-			%exit( { no_tty_available, TtyPath } )
+        { false, Reason } ->
+            cmd_line_utils:error_fmt( 25, "no suitable TTY environment found "
+                "(cause: ~p; searched for device '~ts'), no decoding done.",
+                [ Reason, TtyPath ] )
+            %exit( { no_tty_available, TtyPath } )
 
-	end.
+    end.

@@ -98,10 +98,10 @@ Generic causes of failure for a common command request.
 See also `oceanic_generated:get_return_code_topic_spec/0`.
 """.
 -type common_command_failure() :: 'error_return'
-								| 'unsupported_return'
-								| 'wrong_parameter_return'
-								| 'operation_denied'
-								| 'time_out'.
+                                | 'unsupported_return'
+                                | 'wrong_parameter_return'
+                                | 'operation_denied'
+                                | 'time_out'.
 
 -doc "The status of a command.".
 -type common_command_status() :: 'success' | common_command_failure().
@@ -125,9 +125,9 @@ command request.
 
 -doc "Designates a response to a common command request".
 -type common_command_response() :: read_version_response()
-								 | read_logs_response()
-								 | read_base_id_info_response()
-								 | common_command_failure().
+                                 | read_logs_response()
+                                 | read_base_id_info_response()
+                                 | common_command_failure().
 
 
 
@@ -173,30 +173,30 @@ Notifies the specified requester of the success response regarding the current
 common command.
 """.
 -spec notify_requester( command_response(), requester(),
-	option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
+    option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
 notify_requester( Response, _Requester=internal, NextMaybeTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_commands,
-		trace_bridge:debug_fmt(
-			"Returning the following internal response: ~ts.",
-			[ oceanic_text:device_event_to_string( Response ) ] ) ),
+    cond_utils:if_defined( oceanic_debug_commands,
+        trace_bridge:debug_fmt(
+            "Returning the following internal response: ~ts.",
+            [ oceanic_text:device_event_to_string( Response ) ] ) ),
 
-	% We return directly the response event in that case:
-	{ decoded, Response, _MaybeDiscoverOrigin=undefined,
-	  _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State };
+    % We return directly the response event in that case:
+    { decoded, Response, _MaybeDiscoverOrigin=undefined,
+      _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State };
 
 
 notify_requester( Response, RequesterPid, NextMaybeTelTail, State ) ->
 
-	cond_utils:if_defined( oceanic_debug_commands,
-		trace_bridge:debug_fmt( "Sending back to requester ~w "
-		"the following response: ~ts.",
-		[ RequesterPid, oceanic_text:device_event_to_string( Response ) ] ) ),
+    cond_utils:if_defined( oceanic_debug_commands,
+        trace_bridge:debug_fmt( "Sending back to requester ~w "
+        "the following response: ~ts.",
+        [ RequesterPid, oceanic_text:device_event_to_string( Response ) ] ) ),
 
-	RequesterPid ! { oceanic_command_outcome, Response },
+    RequesterPid ! { oceanic_command_outcome, Response },
 
-	{ decoded, command_processed, _MaybeDiscoverOrigin=undefined,
-	  _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State }.
+    { decoded, command_processed, _MaybeDiscoverOrigin=undefined,
+      _IsBackOnline=false, _MaybeDevice=undefined, NextMaybeTelTail, State }.
 
 
 
@@ -210,9 +210,9 @@ Returns the version information held by the Enocean module, thanks to a (local)
 common command.
 """.
 -spec read_version( oceanic_server_pid() ) ->
-						read_version_response() | common_command_failure().
+                        read_version_response() | common_command_failure().
 read_version( OcSrvPid ) ->
-	send_common_command( _Cmd=co_rd_version, OcSrvPid ).
+    send_common_command( _Cmd=co_rd_version, OcSrvPid ).
 
 
 
@@ -221,9 +221,9 @@ Returns the log information held by the Enocean module, thanks to a (local)
 common command.
 """.
 -spec read_logs( oceanic_server_pid() ) ->
-						read_logs_response() | common_command_failure().
+                        read_logs_response() | common_command_failure().
 read_logs( OcSrvPid ) ->
-	send_common_command( _Cmd=co_rd_sys_log, OcSrvPid ).
+    send_common_command( _Cmd=co_rd_sys_log, OcSrvPid ).
 
 
 
@@ -232,29 +232,29 @@ Returns the information held by the Enocean module about its base ID, thanks to
 a (local) common command.
 """.
 -spec read_base_id_info( oceanic_server_pid() ) ->
-						read_base_id_info_response() | common_command_failure().
+                        read_base_id_info_response() | common_command_failure().
 read_base_id_info( OcSrvPid ) ->
-	send_common_command( _Cmd=co_rd_idbase, OcSrvPid ).
+    send_common_command( _Cmd=co_rd_idbase, OcSrvPid ).
 
 
 
 -doc "Sends the specified common command and returns its outcome.".
 -spec send_common_command( common_command_type(), oceanic_server_pid() ) ->
-			common_command_response() | common_command_failure().
+            common_command_response() | common_command_failure().
 send_common_command( CommonCmdType, OcSrvPid ) ->
 
-	OcSrvPid ! { executeCommonCommand, CommonCmdType, self() },
-	receive
+    OcSrvPid ! { executeCommonCommand, CommonCmdType, self() },
+    receive
 
-		{ oceanic_command_outcome, Outcome } ->
-			Outcome
+        { oceanic_command_outcome, Outcome } ->
+            Outcome
 
-		% To debug:
-		%Other ->
-		%   trace_bridge:warning_fmt( "Received for common command '~ts': ~p",
-		%                            [ CommonCmdType, Other ] )
+        % To debug:
+        %Other ->
+        %   trace_bridge:warning_fmt( "Received for common command '~ts': ~p",
+        %                            [ CommonCmdType, Other ] )
 
-	end.
+    end.
 
 
 
@@ -264,16 +264,16 @@ Encodes the specified common command, to be executed by the Enocean module.
 -spec encode_common_command_tracking( common_command_type() ) -> telegram().
 % Future commands may have to be special-cased (e.g. if having parameters):
 encode_common_command_tracking( _CmdType=co_rd_version ) ->
-	encode_read_version_request();
+    encode_read_version_request();
 
 encode_common_command_tracking( _CmdType=co_rd_sys_log ) ->
-	encode_read_logs_request();
+    encode_read_logs_request();
 
 encode_common_command_tracking( _CmdType=co_rd_idbase ) ->
-	encode_base_id_info_request();
+    encode_base_id_info_request();
 
 encode_common_command_tracking( CmdType ) ->
-	throw( { unknown_common_command_type, CmdType } ).
+    throw( { unknown_common_command_type, CmdType } ).
 
 
 
@@ -286,9 +286,9 @@ for `WaitedCmd=co_rd_version`.
 """.
 -spec encode_read_version_request() -> telegram().
 encode_read_version_request() ->
-	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_version ),
-	Data = <<CmdNum:8>>,
-	encode_common_command( Data ).
+    CmdNum = oceanic_generated:get_first_for_common_command( co_rd_version ),
+    Data = <<CmdNum:8>>,
+    encode_common_command( Data ).
 
 
 
@@ -301,9 +301,9 @@ for `WaitedCmd=co_rd_sys_log`.
 """.
 -spec encode_read_logs_request() -> telegram().
 encode_read_logs_request() ->
-	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_sys_log ),
-	Data = <<CmdNum:8>>,
-	encode_common_command( Data ).
+    CmdNum = oceanic_generated:get_first_for_common_command( co_rd_sys_log ),
+    Data = <<CmdNum:8>>,
+    encode_common_command( Data ).
 
 
 
@@ -316,9 +316,9 @@ for WaitedCmd=co_rd_idbase.
 """.
 -spec encode_base_id_info_request() -> telegram().
 encode_base_id_info_request() ->
-	CmdNum = oceanic_generated:get_first_for_common_command( co_rd_idbase ),
-	Data = <<CmdNum:8>>,
-	encode_common_command( Data ).
+    CmdNum = oceanic_generated:get_first_for_common_command( co_rd_idbase ),
+    Data = <<CmdNum:8>>,
+    encode_common_command( Data ).
 
 
 
@@ -330,7 +330,7 @@ The actual specification of common commands starts at p.32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data() ) -> telegram().
 encode_common_command( Data ) ->
-	oceanic_encode:encode_esp3_packet( _PacketType=common_command_type, Data ).
+    oceanic_encode:encode_esp3_packet( _PacketType=common_command_type, Data ).
 
 
 
@@ -340,9 +340,9 @@ Encodes a common command, based on the specified data and optional data.
 The actual specification of common commands starts at p.32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data(), telegram_opt_data() ) ->
-												telegram().
+                                                telegram().
 encode_common_command( Data, OptData ) ->
-	oceanic_encode:encode_esp3_packet( _PacketType=common_command, Data,
+    oceanic_encode:encode_esp3_packet( _PacketType=common_command, Data,
                                        OptData ).
 
 
@@ -362,15 +362,15 @@ The actual waiting information is expected to have been already cleared by the
 caller.
 """.
 -spec decode_response_tail( command_tracking(), telegram_data_tail(),
-							telegram_opt_data(), option( telegram_tail() ),
-							oceanic_state() ) -> decoding_outcome().
+                            telegram_opt_data(), option( telegram_tail() ),
+                            oceanic_state() ) -> decoding_outcome().
 % For (our) telegram_sending:
 decode_response_tail(
-		#command_tracking{ command_type=telegram_sending,
+        #command_tracking{ command_type=telegram_sending,
                           command_telegram=CmdTelegram,
-						  requester=Requester },
-		_RemainingDataTail= <<>>,
-		_OptData= <<>>, NextMaybeTelTail,
+                          requester=Requester },
+        _RemainingDataTail= <<>>,
+        _OptData= <<>>, NextMaybeTelTail,
         State ) ->
 
     % Returned code already checked to be ok_return, so:
@@ -395,7 +395,7 @@ decode_response_tail(
     % specifically notified (by a call to its onEnoceanDeviceEvent/4 method)
     % only in case of (final) failure:
     %
-	%notify_requester( Response, _SetRequester=internal, NextMaybeTelTail,
+    %notify_requester( Response, _SetRequester=internal, NextMaybeTelTail,
     %                  State );
 
     { decoded, _Event=command_processed, _MaybeDiscoverOrigin=undefined,
@@ -405,56 +405,56 @@ decode_response_tail(
 
 % For co_rd_version:
 decode_response_tail(
-		#command_tracking{ command_type=co_rd_version,
-						  requester=Requester },
-		_DataTail= <<AppVerMain:8, AppVerBeta:8, AppVerAlpha:8, AppVerBuild:8,
-					 ApiVerMain:8, ApiVerBeta:8, ApiVerAlpha:8, ApiVerBuild:8,
-					 % 16 bytes:
-					 ChipId:32, ChipVer:32, AppDesc:16/binary>>,
-		_OptData= <<>>, NextMaybeTelTail, State ) ->
+        #command_tracking{ command_type=co_rd_version,
+                          requester=Requester },
+        _DataTail= <<AppVerMain:8, AppVerBeta:8, AppVerAlpha:8, AppVerBuild:8,
+                     ApiVerMain:8, ApiVerBeta:8, ApiVerAlpha:8, ApiVerBuild:8,
+                     % 16 bytes:
+                     ChipId:32, ChipVer:32, AppDesc:16/binary>>,
+        _OptData= <<>>, NextMaybeTelTail, State ) ->
 
-	Response = #read_version_response{
-		app_version={ AppVerMain, AppVerBeta, AppVerAlpha, AppVerBuild },
-		api_version={ ApiVerMain, ApiVerBeta, ApiVerAlpha, ApiVerBuild },
-		chip_id=ChipId,
-		chip_version=ChipVer,
-		app_description=text_utils:buffer_to_binstring( AppDesc ) },
+    Response = #read_version_response{
+        app_version={ AppVerMain, AppVerBeta, AppVerAlpha, AppVerBuild },
+        api_version={ ApiVerMain, ApiVerBeta, ApiVerAlpha, ApiVerBuild },
+        chip_id=ChipId,
+        chip_version=ChipVer,
+        app_description=text_utils:buffer_to_binstring( AppDesc ) },
 
-	notify_requester( Response, Requester, NextMaybeTelTail, State );
+    notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 % Non-matched data tail:
 decode_response_tail( #command_tracking{ command_type=co_rd_version }, DataTail,
-					  _OptData= <<>>, NextMaybeTelTail, State ) ->
+                      _OptData= <<>>, NextMaybeTelTail, State ) ->
 
-	trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
-		"common command with an invalid data tail (~ts).",
-		[ oceanic_text:telegram_to_string( DataTail ) ] ),
+    trace_bridge:error_fmt( "Received a response to a pending co_rd_version "
+        "common command with an invalid data tail (~ts).",
+        [ oceanic_text:telegram_to_string( DataTail ) ] ),
 
-	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };
+    { invalid, _ToSkipLen=0, NextMaybeTelTail, State };
 
 
 % For co_rd_sys_log:
 decode_response_tail( #command_tracking{ command_type=co_rd_sys_log,
-										requester=Requester },
-					  DataTail, OptData, NextMaybeTelTail, State ) ->
+                                        requester=Requester },
+                      DataTail, OptData, NextMaybeTelTail, State ) ->
 
-	% Nope, we have a series of size(OptData) APP log counters (e.g. 6 of them,
-	% each starting initially at 255):
-	%
-	%MaybeDecodedOptData = decode_optional_data( OptData ),
+    % Nope, we have a series of size(OptData) APP log counters (e.g. 6 of them,
+    % each starting initially at 255):
+    %
+    %MaybeDecodedOptData = decode_optional_data( OptData ),
 
-	cond_utils:if_defined( oceanic_debug_decoding,
-		% For example 38 API counters, each starting initially at 255:
-		trace_bridge:debug_fmt( "DataTail (~B API log counters): ~w, "
-			"OptData (~B APP log counters): ~w",
-			[ size( DataTail ), DataTail, size( OptData ), OptData ] ) ),
+    cond_utils:if_defined( oceanic_debug_decoding,
+        % For example 38 API counters, each starting initially at 255:
+        trace_bridge:debug_fmt( "DataTail (~B API log counters): ~w, "
+            "OptData (~B APP log counters): ~w",
+            [ size( DataTail ), DataTail, size( OptData ), OptData ] ) ),
 
-	% Yes, this dispatching is the correct one:
-	Response = #read_logs_response{ app_counters=binary_to_list( OptData ),
-									api_counters=binary_to_list( DataTail ) },
+    % Yes, this dispatching is the correct one:
+    Response = #read_logs_response{ app_counters=binary_to_list( OptData ),
+                                    api_counters=binary_to_list( DataTail ) },
 
-	notify_requester( Response, Requester, NextMaybeTelTail, State );
+    notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 % (apparently no restriction applies to DataTail, no non-matching clause to add)
@@ -462,51 +462,51 @@ decode_response_tail( #command_tracking{ command_type=co_rd_sys_log,
 
 % For co_rd_idbase:
 decode_response_tail( #command_tracking{ command_type=co_rd_idbase,
-										requester=Requester },
-		_DataTail= <<BaseEurid:32>>,
-		_OptData= <<RemainWrtCyclesNum:8>>, NextMaybeTelTail, State ) ->
+                                        requester=Requester },
+        _DataTail= <<BaseEurid:32>>,
+        _OptData= <<RemainWrtCyclesNum:8>>, NextMaybeTelTail, State ) ->
 
-	RemainWrtCycles = case RemainWrtCyclesNum of
+    RemainWrtCycles = case RemainWrtCyclesNum of
 
-		16#ff ->
-			unlimited;
+        16#ff ->
+            unlimited;
 
-		Num ->
-			Num
+        Num ->
+            Num
 
-	end,
+    end,
 
-	Response = #read_base_id_info_response{
-		base_eurid=BaseEurid,
-		remaining_write_cycles=RemainWrtCycles },
+    Response = #read_base_id_info_response{
+        base_eurid=BaseEurid,
+        remaining_write_cycles=RemainWrtCycles },
 
-	notify_requester( Response, Requester, NextMaybeTelTail, State );
+    notify_requester( Response, Requester, NextMaybeTelTail, State );
 
 
 decode_response_tail( #command_tracking{ command_type=co_rd_idbase }, DataTail,
-					  OptData, NextMaybeTelTail, State ) ->
+                      OptData, NextMaybeTelTail, State ) ->
 
-	trace_bridge:error_fmt( "Received a response to a pending co_rd_idbase "
-		"common command with an invalid data tail (~ts) "
-		"and/or optional data (~ts).",
-		[ oceanic_text:telegram_to_string( DataTail ),
-		  oceanic_text:telegram_to_string( OptData ) ] ),
+    trace_bridge:error_fmt( "Received a response to a pending co_rd_idbase "
+        "common command with an invalid data tail (~ts) "
+        "and/or optional data (~ts).",
+        [ oceanic_text:telegram_to_string( DataTail ),
+          oceanic_text:telegram_to_string( OptData ) ] ),
 
-	{ invalid, _ToSkipLen=0, NextMaybeTelTail, State };
+    { invalid, _ToSkipLen=0, NextMaybeTelTail, State };
 
 
 % Other common commands:
 decode_response_tail( OtherCmdReq, DataTail, OptData, NextMaybeTelTail,
                       State ) ->
 
-	trace_bridge:error_fmt( "Responses to ~ts are currently "
-		"unsupported (dropping response and waited request).~n"
+    trace_bridge:error_fmt( "Responses to ~ts are currently "
+        "unsupported (dropping response and waited request).~n"
         "Extra information: DataTail=~ts, OptData=~ts.",
-		[ oceanic_text:command_tracking_to_string( OtherCmdReq ),
-		  oceanic_text:telegram_to_string( DataTail ),
+        [ oceanic_text:command_tracking_to_string( OtherCmdReq ),
+          oceanic_text:telegram_to_string( DataTail ),
           oceanic_text:telegram_to_string( OptData ) ] ),
 
-	{ unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
+    { unsupported, _ToSkipLen=0, NextMaybeTelTail, State }.
 
 
 
@@ -519,7 +519,7 @@ manage_failure_return( FailureReturn,
                                                       requester=Requester },
                        DataTail, OptData, NextMaybeTelTail, State ) ->
 
-	trace_bridge:error_fmt( "Received a failure response (~ts), presumably "
+    trace_bridge:error_fmt( "Received a failure response (~ts), presumably "
         "to the pending ~ts (data tail: ~w, optional data: ~w).",
         [ FailureReturn,
           oceanic_text:command_tracking_to_string( WaitedCmdTrk ),

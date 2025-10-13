@@ -27,14 +27,14 @@ An Oceanic application to **send Enocean telegrams from the command-line**.
 -spec exec() -> void().
 exec() ->
 
-	% First, enable all possible helper code (hence to be done first of all):
-	update_code_path_for_myriad_from_module(),
+    % First, enable all possible helper code (hence to be done first of all):
+    update_code_path_for_myriad_from_module(),
 
-	% To force options for testing:
-	%ArgTable = cmd_line_utils:generate_argument_table( "--interactive" ),
-	%ArgTable = cmd_line_utils:generate_argument_table( "-i" ),
-	%ArgTable = cmd_line_utils:generate_argument_table( "-i --unexpected" ),
-	%ArgTable = cmd_line_utils:generate_argument_table( "" ),
-	ArgTable = cmd_line_utils:get_argument_table(),
+    % To force options for testing:
+    %ArgTable = cmd_line_utils:generate_argument_table( "--interactive" ),
+    %ArgTable = cmd_line_utils:generate_argument_table( "-i" ),
+    %ArgTable = cmd_line_utils:generate_argument_table( "-i --unexpected" ),
+    %ArgTable = cmd_line_utils:generate_argument_table( "" ),
+    ArgTable = cmd_line_utils:get_argument_table(),
 
-	telegram_sending:main( ArgTable ).
+    telegram_sending:main( ArgTable ).

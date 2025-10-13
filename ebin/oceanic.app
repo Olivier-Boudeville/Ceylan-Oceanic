@@ -33,18 +33,18 @@
   %{env,[]},
 
   % Flat hierarchy in ebin here:
-  {modules, [oceanic, oceanic_constants, send_telegram_app, telegram_decoding, telegram_sending]},
+  {modules, [oceanic, oceanic_common_command, oceanic_constants, oceanic_decode, oceanic_encode, oceanic_text, send_telegram_app, telegram_decoding, telegram_sending]},
 
   {licenses, ["Ceylan-Oceanic is licensed by its author (Olivier Boudeville) under a disjunctive tri-license, giving you the choice of one of the three following sets of free software/open source licensing terms:
-	- the Mozilla Public License (MPL), version 1.1 or later (very close to the former Erlang Public License, except aspects regarding Ericsson and/or the Swedish law)
-	- the GNU General Public License (GPL), version 3.0 or later
-	- the GNU Lesser General Public License (LGPL), version 3.0 or later"]},
+    - the Mozilla Public License (MPL), version 1.1 or later (very close to the former Erlang Public License, except aspects regarding Ericsson and/or the Swedish law)
+    - the GNU General Public License (GPL), version 3.0 or later
+    - the GNU Lesser General Public License (LGPL), version 3.0 or later"]},
 
   % Library application, not an active one, so no specific behaviour of its own:
   % {mod, {oceanic_app,[]}}
 
   { links, [ {"Official website", "http://oceanic.esperide.org" },
-			 {"Github", "https://github.com/Olivier-Boudeville/Ceylan-Oceanic"} ]}
+             {"Github", "https://github.com/Olivier-Boudeville/Ceylan-Oceanic"} ]}
 
   %{exclude_files, []}
 

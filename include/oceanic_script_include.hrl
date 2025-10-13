@@ -23,16 +23,16 @@ Returns the Oceanic root directory.
 This code cannot be located in an Oceanic module, as they are not available yet.
 """.
 -spec secure_from_escript( file_utils:directory_path() ) ->
-								file_utils:directory_path().
+                                file_utils:directory_path().
 secure_from_escript( MyriadRootDir ) ->
 
-	OceanicRootDir = file_utils:join( [ MyriadRootDir, "..", "oceanic" ] ),
+    OceanicRootDir = file_utils:join( [ MyriadRootDir, "..", "oceanic" ] ),
 
-	OceanicDirs = [ file_utils:join( OceanicRootDir, D )
-						|| D <- [ "src", "src/scripts" ] ],
+    OceanicDirs = [ file_utils:join( OceanicRootDir, D )
+                        || D <- [ "src", "src/scripts" ] ],
 
-	code_utils:declare_beam_directories( OceanicDirs ),
+    code_utils:declare_beam_directories( OceanicDirs ),
 
-	oceanic:secure_serial( OceanicRootDir ),
+    oceanic:secure_serial( OceanicRootDir ),
 
-	OceanicRootDir.
+    OceanicRootDir.

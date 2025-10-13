@@ -52,22 +52,22 @@ interact directly with the local USB (Enocean) gateway.
 -doc "Receives a (single) event.".
 receive_event() ->
 
-	test_facilities:display( "(waiting for any incoming event)" ),
+    test_facilities:display( "(waiting for any incoming event)" ),
 
-	receive
+    receive
 
-		{ onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, _OcSrvPid ] } ->
+        { onEnoceanDeviceEvent, [ Event, _BackOnlineInfo, _OcSrvPid ] } ->
 
-			test_facilities:display( "Received at ~ts event ~ts.",
-				[ time_utils:get_textual_timestamp(),
-				  oceanic:device_event_to_string( Event ) ] );
+            test_facilities:display( "Received at ~ts event ~ts.",
+                [ time_utils:get_textual_timestamp(),
+                  oceanic:device_event_to_string( Event ) ] );
 
 
-		Other ->
-			test_facilities:display( "Received following message: ~p.",
-									 [ Other ] )
+        Other ->
+            test_facilities:display( "Received following message: ~p.",
+                                     [ Other ] )
 
-	end.
+    end.
 
 
 
@@ -75,60 +75,60 @@ receive_event() ->
 -spec actual_test( device_path() ) -> void().
 actual_test( TtyPath ) ->
 
-	test_facilities:display( "Testing the management of Common Commands." ),
+    test_facilities:display( "Testing the management of Common Commands." ),
 
-	OcSrvPid = oceanic:start_link( TtyPath ),
+    OcSrvPid = oceanic:start_link( TtyPath ),
 
-	ReadBaseEurid = oceanic:get_oceanic_eurid( OcSrvPid ),
-	test_facilities:display( "Read (emitter) base EURID: ~ts.",
-							 [ oceanic:eurid_to_string( ReadBaseEurid ) ] ),
+    ReadBaseEurid = oceanic:get_oceanic_eurid( OcSrvPid ),
+    test_facilities:display( "Read (emitter) base EURID: ~ts.",
+                             [ oceanic:eurid_to_string( ReadBaseEurid ) ] ),
 
-	ReadResp = oceanic:read_version( OcSrvPid ),
-	test_facilities:display( "Read version: ~ts.",
-							 [ oceanic:device_event_to_string( ReadResp ) ] ),
+    ReadResp = oceanic:read_version( OcSrvPid ),
+    test_facilities:display( "Read version: ~ts.",
+                             [ oceanic:device_event_to_string( ReadResp ) ] ),
 
-	ReadLogs = oceanic:read_logs( OcSrvPid ),
-	test_facilities:display( "Read logs: ~ts.",
-							 [ oceanic:device_event_to_string( ReadLogs ) ] ),
+    ReadLogs = oceanic:read_logs( OcSrvPid ),
+    test_facilities:display( "Read logs: ~ts.",
+                             [ oceanic:device_event_to_string( ReadLogs ) ] ),
 
-	oceanic:stop( OcSrvPid ),
+    oceanic:stop( OcSrvPid ),
 
-	% So that any final trace sent when stopping can be transmitted and seen (as
-	% stopping is an asynchronous operation):
-	%
-	timer:sleep( 1000 ),
+    % So that any final trace sent when stopping can be transmitted and seen (as
+    % stopping is an asynchronous operation):
+    %
+    timer:sleep( 1000 ),
 
-	test_facilities:display( "Stopped." ).
+    test_facilities:display( "Stopped." ).
 
 
 
 -spec run() -> no_return().
 run() ->
 
-	test_facilities:start( ?MODULE ),
+    test_facilities:start( ?MODULE ),
 
-	TtyPath = oceanic:get_default_tty_path(),
+    TtyPath = oceanic:get_default_tty_path(),
 
-	case oceanic:has_tty( TtyPath ) of
+    case oceanic:has_tty( TtyPath ) of
 
-		true ->
-			case executable_utils:is_batch() of
+        true ->
+            case executable_utils:is_batch() of
 
-				true ->
-					test_facilities:display( "(not running the sending "
-						"test, being in batch mode)" );
+                true ->
+                    test_facilities:display( "(not running the sending "
+                        "test, being in batch mode)" );
 
-				false ->
-					actual_test( TtyPath )
+                false ->
+                    actual_test( TtyPath )
 
-			end;
+            end;
 
-		% For example in continuous integration:
-		{ false, Reason } ->
-			test_facilities:display( "Warning: no suitable TTY environment "
-				"found (cause: ~p; searched for device '~ts'), no test done.",
-				[ Reason, TtyPath ] )
+        % For example in continuous integration:
+        { false, Reason } ->
+            test_facilities:display( "Warning: no suitable TTY environment "
+                "found (cause: ~p; searched for device '~ts'), no test done.",
+                [ Reason, TtyPath ] )
 
-	end,
+    end,
 
-	test_facilities:stop().
+    test_facilities:stop().

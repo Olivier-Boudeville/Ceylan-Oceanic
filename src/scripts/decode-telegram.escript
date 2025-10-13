@@ -36,12 +36,12 @@
 % @doc Entry point of this escript.
 main( ArgList ) ->
 
-	% First, enable all possible helper code (hence to be done first of all):
-	MyriadRootDir = update_code_path_for_myriad(),
+    % First, enable all possible helper code (hence to be done first of all):
+    MyriadRootDir = update_code_path_for_myriad(),
 
-	% Now that Myriad is available; obtained from Oceanic include:
-	_OceanicRootDir = secure_from_escript( MyriadRootDir ),
+    % Now that Myriad is available; obtained from Oceanic include:
+    _OceanicRootDir = secure_from_escript( MyriadRootDir ),
 
-	ArgTable = script_utils:get_arguments( ArgList ),
+    ArgTable = script_utils:get_arguments( ArgList ),
 
-	telegram_decoding:main( ArgTable ).
+    telegram_decoding:main( ArgTable ).

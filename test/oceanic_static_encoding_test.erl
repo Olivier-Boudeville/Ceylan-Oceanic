@@ -38,27 +38,27 @@ Testing of the Ceylan-Oceanic **encoding of static telegrams**.
 -spec run() -> no_return().
 run() ->
 
-	test_facilities:start( ?MODULE ),
+    test_facilities:start( ?MODULE ),
 
-	% Not useful here: OceanicServerPid = oceanic:start(),
+    % Not useful here: OceanicServerPid = oceanic:start(),
 
-	% Yet for the decoding of at least some types of packets, we need the EEP to
-	% be configured from the corresponding emitting devices, so:
-	%
-	%InitialOcState = oceanic:get_test_state(),
+    % Yet for the decoding of at least some types of packets, we need the EEP to
+    % be configured from the corresponding emitting devices, so:
+    %
+    %InitialOcState = oceanic:get_test_state(),
 
-	SourceEurid = oceanic:string_to_eurid( "0109d970" ),
+    SourceEurid = oceanic:string_to_eurid( "0109d970" ),
 
-	% Hence never released:
-	Telegram = oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
-		_SourceAppStyle=1, _ButtonLoc={ _Channel=1, _ButtonPos=top },
-		_ButtonTransition=just_pressed, _MaybeTargetEurid=undefined ),
+    % Hence never released:
+    Telegram = oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+        _SourceAppStyle=1, _ButtonLoc={ _Channel=1, _ButtonPos=top },
+        _ButtonTransition=just_pressed, _MaybeTargetEurid=undefined ),
 
-	test_facilities:display( "Generated following telegram for double-rocker: "
-		"~ts.", [ oceanic:telegram_to_string( Telegram ) ] ),
+    test_facilities:display( "Generated following telegram for double-rocker: "
+        "~ts.", [ oceanic:telegram_to_string( Telegram ) ] ),
 
-	% Not relevant here: oceanic:stop( OceanicServerPid ),
+    % Not relevant here: oceanic:stop( OceanicServerPid ),
 
-	% So no final state is displayed here.
+    % So no final state is displayed here.
 
-	test_facilities:stop().
+    test_facilities:stop().
