@@ -137,7 +137,7 @@
     last_seen = undefined :: option( time_utils:timestamp() ),
 
     % Tells whether this device is considered by Oceanic to be online or lost:
-    availability :: option( oceanic:availability_status() ),
+    availability = undefined :: option( oceanic:availability_status() ),
 
     % Tells whether this device was successfully registered by this gateway
     % through teach-in, with no teach-out afterwards, and thus whether this
@@ -177,8 +177,7 @@
     % Note that the device targeted by the request shall if needed be configured
     % to return a state telegram once having processed this request.
     %
-    waited_request_info = 'undefined'
-                                :: option( oceanic:waited_request_info() ),
+    waited_request_info = undefined :: option( oceanic:waited_request_info() ),
 
 
     % The maximum waiting duration for a pending request, sent yet not
