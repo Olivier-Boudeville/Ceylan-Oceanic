@@ -1834,9 +1834,14 @@ Tells whether Oceanic should be available, that is if all its prerequisites seem
 to be met.
 
 Useful to de-risk a future launch thereof and factor code.
+
+Note that returned messages are expected to be used with for example `"No
+Oceanic support will be available: ~ts~n"`, so they should not start with a
+capital letter.
 """.
 -spec is_available( device_path() ) -> oceanic_availability_outcome().
 is_available( TtyPath ) ->
+
 
     case has_tty( TtyPath ) of
 
@@ -1846,9 +1851,10 @@ is_available( TtyPath ) ->
 
                 not_found ->
                     ReasonStr = text_utils:format(
-                        "The 'serial' module is not found, whereas the ~ts~n"
-                        "Has our fork of 'serial' been already installed? "
-                        "Please refer to Oceanic's documentation.",
+                        "no 'serial' module is found, whereas the ~ts~n"
+                        "To enable an Oceanic support, our fork of 'serial' "
+                        "shall be available; for that, please refer to the "
+                        "Oceanic installation instructions.",
                         [ code_utils:get_code_path_as_string() ] ),
 
                     { false, ReasonStr, _ErrorTerm=serial_library_not_found };
@@ -1868,7 +1874,7 @@ is_available( TtyPath ) ->
                 MultiplePaths ->
 
                     ReasonStr = text_utils:format(
-                        "The 'serial' module has been found in "
+                        "the 'serial' module has been found in "
                         "multiple locations (which is abnormal): ~ts.",
                         [ text_utils:strings_to_listed_string(
                             MultiplePaths ) ] ),
@@ -1881,9 +1887,10 @@ is_available( TtyPath ) ->
 
         { false, non_existing } ->
 
-            ReasonStr = text_utils:format( "The specified TTY, '~ts', "
-                "does not exist. Is the device for the Enocean gateway "
-                "plugged in, and named accordingly?", [ TtyPath ] ),
+            ReasonStr = text_utils:format( "the looked-up TTY, '~ts', "
+                "does not exist. To enable an Oceanic support, check "
+                "that an Enocean gateway (typically a USB dongle) is "
+                "plugged in, and named accordingly.", [ TtyPath ] ),
 
             ErrorTerm = { non_existing_tty, TtyPath },
 
@@ -1892,9 +1899,9 @@ is_available( TtyPath ) ->
 
         { false, { not_device, OtherType } } ->
 
-            ReasonStr = text_utils:format( "The specified TTY for the "
-                "Enocean gateway, '~ts', is not a device but a ~ts.",
-                [ TtyPath, OtherType ] ),
+            ReasonStr = text_utils:format( "the looked-up TTY for the "
+                "Enocean gateway, '~ts', exists, yet is not a device "
+                "but a ~ts.", [ TtyPath, OtherType ] ),
 
             ErrorTerm = { not_a_device, TtyPath, OtherType },
 
@@ -3132,13 +3139,14 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
             #enocean_device{ eurid=Eurid,
                              name=undefined,
+                             % (no short_name)
                              eep=MaybeEepId,
                              discovered_through=teaching,
                              first_seen=Now,
                              last_seen=Now,
                              telegram_count=1,
-                             error_count=0,
-                             expected_periodicity=none };
+                             expected_periodicity=none,
+                             request_queue=queue:new() };
 
         % From then, already discovered:
         { value, Device=#enocean_device{ eep=undefined,
