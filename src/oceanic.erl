@@ -5586,7 +5586,8 @@ record_device_success( Eurid, DeviceTable ) ->
                                          availability=online,
                                          telegram_count=1,
                                          error_count=0,
-                                         expected_periodicity=none },
+                                         expected_periodicity=none,
+                                         request_queue=queue:new() },
 
             % Necessarily new:
             NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
@@ -5695,7 +5696,7 @@ record_device_failure( Eurid, DeviceTable ) ->
                                          telegram_count=0,
                                          error_count=1,
                                          expected_periodicity=none,
-                                         activity_timer=undefined },
+                                         request_queue=queue:new() },
 
             % Necessarily new:
             NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
