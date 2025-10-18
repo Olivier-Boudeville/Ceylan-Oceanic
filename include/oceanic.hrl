@@ -189,7 +189,7 @@
     % Extra device-level information, such as, for a double rocker, its
     % application style.
     %
-    extra_info = [] :: oceanic:device_info_spec() } ).
+    extra_info_table = table:new() :: oceanic:device_info_table() } ).
 
 
 

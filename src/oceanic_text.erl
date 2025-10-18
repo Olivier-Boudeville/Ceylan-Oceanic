@@ -1689,7 +1689,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
                                    activity_timer=MaybeActTimer,
                                    request_queue=ReqQueue,
                                    waited_request_info=MaybeReqInfo,
-                                   extra_info=ExtraInfoTable } ) ->
+                                   extra_info_table=ExtraInfoTable } ) ->
 
     TaughtStr = case IsTaught of
 
@@ -1883,8 +1883,7 @@ device_to_string( #enocean_device{ eurid=Eurid,
                                 text_utils:format( "the ~w one is on the air",
                                                    [ ReqInfo ] )
 
-                        end,
-                                [ queue:len( ReqQueue ) ] ),
+                        end, [ queue:len( ReqQueue ) ] ),
 
     ExtraInfoStr = table:to_string( ExtraInfoTable, _DescriptionType=bullet ),
 
