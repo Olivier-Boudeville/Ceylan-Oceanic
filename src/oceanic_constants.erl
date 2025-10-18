@@ -360,6 +360,16 @@ get_maybe_eep_topic_specs() ->
         { thermo_hygro_high, "A5-04-03" },
 
 
+        % They are collectively named 'occupancy sensors' by the standard
+        % (see A5-07, [ESP3] p.39):
+
+        { motion_detector, "A5-07-01" },
+
+        { occupancy_detector, "A5-07-02" },
+
+        { motion_detector_with_illumination, "A5-07-03" },
+
+
         % Buttons:
 
         % Single button:
