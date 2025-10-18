@@ -128,8 +128,9 @@ through an Oceanic server**.
 % API for internal use:
 
 -export([ compute_crc/1, compute_next_timeout/4,
-          record_device_success/2, record_known_device_success/2,
-          record_device_failure/2, record_known_device_failure/2,
+
+          record_device_success/3, record_known_device_success/3,
+          record_device_failure/3, record_known_device_failure/3,
 
           get_designated_eurid/2, get_designated_device/2,
 
@@ -680,6 +681,7 @@ See also `device_type/0`.
 Refer to `oceanic_constants:get_maybe_eep_topic_specs/0` for further details.
 """.
 -type eep_id() ::
+
     % First sensors, then commands, then actuators:
 
     % Sensors:
@@ -690,7 +692,13 @@ Refer to `oceanic_constants:get_maybe_eep_topic_specs/0` for further details.
   | 'thermo_hygro_mid'
   | 'thermo_hygro_high'
 
+    % Occupancy sensors:
+  | 'motion_detector'
+  | 'occupancy_detector'
+  | 'motion_detector_with_illumination'
+
   | 'single_input_contact'   % Typically opening detectors
+
 
 
   % Commands:
@@ -1284,17 +1292,13 @@ For example the application style of a rocker.
   | declared_device_activity_periodicity(). % For 'expected_periodicity'
 
 
--doc """
-A user-defined table specifying device-specific information.
-""".
+-doc "A user-defined table specifying device-specific information.".
 -type device_info_user_spec() ::
     list_table( device_info_key(), device_info_value() ).
 
 
--doc """
-An internal device-specific information.
-""".
--type device_info_spec() :: table( device_info_key(), device_info_value() ).
+-doc "An internal device-specific information.".
+-type device_info_table() :: table( device_info_key(), device_info_value() ).
 
 
 -doc """
@@ -2466,8 +2470,9 @@ declare_devices( _DeviceCfgs=[], ShortNames, DeviceTable ) ->
 % Adding ExtraDevInfo if needed:
 declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr } | T ],
                  DevShortNames, DeviceTable ) ->
-    declare_devices( [ { DevDesigSpec, EuridStr, EepStr, _ExtraDevInfo=[] }
-                                            | T ], DevShortNames, DeviceTable );
+    declare_devices(
+        [ { DevDesigSpec, EuridStr, EepStr, _ExtraDevInfo=[] } | T ],
+        DevShortNames, DeviceTable );
 
 % Main clause; any short name set, and any config comment (as last element)
 % dropped by the next clause:
@@ -2549,7 +2554,8 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
 
         DupTable ->
             trace_bridge:error_fmt( "Invalid device information, "
-                "duplicates found: ~ts", [ table:to_string( DupTable ) ] ),
+                "duplicates found for '~ts': ~ts",
+                [ NameStr, table:to_string( DupTable ) ] ),
             throw( { duplicate_in_device_information, table:keys( DupTable ),
                      NameStr } )
 
@@ -2597,7 +2603,7 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
                                  discovered_through=configuration,
                                  expected_periodicity=ActPeriod,
                                  request_queue=queue:new(),
-                                 extra_info=ShrunkDevInfoTable },
+                                 extra_info_table=ShrunkDevInfoTable },
 
     table:has_entry( Eurid, DeviceTable ) andalso
         trace_bridge:warning_fmt( "Overriding entry for device "
@@ -2661,6 +2667,17 @@ decide_auto_periodicity( _EepId=thermo_hygro_mid ) ->
 decide_auto_periodicity( _EepId=thermo_hygro_high ) ->
     auto;
 
+
+decide_auto_periodicity( _EepId=motion_detector ) ->
+    auto;
+
+decide_auto_periodicity( _EepId=occupancy_detector ) ->
+    auto;
+
+decide_auto_periodicity( _EepId=motion_detector_with_illumination ) ->
+    auto;
+
+
 decide_auto_periodicity( _EepId=push_button ) ->
     none;
 
@@ -2672,6 +2689,7 @@ decide_auto_periodicity( _EepId=double_rocker_switch_style_2 ) ->
 
 decide_auto_periodicity( _EepId=double_rocker_multipress ) ->
     none;
+
 
 % Typically opening detectors:
 decide_auto_periodicity( _EepId=single_input_contact ) ->
@@ -2981,7 +2999,7 @@ interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
         trace_bridge:debug_fmt(
             "(this event ~ts does not match the presence switching ~ts)",
             [ oceanic_text:device_event_to_string( DevEvent ),
-              oceanic:cits_to_string( CITS ) ] ),
+              oceanic_text:cits_to_string( CITS ) ] ),
         basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
 
     false.
@@ -4321,11 +4339,11 @@ manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
     % As a result, as soon as a switch ack sent by such plugs is lost, the
     % corresponding request will be reported failed.
 
-    DevInfoTable = DevRecord#enocean_device.extra_info,
+    DevInfoTable = DevRecord#enocean_device.extra_info_table,
 
     % For example standard, eltako, etc.:
-    Convention = table:get_value_with_default( convention, standard,
-                                               DevInfoTable ),
+    Convention =
+        table:get_value_with_default( convention, standard, DevInfoTable ),
 
     Msg = text_utils:format( "Request time-out received for actuator ~ts, "
         "giving up re-sending it, as it reached its maximum send count of ~B.",
@@ -4382,11 +4400,11 @@ trigger_actuator_impl( ActDesig, DevOp=switch_on,
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
     %
-    DevInfoTable = DevRecord#enocean_device.extra_info,
+    DevInfoTable = DevRecord#enocean_device.extra_info_table,
 
     % For example standard, eltako, etc.:
-    Convention = table:get_value_with_default( convention, standard,
-                                               DevInfoTable ),
+    Convention =
+        table:get_value_with_default( convention, standard, DevInfoTable ),
 
     SwitchTel = case Convention of
 
@@ -4406,7 +4424,7 @@ trigger_actuator_impl( ActDesig, DevOp=switch_on,
             % Meaning "F6-02-01":
             EepId = double_rocker_switch_style_1,
 
-            SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
+            SourceAppStyle = get_app_style_from_eep( EepId ),
 
             % No need to send afterwards a corresponding 'just_released'
             % telegram:
@@ -4462,11 +4480,11 @@ trigger_actuator_impl( ActDesig, DevOp=switch_off,
     % If the target device is known, and if its extra information tell that it
     % should be managed specifically, do so:
     %
-    DevInfoTable = DevRecord#enocean_device.extra_info,
+    DevInfoTable = DevRecord#enocean_device.extra_info_table,
 
     % For example standard, eltako, etc.:
-    Convention = table:get_value_with_default( convention, standard,
-                                               DevInfoTable ),
+    Convention =
+        table:get_value_with_default( convention, standard, DevInfoTable ),
 
     SwitchTel = case Convention of
 
@@ -4491,7 +4509,7 @@ trigger_actuator_impl( ActDesig, DevOp=switch_off,
             % Meaning "F6-02-01":
             EepId = double_rocker_switch_style_1,
 
-            SourceAppStyle = oceanic:get_app_style_from_eep( EepId ),
+            SourceAppStyle = get_app_style_from_eep( EepId ),
 
             % Not need to send afterwards a correspoding just_released telegram:
             oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
@@ -4684,7 +4702,7 @@ get_device_convention( TargetEurid, DeviceTable ) ->
         undefined ->
             standard;
 
-        #enocean_device{ extra_info=DevInfoTable } ->
+        #enocean_device{ extra_info_table=DevInfoTable } ->
              % For example standard, eltako, etc.:
              table:get_value_with_default( convention, standard, DevInfoTable )
 
@@ -5561,9 +5579,14 @@ get_maybe_next_tail( Chunk ) ->
 -doc """
 Records that a telegram could be successfully decoded for the specified device,
 registering it if it was not already.
+
+Based on the corresponding telegram having been decoded, an inferred EEP may be
+proposed, so that devices discovered only through listening can nevertheless
+bear a type.
 """.
--spec record_device_success( eurid(), device_table() ) -> recording_info().
-record_device_success( Eurid, DeviceTable ) ->
+-spec record_device_success( eurid(), device_table(), option( eep_id() ) ) ->
+                                                    recording_info().
+record_device_success( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
     case table:lookup_entry( Eurid, DeviceTable ) of
 
@@ -5579,7 +5602,7 @@ record_device_success( Eurid, DeviceTable ) ->
             NewDevice = #enocean_device{ eurid=Eurid,
                                          name=undefined,
                                          short_name=undefined,
-                                         eep=undefined,
+                                         eep=MaybeInferredEepId,
                                          discovered_through=DiscoverOrigin,
                                          first_seen=Now,
                                          last_seen=Now,
@@ -5598,7 +5621,8 @@ record_device_success( Eurid, DeviceTable ) ->
 
 
         { value, Device } ->
-            record_known_device_success( Device, DeviceTable )
+            record_known_device_success( Device, DeviceTable,
+                                         MaybeInferredEepId )
 
     end.
 
@@ -5606,10 +5630,11 @@ record_device_success( Eurid, DeviceTable ) ->
 
 -doc """
 Records that a telegram could be successfully decoded for the specified
-already-known device.
+already-known device, taking into account any EEP deduced from the corresponding
+telegram.
 """.
--spec record_known_device_success( enocean_device(), device_table() ) ->
-                                            recording_info().
+-spec record_known_device_success( enocean_device(), device_table(),
+                                   option( eep_id() ) ) -> recording_info().
 record_known_device_success( Device=#enocean_device{
         eurid=Eurid,
         name=MaybeDeviceName,
@@ -5620,7 +5645,28 @@ record_known_device_success( Device=#enocean_device{
         availability=MaybePrevAvail,
         telegram_count=TeleCount,
         expected_periodicity=Periodicity,
-        activity_timer=MaybeActTimer }, DeviceTable ) ->
+        activity_timer=MaybeActTimer }, DeviceTable, MaybeInferredEepId ) ->
+
+    BestEepId = case MaybeInferredEepId of
+
+        undefined ->
+            MaybeEepId;
+
+        % Actually defined and matching:
+        MaybeEepId ->
+            MaybeEepId;
+
+        % Non-matching:
+        RegEepId ->
+            trace_bridge:warning_fmt( "For device '~ts' (EURID: ~ts), "
+                "the registered EEP is ~ts whereas the one inferred from "
+                "the last successfully-decoded message is ~ts "
+                "(keeping the registered one).",
+                [ MaybeDeviceName, Eurid, RegEepId, MaybeInferredEepId ] ),
+            % Trusting more the registered one, keeping it:
+            RegEepId
+
+    end,
 
     Now = time_utils:get_timestamp(),
 
@@ -5648,7 +5694,8 @@ record_known_device_success( Device=#enocean_device{
     ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
         TeleCount, Device#enocean_device.error_count, Now ),
 
-    UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+    UpdatedDevice = Device#enocean_device{ eep=BestEepId,
+                                           first_seen=NewFirstSeen,
                                            last_seen=Now,
                                            availability=online,
                                            telegram_count=TeleCount+1,
@@ -5667,12 +5714,14 @@ record_known_device_success( Device=#enocean_device{
 
 -doc """
 Records that a telegram could not be successfully decoded for the specified
-device, registering it if it was not already.
+device, registering it if it was not already, taking into account any EEP
+deduced from the corresponding telegram.
 
 Note that many failures do not even allow identifying the emitting device.
 """.
--spec record_device_failure( eurid(), device_table() ) -> recording_info().
-record_device_failure( Eurid, DeviceTable ) ->
+-spec record_device_failure( eurid(), device_table(), option( eep_id() ) ) ->
+          recording_info().
+record_device_failure( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
     Now = time_utils:get_timestamp(),
 
@@ -5688,7 +5737,7 @@ record_device_failure( Eurid, DeviceTable ) ->
             NewDevice = #enocean_device{ eurid=Eurid,
                                          name=undefined,
                                          short_name=undefined,
-                                         eep=undefined,
+                                         eep=MaybeInferredEepId,
                                          discovered_through=DiscoverOrigin,
                                          first_seen=Now,
                                          last_seen=Now,
@@ -5707,7 +5756,8 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 
         { value, Device } ->
-            record_known_device_failure( Device, DeviceTable )
+            record_known_device_failure( Device, DeviceTable,
+                                         MaybeInferredEepId )
 
     end.
 
@@ -5715,10 +5765,11 @@ record_device_failure( Eurid, DeviceTable ) ->
 
 -doc """
 Records that a telegram could not be successfully decoded for the specified
-already-known device.
+already-known device, taking into account any EEP deduced from the corresponding
+telegram.
 """.
--spec record_known_device_failure( enocean_device(), device_table() ) ->
-                                            recording_info().
+-spec record_known_device_failure( enocean_device(), device_table(),
+                                   option( eep_id() ) ) -> recording_info().
 record_known_device_failure( Device=#enocean_device{
         eurid=Eurid,
         name=MaybeDeviceName,
@@ -5729,7 +5780,37 @@ record_known_device_failure( Device=#enocean_device{
         availability=MaybePrevAvail,
         error_count=ErrCount,
         expected_periodicity=Periodicity,
-        activity_timer=MaybeActTimer }, DeviceTable ) ->
+        activity_timer=MaybeActTimer }, DeviceTable, MaybeInferredEepId ) ->
+
+    % In this case we discriminate based on:
+    MaybeBestEepId = case MaybeInferredEepId of
+
+        undefined ->
+            MaybeEepId;
+
+        % Defined and matching:
+        MaybeEepId ->
+            MaybeEepId;
+
+        % Defined but not matching:
+        InferredEepId ->
+            case MaybeEepId of
+
+                undefined ->
+                    InferredEepId;
+
+                RegEepId ->
+                    trace_bridge:warning_fmt( "For device '~ts' (EURID: ~ts), "
+                        "the registered EEP is ~ts whereas the one inferred "
+                        "from the last unsuccessfully-decoded message is ~ts "
+                        "(keeping the registered one).",
+                        [ MaybeDeviceName, Eurid, RegEepId, InferredEepId ] ),
+                    % Trusting more the registered one, keeping it:
+                    RegEepId
+
+            end
+
+    end,
 
     Now = time_utils:get_timestamp(),
 
@@ -5751,7 +5832,8 @@ record_known_device_failure( Device=#enocean_device{
     ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
         Device#enocean_device.telegram_count, ErrCount, Now ),
 
-    UpdatedDevice = Device#enocean_device{ first_seen=NewFirstSeen,
+    UpdatedDevice = Device#enocean_device{ eep=MaybeBestEepId,
+                                           first_seen=NewFirstSeen,
                                            last_seen=Now,
                                            availability=online,
                                            error_count=ErrCount+1,
@@ -6021,7 +6103,9 @@ reporting measurements and events.
 get_sensor_eeps() ->
     % Refer to oceanic_{constants,generated}:get_maybe_eep_topic_specs/0:
     set_utils:new( [ thermometer, thermo_hygro_low, thermo_hygro_mid,
-                     thermo_hygro_high, single_input_contact ] ).
+                     thermo_hygro_high, single_input_contact,
+                     motion_detector, occupancy_detector,
+                     motion_detector_with_illumination ] ).
 
 
 -doc """

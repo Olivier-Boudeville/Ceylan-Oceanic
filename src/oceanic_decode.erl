@@ -354,12 +354,14 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
         % Device first time seen:
         key_not_found ->
 
-            % Not trying to decode optional data then.
-
+            % Not trying to decode optional data then; a priori unable to infer
+            % any actual EEP (multiple ones correspond):
+            %
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
               _UndefinedDeviceShortName, _MaybeEepId } =
-                  oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                  oceanic:record_device_failure( SenderEurid, DeviceTable,
+                      _MaybeInferredEepId=undefined ),
 
             trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
                 "from device whose EURID is ~ts: device not configured, "
@@ -371,7 +373,9 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
             { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
-        % Knowing the actual EEP is needed in order to decode:
+        % Knowing the actual EEP is needed in order to decode; here also unable
+        % to infer it:
+        %
         { value, _Device=#enocean_device{ eep=undefined } } ->
 
             % Not trying to decode optional data then.
@@ -379,7 +383,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UndefinedEepId } =
-                  oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                  oceanic:record_device_failure( SenderEurid, DeviceTable,
+                      _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a RPS packet "
@@ -415,12 +420,12 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
         { value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
-            % Not trying to decode optional data then.
-
+            % Not trying to decode optional data then; EEP already known:
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UnsupportedEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                      _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
             trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
@@ -485,7 +490,8 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
     % EEP was known, hence device was already known as well:
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+                                             _InferredEepId=push_button ),
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -537,7 +543,7 @@ Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
 
 Apparently, when pressing a button (e.g. AO in application style 1, i.e. the top
 left one) of a double rocker (EEP F6-02-01, be it an Avidsen, an O2Line, a
-TRIO2SYS one) :
+TRIO2SYS one):
 
 - first, when it is pressed, a packet corresponding to
   `{button_ao,just_pressed}` (just below, for T21=1 and NU=1) is sent, resulting
@@ -554,7 +560,22 @@ sent, and then `{none,just_released}`.
 -spec decode_rps_double_rocker_packet( telegram_chunk(), eurid(),
         telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
         enocean_device(), oceanic_state() ) -> decoding_outcome().
- decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
+
+% No EEP a priori known here, thus unable to know the application style and thus
+% to decode that telegram:
+%
+decode_rps_double_rocker_packet( _DB_0, SenderEurid,
+       _Status, _OptData, NextMaybeTelTail,
+       _Device=#enocean_device{ eep=undefined }, State ) ->
+
+    trace_bridge:warning_fmt( "Received a RPS telegram from device of "
+        "EURID ~ts, but it could not be decoded short of knowing the EEP "
+        "that it implements.",
+        [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+
+    { unconfigured, _ToSkipLen=0, NextMaybeTelTail, State };
+
+decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
        % (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
        _Status= <<_:2, T21:1, NU:1, _:4>>, OptData,
        NextMaybeTelTail, Device=#enocean_device{ eep=EepId },
@@ -563,7 +584,7 @@ sent, and then `{none,just_released}`.
    AppStyle = oceanic:get_app_style_from_eep( EepId ),
 
    cond_utils:if_defined( oceanic_debug_decoding, trace_bridge:debug_fmt(
-         "Decoding a RPS F6-02-01 double-rocker switch from ~ts; "
+         "Decoding a RPS F6-02-01/02 double-rocker switch from ~ts; "
          "app style: ~w, T21: ~w, NU: ~w.",
          [ oceanic_text:eurid_to_string( SenderEurid ), AppStyle, T21,
            NU ] ) ),
@@ -599,7 +620,8 @@ sent, and then `{none,just_released}`.
            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
              UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
              MaybeDeviceShortName, MaybeEepId } =
-                 oceanic:record_known_device_success( Device, DeviceTable ),
+                 oceanic:record_known_device_success( Device, DeviceTable,
+                    _MaybeInferredEepId=undefined ),
 
            RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -666,7 +688,8 @@ sent, and then `{none,just_released}`.
            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
              UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
              MaybeDeviceShortName, MaybeEepId } =
-                   oceanic:record_known_device_success( Device, DeviceTable ),
+                   oceanic:record_known_device_success( Device, DeviceTable,
+                    _MaybeInferredEepId=undefined ),
 
            NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -887,6 +910,9 @@ handle_possible_eltako_switching_request_answer(
 -doc """
 Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
 
+In practice these are only D5-00-01 contact and switch devices, i.e. opening
+detectors.
+
 Discussed in `[EEP-spec]` p.27.
 """.
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
@@ -925,9 +951,11 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 
     end,
 
+    % D5 implies single_input_contact:
     { NewDeviceTable, NewDevice, Now, MaybePrevLastSeen, MaybeDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_device_success( SenderEurid, DeviceTable ),
+        oceanic:record_device_success( SenderEurid, DeviceTable,
+                                       _InferredEepId=single_input_contact ),
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1009,7 +1037,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
             { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDeviceName,
               _MaybeDeviceShortName, _MaybeEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                    _MaybeInferredEepId=undefined ), % Multiple EEPs correspond
 
             % Device first time seen:
             trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
@@ -1028,7 +1057,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
             { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _MaybeEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                      _MaybeInferredEepId=undefined ), % Cannot do better
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a 4BS (A5) packet "
@@ -1056,7 +1086,8 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
             { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UnsupportedEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                      _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a 4BS (A5F6) packet "
@@ -1135,7 +1166,8 @@ decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
 
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _InferredEepId=thermometer ), % Already known if branching here
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1208,7 +1240,8 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _InferredEepId=thermo_hygro_low ), % Already known if branching here
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1497,12 +1530,14 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
         % Device first time seen:
         key_not_found ->
 
-            % Not trying to decode optional data then.
-
+            % Not trying to decode optional data then; multiple smart plug EEPs
+            % could match:
+            %
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
               _UndefinedDeviceShortName, _MaybeEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                    _MaybeInferredEepId=undefined ),
 
             trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
                 "from device whose EURID is ~ts: device not configured, "
@@ -1522,7 +1557,8 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UndefinedEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                    _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a VLD packet "
@@ -1552,7 +1588,8 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
             { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UnsupportedEepId } =
-                oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                oceanic:record_device_failure( SenderEurid, DeviceTable,
+                    _MaybeInferredEepId=undefined ), % Already known
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a VLD (D2) packet "
