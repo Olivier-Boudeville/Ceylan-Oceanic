@@ -60,7 +60,7 @@ Module centralising **all encoding** made by Ceylan-Oceanic.
 % Implementation notes.
 
 % Smart plugs are described by Enocean as "Electronic switches and dimmers with
-% Energy Measurement and Local Control", i.e. EEP D2-01-* (see [EEP] p.131),
+% Energy Measurement and Local Control", i.e. EEP D2-01-* (see [EEP] p. 131),
 % hence based on VLD telegrams.
 %
 % We support mainly the D2-01 type 0B, in the objective of simply having a
@@ -72,7 +72,7 @@ Module centralising **all encoding** made by Ceylan-Oceanic.
 % separately. This requires going through first a pass of teach-in.
 %
 % We are mostly interested here in the following commands:
-% - "CMD 0x1 - Actuator Set Output" (see [EEP] p.132)
+% - "CMD 0x1 - Actuator Set Output" (see [EEP] p. 132)
 
 
 % Type shorthands:
@@ -187,7 +187,7 @@ Event sent in the context of EEP F6-02-01 or EEP F6-02-02 (`"Light and Blind
 Control - Application Style 1 or 2"`), for `T21=1`. It results thus in a RPS
 telegram, an ERP1 radio packet encapsulated into an ESP3 one.
 
-See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+See `[EEP-spec]` p. 15 and its `decode_rps_double_rocker_packet/7` counterpart.
 
 Depending on how Oceanic was learnt by the target actuator, it will be seen
 either as a rocker (recommended) or as push-button(s): refer to
@@ -267,7 +267,7 @@ encode_double_rocker_switch_telegram( SourceEurid, SourceAppStyle,
     T21 = 1,
     NU = 1,
 
-    % Apparently Repeater Count (see `[EEP-gen]` p.14); non-zero deemed safer,
+    % Apparently Repeater Count (see `[EEP-gen]` p. 14); non-zero deemed safer,
     % yet zero already works, so:
 
     %RC = 1,
@@ -311,7 +311,7 @@ Event sent in the context of EEP F6-02-01 or F6-02-02 (`"Light and Blind Control
 - Application Style 1 or 2"`), for `T21=1`. It results thus in a RPS telegram,
 an ERP1 radio packet encapsulated into an ESP3 one.
 
-See `[EEP-spec]` p.15 and its decode_rps_double_rocker_packet/7 counterpart.
+See `[EEP-spec]` p. 15 and its `decode_rps_double_rocker_packet/7` counterpart.
 """.
 -spec encode_double_rocker_multipress_telegram( eurid(), option( eurid() ),
         button_counting(), button_transition() ) -> telegram().
@@ -353,7 +353,7 @@ encode_double_rocker_multipress_telegram( SourceEurid, ButtonCounting,
     T21 = 1,
     NU = 0,
 
-    % Apparently Repeater Count (see [EEP-gen] p.14); non-zero deemed safer:
+    % Apparently Repeater Count (see [EEP-gen] p. 14); non-zero deemed safer:
     %RC = 1,
     RC = 0,
 
@@ -399,7 +399,7 @@ The returned telegram allows the sender (the home automation gateway),
 supposedly in learn mode, to be registered by the learning device as a
 controller thereof.
 
-Refer to `[EEP-spec]` p.255 for more information.
+Refer to `[EEP-spec]` p. 255 for more information.
 """.
 -spec encode_teach_in_response( teach_outcome(), eurid(), eurid(),
     communication_direction(), telegram_chunk() ) -> telegram().
@@ -473,7 +473,7 @@ encode_teach_in_response( TeachOutcome, InitiatorEurid, EmitterEurid,
 Encodes a telegram to set the output of a switch/dimmer.
 
 It is based on the `"CMD 0x1 - Actuator Set Output"` command (see `[EEP]`
-p.132).
+p. 132).
 
 If this telegram is to be addressed (to a particular device, as opposed to being
 broadcast), the target device (e.g. a smart plug) must have already registered

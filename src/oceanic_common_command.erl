@@ -44,9 +44,9 @@ Includes their encoding and decoding.
 % to an EnOcean module, answered with a response message.
 %
 % See the `common_command` topic spec in the oceanic_constants/generated module,
-% and [TCM] p.9.
+% and [TCM] p. 9.
 %
-% Apparently the TCM 310 supports only the following commands (see [TCM] p.9):
+% Apparently the TCM 310 supports only the following commands (see [TCM] p. 9):
 %  - co_wr_sleep to enter energy saving mode (deep sleep mode)
 %  - co_wr_reset to reset the device
 %  - co_rd_version to read sw/hw versions, chip id etc.
@@ -281,8 +281,8 @@ encode_common_command_tracking( CmdType ) ->
 Encodes a common command request of type `CO_RD_VERSION`, to read version
 information from the Enocean module.
 
-See its actual specification in `[ESP3]`, p.36, and the `decode_response_tail/5`
-for `WaitedCmd=co_rd_version`.
+See its actual specification in `[ESP3]`, p. 36, and the
+`decode_response_tail/5` for `WaitedCmd=co_rd_version`.
 """.
 -spec encode_read_version_request() -> telegram().
 encode_read_version_request() ->
@@ -296,8 +296,9 @@ encode_read_version_request() ->
 Encodes a common command request of type `CO_RD_SYS_LOG`, to read logs from the
 Enocean module.
 
-See its actual specification in `[ESP3]`, p.37, and the `decode_response_tail/5`
-for `WaitedCmd=co_rd_sys_log`.
+See its actual specification in `[ESP3]`, p. 37, and the
+`decode_response_tail/5` for `WaitedCmd=co_rd_sys_log`.
+
 """.
 -spec encode_read_logs_request() -> telegram().
 encode_read_logs_request() ->
@@ -311,8 +312,8 @@ encode_read_logs_request() ->
 Encodes a common command request of type `CO_RD_IDBASE`, to read base ID
 information from the Enocean module.
 
-See its actual specification in `[ESP3]`, p.40, and the `decode_response_tail/5`
-for WaitedCmd=co_rd_idbase.
+See its actual specification in `[ESP3]`, p. 40, and the
+`decode_response_tail/5` for `WaitedCmd=co_rd_idbase`.
 """.
 -spec encode_base_id_info_request() -> telegram().
 encode_base_id_info_request() ->
@@ -326,7 +327,7 @@ encode_base_id_info_request() ->
 Encodes a common command request, based on the specified data (and with no
 optional data defined).
 
-The actual specification of common commands starts at p.32 of `[ESP3]`.
+The actual specification of common commands starts at p. 32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data() ) -> telegram().
 encode_common_command( Data ) ->
@@ -337,7 +338,7 @@ encode_common_command( Data ) ->
 -doc """
 Encodes a common command, based on the specified data and optional data.
 
-The actual specification of common commands starts at p.32 of `[ESP3]`.
+The actual specification of common commands starts at p. 32 of `[ESP3]`.
 """.
 -spec encode_common_command( telegram_data(), telegram_opt_data() ) ->
                                                 telegram().

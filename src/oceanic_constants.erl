@@ -129,7 +129,7 @@ get_maybe_event_code_topic_spec() ->
 -doc """
 Returns the specification for the `rorg` topic.
 
-For the RORG field of an ERP radio telegram type, as defined in `[EEP]` p.14.
+For the RORG field of an ERP radio telegram type, as defined in `[EEP]` p. 14.
 """.
 -spec get_maybe_rorg_topic_spec() -> topic_spec().
 get_maybe_rorg_topic_spec() ->
@@ -309,7 +309,7 @@ possible values)
 
 Second elements are their higher-level command names.
 
-Described in `[EEP-spec]` p.131.
+Described in `[EEP-spec]` p. 131.
 """.
 -spec get_maybe_vld_d2_00_cmd_topic_spec() -> topic_spec().
 get_maybe_vld_d2_00_cmd_topic_spec() ->
@@ -361,7 +361,7 @@ get_maybe_eep_topic_specs() ->
 
 
         % They are collectively named 'occupancy sensors' by the standard
-        % (see A5-07, [ESP3] p.39):
+        % (see A5-07, [ESP3] p. 39):
 
         { motion_detector, "A5-07-01" },
 
@@ -372,15 +372,17 @@ get_maybe_eep_topic_specs() ->
 
         % Buttons:
 
+        % Contacts (a.k.a. opening detectors):
+        { single_input_contact, "D5-00-01" },
+
         % Single button:
         { push_button, "F6-01-01" },
 
         % Two rockers (they differ in terms of application style):
         { double_rocker_switch_style_1, "F6-02-01" },
         { double_rocker_switch_style_2, "F6-02-02" },
+        % (double_rocker_multipress: event, no EEP)
 
-        % Contacts:
-        { single_input_contact, "D5-00-01" },
 
 
         % Electronic switches and dimmers (e.g. smart plugs):

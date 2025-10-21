@@ -114,6 +114,8 @@ that the last element of the returned tuples is the Oceanic state.
 -type count() :: basic_utils:count().
 -type uint8() :: type_utils:uint8().
 
+-type ustring() ::text_utils:ustring().
+
 -type eurid() :: oceanic:eurid().
 -type device_event() :: oceanic:device_event().
 -type discovery_origin() :: oceanic:discovery_origin().
@@ -334,8 +336,8 @@ Support to be added:
 - F6-05: Detectors
 - F6-10: Mechanical Handle
 
-Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-`[EEP-spec]` p.11.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p. 18, and in
+`[EEP-spec]` p. 11.
 
 See `decode_1bs_packet/3` for more information.
 """.
@@ -363,10 +365,8 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
                   oceanic:record_device_failure( SenderEurid, DeviceTable,
                       _MaybeInferredEepId=undefined ),
 
-            trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet "
-                "from device whose EURID is ~ts: device not configured, "
-                "no EEP known for it.",
-                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+            trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet ~ts",
+                [ get_unconfigured_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -386,9 +386,9 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
                   oceanic:record_device_failure( SenderEurid, DeviceTable,
                       _MaybeInferredEepId=undefined ),
 
-            % Device probably already seen:
+            % Device probably already seen, so just a debug trace:
             trace_bridge:debug_fmt( "Unable to decode a RPS packet "
-                "for ~ts: no EEP known for it.",
+                "for ~ts: no EEP known for it (hence ignored).",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
                       MaybeDeviceShortName, SenderEurid ) ] ),
 
@@ -451,12 +451,12 @@ in practice, only "F6-01-01" ("Push Button") exists.
 This corresponds to simple "Switch Buttons" (with no rocker, hence with punctual
 press/release events).
 
-Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-`[EEP-spec]` p.15.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p. 18, and in
+`[EEP-spec]` p. 15.
 """.
 -spec decode_rps_push_button_packet( telegram_chunk(), eurid(),
-        telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
-        enocean_device(), oceanic_state() ) -> decoding_outcome().
+    telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
+    enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
         Status, OptData, NextMaybeTelTail, Device,
         State=#oceanic_state{ device_table=DeviceTable } ) ->
@@ -538,8 +538,8 @@ Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1 or
 
 It may contain 2 actions.
 
-Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p.18, and in
-`[EEP-spec]` p.15.
+Discussed a bit in `[ESP3]` "2.1 Packet Type 1: RADIO_ERP1", p. 18, and in
+`[EEP-spec]` p. 15.
 
 Apparently, when pressing a button (e.g. AO in application style 1, i.e. the top
 left one) of a double rocker (EEP F6-02-01, be it an Avidsen, an O2Line, a
@@ -913,7 +913,7 @@ Decodes a rorg_1bs (D5) packet, that is a R-ORG telegram on one byte.
 In practice these are only D5-00-01 contact and switch devices, i.e. opening
 detectors.
 
-Discussed in `[EEP-spec]` p.27.
+Discussed in `[EEP-spec]` p. 27.
 """.
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 -spec decode_1bs_packet( telegram_data_tail(), telegram_opt_data(),
@@ -1001,7 +1001,7 @@ decode_1bs_packet( DataTail= <<DB_0:8, SenderEurid:32, Status:8>>, OptData,
 Decodes a rorg_4bs (A5) packet (for example a thermometer report), that is a
 R-ORG telegram on four bytes.
 
-Discussed in `[EEP-spec]` p.12.
+Discussed in `[EEP-spec]` p. 12.
 """.
 % DB0 is the 1-byte user data, SenderEurid :: eurid() is 4, Status is 1:
 -spec decode_4bs_packet( telegram_data_tail(), telegram_opt_data(),
@@ -1041,17 +1041,15 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
                     _MaybeInferredEepId=undefined ), % Multiple EEPs correspond
 
             % Device first time seen:
-            trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet "
-                "from device whose EURID is ~ts: device not configured, "
-                "no EEP known for it.",
-                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+            trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet ~ts",
+                [ get_unconfigured_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
             { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
 
 
-        % Knowing the actual EEP is needed in order to decode:
+        % An a-priori knowledge of the actual EEP is needed in order to decode:
         { value, _Device=#enocean_device{ eep=undefined } } ->
 
             { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
@@ -1062,7 +1060,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a 4BS (A5) packet "
-                "for ~ts: no EEP known for it.",
+                "for ~ts: no EEP known for it (hence ignored).",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ) ] ),
 
@@ -1075,11 +1073,35 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
             decode_4bs_thermo_hygro_low_packet( DB_3, DB_2, DB_1, DB_0,
                 SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
-        % Expected to be less frequent than previous one:
+        % Maybe later:
+        % { value, Device=#enocean_device{ eep=thermo_hygro_mid } } ->
+        %     decode_4bs_thermo_hygro_mid_packet( DB_3, DB_2, DB_1, DB_0,
+        %         SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        % { value, Device=#enocean_device{ eep=thermo_hygro_high } } ->
+        %     decode_4bs_thermo_hygro_high_packet( DB_3, DB_2, DB_1, DB_0,
+        %         SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        % Expected to be less common than the previous one:
         { value, Device=#enocean_device{ eep=thermometer } } ->
             decode_4bs_thermometer_packet( DB_3, DB_2, DB_1, DB_0,
                 SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
+
+        { value, Device=#enocean_device{ eep=motion_detector } } ->
+            decode_4bs_motion_detector_packet( DB_3, DB_2, DB_1, DB_0,
+                SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        % Maybe later:
+        % { value, Device=#enocean_device{ eep=occupancy_detector } } ->
+        %     decode_4bs__packet( DB_3, DB_2, DB_1, DB_0,
+        %         SenderEurid, OptData, NextMaybeTelTail, Device, State );
+
+        %% { value, Device=#enocean_device{
+        %%                     eep=motion_detector_with_illumination } } ->
+        %%     decode_4bs_motion_detector_with_illumination_packet( DB_3, DB_2,
+        %%         DB_1, DB_0, SenderEurid, OptData, NextMaybeTelTail, Device,
+        %%         State );
 
         { value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -1090,7 +1112,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
                       _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
-            trace_bridge:debug_fmt( "Unable to decode a 4BS (A5F6) packet "
+            trace_bridge:debug_fmt( "Unable to decode a 4BS (A5-F6) packet "
                 "for ~ts: EEP ~ts (~ts) not supported.",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
@@ -1110,7 +1132,7 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 Decodes a rorg_4bs (A5) packet for the thermometer EEP "A5-02-*", precisely here
 "A5-02-05": "Temperature Sensors" (05), range 0°C to +40°C.
 
-Refer to `[EEP-spec]` p.29.
+Refer to `[EEP-spec]` p. 29.
 """.
 -spec decode_4bs_thermometer_packet( uint8(), uint8(), uint8(), uint8(),
         eurid(), telegram_opt_data(), option( telegram_tail() ),
@@ -1213,7 +1235,7 @@ decode_4bs_thermometer_packet_helper( ScaledTemperature, DB_0, SenderEurid,
 Decodes a rorg_4bs (A5) packet for the thermo_hygro_low EEP ("A5-04-01"):
 "Temperature and Humidity Sensor" (04), range 0°C to +40°C and 0% to 100% (01).
 
-Refer to `[EEP-spec]` p.35.
+Refer to `[EEP-spec]` p. 35.
 """.
 -spec decode_4bs_thermo_hygro_low_packet( uint8(), uint8(), uint8(), uint8(),
         eurid(), telegram_opt_data(), option( telegram_tail() ),
@@ -1299,14 +1321,119 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 
 -doc """
+Decodes a rorg_4bs (A5) packet for the motion detector ("occupancy sensor") EEP
+"A5-05-01"
+
+Refer to `[EEP-spec]` p. 39.
+""".
+-spec decode_4bs_motion_detector_packet( uint8(), uint8(), uint8(), uint8(),
+        eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
+        OptData, NextMaybeTelTail, Device,
+        State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+    % In Volts:
+    MaybeSetSupplyVoltage = case DB_3 of
+
+        V when V =< 250 ->
+            V / 250 * 5;
+
+       ErrorCode ->
+            trace_bridge:error_fmt( "Error code obtained for motion detector "
+                "~ts: ~B.",
+                [ oceanic_text:eurid_to_string( SenderEurid ), ErrorCode ] ),
+            undefined
+
+    end,
+
+    % Passive Infrared Sensor:
+    PIRTriggered = DB_1 >= 128,
+
+    % Otherwise is a mere data telegram:
+    IsTeachIn = DB_0 band ?b3 =:= 0,
+
+    SupplyVoltageAvailable = DB_0 band ?b1 =:= 1,
+
+    MaybeActualSupplyVoltage = case SupplyVoltageAvailable of
+
+        true ->
+            MaybeSetSupplyVoltage;
+
+        false ->
+            undefined
+
+    end,
+
+    { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _InferredEepId=motion_detector ), % Already known if branching here
+
+    NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+    MaybeDecodedOptData = decode_optional_data( OptData ),
+
+    cond_utils:if_defined( oceanic_debug_decoding,
+        begin
+            MotionStr = case PIRTriggered of
+                true -> "a motion";
+                false -> "no motion"
+            end,
+
+            VoltageStr = case MaybeActualSupplyVoltage of
+
+                undefined ->
+                    "no supply voltage";
+
+                Voltage ->
+                    text_utils:format( "a supply voltage of ~ts",
+                        [ unit_utils:voltage_to_string( Voltage ) ] )
+
+            end,
+
+            trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-01 packet, "
+                "reporting that ~ts is detected and ~ts; teach-in: ~ts "
+                "(DB_3=~w, DB_1=~w, DB_0=~w); "
+                "sender is ~ts~ts.",
+                [ MotionStr, VoltageStr, IsTeachIn, DB_3, DB_1, DB_0,
+                  oceanic_text:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
+                  oceanic_text:maybe_optional_data_to_string(
+                    MaybeDecodedOptData, OptData ) ] )
+        end ),
+
+    { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+        resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+    Event = #motion_detector_event{ source_eurid=SenderEurid,
+                                    name=MaybeDeviceName,
+                                    short_name=MaybeDeviceShortName,
+                                    eep=MaybeEepId,
+                                    timestamp=Now,
+                                    last_seen=MaybeLastSeen,
+                                    subtelegram_count=MaybeTelCount,
+                                    destination_eurid=MaybeDestEurid,
+                                    dbm=MaybeDBm,
+                                    security_level=MaybeSecLvl,
+                                    motion_detected=PIRTriggered,
+                                    supply_voltage=MaybeActualSupplyVoltage,
+                                    teach_in=IsTeachIn },
+
+    { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+      NextMaybeTelTail, NewState }.
+
+
+
+-doc """
 Decodes a rorg_ute (D4) packet, that is a R-ORG telegram for Universal
 Teach-in/out, EEP based (UTE), one way of pairing devices.
 
-Discussed in `[EEP-gen]` p.17; p.25 for the query and p.26 for the response.
+Discussed in `[EEP-gen]` p. 17; p. 25 for the query and p. 26 for the response.
 """.
 -spec decode_ute_packet( telegram_data_tail(), telegram_opt_data(),
             option( telegram_tail() ), oceanic_state() ) -> decoding_outcome().
-% This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p.25),
+% This is a Teach-In/Out query UTE request (Broadcast / CMD: 0x0, p. 25),
 % broadcasting (typically after one of its relevant buttons has been pressed in
 % the case of a smart plug) a request that devices (e.g. a home automation
 % gateway) declare to this initiator device.
@@ -1496,7 +1623,7 @@ R-ORG telegram containing Variable Length Data.
 VLD telegrams carry a variable payload between 1 and 14 bytes, depending on
 their design.
 
-Discussed in `[EEP-gen]` p.12.
+Discussed in `[EEP-gen]` p. 12.
 
 Various packet types exist, in both directions (from/to sensor/actuator), and
 depend on the actual EEP (hence on its FUNC and TYPE) implemented by the emitter
@@ -1539,10 +1666,8 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
                     _MaybeInferredEepId=undefined ),
 
-            trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet "
-                "from device whose EURID is ~ts: device not configured, "
-                "no EEP known for it.",
-                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+            trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet ~ts",
+                [ get_unconfigured_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1562,7 +1687,7 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a VLD packet "
-                "for ~ts: no EEP known for it.",
+                "for ~ts: no EEP known for it (hence ignored).",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ) ] ),
 
@@ -1855,7 +1980,7 @@ metering information.
 
 See decode_vld_smart_plug_packet/7 for extra details.
 
-Discussed in `[EEP-spec]` p.143.
+Discussed in `[EEP-spec]` p. 143.
 """.
 -spec decode_vld_smart_plug_with_metering_packet( vld_payload(), eurid(),
         telegram_chunk(), telegram_opt_data(), option( telegram_tail() ),
@@ -2136,7 +2261,7 @@ handle_possible_power_request_answer(
 -doc """
 Decodes the specified optional data, if any.
 
-Refer to `[ESP3]` p.18 for its description.
+Refer to `[ESP3]` p. 18 for its description.
 
 The CRC for the overall full data (base+optional) is expected to have been
 checked beforehand.
@@ -2292,7 +2417,7 @@ get_button_transition( _EnergyBow=1 ) ->
 -doc """
 Decodes the RPS status byte, common to many RPS telegrams.
 
-Refer to `[EEP-spec]` p.11 for further details.
+Refer to `[EEP-spec]` p. 11 for further details.
 """.
 -spec get_rps_status_info( telegram_chunk() ) ->
         { ptm_switch_module_type(), nu_message_type(), repetition_count() }.
@@ -2328,3 +2453,14 @@ get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
     end,
 
     { PTMSwitchModuleType, NuType, RC }.
+
+
+
+-doc """
+Returns the message corresponding to a unconfigured device being unusable.
+""".
+-spec get_unconfigured_device_message( eurid() ) -> ustring().
+get_unconfigured_device_message( Eurid ) ->
+   text_utils:format( "from device whose EURID is ~ts: device not configured, "
+        "no EEP known for it; this device will be ignored from now.",
+        [ oceanic_text:eurid_to_string( Eurid ) ] ).

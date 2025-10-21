@@ -99,7 +99,8 @@ Ceylan-Oceanic.
 
 % Higher-level management descriptions:
 
--export([ command_tracking_to_string/1, state_to_string/1 ]).
+-export([ command_tracking_to_string/1, state_to_string/1,
+          device_type_to_string/1 ]).
 
 -export([ cits_to_string/1, device_state_change_spec_to_string/2,
 
@@ -2038,6 +2039,34 @@ state_to_string( #oceanic_state{
 
 
 
+-doc "Returns a textual description of the specified device type.".
+-spec device_type_to_string( device_type() ) -> ustring().
+device_type_to_string( _DevType=thermometer ) ->
+    "thermometer";
+
+device_type_to_string( _DevType=thermo_hygro_sensor ) ->
+    "thermo-hygro sensor";
+
+device_type_to_string( _DevType=opening_detector ) ->
+    "opening detector";
+
+device_type_to_string( _DevType=push_button ) ->
+    "push button";
+
+device_type_to_string( _DevType=double_rocker ) ->
+    "double rocker";
+
+device_type_to_string( _DevType=in_wall_module ) ->
+    "in-wall module";
+
+device_type_to_string( _DevType=smart_plug ) ->
+    "smart plug";
+
+% Never fail here:
+device_type_to_string( DevType ) ->
+    text_utils:format( "device of unknown type '~p' (abnormal)", [ DevType ] ).
+
+
 
 
 -doc """
@@ -2055,7 +2084,7 @@ Returns a textual description of the specified canonical device state change
 specification.
 """.
 -spec device_state_change_spec_to_string( device_type(),
-                                device_state_change_spec() )-> ustring().
+                            device_state_change_spec() )-> ustring().
 device_state_change_spec_to_string( _DevType=double_rocker,
         _CanonDRSCSpec={ Channel, ButPos, ButTrans } ) ->
     text_utils:format( "double-rocker channel #~B, ~ts button position "

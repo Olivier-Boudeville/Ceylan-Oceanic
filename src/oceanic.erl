@@ -101,10 +101,10 @@ through an Oceanic server**.
           get_button_reference/1,
 
           get_maybe_device_name/1, get_maybe_device_short_name/1,
-          get_best_device_name_from/1,
+          get_best_device_name_from/1, get_best_device_name_from/2,
 
           get_maybe_eep/1, resolve_eep/1, get_broadcast_eurid/0,
-          get_timestamp/1, get_last_seen_info/1,
+          get_timestamp/1, get_last_seen_info/1, update_last_seen_info/2,
           get_subtelegram_count/1, get_maybe_destination_eurid/1,
           get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
 
@@ -528,7 +528,7 @@ an ERP1 radio packet), a prefix possibly complemented with optional data.
 The (encoded) part of a telegram with the optional data that may
 complement/extend the base data (see `telegram_data/0`).
 
-Refer to `[ESP3]` p.18.
+Refer to `[ESP3]` p. 18.
 
 See also `decoded_optional_data/0`.
 """.
@@ -540,7 +540,7 @@ See also `decoded_optional_data/0`.
 The decoded data for the optional part of the Packet Type 1 (RADIO_ERP1)
 telegrams.
 
-Refer to `[ESP3]` p.18.
+Refer to `[ESP3]` p. 18.
 
 See also `telegram_opt_data/0`.
 """.
@@ -697,8 +697,7 @@ Refer to `oceanic_constants:get_maybe_eep_topic_specs/0` for further details.
   | 'occupancy_detector'
   | 'motion_detector_with_illumination'
 
-  | 'single_input_contact'   % Typically opening detectors
-
+  | 'single_input_contact' % Typically opening detectors
 
 
   % Commands:
@@ -708,8 +707,10 @@ Refer to `oceanic_constants:get_maybe_eep_topic_specs/0` for further details.
   % They may include the simple rocker ones:
   | 'double_rocker_switch_style_1'
   | 'double_rocker_switch_style_2'
-  | 'double_rocker_multipress' % Apparently can be an alternative to declare
-                               % that a specific button was released.
+
+  % Apparently can be an alternative to declare that a specific button was
+  % released; most probably a type of event/telegram rather than an EEP:
+  %| 'double_rocker_multipress'
 
 
     % Actuators:
@@ -886,7 +887,7 @@ The type of a VLD message, in the context of the D2-00 EEPs: `Room Control Panel
 It is also designated by the MI field of these VLD telegrams, the 3 last bits of
 the first byte of the payload (hence 8 possible values).
 
-Described in `[EEP-spec]` p.127.
+Described in `[EEP-spec]` p. 127.
 """.
 -type vld_rcp_message_type() ::
     'a'  % ID 01
@@ -909,7 +910,7 @@ Refer to the `vld_d2_00_cmd` topic.
 It is also designated by the CMD field of these VLD telegrams, the 4 last bits
 of the first byte of the payload (hence 16 possible values).
 
-Described in `[EEP-spec]` p.131.
+Described in `[EEP-spec]` p. 131.
 """.
 -type vld_d2_00_cmd() ::
     'actuator_set_output'
@@ -993,7 +994,7 @@ to extend an existing ESP3 packet.
 -doc """
 The type of a (typically ESP3) packet.
 
-Refer to `[ESP3]` p.12.
+Refer to `[ESP3]` p. 12.
 
 After a `radio_erp1`, `radio_sub_tel` or `remote_man_command` packet, a response
 packet is expected.
@@ -1109,12 +1110,28 @@ back online.
 
 
 -doc """
+Event sent by EEP A5-02-*: "Temperature Sensor".
+
+Refer to `[EEP-spec]` p. 29 for further details.
+""".
+-type thermometer_event() :: #thermometer_event{}.
+
+
+
+-doc """
 Event sent by EEP A5-04-01: "Temperature and Humidity Sensor" (with any range).
 
-Refer to `[EEP-spec]` p.35 for further details.
+Refer to `[EEP-spec]` p. 35 for further details.
 """.
 -type thermo_hygro_event() :: #thermo_hygro_event{}.
 
+
+-doc """
+Event sent by EEP A5-07-01: "Occupancy with Supply voltage monitor".
+
+Refer to [EEP-spec] p. 39 for further details.
+""".
+-type motion_detector_event() :: #motion_detector_event{}.
 
 
 -doc """
@@ -1122,7 +1139,7 @@ Event sent by EEP D5-00-01: Single Input Contact.
 
 D5-00 corresponds to Contacts and Switches.
 
-Refer to `[EEP-spec]` p.27 for further details.
+Refer to `[EEP-spec]` p. 27 for further details.
 
 Note that, at least by default, most if not all opening detectors not only
 report state transitions (between closed and opened), they also notify regularly
@@ -1140,20 +1157,9 @@ detect the actual transitions (even if they are late).
 -doc """
 Event sent in the context of EEP F6-01 ("Switch Buttons (with no rockers)").
 
-Refer to `[EEP-spec]` p.15 for further details.
+Refer to `[EEP-spec]` p. 15 for further details.
 """.
 -type push_button_switch_event() :: #push_button_switch_event{}.
-
-
-
--doc """
-Event sent in the context of EEPs `D2-01-*` (e.g `0A`), corresponding to an
-Actuator Status Response (command `0x4`), so that a smart plug reports its
-current state.
-
-Refer to `[EEP-spec]` p.135 for further details.
-""".
--type smart_plug_status_report_event() :: #smart_plug_status_report_event{}.
 
 
 
@@ -1161,12 +1167,11 @@ Refer to `[EEP-spec]` p.135 for further details.
 %-type rocker_switch_event() :: #rocker_switch_event{}.
 
 
-
 -doc """
 Event sent in the context of EEP `F6-02-01` and `F6-02-02` ("Light and Blind
 Control - Application Style 1 or 2"), for `T21=1`.
 
-Refer to `[EEP-spec]` p.16 for further details.
+Refer to `[EEP-spec]` p. 16 for further details.
 """.
 -type double_rocker_switch_event() :: #double_rocker_switch_event{}.
 
@@ -1176,7 +1181,7 @@ Refer to `[EEP-spec]` p.16 for further details.
 Event sent in the context of EEP F6-02-01 and F6-02-02 ("Light and Blind Control
 - Application Style 1 or 2"), for T21=1 and NU=0.
 
-Refer to `[EEP-spec]` p.16 for further details.
+Refer to `[EEP-spec]` p. 16 for further details.
 """.
 -type double_rocker_multipress_event() :: #double_rocker_multipress_event{}.
 
@@ -1186,13 +1191,25 @@ Refer to `[EEP-spec]` p.16 for further details.
 %-type position_switch_event() :: #position_switch_event{}.
 
 
+-doc """
+Event sent in the context of EEPs `D2-01-*` (e.g `0A`), corresponding to an
+Actuator Status Response (command `0x4`), so that a smart plug reports its
+current state.
+
+Refer to `[EEP-spec]` p. 135 for further details.
+""".
+-type smart_plug_status_report_event() :: #smart_plug_status_report_event{}.
+
+
+% Later: 'single_channel_module_event' and 'double_channel_module_event'.
+
 
 -doc """
 Message (hence not an event per se) corresponding to the receiving a R-ORG
 telegram for an universal Teach-in request, EEP based (UTE), one way of pairing
 devices.
 
-Refer to `[EEP-gen]` p.17 for further details.
+Refer to `[EEP-gen]` p. 17 for further details.
 """.
 -type teach_request_event() :: #teach_request_event{}.
 
@@ -1203,16 +1220,30 @@ Refer to `[EEP-gen]` p.17 for further details.
 -doc """
 Any event notified by an EnOcean device.
 
-See also their corresponding tags, defined in device_event_type/0.
+Different EEPs may send the same type of events (e.g. the
+`thermo_hygro_{low,mid,high}` EEPs all send `thermo_hygro_event/0`
+events). Reciprocally, an EEP may send multiple types of `device_event/0`
+events.
+
+See also their corresponding tags, defined in `device_event_type/0`.
 """.
 -type device_event() ::
     % Device events:
-    thermo_hygro_event()
+    thermometer_event()
+  | thermo_hygro_event()
+  | motion_detector_event()
   | single_input_contact_event()
+
   | push_button_switch_event()
-  | smart_plug_status_report_event()
+
   | double_rocker_switch_event()
   | double_rocker_multipress_event()
+
+  | smart_plug_status_report_event()
+
+  % Later:
+  %| single_channel_module_event()
+  %| double_channel_module_event()
 
     % Other events:
   | teach_request_event()
@@ -1222,15 +1253,19 @@ See also their corresponding tags, defined in device_event_type/0.
 -doc """
 Lists the known types of device events.
 
-Note that they correspond to the tags of the corresponding records.
+Note that they correspond to the tags of the corresponding records (see
+`device_event/0`).
 """.
 -type device_event_type() ::
-    'thermo_hygro_event'
+    'thermometer_event'
+  | 'thermo_hygro_event'
+  | 'motion_detector_event'
   | 'single_input_contact_event'
   | 'push_button_switch_event'
-  | 'smart_plug_status_report_event'
   | 'double_rocker_switch_event'
   | 'double_rocker_multipress_event'
+  | 'smart_plug_status_report_event'
+    % Later: 'single_channel_module_event' and 'double_channel_module_event'
 
     % Other events:
   | 'teach_request_event'
@@ -1247,11 +1282,12 @@ least one type of events.
 -type device_type() ::
     'thermometer'
   | 'thermo_hygro_sensor'
+  | 'motion_detector'
   | 'opening_detector' % Currently the only kind of single_contact that we know
   | 'push_button'
   | 'double_rocker'
-  | 'in_wall_module'
-  | 'smart_plug'.
+  | 'smart_plug'
+  | 'module'. % Typically in-wall modules.
 
 
 -doc """
@@ -1559,9 +1595,12 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
                enocean_version/0, log_counter/0, log_counters/0,
                command_tracking/0, command_outcome/0,
 
-               thermo_hygro_event/0, single_input_contact_event/0,
+               thermometer_event/0, thermo_hygro_event/0,
+               motion_detector_event/0, single_input_contact_event/0,
                push_button_switch_event/0,
                double_rocker_switch_event/0, double_rocker_multipress_event/0,
+               smart_plug_status_report_event/0, teach_request_event/0,
+               command_response/0,
 
                device_description/0, back_online_info/0, device_event/0,
                device_event_type/0,
@@ -1743,7 +1782,7 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 %
 % - for 4BS: 3 variations exist, some allowing to exchange EEPs
 %
-% See `[EEP-gen]` starting from p.18 for more details.
+% See `[EEP-gen]` starting from p. 18 for more details.
 
 
 
@@ -2649,6 +2688,9 @@ likely to be considered lost after some time.
 
 If the choice made here is not relevant for a given device, declare for it an
 explicit (non-auto) periodicity.
+
+This periodicity is currently defined at the level of EEPs rather than at the
+one of device types or event types.
 """.
 -spec decide_auto_periodicity( option( eep_id() ) ) -> expected_periodicity().
 decide_auto_periodicity( _MaybeEepId=undefined ) ->
@@ -2677,6 +2719,9 @@ decide_auto_periodicity( _EepId=occupancy_detector ) ->
 decide_auto_periodicity( _EepId=motion_detector_with_illumination ) ->
     auto;
 
+% Typically opening detectors:
+decide_auto_periodicity( _EepId=single_input_contact ) ->
+    auto;
 
 decide_auto_periodicity( _EepId=push_button ) ->
     none;
@@ -2687,19 +2732,22 @@ decide_auto_periodicity( _EepId=double_rocker_switch_style_1 ) ->
 decide_auto_periodicity( _EepId=double_rocker_switch_style_2 ) ->
     none;
 
-decide_auto_periodicity( _EepId=double_rocker_multipress ) ->
+%decide_auto_periodicity( _EepId=double_rocker_multipress ) ->
+%    none;
+
+decide_auto_periodicity( _EepId=smart_plug ) ->
     none;
 
+decide_auto_periodicity( _EepId=smart_plug_with_metering ) ->
+    none;
 
-% Typically opening detectors:
-decide_auto_periodicity( _EepId=single_input_contact ) ->
-    auto;
 
 decide_auto_periodicity( _EepId=single_channel_module ) ->
     none;
 
 decide_auto_periodicity( _EepId=double_channel_module ) ->
     none;
+
 
 decide_auto_periodicity( _OtherEepId ) ->
     none.
@@ -2712,8 +2760,8 @@ decide_auto_periodicity( _OtherEepId ) ->
 -doc "Returns a list of all known device types.".
 -spec get_all_device_types() -> [ device_type() ].
 get_all_device_types() ->
-    [ thermometer, thermo_hygro_sensor, opening_detector, push_button,
-      double_rocker, smart_plug ].
+    [ thermometer, thermo_hygro_sensor, motion_detector, opening_detector,
+      push_button, double_rocker, smart_plug, module ].
 
 
 
@@ -3207,7 +3255,7 @@ Acknowledges (accepts) the specified teach-in our teach-out request, by sending
 a (successful) teach-in response.
 
 See EEP Teach-(In/Out) Response - UTE Message (Broadcast / CMD: `0x1`)
-`[EEP-gen]` p.26.
+`[EEP-gen]` p. 26.
 """.
 -spec acknowledge_teach_request( teach_request_event(),
                                  oceanic_server_pid() ) -> void().
@@ -3235,7 +3283,7 @@ response.
 No tracking of any answer is done.
 
 See EEP Teach-In Response - UTE Message (Broadcast / CMD: `0x1`) `[EEP-gen]`
-p.26.
+p. 26.
 """.
 -spec acknowledge_teach_request( teach_request_event(), teach_outcome(),
                                  oceanic_state() ) -> oceanic_state().
@@ -3249,44 +3297,62 @@ acknowledge_teach_request( #teach_request_event{ source_eurid=InitiatorEurid,
 
     DevTable = State#oceanic_state.device_table,
 
-    RegState = case table:get_value_with_default( _K=InitiatorEurid,
+    { DoAck, RegState } = case table:get_value_with_default( _K=InitiatorEurid,
             _DefV=undefined, DevTable ) of
 
         undefined ->
             trace_bridge:error_fmt(
-                "Taught initiator ~ts not registered (abnormal).",
+                "Received an unsollicited teach-in request from unknown "
+                "device initiator ~ts; maybe not addressed to us.",
                 [ oceanic_text:eurid_to_string( InitiatorEurid ) ] ),
-            State;
+            % This device could be registered; not responding, as we could not
+            % do anything with it afterwards:
+            %
+            { false, State };
 
         #enocean_device{ taught=true } ->
             trace_bridge:warning_fmt(
-                "Initiator ~ts not found (abnormal).",
+                "Received a teach-in request from already taught "
+                "device initiator ~ts.",
                 [ oceanic_text:eurid_to_string( InitiatorEurid ) ] ),
-            State;
+            { true, State };
 
-        % Hence not already taught:
+        % Hence not already taught, "normal case":
         EnDevice ->
             NewEnDevice = EnDevice#enocean_device{ taught=true },
             NewDevTable = table:add_entry( InitiatorEurid, NewEnDevice,
                                            DevTable ),
-            State#oceanic_state{ device_table=NewDevTable }
+            { true, State#oceanic_state{ device_table=NewDevTable } }
 
     end,
 
-    % We transmit the initiator EURID as the target (thus not ours with
-    % State#oceanic_state.emitter_eurid), and bidirectional (not unidirectional)
-    % is the relevant setting:
-    %
-    TeachInRespTel = oceanic_encode:encode_teach_in_response( TeachOutcome,
-        InitiatorEurid, _EmitterEurid=State#oceanic_state.emitter_eurid,
-        _CommDir=bidirectional, EchoContent ),
+    case DoAck of
 
-    cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug_fmt(
-       "Acknowledging teach-in request as '~ts', with telegram ~w.",
-       [ TeachOutcome, TeachInRespTel ] ) ),
-    send_tracked_telegram( TeachInRespTel, _Requester=internal, RegState ).
+        true ->
+            % We transmit the initiator EURID as the target (thus not ours with
+            % State#oceanic_state.emitter_eurid), and bidirectional (not
+            % unidirectional) is the relevant setting:
+            %
+            TeachInRespTel = oceanic_encode:encode_teach_in_response(
+                TeachOutcome, InitiatorEurid,
+                _EmitterEurid=State#oceanic_state.emitter_eurid,
+                _CommDir=bidirectional, EchoContent ),
 
+            cond_utils:if_defined( oceanic_debug_teaching,
+                trace_bridge:debug_fmt( "Acknowledging teach-in request "
+                    "as '~ts', with telegram ~w.",
+                    [ TeachOutcome, TeachInRespTel ] ) ),
 
+            send_tracked_telegram( TeachInRespTel, _Requester=internal,
+                                   RegState );
+
+        false ->
+            cond_utils:if_defined( oceanic_debug_teaching, trace_bridge:debug(
+                "(not acknowledging this teach-in request)" ) ),
+
+            RegState
+
+    end.
 
 
 -doc """
@@ -5617,7 +5683,7 @@ record_device_success( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
             { NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
               DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-              _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEepId=MaybeInferredEepId };
 
 
         { value, Device } ->
@@ -5641,7 +5707,7 @@ record_known_device_success( Device=#enocean_device{
         short_name=MaybeDeviceShortName,
         eep=MaybeEepId,
         first_seen=MaybeFirstSeen,
-        %last_seen=MaybeLastSeen,
+        last_seen=MaybeLastSeen,
         availability=MaybePrevAvail,
         telegram_count=TeleCount,
         expected_periodicity=Periodicity,
@@ -5707,8 +5773,8 @@ record_known_device_success( Device=#enocean_device{
     % message be sent at the same second, hence at the same timestamp, to avoid
     % multiple "on detection messages" for a given device).
     %
-    { NewDeviceTable, UpdatedDevice, Now, NewFirstSeen, ReportedDiscoverOrigin,
-      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
+    { NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, BestEepId }.
 
 
 
@@ -5720,7 +5786,7 @@ deduced from the corresponding telegram.
 Note that many failures do not even allow identifying the emitting device.
 """.
 -spec record_device_failure( eurid(), device_table(), option( eep_id() ) ) ->
-          recording_info().
+                                                    recording_info().
 record_device_failure( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
     Now = time_utils:get_timestamp(),
@@ -5752,7 +5818,7 @@ record_device_failure( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
             { NewDeviceTable, NewDevice, Now, _MaybePrevLastSeen=undefined,
               DiscoverOrigin, _IsBackOnline=false, _MaybeDeviceName=undefined,
-              _MaybeDeviceShortName=undefined, _MaybeEepId=undefined };
+              _MaybeDeviceShortName=undefined, _MaybeEepId=MaybeInferredEepId };
 
 
         { value, Device } ->
@@ -5851,7 +5917,7 @@ record_known_device_failure( Device=#enocean_device{
     % this tuple)
     %
     { NewDeviceTable, UpdatedDevice, Now, MaybeLastSeen, ReportedDiscoverOrigin,
-      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId }.
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeBestEepId }.
 
 
 
@@ -6103,9 +6169,12 @@ reporting measurements and events.
 get_sensor_eeps() ->
     % Refer to oceanic_{constants,generated}:get_maybe_eep_topic_specs/0:
     set_utils:new( [ thermometer, thermo_hygro_low, thermo_hygro_mid,
-                     thermo_hygro_high, single_input_contact,
+                     thermo_hygro_high,
+
                      motion_detector, occupancy_detector,
-                     motion_detector_with_illumination ] ).
+                     motion_detector_with_illumination,
+
+                     single_input_contact ] ).
 
 
 -doc """
@@ -6154,6 +6223,7 @@ Returns the EURID of the emitting device stored in the specified device event.
 """.
 -spec get_source_eurid( device_event() ) -> eurid().
 get_source_eurid( DevEventTuple ) ->
+    % For the 'source_eurid' field:
     erlang:element( _PosIdx=2, DevEventTuple ).
 
 
@@ -6162,6 +6232,7 @@ Returns the emitting device name (if any) stored in the specified device event.
 """.
 -spec get_maybe_device_name( device_event() ) -> option( device_name() ).
 get_maybe_device_name( DevEventTuple ) ->
+    % For the 'name' field:
     erlang:element( _PosIdx=3, DevEventTuple ).
 
 
@@ -6172,6 +6243,7 @@ device event.
 -spec get_maybe_device_short_name( device_event() ) ->
                                         option( device_short_name() ).
 get_maybe_device_short_name( DevEventTuple ) ->
+    % For the 'short_name' field:
     erlang:element( _PosIdx=4, DevEventTuple ).
 
 
@@ -6182,6 +6254,7 @@ device event.
 """.
 -spec get_maybe_eep( device_event() ) -> option( eep_id() ).
 get_maybe_eep( DevEventTuple ) ->
+    % For the 'eep' field:
     erlang:element( _PosIdx=5, DevEventTuple ).
 
 
@@ -6190,6 +6263,7 @@ Returns the timestamp corresponding to the specified device event.
 """.
 -spec get_timestamp( device_event() ) -> timestamp().
 get_timestamp( DevEventTuple ) ->
+    % For the 'timestamp' field:
     erlang:element( _PosIdx=6, DevEventTuple ).
 
 
@@ -6201,7 +6275,27 @@ Also useful to determine whether an event corresponds to a device discovery.
 """.
 -spec get_last_seen_info( device_event() ) -> option( timestamp() ).
 get_last_seen_info( DevEventTuple ) ->
+    % For the 'last_seen' field:
     erlang:element( _PosIdx=7, DevEventTuple ).
+
+
+-doc """
+Returns any updated timestamp, based on any specified previous one and on any
+new one obtained from the specified device timestamp.
+""".
+-spec update_last_seen_info( device_event(), option( timestamp() ) ) ->
+                                                option( timestamp() ).
+update_last_seen_info( DevEvent, MaybePrevTimestamp ) ->
+    % Updates only if relevant:
+    case get_last_seen_info( DevEvent ) of
+
+        undefined ->
+            MaybePrevTimestamp;
+
+        EventTimestamp ->
+            EventTimestamp
+
+    end.
 
 
 
@@ -6211,6 +6305,7 @@ event.
 """.
 -spec get_subtelegram_count( device_event() ) -> option( subtelegram_count() ).
 get_subtelegram_count( DevEventTuple ) ->
+    % For the 'subtelegram_count' field:
     erlang:element( _PosIdx=8, DevEventTuple ).
 
 
@@ -6221,6 +6316,7 @@ if any, stored in the specified device event.
 """.
 -spec get_maybe_destination_eurid( device_event() ) -> option( eurid() ).
 get_maybe_destination_eurid( DevEventTuple ) ->
+    % For the 'destination_eurid' field:
     erlang:element( _PosIdx=9, DevEventTuple ).
 
 
@@ -6230,6 +6326,7 @@ Returns the best RSSI value (if any) stored in the specified device event.
 """.
 -spec get_maybe_dbm( device_event() ) -> option( dbm() ).
 get_maybe_dbm( DevEventTuple ) ->
+    % For the 'dbm' field:
     erlang:element( _PosIdx=10, DevEventTuple ).
 
 
@@ -6237,6 +6334,7 @@ get_maybe_dbm( DevEventTuple ) ->
 -doc "Returns the stored in the specified device event.".
 -spec get_maybe_security_level( device_event() ) -> option( security_level() ).
 get_maybe_security_level( DevEventTuple ) ->
+    % For the 'security_level' field:
     erlang:element( _PosIdx=11, DevEventTuple ).
 
 
@@ -6256,8 +6354,8 @@ Returns any channel referenced by the emitting device stored in the specified
 device event.
 
 For events from devices not having multiple channels
-(e.g. push_button_switch_event, single_input_contact_event, thermo_hygro_event),
-returns channel 1.
+(e.g. `push_button_switch_event`, `single_input_contact_event`,
+`thermo_hygro_event`), returns channel 1.
 """.
 -spec get_channel( device_event() ) -> channel().
 % For multiple-rockers, only the first button reported is considered:
@@ -6294,6 +6392,33 @@ get_best_device_name_from( DevEventTuple ) ->
         undefined ->
             SrcEurid = get_source_eurid( DevEventTuple ),
             oceanic_text:eurid_to_bin_string( SrcEurid );
+
+        BinDeviceName ->
+            BinDeviceName
+
+    end.
+
+
+
+-doc """
+Returns the best name found for the emitting device stored in the specified
+device event; if no specific name is defined in that event, enriches its
+EURID-based one with any type specified.
+""".
+-spec get_best_device_name_from( device_event(), option( device_type() ) ) ->
+                                                device_name().
+get_best_device_name_from( DevEventTuple, _MaybeDevType=undefined ) ->
+    get_best_device_name_from( DevEventTuple );
+
+get_best_device_name_from( DevEventTuple, DevType ) ->
+
+    case get_maybe_device_name( DevEventTuple ) of
+
+        undefined ->
+            SrcEurid = get_source_eurid( DevEventTuple ),
+            text_utils:bin_format( "~ts of EURID ~ts",
+                [ oceanic_text:device_type_to_string( DevType ),
+                  oceanic_text:eurid_to_string( SrcEurid ) ] );
 
         BinDeviceName ->
             BinDeviceName

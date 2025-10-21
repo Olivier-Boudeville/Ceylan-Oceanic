@@ -283,9 +283,10 @@
 %           security_level :: option( oceanic:security_level() )
 
 
-% Event sent by EEP A5-02-*: "Temperature Sensor"
+
+% Event sent by EEP A5-02-*: "Temperature Sensor".
 %
-% Refer to [EEP-spec] p.29 for further details.
+% Refer to [EEP-spec] p. 29 for further details.
 %
 -record( thermometer_event, {
 
@@ -308,7 +309,7 @@
 
     % The last timestamp (if any) at which a telegram from that device was
     % intercepted before; mostly an informative way of reporting whether this
-    % device was just discovered
+    % device was just discovered:
     %
     last_seen :: option( time_utils:timestamp() ),
 
@@ -341,9 +342,9 @@
 
 
 
-% Event sent by EEP A5-04-*: "Temperature and Humidity Sensor"
+% Event sent by EEP A5-04-*: "Temperature and Humidity Sensor".
 %
-% Refer to [EEP-spec] p.35 for further details.
+% Refer to [EEP-spec] p. 35 for further details.
 %
 -record( thermo_hygro_event, {
 
@@ -403,23 +404,11 @@
 
 
 
-% Event sent by EEP D5-00-01: Single Input Contact (typically opening detector).
+% Event sent by EEP A5-07-01: "Occupancy with Supply voltage monitor".
 %
-% D5-00 corresponds to Contacts and Switches.
+% Refer to [EEP-spec] p. 39 for further details.
 %
-% Refer to [EEP-spec] p.27 for further details.
-%
-% Note that, at least by default, most if not all opening detectors not only
-% report state transitions (as soon as they happen; toggling between closed and
-% opened), they also notify regularly (e.g. every 5-30 minutes, on average often
-% 15 minutes) and spontaneously their current state (even if no specific
-% transition happened), presumably to help overcoming any message loss.
-%
-% So any listener of these events shall store their current state, to be able to
-% detect the actual transitions (even if they are late due to a prior message
-% loss).
-%
--record( single_input_contact_event, {
+-record( motion_detector_event, {
 
     % Section common to all events:
 
@@ -463,6 +452,78 @@
 
     % Section specific to these events:
 
+    % Tells whether the PIR was triggered:
+    motion_detected :: boolean(),
+
+    % Any reported voltage:
+    supply_voltage :: option( unit_utils:volts() ),
+
+    % Whether this is a teach-in packet or a normal data one:
+    teach_in :: boolean() } ).
+
+
+
+
+% Event sent by EEP D5-00-01: Single Input Contact (typically opening detector).
+%
+% D5-00 corresponds to Contacts and Switches.
+%
+% Refer to [EEP-spec] p. 27 for further details.
+%
+% Note that, at least by default, most if not all opening detectors not only
+% report state transitions (as soon as they happen; toggling between closed and
+% opened), they also notify regularly (e.g. every 5-30 minutes, on average often
+% 15 minutes) and spontaneously their current state (even if no specific
+% transition happened), presumably to help overcoming any message loss.
+%
+% So any listener of these events shall store their current state, to be able to
+% detect the actual transitions (even if they are late due to a prior message
+% loss).
+%
+-record( single_input_contact_event, {
+
+    % Section common to all events:
+
+    % The EnOcean Unique Radio Identifier of the emitting device:
+    source_eurid :: oceanic:eurid(),
+
+    % The user-specified name (if any) of the emitting device:
+    name :: option( oceanic:device_name() ),
+
+    % The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
+    % The EEP (if any is defined and registered) of the emitting device:
+    eep :: option( oceanic:eep_id() ),
+
+    % The timestamp at which this event was triggered:
+    timestamp :: time_utils:timestamp(),
+
+    % The last timestamp (if any) at which a telegram from that device was
+    % intercepted before; mostly an informative way of reporting whether this
+    % device was just discovered:
+    %
+    last_seen :: option( time_utils:timestamp() ),
+
+    % The number of subtelegrams, if any:
+    subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+    % The EURID of the target of this transmission (addressed or broadcast), if
+    % any:
+    %
+    destination_eurid :: option( oceanic:eurid() ),
+
+    % The best RSSI value (if any), expressed in decibels (dB) with reference to
+    % one milliwatt (mW), of all received subtelegrams:
+    %
+    dbm :: option( oceanic:dbm() ),
+
+    % The level of security (if any) of the received telegram:
+    security_level :: option( oceanic:security_level() ),
+
+
+    % Section specific to these events:
+
     % Tells whether the learn button has been pressed:
     learn_activated :: boolean(),
 
@@ -473,7 +534,7 @@
 
 % Event sent in the context of EEP F6-01-01: "Switch Buttons (with no rockers)".
 %
-% Refer to [EEP-spec] p.15 for further details.
+% Refer to [EEP-spec] p. 15 for further details.
 %
 -record( push_button_switch_event, {
 
@@ -541,7 +602,7 @@
 % An event should correspond to at least one button transition; the (newest)
 % current state of all buttons is reported.
 %
-% Refer to [EEP-spec] p.15 for further details.
+% Refer to [EEP-spec] p. 15 for further details.
 %
 % Note that some smart plugs (e.g. Eltako ones) send such an event whenever
 % their on/off ("local control") button is pressed.
@@ -632,7 +693,7 @@
 % This event tells whether or not there are 3 or 4 buttons that are either
 % pressed or released.
 %
-% Refer to [EEP-spec] p.16 for further details.
+% Refer to [EEP-spec] p. 16 for further details.
 %
 -record( double_rocker_multipress_event, {
 
@@ -690,7 +751,7 @@
 % Actuator Status Response (command 0x4), so that a smart plug reports its
 % current state.
 %
-% Refer to [EEP-spec] p.135 for further details.
+% Refer to [EEP-spec] p. 135 for further details.
 %
 -record( smart_plug_status_report_event, {
 
@@ -752,12 +813,15 @@
     output_power :: oceanic:power_report() } ).
 
 
+% Later: 'single_channel_module_event' and 'double_channel_module_event'.
+
+
 
 % Message (that can be seen as an event) corresponding to the receiving a R-ORG
 % telegram for an universal Teach-in/out request, EEP based (UTE), one way of
 % pairing devices.
 %
-% Refer to [EEP-gen] p.17 for further details.
+% Refer to [EEP-gen] p. 17 for further details.
 %
 -record( teach_request_event, {
 

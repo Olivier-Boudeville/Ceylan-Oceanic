@@ -111,7 +111,7 @@
     % device exists), but it is useful for error management and possibly flow
     % control (not to overwhelm the module, if ever it was possible).
     %
-    % Refer to [ESP3] p.17 for further information.
+    % Refer to [ESP3] p. 17 for further information.
     %
     % This queue therefore contains any pending, not-yet-sent ESP3 commands (be
     % them requests for ERP1 commands, common commands, etc.); this is not a
@@ -127,7 +127,7 @@
     % yet acknowledged ESP3 command whose response telegram is still waited for.
     %
     % Note that some devices apparently may be configured to not ack incoming
-    % commands (however [ESP3] p.17 tells that "it is mandatory to wait for the
+    % commands (however [ESP3] p. 17 tells that "it is mandatory to wait for the
     % RESPONSE message"); in this case this information should be registered in
     % their enocean_device() record (by default acknowledgements are expected).
     %
