@@ -78,7 +78,7 @@ decode_file( RecordPath ) ->
 
     test_facilities:display( "Decoded ~B (ordered) events: ~ts",
         [ length( DecodedEvents ), text_utils:strings_to_enumerated_string(
-            [ oceanic:device_event_to_string( E )
+            [ oceanic_text:device_event_to_string( E )
                 || E <- DecodedEvents ] ) ] ).
 
 
@@ -102,7 +102,7 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
           _NextMaybeTelTail=undefined, _NewState } ->
 
             test_facilities:display( "Test decoded following event: ~ts.",
-                [ oceanic:device_event_to_string( Event ) ] ),
+                [ oceanic_text:device_event_to_string( Event ) ] ),
 
             decode_all( T, [ Event | AccEvents ] );
 
@@ -112,26 +112,28 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
 
             trace_utils:error_fmt( "Test decoded following event: ~ts; "
                 "however a telegram tail was detected:~n ~p.",
-                [ oceanic:device_event_to_string( Event ), NextTelTail ] ),
+                [ oceanic_text:device_event_to_string( Event ), NextTelTail ] ),
 
             decode_all( T, [ Event | AccEvents ] );
 
 
-        { unresolved_first_seen, UnresolvedDevEvent, _NewToSkipLen=0,
+        { unresolved_first_seen, UnresolvedDevEvent, NewDevice, _NewToSkipLen=0,
           _NextMaybeTelTail=undefined, _NewState } ->
 
-            trace_utils:error_fmt( "Test decoded following event: ~ts.",
-                [ oceanic:device_event_to_string( UnresolvedDevEvent ) ] ),
+            trace_utils:error_fmt( "Test decoded following event: ~ts "
+                "(device: ~ts).", [ oceanic_text:device_event_to_string(
+                        UnresolvedDevEvent ),
+                    oceanic_text:device_to_string( NewDevice ) ] ),
 
             decode_all( T, [ UnresolvedDevEvent | AccEvents ] );
 
-        { unresolved_first_seen, UnresolvedDevEvent, _NewToSkipLen=0,
+        { unresolved_first_seen, UnresolvedDevEvent, NewDevice, _NewToSkipLen=0,
           NextTelTail, _NewState } ->
 
-            trace_utils:error_fmt( "Test decoded following event: ~ts; "
-                "however a telegram tail was detected:~n ~p.",
-                [ oceanic:device_event_to_string( UnresolvedDevEvent ),
-                  NextTelTail ] ),
+            trace_utils:error_fmt( "Test decoded following event: ~ts "
+                "(device: ~ts); however a telegram tail was detected:~n ~p.",
+                [ oceanic_text:device_event_to_string( UnresolvedDevEvent ),
+                  oceanic_text:device_to_string( NewDevice ), NextTelTail ] ),
 
             decode_all( T, [ UnresolvedDevEvent | AccEvents ] );
 
@@ -140,7 +142,7 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
           _NextMaybeTelTail=undefined, _NewState } ->
 
             trace_utils:error_fmt( "Test decoded following event: ~ts.",
-                [ oceanic:device_event_to_string( UnresolvedDevEvent ) ] ),
+                [ oceanic_text:device_event_to_string( UnresolvedDevEvent ) ] ),
 
             decode_all( T, [ UnresolvedDevEvent | AccEvents ] );
 
@@ -149,7 +151,7 @@ decode_all( _Telegrams=[ Tl | T ], AccEvents ) ->
 
             trace_utils:error_fmt( "Test decoded following event: ~ts; "
                 "however a telegram tail was detected:~n ~p.",
-                [ oceanic:device_event_to_string( UnresolvedDevEvent ),
+                [ oceanic_text:device_event_to_string( UnresolvedDevEvent ),
                   NextTelTail ] ),
 
             decode_all( T, [ UnresolvedDevEvent | AccEvents ] );

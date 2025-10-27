@@ -463,6 +463,69 @@
 
 
 
+% Event sent by EEP A5-07-03: "Occupancy Sensor with Supply voltage monitor and
+% 10-bit illumination measurement".
+%
+% Refer to [EEP-spec] p. 40 for further details.
+%
+-record( motion_detector_event_with_illumination, {
+
+    % Section common to all events:
+
+    % The EnOcean Unique Radio Identifier of the emitting device:
+    source_eurid :: oceanic:eurid(),
+
+    % The user-specified name (if any) of the emitting device:
+    name :: option( oceanic:device_name() ),
+
+    % The user-specified short name (if any) designating that device:
+    short_name :: option( oceanic:device_short_name() ),
+
+    % The EEP (if any is defined and registered) of the emitting device:
+    eep :: option( oceanic:eep_id() ),
+
+    % The timestamp at which this event was triggered:
+    timestamp :: time_utils:timestamp(),
+
+    % The last timestamp (if any) at which a telegram from that device was
+    % intercepted before; mostly an informative way of reporting whether this
+    % device was just discovered
+    %
+    last_seen :: option( time_utils:timestamp() ),
+
+    % The number of subtelegrams, if any:
+    subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+    % The EURID of the target of this transmission (addressed or broadcast), if
+    % any:
+    %
+    destination_eurid :: option( oceanic:eurid() ),
+
+    % The best RSSI value (if any), expressed in decibels (dB) with reference to
+    % one milliwatt (mW), of all received subtelegrams:
+    %
+    dbm :: option( oceanic:dbm() ),
+
+    % The level of security (if any) of the received telegram:
+    security_level :: option( oceanic:security_level() ),
+
+
+    % Section specific to these events:
+
+    % Tells whether the PIR was triggered:
+    motion_detected :: boolean(),
+
+    % The illuminance measured (if any):
+    illuminance :: option( uunit_utils:lux() ),
+
+    % Any reported voltage:
+    supply_voltage :: option( unit_utils:volts() ),
+
+    % Whether this is a teach-in packet or a normal data one:
+    teach_in :: boolean() } ).
+
+
+
 
 % Event sent by EEP D5-00-01: Single Input Contact (typically opening detector).
 %

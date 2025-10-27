@@ -70,9 +70,9 @@ that the last element of the returned tuples is the Oceanic state.
       oceanic_state() }
 
     % Device not configured and EEP cannot be determined, when first seen:
-  | { 'unresolved_first_seen', unresolved_device_event(),
+  | { 'unresolved_first_seen', unresolved_device_event(), enocean_device(),
       ToSkipLen :: count(), NextMaybeTelTail :: option( telegram_tail() ),
-      enocean_device(), oceanic_state() }
+      oceanic_state() }
 
     % Device not configured and EEP cannot be determined, once already seen:
     % (even less interest in returning the corresponding device)
@@ -1207,9 +1207,11 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
         { value, Device=#enocean_device{
                 eep=motion_detector_with_illumination } } ->
-            decode_4bs_motion_detector_with_illumination_packet( DB_3, DB_2,
-                DB_1, DB_0, SenderEurid, OptData, NextMaybeTelTail, Device,
-                State );
+            % To reassemble a bit, as illumination is not byte-aligned (over
+            % DB_1 and DB_2):
+            %
+            decode_4bs_motion_detector_with_illumination_packet( DataTail,
+                SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
         { value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -1558,16 +1560,16 @@ Supply voltage monitor and 10-bit illumination measurement"), i.e. EEP
 
 Refer to `[EEP-spec]` p. 40.
 """.
-%TODO!
--spec decode_4bs_motion_detector_with_illumination_packet( uint8(), uint8(), uint8(), uint8(),
-        eurid(), telegram_opt_data(), option( telegram_tail() ),
-        enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_4bs_motion_detector_with_illumination_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
-        OptData, NextMaybeTelTail, Device,
-        State=#oceanic_state{ device_table=DeviceTable } ) ->
+-spec decode_4bs_motion_detector_with_illumination_packet( binary(), eurid(),
+        telegram_opt_data(), option( telegram_tail() ), enocean_device(),
+        oceanic_state() ) -> decoding_outcome().
+decode_4bs_motion_detector_with_illumination_packet(
+        DataTail= <<DB_3:8, Illum:10, _NotUsed:6, PIRStatus:1, _Other:3,
+            LearnBit:1, _Last:3>>, SenderEurid, OptData, NextMaybeTelTail,
+        Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
     % In Volts:
-    MaybeSetSupplyVoltage = case DB_3 of
+    MaybeSupplyVoltage = case DB_3 of
 
         V when V =< 250 ->
             V / 250 * 5;
@@ -1580,28 +1582,39 @@ decode_4bs_motion_detector_with_illumination_packet( DB_3, _DB_2=0, DB_1, DB_0, 
 
     end,
 
-    % Passive Infrared Sensor:
-    PIRTriggered = DB_1 >= 128,
 
-    % Otherwise is a mere data telegram:
-    IsTeachIn = DB_0 band ?b3 =:= 0,
+    % In lx (2^10=1024):
+    MaybeLux = case Illum of
 
-    SupplyVoltageAvailable = DB_0 band ?b1 =:= 1,
+        Lx when Lx =< 1000 ->
+            Lx;
 
-    MaybeActualSupplyVoltage = case SupplyVoltageAvailable of
+        1001 ->
+            trace_bridge:warning( "Illumination over range reported for motion "
+                "detector ~ts.",
+                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+            undefined;
 
-        true ->
-            MaybeSetSupplyVoltage;
 
-        false ->
+       ResCode ->
+            trace_bridge:error_fmt( "Reserved code obtained for motion detector"
+                " ~ts: ~B.",
+                [ oceanic_text:eurid_to_string( SenderEurid ), ResCode ] ),
             undefined
 
     end,
 
+    % Otherwise "uncertain of occupancy status":
+    MotionDetected = PIRStatus =:= 1,
+
+    % Otherwise is a mere data telegram:
+    IsTeachIn = LearnBit =:= 0,
+
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
       IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
         oceanic:record_known_device_success( Device, DeviceTable,
-            _InferredEepId=motion_detector ), % Already known if branching here
+            % Already known if branching here:
+            _InferredEepId=motion_detector_with_illumination ),
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -1609,12 +1622,23 @@ decode_4bs_motion_detector_with_illumination_packet( DB_3, _DB_2=0, DB_1, DB_0, 
 
     cond_utils:if_defined( oceanic_debug_decoding,
         begin
-            MotionStr = case PIRTriggered of
+            MotionStr = case MotionDetected of
                 true -> "a motion";
                 false -> "no motion"
             end,
 
-            VoltageStr = case MaybeActualSupplyVoltage of
+            LuxStr = case MaybeLux of
+
+                undefined ->
+                   "no valid illumination";
+
+                Lux ->
+                    text_utils:format( "an illumination of ~ts",
+                        [ unit_utils:illuminance_to_string( Lux ) ] )
+
+            end,
+
+            VoltageStr = case MaybeSupplyVoltage of
 
                 undefined ->
                     "no supply voltage";
@@ -1625,33 +1649,38 @@ decode_4bs_motion_detector_with_illumination_packet( DB_3, _DB_2=0, DB_1, DB_0, 
 
             end,
 
-            trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-01 packet, "
-                "reporting that ~ts is detected and ~ts; teach-in: ~ts "
-                "(DB_3=~w, DB_1=~w, DB_0=~w); "
-                "sender is ~ts~ts.",
-                [ MotionStr, VoltageStr, IsTeachIn, DB_3, DB_1, DB_0,
+            <<DataTailAsInt:32>> = DataTail,
+
+            trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-03 packet, "
+                "reporting that ~ts is detected, ~ts, and ~ts; teach-in: ~ts "
+                "(data tail: ~ts); sender is ~ts~ts.",
+                [ MotionStr, LuxStr, VoltageStr, IsTeachIn,
+                  text_utils:integer_to_bits( DataTailAsInt ),
                   oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
                   oceanic_text:maybe_optional_data_to_string(
                     MaybeDecodedOptData, OptData ) ] )
-        end ),
+        end,
+        basic_utils:ignore_unused( DataTail ) ),
 
     { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
         resolve_maybe_decoded_data( MaybeDecodedOptData ),
 
-    Event = #motion_detector_event{ source_eurid=SenderEurid,
-                                    name=MaybeDeviceName,
-                                    short_name=MaybeDeviceShortName,
-                                    eep=MaybeEepId,
-                                    timestamp=Now,
-                                    last_seen=MaybeLastSeen,
-                                    subtelegram_count=MaybeTelCount,
-                                    destination_eurid=MaybeDestEurid,
-                                    dbm=MaybeDBm,
-                                    security_level=MaybeSecLvl,
-                                    motion_detected=PIRTriggered,
-                                    supply_voltage=MaybeActualSupplyVoltage,
-                                    teach_in=IsTeachIn },
+    Event = #motion_detector_event_with_illumination{
+        source_eurid=SenderEurid,
+        name=MaybeDeviceName,
+        short_name=MaybeDeviceShortName,
+        eep=MaybeEepId,
+        timestamp=Now,
+        last_seen=MaybeLastSeen,
+        subtelegram_count=MaybeTelCount,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        security_level=MaybeSecLvl,
+        motion_detected=MotionDetected,
+        illuminance=MaybeLux,
+        supply_voltage=MaybeSupplyVoltage,
+        teach_in=IsTeachIn },
 
     { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
       NextMaybeTelTail, NewState }.
@@ -2231,7 +2260,7 @@ decode_vld_smart_plug_packet(
         end,
 
         basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
-                                     MaybeDecodedOptData ] ) ),
+            MaybeDeviceShortName, MaybeDecodedOptData ] ) ),
 
     { unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
@@ -2447,7 +2476,7 @@ decode_vld_smart_plug_with_metering_packet(
         end,
 
         basic_utils:ignore_unused( [ SenderEurid, MaybeCmd, MaybeDeviceName,
-                                     MaybeDecodedOptData ] ) ),
+            MaybeDeviceShortName, MaybeDecodedOptData ] ) ),
 
     { unsupported, _SkipLen=0, NextMaybeTelTail, NewState }.
 
