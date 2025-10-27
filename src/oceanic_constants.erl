@@ -134,6 +134,7 @@ For the RORG field of an ERP radio telegram type, as defined in `[EEP]` p. 14.
 -spec get_maybe_rorg_topic_spec() -> topic_spec().
 get_maybe_rorg_topic_spec() ->
 
+    % First elements are all rorg_type/0:
     Entries = [
         { rorg_undefined,  16#00 },
         { rorg_rps,        16#F6 },
