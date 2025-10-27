@@ -69,6 +69,27 @@ decode_telegrams( _Telegrams=[ Tele | T ], Count ) ->
             decode_telegrams( T, Count+1 );
 
 
+        { unresolved_first_seen, UnresolvedDevEvent, SkipLen, NextChunk,
+          _NewState } ->
+
+            test_facilities:display( "Decoded event from unresolved "
+                "(first-seen) device: ~ts (while skip length: ~B "
+                "and next chunk: ~w).",
+                [ oceanic:device_event_to_string( UnresolvedDevEvent ), SkipLen,
+                  NextChunk ] ),
+
+            decode_telegrams( T, Count+1 );
+
+        { unresolved, UnresolvedDevEvent, SkipLen, NextChunk, _NewState } ->
+
+            test_facilities:display( "Decoded event from unresolved "
+                "device: ~ts (while skip length: ~B and next chunk: ~w).",
+                [ oceanic:device_event_to_string( UnresolvedDevEvent ), SkipLen,
+                  NextChunk ] ),
+
+            decode_telegrams( T, Count+1 );
+
+
         { FailedOutcome, SkipLen, NextChunk, _NewState } ->
 
             test_facilities:display( "Decoding failed: ~ts "

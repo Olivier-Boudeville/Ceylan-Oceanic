@@ -816,6 +816,63 @@
 % Later: 'single_channel_module_event' and 'double_channel_module_event'.
 
 
+% Event corresponding to the receiving a R-ORG telegram that could not be
+% (fully) decoded because its emitter device could not be resolved (typically it
+% was not configured and its EEP cannot be determined without extra
+% information).
+%
+-record( unresolved_device_event, {
+
+    % Section common to all events:
+
+    % The EnOcean Unique Radio Identifier of the emitting device:
+    source_eurid :: oceanic:eurid(),
+
+    % The user-specified name (if any) of the emitting device:
+    % (none expected here, by design, since being not configured)
+    name :: option( oceanic:device_name() ),
+
+    % The user-specified short name (if any) designating that device:
+    % (none expected here, by design, since being not configured)
+    short_name :: option( oceanic:device_short_name() ),
+
+    % The EEP of the emitting device is alway 'undefine' here:
+    % (none expected here, by design, since being not configured)
+    eep :: 'undefined',
+
+    % The timestamp at which this event was triggered:
+    timestamp :: time_utils:timestamp(),
+
+    % The last timestamp (if any) at which a telegram from that device was
+    % intercepted before; mostly an informative way of reporting whether this
+    % device was just discovered
+    %
+    last_seen :: option( time_utils:timestamp() ),
+
+    % The number of subtelegrams, if any:
+    subtelegram_count :: option( oceanic:subtelegram_count() ),
+
+    % The EURID of the target of this transmission (addressed or broadcast), if
+    % any:
+    %
+    destination_eurid :: option( oceanic:eurid() ),
+
+    % The best RSSI value (if any), expressed in decibels (dB) with reference to
+    % one milliwatt (mW), of all received subtelegrams:
+    %
+    dbm :: option( oceanic:dbm() ),
+
+    % The level of security (if any) of the received telegram:
+    security_level :: option( oceanic:security_level() ),
+
+    % Section specific to these events:
+
+    % The best information that could be gathered regarding the type of the
+    % corresponding telegram/packet:
+    %
+    type_hint :: oceanic:telegram_type_hint() } ).
+
+
 
 % Message (that can be seen as an event) corresponding to the receiving a R-ORG
 % telegram for an universal Teach-in/out request, EEP based (UTE), one way of

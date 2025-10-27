@@ -38,12 +38,12 @@ Module centralising **all decoding** made by Ceylan-Oceanic.
 
 
 -doc "The various kinds of errors that may happen when decoding.".
+% 'unresolved*' now managed separately, as an event:
 -type decoding_error() ::
     'not_reached'   % Beginning of next packet still ahead
   | 'incomplete'    % Truncated packet (end of packet still ahead)
   | 'invalid'       % Corrupted packet
-  | 'unsupported'   % Type of packet (currently) unsupported by Oceanic
-  | 'unconfigured'. % Device not configure (typically EEP not known)
+  | 'unsupported'.  % Type of packet (currently) unsupported by Oceanic
 
 
 
@@ -67,6 +67,16 @@ that the last element of the returned tuples is the Oceanic state.
     { 'decoded', device_event() | 'command_processed',
       MaybeDiscoverOrigin :: option( discovery_origin() ),
       IsBackOnline :: boolean(), MaybeDevice :: option( enocean_device() ),
+      oceanic_state() }
+
+    % Device not configured and EEP cannot be determined, when first seen:
+  | { 'unresolved_first_seen', unresolved_device_event(),
+      ToSkipLen :: count(), NextMaybeTelTail :: option( telegram_tail() ),
+      enocean_device(), oceanic_state() }
+
+    % Device not configured and EEP cannot be determined, once already seen:
+    % (even less interest in returning the corresponding device)
+  | { 'unresolved', unresolved_device_event(), ToSkipLen :: count(),
       NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }
 
   | { decoding_error(), ToSkipLen :: count(),
@@ -118,6 +128,7 @@ that the last element of the returned tuples is the Oceanic state.
 
 -type eurid() :: oceanic:eurid().
 -type device_event() :: oceanic:device_event().
+-type unresolved_device_event() :: oceanic:unresolved_device_event().
 -type discovery_origin() :: oceanic:discovery_origin().
 -type enocean_device() :: oceanic:enocean_device().
 -type telegram() :: oceanic:telegram().
@@ -359,18 +370,36 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
             % Not trying to decode optional data then; a priori unable to infer
             % any actual EEP (multiple ones correspond):
             %
-            { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
-              _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
-              _UndefinedDeviceShortName, _MaybeEepId } =
+            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+              _ListeningDiscoverOrigin, _IsBackOnline, UndefinedDeviceName,
+              UndefinedDeviceShortName, _MaybeEepId } =
                   oceanic:record_device_failure( SenderEurid, DeviceTable,
                       _MaybeInferredEepId=undefined ),
 
             trace_bridge:warning_fmt( "Unable to decode a RPS (F6) packet ~ts",
-                [ get_unconfigured_device_message( SenderEurid ) ] ),
+                [ get_unresolved_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=UndefinedDeviceName,
+                short_name=UndefinedDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_rps },
+
+            { unresolved_first_seen, UnresolvedEvent, NewDevice, _ToSkipLen=0,
+              NextMaybeTelTail, NewState };
 
 
         % Knowing the actual EEP is needed in order to decode; here also unable
@@ -380,7 +409,7 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
             % Not trying to decode optional data then.
 
-            { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+            { NewDeviceTable, _NewDevice, Now, MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UndefinedEepId } =
                   oceanic:record_device_failure( SenderEurid, DeviceTable,
@@ -394,7 +423,25 @@ decode_rps_packet( _DataTail= <<DB_0:1/binary, SenderEurid:32,
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=MaybeDeviceName,
+                short_name=MaybeDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_rps },
+
+            { unresolved, UnresolvedEvent, _ToSkipLen=0, NextMaybeTelTail,
+              NewState };
 
 
         { value, Device=#enocean_device{ eep=double_rocker_switch_style_1 } } ->
@@ -533,8 +580,8 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
 
 
 -doc """
-Decodes a rorg_rps F6-02-01, "Light and Blind Control - Application Style 1 or
-2" packet (switch or multipress).
+Decodes a rorg_rps F6-02-0{1,2}, "Light and Blind Control - Application Style 1
+or 2" packet (switch or multipress).
 
 It may contain 2 actions.
 
@@ -565,15 +612,41 @@ sent, and then `{none,just_released}`.
 % to decode that telegram:
 %
 decode_rps_double_rocker_packet( _DB_0, SenderEurid,
-       _Status, _OptData, NextMaybeTelTail,
-       _Device=#enocean_device{ eep=undefined }, State ) ->
+       _Status, OptData, NextMaybeTelTail,
+       _Device=#enocean_device{ eep=undefined },
+       State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+    { NewDeviceTable, _NewDevice, Now, MaybeLastSeen, _MaybeDiscoverOrigin,
+      _IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, _UndefinedEepId } =
+        oceanic:record_device_failure( SenderEurid, DeviceTable,
+                                       _MaybeInferredEepId=undefined ),
 
     trace_bridge:warning_fmt( "Received a RPS telegram from device of "
         "EURID ~ts, but it could not be decoded short of knowing the EEP "
         "that it implements.",
         [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
 
-    { unconfigured, _ToSkipLen=0, NextMaybeTelTail, State };
+    NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+    MaybeDecodedOptData = decode_optional_data( OptData ),
+
+    { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+        resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+    UnresolvedEvent = #unresolved_device_event{
+        source_eurid=SenderEurid,
+        name=MaybeDeviceName,
+        short_name=MaybeDeviceShortName,
+        timestamp=Now,
+        last_seen=MaybeLastSeen,
+        subtelegram_count=MaybeTelCount,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        security_level=MaybeSecLvl,
+        type_hint=rorg_rps_double_rocker },
+
+    { unresolved, UnresolvedEvent, _ToSkipLen=0, NextMaybeTelTail, NewState };
+
 
 decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
        % (T21 is at offset 2, thus b5; NU at offset 3, thus b4)
@@ -588,7 +661,6 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
          "app style: ~w, T21: ~w, NU: ~w.",
          [ oceanic_text:eurid_to_string( SenderEurid ), AppStyle, T21,
            NU ] ) ),
-
 
    case { T21, NU } of
 
@@ -1034,25 +1106,43 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
         key_not_found ->
 
-            { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
-              _MaybeDiscoverOrigin, _IsBackOnline, _MaybeDeviceName,
-              _MaybeDeviceShortName, _MaybeEepId } =
+            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+              _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
+              MaybeDeviceShortName, _MaybeEepId } =
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
                     _MaybeInferredEepId=undefined ), % Multiple EEPs correspond
 
             % Device first time seen:
             trace_bridge:warning_fmt( "Unable to decode a 4BS (A5) packet ~ts",
-                [ get_unconfigured_device_message( SenderEurid ) ] ),
+                [ get_unresolved_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=MaybeDeviceName,
+                short_name=MaybeDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_4bs },
+
+            { unresolved_first_seen, UnresolvedEvent, NewDevice, _ToSkipLen=0,
+              NextMaybeTelTail, NewState };
 
 
         % An a-priori knowledge of the actual EEP is needed in order to decode:
         { value, _Device=#enocean_device{ eep=undefined } } ->
 
-            { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+            { NewDeviceTable, _NewDevice, Now, MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _MaybeEepId } =
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
@@ -1066,7 +1156,25 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=MaybeDeviceName,
+                short_name=MaybeDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_4bs },
+
+            { unresolved, UnresolvedEvent, _ToSkipLen=0, NextMaybeTelTail,
+              NewState };
 
 
         { value, Device=#enocean_device{ eep=thermo_hygro_low } } ->
@@ -1097,32 +1205,49 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
         %     decode_4bs__packet( DB_3, DB_2, DB_1, DB_0,
         %         SenderEurid, OptData, NextMaybeTelTail, Device, State );
 
-        %% { value, Device=#enocean_device{
-        %%                     eep=motion_detector_with_illumination } } ->
-        %%     decode_4bs_motion_detector_with_illumination_packet( DB_3, DB_2,
-        %%         DB_1, DB_0, SenderEurid, OptData, NextMaybeTelTail, Device,
-        %%         State );
+        { value, Device=#enocean_device{
+                eep=motion_detector_with_illumination } } ->
+            decode_4bs_motion_detector_with_illumination_packet( DB_3, DB_2,
+                DB_1, DB_0, SenderEurid, OptData, NextMaybeTelTail, Device,
+                State );
 
         { value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
-            { NewDeviceTable, _NewDevice, _Now, _MaybePrevLastSeen,
+            { NewDeviceTable, _NewDevice, Now, MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UnsupportedEepId } =
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
-                      _MaybeInferredEepId=undefined ),
+                    _MaybeInferredEepId=undefined ),
 
             % Device probably already seen:
             trace_bridge:debug_fmt( "Unable to decode a 4BS (A5-F6) packet "
                 "for ~ts: EEP ~ts (~ts) not supported.",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
-                    MaybeDeviceShortName, SenderEurid ),
-                  UnsupportedEepId,
+                    MaybeDeviceShortName, SenderEurid ), UnsupportedEepId,
                   oceanic_generated:get_maybe_second_for_eep_strings(
                     UnsupportedEepId ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unsupported, _ToSkipLen=0, NextMaybeTelTail, NewState }
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=MaybeDeviceName,
+                short_name=MaybeDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_4bs },
+
+            { unresolved, UnresolvedEvent, _ToSkipLen=0, NextMaybeTelTail,
+              NewState }
 
    end.
 
@@ -1321,8 +1446,8 @@ decode_4bs_thermo_hygro_low_packet( _DB_3=0, _DB_2=ScaledHumidity,
 
 
 -doc """
-Decodes a rorg_4bs (A5) packet for the motion detector ("occupancy sensor") EEP
-"A5-05-01"
+Decodes a rorg_4bs (A5) packet for the motion detector ("Occupancy Sensor with
+Supply voltage monitor"), i.e. EEP "A5-07-01".
 
 Refer to `[EEP-spec]` p. 39.
 """.
@@ -1330,6 +1455,114 @@ Refer to `[EEP-spec]` p. 39.
         eurid(), telegram_opt_data(), option( telegram_tail() ),
         enocean_device(), oceanic_state() ) -> decoding_outcome().
 decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
+        OptData, NextMaybeTelTail, Device,
+        State=#oceanic_state{ device_table=DeviceTable } ) ->
+
+    % In Volts:
+    MaybeSetSupplyVoltage = case DB_3 of
+
+        V when V =< 250 ->
+            V / 250 * 5;
+
+       ErrorCode ->
+            trace_bridge:error_fmt( "Error code obtained for motion detector "
+                "~ts: ~B.",
+                [ oceanic_text:eurid_to_string( SenderEurid ), ErrorCode ] ),
+            undefined
+
+    end,
+
+    % Passive Infrared Sensor:
+    PIRTriggered = DB_1 >= 128,
+
+    % Otherwise is a mere data telegram:
+    IsTeachIn = DB_0 band ?b3 =:= 0,
+
+    SupplyVoltageAvailable = DB_0 band ?b1 =:= 1,
+
+    MaybeActualSupplyVoltage = case SupplyVoltageAvailable of
+
+        true ->
+            MaybeSetSupplyVoltage;
+
+        false ->
+            undefined
+
+    end,
+
+    { NewDeviceTable, NewDevice, Now, MaybeLastSeen, UndefinedDiscoverOrigin,
+      IsBackOnline, MaybeDeviceName, MaybeDeviceShortName, MaybeEepId } =
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _InferredEepId=motion_detector ), % Already known if branching here
+
+    NewState = State#oceanic_state{ device_table=NewDeviceTable },
+
+    MaybeDecodedOptData = decode_optional_data( OptData ),
+
+    cond_utils:if_defined( oceanic_debug_decoding,
+        begin
+            MotionStr = case PIRTriggered of
+                true -> "a motion";
+                false -> "no motion"
+            end,
+
+            VoltageStr = case MaybeActualSupplyVoltage of
+
+                undefined ->
+                    "no supply voltage";
+
+                Voltage ->
+                    text_utils:format( "a supply voltage of ~ts",
+                        [ unit_utils:voltage_to_string( Voltage ) ] )
+
+            end,
+
+            trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-01 packet, "
+                "reporting that ~ts is detected and ~ts; teach-in: ~ts "
+                "(DB_3=~w, DB_1=~w, DB_0=~w); "
+                "sender is ~ts~ts.",
+                [ MotionStr, VoltageStr, IsTeachIn, DB_3, DB_1, DB_0,
+                  oceanic_text:get_best_naming( MaybeDeviceName,
+                    MaybeDeviceShortName, SenderEurid ),
+                  oceanic_text:maybe_optional_data_to_string(
+                    MaybeDecodedOptData, OptData ) ] )
+        end ),
+
+    { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+        resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+    Event = #motion_detector_event{ source_eurid=SenderEurid,
+                                    name=MaybeDeviceName,
+                                    short_name=MaybeDeviceShortName,
+                                    eep=MaybeEepId,
+                                    timestamp=Now,
+                                    last_seen=MaybeLastSeen,
+                                    subtelegram_count=MaybeTelCount,
+                                    destination_eurid=MaybeDestEurid,
+                                    dbm=MaybeDBm,
+                                    security_level=MaybeSecLvl,
+                                    motion_detected=PIRTriggered,
+                                    supply_voltage=MaybeActualSupplyVoltage,
+                                    teach_in=IsTeachIn },
+
+    { decoded, Event, UndefinedDiscoverOrigin, IsBackOnline, NewDevice,
+      NextMaybeTelTail, NewState }.
+
+
+
+
+-doc """
+Decodes a rorg_4bs (A5) packet for the motion detector ("Occupancy Sensor with
+Supply voltage monitor and 10-bit illumination measurement"), i.e. EEP
+"A5-07-03"
+
+Refer to `[EEP-spec]` p. 40.
+""".
+%TODO!
+-spec decode_4bs_motion_detector_with_illumination_packet( uint8(), uint8(), uint8(), uint8(),
+        eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_motion_detector_with_illumination_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
         OptData, NextMaybeTelTail, Device,
         State=#oceanic_state{ device_table=DeviceTable } ) ->
 
@@ -1660,18 +1893,36 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
             % Not trying to decode optional data then; multiple smart plug EEPs
             % could match:
             %
-            { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
-              _ListeningDiscoverOrigin, _IsBackOnline, _UndefinedDeviceName,
-              _UndefinedDeviceShortName, _MaybeEepId } =
+            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
+              _ListeningDiscoverOrigin, _IsBackOnline, UndefinedDeviceName,
+              UndefinedDeviceShortName, _MaybeEepId } =
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
                     _MaybeInferredEepId=undefined ),
 
             trace_bridge:warning_fmt( "Unable to decode a VLD (D2) packet ~ts",
-                [ get_unconfigured_device_message( SenderEurid ) ] ),
+                [ get_unresolved_device_message( SenderEurid ) ] ),
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=UndefinedDeviceName,
+                short_name=UndefinedDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_vld },
+
+            { unresolved_first_seen, UnresolvedEvent, NewDevice, _ToSkipLen=0,
+              NextMaybeTelTail, NewState };
 
 
         % Knowing the actual EEP is needed in order to decode:
@@ -1679,13 +1930,13 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
             % Not trying to decode optional data then.
 
-            { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
+            { NewDeviceTable, _NewDevice, Now, MaybeLastSeen,
               _MaybeDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
               MaybeDeviceShortName, _UndefinedEepId } =
                 oceanic:record_device_failure( SenderEurid, DeviceTable,
                     _MaybeInferredEepId=undefined ),
 
-            % Device probably already seen:
+            % Device probably already seen, so just a debug trace:
             trace_bridge:debug_fmt( "Unable to decode a VLD packet "
                 "for ~ts: no EEP known for it (hence ignored).",
                 [ oceanic_text:get_best_naming( MaybeDeviceName,
@@ -1693,7 +1944,25 @@ decode_vld_packet( DataTail, OptData, NextMaybeTelTail,
 
             NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
-            { unconfigured, _ToSkipLen=0, NextMaybeTelTail, NewState };
+            MaybeDecodedOptData = decode_optional_data( OptData ),
+
+            { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
+                resolve_maybe_decoded_data( MaybeDecodedOptData ),
+
+            UnresolvedEvent = #unresolved_device_event{
+                source_eurid=SenderEurid,
+                name=MaybeDeviceName,
+                short_name=MaybeDeviceShortName,
+                timestamp=Now,
+                last_seen=MaybeLastSeen,
+                subtelegram_count=MaybeTelCount,
+                destination_eurid=MaybeDestEurid,
+                dbm=MaybeDBm,
+                security_level=MaybeSecLvl,
+                type_hint=rorg_vld },
+
+            { unresolved, UnresolvedEvent, _ToSkipLen=0, NextMaybeTelTail,
+              NewState };
 
 
         { value, Device=#enocean_device{ eep=smart_plug } } ->
@@ -2457,10 +2726,11 @@ get_rps_status_info( _Status= <<T21:2, Nu:2, RC:4>> ) ->
 
 
 -doc """
-Returns the message corresponding to a unconfigured device being unusable.
+Returns the message corresponding to an unresolved - thus unusable - device.
 """.
--spec get_unconfigured_device_message( eurid() ) -> ustring().
-get_unconfigured_device_message( Eurid ) ->
-   text_utils:format( "from device whose EURID is ~ts: device not configured, "
-        "no EEP known for it; this device will be ignored from now.",
+-spec get_unresolved_device_message( eurid() ) -> ustring().
+get_unresolved_device_message( Eurid ) ->
+   text_utils:format( "from device whose EURID is ~ts: unresolved device "
+        "(not configured, and with no EEP known for it); "
+        "this device will be ignored from now.",
         [ oceanic_text:eurid_to_string( Eurid ) ] ).

@@ -1208,6 +1208,27 @@ device_event_to_string( #smart_plug_status_report_event{
           get_eep_description( MaybeEepId, _DefaultDesc=undefined ) ] );
 
 
+device_event_to_string( #unresolved_device_event{
+        source_eurid=Eurid,
+        %name=MaybeName,
+        %short_name=MaybeShortName,
+        %eep=MaybeEepId,
+        timestamp=Timestamp,
+        last_seen=MaybeLastSeen,
+        subtelegram_count=MaybeTelCount,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        security_level=MaybeSecLvl,
+        type_hint=TelTypeHint } ) ->
+    text_utils:format( "device of EURID ~ts of unresolved EEP sent at ~ts "
+        "a ~ts telegram; notified~ts; ~ts",
+        [ eurid_to_string( Eurid ), time_utils:timestamp_to_string( Timestamp ),
+          TelTypeHint,
+          optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+                                   MaybeSecLvl ),
+          last_seen_to_string( MaybeLastSeen ) ] );
+
+
 device_event_to_string( #teach_request_event{
         source_eurid=Eurid,
         name=MaybeName,
@@ -1539,8 +1560,23 @@ device_event_to_short_string( #double_rocker_multipress_event{
     text_utils:format( "The double-rocker device ~ts has ~ts simultaneously; "
         "~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ), TransStr,
-          optional_data_to_short_string(  MaybeDestEurid, MaybeDBm ),
+          optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
           get_eep_short_description( MaybeEepId, _DefaultDesc="F6-02-01" ) ] );
+
+device_event_to_short_string( #unresolved_device_event{
+        source_eurid=Eurid,
+        %name=MaybeName,
+        %short_name=MaybeShortName,
+        %eep=MaybeEepId,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        type_hint=TelTypeHint
+                                } ) ->
+    text_utils:format( "No known status for the device of EURID ~ts "
+        "(unresolved EEP; type hint: ~ts); ~ts",
+        [ eurid_to_string( Eurid ), TelTypeHint,
+          optional_data_to_short_string( MaybeDestEurid, MaybeDBm ) ] );
+
 
 device_event_to_short_string( #teach_request_event{
         source_eurid=Eurid,

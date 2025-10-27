@@ -650,10 +650,40 @@ describes the ERP radio telegram type, as an identifier. Equivalent of "Choice".
 -type rorg() :: uint8().
 
 
+-doc """
+All known RORG types, i.e. the types of the RORG field of an ERP radio telegram
+type, as defined in `[EEP]` p. 14.
+""".
+-type rorg_type() :: 'rorg_undefined'
+                   | 'rorg_rps'
+                   | 'rorg_1bs'
+                   | 'rorg_4bs'
+                   | 'rorg_vld'
+                   | 'rorg_msc'
+                   | 'rorg_adt'
+                   | 'rorg_sm_lrn_req'
+                   | 'rorg_sm_lrn_ans'
+                   | 'rorg_rec'
+                   | 'rorg_ex'
+                   | 'rorg_sec'
+                   | 'rorg_sec_encaps'
+                   | 'rorg_sec_man'
+                   | 'rorg_signal'
+                   | 'rorg_ute'.
+
+
+-doc """
+An hint regarding a telegram type; typically corresponds to an incomplete EEP.
+""".
+-type telegram_type_hint() ::
+    rorg_type()
+
+  % See oceanic_decode:decode_rps_double_rocker_packet/7:
+  | 'rorg_rps_double_rocker'.
+
 
 -doc "Describes the basic functionality of the data content.".
 -type func() :: uint8().
-
 
 
 -doc "Describes the type of device in its individual characteristics.".
@@ -736,7 +766,8 @@ An EEP defined as a string (e.g. `D5-00-01`).
 Tells how a device was discovered (first seen) by Oceanic.
 
 Discovery shall be understood here as (first-time) detection (even if the device
-was already known through configuration).
+was already known through configuration) of a device whose telegrams can be
+fully decoded (as opposed to an unresolved device).
 """.
 -type discovery_origin() ::
     'configuration'  % Loaded from Oceanic's user-defined configuration
@@ -1214,7 +1245,12 @@ Refer to `[EEP-gen]` p. 17 for further details.
 -type teach_request_event() :: #teach_request_event{}.
 
 
-
+-doc """
+Event corresponding to the receiving a R-ORG telegram that could not be (fully)
+decoded because its emitter device is not resolved (typically it was not
+configured and its EEP cannot be determined without extra information).
+""".
+-type unresolved_device_event() :: #unresolved_device_event{}.
 
 
 -doc """
@@ -1246,6 +1282,7 @@ See also their corresponding tags, defined in `device_event_type/0`.
   %| double_channel_module_event()
 
     % Other events:
+  | unresolved_device_event()
   | teach_request_event()
   | command_response().
 
@@ -1574,7 +1611,8 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
                button_ref_spec/0, button_ref/0,
                manufacturer_id/0,
 
-               rorg/0, func/0, type/0, eep/0, eep_id/0, eep_string/0,
+               rorg/0, rorg_type/0, telegram_type_hint/0,
+               func/0, type/0, eep/0, eep_id/0, eep_string/0,
                discovery_origin/0, enum/0,
 
                application_style/0, button_designator/0,
@@ -4935,7 +4973,6 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
                                              _Chunk= <<>>, NewState );
 
                 false ->
-
                     DeviceMsg = case MaybeDiscoverOrigin of
 
                         % Most common case (already detected, hence not set):
@@ -4951,6 +4988,9 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
                                                   Event } );
 
                                         Device ->
+                                            % Maybe a shorter description update
+                                            % could suffice:
+                                            %
                                             oceanic_text:get_device_description(
                                                 Device )
 
@@ -4961,57 +5001,88 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
 
                             end,
 
-                        { onEnoceanDeviceEvent,
-                            [ Event, BackOnlineInfo, self() ] };
+                            { onEnoceanDeviceEvent,
+                                [ Event, BackOnlineInfo, self() ] };
 
 
-                    % Set, hence just detected:
-                    DiscoverOrigin ->
+                        % Set, hence just detected:
+                        DiscoverOrigin ->
 
-                        BinDesc = case MaybeDevice of
+                            BinDesc = case MaybeDevice of
 
-                            undefined ->
-                                throw( { unexpected_undefined_device, Event } );
+                                undefined ->
+                                    throw( { unexpected_undefined_device,
+                                             Event } );
 
-                            Device ->
-                                oceanic_text:get_device_description( Device )
+                                Device ->
+                                    oceanic_text:get_device_description(
+                                        Device )
 
-                        end,
+                            end,
 
-                        DevMsgType = case DiscoverOrigin of
+                            DevMsgType = case DiscoverOrigin of
 
-                            configuration ->
-                                onEnoceanConfiguredDeviceFirstSeen;
+                                configuration ->
+                                    onEnoceanConfiguredDeviceFirstSeen;
 
-                            % Detected, yet not in configuration:
-                            listening ->
-                                onEnoceanDeviceDiscovery;
+                                % Detected, yet not in configuration:
+                                listening ->
+                                    onEnoceanDeviceDiscovery;
 
-                            teaching ->
-                                onEnoceanDeviceTeachIn
+                                teaching ->
+                                    onEnoceanDeviceTeachIn
 
-                        end,
+                            end,
 
-                        { DevMsgType, [ Event, BinDesc, self() ] }
+                            { DevMsgType, [ Event, BinDesc, self() ] }
 
-                end,
+                    end,
 
-                [ LPid ! DeviceMsg
-                    || LPid <- NewState#oceanic_state.event_listeners ],
+                    [ LPid ! DeviceMsg
+                        || LPid <- NewState#oceanic_state.event_listeners ],
 
-                integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
-                                         _Chunk= <<>>, NewState )
+                    integrate_all_telegrams( _SkipLen=0, NextMaybeTelTail,
+                                             _Chunk= <<>>, NewState )
 
             end;
 
+
+        % Now the unlucky cases, first the ones that may result in extra tail to
+        % decode.
+        %
+        % Now we prefer reporting unresolved devices as well:
+        { unresolved_first_seen, UnresolvedDevEvent, UnresolvedDevice,
+          NewToSkipLen, NextMaybeTelTail, NewState } ->
+
+            BinDesc = oceanic_text:get_device_description( UnresolvedDevice ),
+
+            DeviceMsg = { onEnoceanUnresolvedDeviceFirstSeen,
+                          [ UnresolvedDevEvent, BinDesc, self() ] },
+
+            [ LPid ! DeviceMsg
+                || LPid <- NewState#oceanic_state.event_listeners ],
+
+            integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
+                                     _Chunk= <<>>, NewState );
+
+        { unresolved, UnresolvedDevEvent, NewToSkipLen, NextMaybeTelTail,
+          NewState } ->
+
+            DeviceMsg = { onEnoceanUnresolvedDevice,
+                          [ UnresolvedDevEvent, self() ] },
+
+            [ LPid ! DeviceMsg
+                || LPid <- NewState#oceanic_state.event_listeners ],
+
+            integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
+                                     _Chunk= <<>>, NewState );
 
         % Now the unlucky cases; first the ones that may result in extra tail to
         % decode:
         %
         { DecodingError, NewToSkipLen, NextMaybeTelTail, NewState }
-                            when DecodingError =:= unsupported
-                                 orelse DecodingError =:= unconfigured
-                                 orelse DecodingError =:= invalid ->
+                            when DecodingError =:= invalid
+                                 orelse DecodingError =:= unsupported ->
             integrate_all_telegrams( NewToSkipLen, NextMaybeTelTail,
                                      _Chunk= <<>>, NewState );
 
