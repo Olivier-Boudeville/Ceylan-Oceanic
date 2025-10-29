@@ -63,7 +63,8 @@ Ceylan-Oceanic.
     interpret_briefly_power_report/1,
 
     temperature_to_string/1, relative_humidity_to_string/1,
-    learn_to_string/1,
+    motion_detection_to_string/1, maybe_voltage_to_string/1,
+    maybe_illuminance_to_string/1, learn_to_string/1,
 
     eurid_to_string/1, maybe_eurid_to_string/1,
     eurid_to_short_string/1,
@@ -532,11 +533,42 @@ temperature_to_string( Temperature ) ->
                        [ unit_utils:temperature_to_string( Temperature ) ] ).
 
 
-
 -doc "Returns a textual description of the specified relative humidity.".
 -spec relative_humidity_to_string( percent() ) -> ustring().
 relative_humidity_to_string( HPerCent ) ->
     text_utils:format( "a relative humidity of ~.1f%", [ HPerCent ] ).
+
+
+-doc "Returns a textual description of the specified motion detection.".
+-spec motion_detection_to_string( boolean() ) -> ustring().
+% Trying to make descriptions different enough:
+motion_detection_to_string( _MotionDetected=true ) ->
+    "that a motion has been detected";
+
+motion_detection_to_string( _MotionDetected=false ) ->
+    "no motion".
+
+
+-doc "Returns a textual description of any specified supply voltage.".
+-spec maybe_voltage_to_string( option( unit_utils:volts() ) ) -> ustring().
+maybe_voltage_to_string( _MaybeVoltage=undefined ) ->
+    "no specific supply voltage";
+
+maybe_voltage_to_string( Voltage ) ->
+    text_utils:format( "a supply voltage of ~ts",
+                       [ unit_utils:voltage_to_string( Voltage ) ] ).
+
+
+
+-doc "Returns a textual description of any specified illuminance.".
+-spec maybe_illuminance_to_string( option( unit_utils:lux() ) ) -> ustring().
+maybe_illuminance_to_string( _MaybeIlluminance=undefined ) ->
+    "no specific illuminance";
+
+maybe_illuminance_to_string( Illuminance ) ->
+    text_utils:format( "an illuminance of ~ts",
+                       [ unit_utils:illuminance_to_string( Illuminance ) ] ).
+
 
 
 
@@ -548,6 +580,15 @@ learn_to_string( _LearnActivated=true ) ->
 learn_to_string( _LearnActivated=false ) ->
     ", with no device learning activated".
 
+
+
+-doc "Returns a textual description of the specified teach-in status.".
+-spec teach_in_to_string( boolean() ) -> ustring().
+teach_in_to_string( _TeachIn=true ) ->
+    " whereas teach-in is activated";
+
+teach_in_to_string( _TeachIn=false ) ->
+    ", with no teach-in activated".
 
 
 -doc "Returns a raw, (plain) textual description of the specified EURID.".
@@ -1029,6 +1070,65 @@ device_event_to_string( #thermo_hygro_event{
           get_eep_description( MaybeEepId ) ] );
 
 
+
+device_event_to_string( #motion_detector_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        eep=MaybeEepId,
+        timestamp=Timestamp,
+        last_seen=MaybeLastSeen,
+        subtelegram_count=MaybeTelCount,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        security_level=MaybeSecLvl,
+        motion_detected=MotionDetected,
+        supply_voltage=MaybeVoltage,
+        teach_in=TeachIn } ) ->
+
+    text_utils:format( "motion detector device ~ts which reports at ~ts "
+        "that ~ts and ~ts~ts; this is declared~ts; ~ts; ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          time_utils:timestamp_to_string( Timestamp ),
+          motion_detection_to_string( MotionDetected ),
+          maybe_voltage_to_string( MaybeVoltage ),
+          teach_in_to_string( TeachIn ),
+          optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+                                   MaybeSecLvl ),
+          last_seen_to_string( MaybeLastSeen ),
+          get_eep_description( MaybeEepId ) ] );
+
+
+device_event_to_string( #motion_detector_event_with_illumination{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        eep=MaybeEepId,
+        timestamp=Timestamp,
+        last_seen=MaybeLastSeen,
+        subtelegram_count=MaybeTelCount,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        security_level=MaybeSecLvl,
+        motion_detected=MotionDetected,
+        illuminance=MaybeIlluminance,
+        supply_voltage=MaybeVoltage,
+        teach_in=TeachIn } ) ->
+
+    text_utils:format( "motion detector device ~ts which reports at ~ts "
+        "that ~ts, ~ts and ~ts~ts; this is declared~ts; ~ts; ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          time_utils:timestamp_to_string( Timestamp ),
+          motion_detection_to_string( MotionDetected ),
+          maybe_illuminance_to_string( MaybeIlluminance ),
+          maybe_voltage_to_string( MaybeVoltage ),
+          teach_in_to_string( TeachIn ),
+          optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
+                                   MaybeSecLvl ),
+          last_seen_to_string( MaybeLastSeen ),
+          get_eep_description( MaybeEepId ) ] );
+
+
 device_event_to_string( #single_input_contact_event{
         source_eurid=Eurid,
         name=MaybeName,
@@ -1387,7 +1487,7 @@ device_event_to_short_string( #thermometer_event{
                                  [ temperature_to_string( Temp ), TempRange ] ),
 
     % Timestamp already available:
-    text_utils:format( "The thermometer sensor device ~ts reports "
+    text_utils:format( "The thermometer sensor ~ts reports "
         "a ~ts; ~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ), TempStr,
           optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -1418,7 +1518,7 @@ device_event_to_short_string( #thermo_hygro_event{
     end,
 
     % Timestamp already available:
-    text_utils:format( "The thermo-hygro sensor device ~ts reports "
+    text_utils:format( "The thermo-hygro sensor ~ts reports "
         "~ts and ~ts; ~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           TempStr, relative_humidity_to_string( RelativeHumidity ),
@@ -1427,6 +1527,51 @@ device_event_to_short_string( #thermo_hygro_event{
           % Multiple A5-04-01-like candidates:
           get_eep_short_description( MaybeEepId ) ] );
 
+
+device_event_to_short_string( #motion_detector_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        eep=MaybeEepId,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        motion_detected=MotionDetected,
+        supply_voltage=MaybeVoltage,
+        teach_in=TeachIn } ) ->
+
+    % Timestamp already available:
+    text_utils:format( "The motion detector ~ts reports "
+        "~ts, ~ts and ~ts; ~ts; EEP: ~ts.",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          motion_detection_to_string( MotionDetected ),
+          maybe_voltage_to_string( MaybeVoltage ),
+          teach_in_to_string( TeachIn ),
+          optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+          get_eep_short_description( MaybeEepId ) ] );
+
+
+device_event_to_short_string( #motion_detector_event_with_illumination{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        eep=MaybeEepId,
+        destination_eurid=MaybeDestEurid,
+        dbm=MaybeDBm,
+        motion_detected=MotionDetected,
+        illuminance=MaybeIlluminance,
+        supply_voltage=MaybeVoltage,
+        teach_in=TeachIn } ) ->
+
+    % Timestamp already available:
+    text_utils:format( "The motion detector ~ts reports "
+        "~ts, ~ts, ~ts and ~ts; ~ts; EEP: ~ts.",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          motion_detection_to_string( MotionDetected ),
+          maybe_illuminance_to_string( MaybeIlluminance ),
+          maybe_voltage_to_string( MaybeVoltage ),
+          teach_in_to_string( TeachIn ),
+          optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
+          get_eep_short_description( MaybeEepId ) ] );
 
 device_event_to_short_string( #single_input_contact_event{
         source_eurid=Eurid,
@@ -1438,7 +1583,7 @@ device_event_to_short_string( #single_input_contact_event{
         contact=ContactStatus } ) ->
 
     % Apparently either state transitions or just periodic state reports:
-    text_utils:format( "The single-contact device ~ts is in ~ts state; "
+    text_utils:format( "The single-contact ~ts is in ~ts state; "
         "~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           get_contact_status_description( ContactStatus ),
@@ -1455,7 +1600,7 @@ device_event_to_short_string( #push_button_switch_event{
         dbm=MaybeDBm,
         transition=ButtonTransition } ) ->
     text_utils:format(
-        "The push-button device ~ts has been ~ts; ~ts; EEP: ~ts.",
+        "The push-button ~ts has been ~ts; ~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           get_button_transition_description( ButtonTransition ),
           optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
@@ -1474,7 +1619,7 @@ device_event_to_short_string( #smart_plug_status_report_event{
         hardware_status=HardwareStatus,
         local_control_enabled=IsLocalControlEnabled,
         output_power=OutputPower } ) ->
-    text_utils:format( "The smart-plug device ~ts reports that it ~ts "
+    text_utils:format( "The smart-plug ~ts reports that it ~ts "
         "(~ts, ~ts, ~ts, ~ts); ~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           interpret_power_report( OutputPower ),
@@ -1524,7 +1669,7 @@ device_event_to_short_string( #double_rocker_switch_event{
            end ++ "valid",
                 [ button_locator_to_string( SecondButtonLocator ) ] ),
 
-    text_utils:format( "The double-rocker device ~ts has its ~ts ~ts, "
+    text_utils:format( "The double-rocker ~ts has its ~ts ~ts, "
         "whereas its second action ~ts; ~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           button_locator_to_string( FirstButtonLocator ),
@@ -1557,7 +1702,7 @@ device_event_to_short_string( #double_rocker_multipress_event{
 
     end ++ " " ++ get_button_transition_description( ButtonTransition ),
 
-    text_utils:format( "The double-rocker device ~ts has ~ts simultaneously; "
+    text_utils:format( "The double-rocker ~ts has ~ts simultaneously; "
         "~ts; EEP: ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ), TransStr,
           optional_data_to_short_string( MaybeDestEurid, MaybeDBm ),
