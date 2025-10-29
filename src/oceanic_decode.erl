@@ -693,7 +693,7 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
              UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
              MaybeDeviceShortName, MaybeEepId } =
                  oceanic:record_known_device_success( Device, DeviceTable,
-                    _MaybeInferredEepId=undefined ),
+                    _AlreadyKnownEepId=undefined ),
 
            RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -760,8 +760,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
            { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
              UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
              MaybeDeviceShortName, MaybeEepId } =
-                   oceanic:record_known_device_success( Device, DeviceTable,
-                    _MaybeInferredEepId=undefined ),
+                 oceanic:record_known_device_success( Device, DeviceTable,
+                    _AlreadyKnownEepId=undefined ),
 
            NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -794,7 +794,8 @@ decode_rps_double_rocker_packet( DB_0= <<_DB_0AsInt:8>>, SenderEurid,
            { NewDeviceTable, _NewDevice, _Now,  _PrevLastSeen, _DiscoverOrigin,
              _IsBackOnline, _MaybeDeviceName, _MaybeDeviceShortName,
                _MaybeEepId } =
-                     oceanic:record_device_failure( SenderEurid, DeviceTable ),
+                    oceanic:record_device_failure( SenderEurid, DeviceTable,
+                        _AlreadyKnownEepId=undefined ),
 
            trace_bridge:warning_fmt( "Unable to decode a RPS packet "
                "from device whose EURID is ~ts and EEP ~ts (~ts), "
@@ -1210,8 +1211,10 @@ decode_4bs_packet( DataTail= <<DB_3:8, DB_2:8, DB_1:8, DB_0:8,
             % To reassemble a bit, as illumination is not byte-aligned (over
             % DB_1 and DB_2):
             %
-            decode_4bs_motion_detector_with_illumination_packet( DataTail,
-                SenderEurid, OptData, NextMaybeTelTail, Device, State );
+            SubDataTail = <<DB_2:8, DB_1:8, DB_0:8>>,
+            decode_4bs_motion_detector_with_illumination_packet( DB_3,
+                SubDataTail, SenderEurid, OptData, NextMaybeTelTail,
+                Device, State );
 
         { value, _Device=#enocean_device{ eep=UnsupportedEepId } } ->
 
@@ -1456,7 +1459,10 @@ Refer to `[EEP-spec]` p. 39.
 -spec decode_4bs_motion_detector_packet( uint8(), uint8(), uint8(), uint8(),
         eurid(), telegram_opt_data(), option( telegram_tail() ),
         enocean_device(), oceanic_state() ) -> decoding_outcome().
-decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
+% DB_2 supposed to be 0, yet found equal to 124 (i.e. 0b111-1100) with O2 LINE
+% Comfort:
+%
+decode_4bs_motion_detector_packet( DB_3, _DB_2, DB_1, DB_0, SenderEurid,
         OptData, NextMaybeTelTail, Device,
         State=#oceanic_state{ device_table=DeviceTable } ) ->
 
@@ -1503,12 +1509,7 @@ decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
 
     cond_utils:if_defined( oceanic_debug_decoding,
         begin
-            MotionStr = case PIRTriggered of
-                true -> "a motion";
-                false -> "no motion"
-            end,
-
-            VoltageStr = case MaybeActualSupplyVoltage of
+             VoltageStr = case MaybeActualSupplyVoltage of
 
                 undefined ->
                     "no supply voltage";
@@ -1520,10 +1521,11 @@ decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
             end,
 
             trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-01 packet, "
-                "reporting that ~ts is detected and ~ts; teach-in: ~ts "
+                "reporting ~ts and ~ts; teach-in: ~ts "
                 "(DB_3=~w, DB_1=~w, DB_0=~w); "
                 "sender is ~ts~ts.",
-                [ MotionStr, VoltageStr, IsTeachIn, DB_3, DB_1, DB_0,
+                [ oceanic_text:motion_detection_to_string( PIRTriggered ),
+                  VoltageStr, IsTeachIn, DB_3, DB_1, DB_0,
                   oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
                   oceanic_text:maybe_optional_data_to_string(
@@ -1556,15 +1558,15 @@ decode_4bs_motion_detector_packet( DB_3, _DB_2=0, DB_1, DB_0, SenderEurid,
 -doc """
 Decodes a rorg_4bs (A5) packet for the motion detector ("Occupancy Sensor with
 Supply voltage monitor and 10-bit illumination measurement"), i.e. EEP
-"A5-07-03"
+"A5-07-03".
 
 Refer to `[EEP-spec]` p. 40.
 """.
--spec decode_4bs_motion_detector_with_illumination_packet( binary(), eurid(),
-        telegram_opt_data(), option( telegram_tail() ), enocean_device(),
-        oceanic_state() ) -> decoding_outcome().
-decode_4bs_motion_detector_with_illumination_packet(
-        DataTail= <<DB_3:8, Illum:10, _NotUsed:6, PIRStatus:1, _Other:3,
+-spec decode_4bs_motion_detector_with_illumination_packet( uint8(), binary(),
+        eurid(), telegram_opt_data(), option( telegram_tail() ),
+        enocean_device(), oceanic_state() ) -> decoding_outcome().
+decode_4bs_motion_detector_with_illumination_packet( DB_3,
+        SubDataTail= <<Illum:10, _NotUsed:6, PIRStatus:1, _Other:3,
             LearnBit:1, _Last:3>>, SenderEurid, OptData, NextMaybeTelTail,
         Device, State=#oceanic_state{ device_table=DeviceTable } ) ->
 
@@ -1622,11 +1624,6 @@ decode_4bs_motion_detector_with_illumination_packet(
 
     cond_utils:if_defined( oceanic_debug_decoding,
         begin
-            MotionStr = case MotionDetected of
-                true -> "a motion";
-                false -> "no motion"
-            end,
-
             LuxStr = case MaybeLux of
 
                 undefined ->
@@ -1649,19 +1646,18 @@ decode_4bs_motion_detector_with_illumination_packet(
 
             end,
 
-            <<DataTailAsInt:32>> = DataTail,
-
             trace_bridge:debug_fmt( "Decoding a R-ORG 4BS A5-07-03 packet, "
-                "reporting that ~ts is detected, ~ts, and ~ts; teach-in: ~ts "
+                "reporting ~ts, ~ts, and ~ts; teach-in: ~ts "
                 "(data tail: ~ts); sender is ~ts~ts.",
-                [ MotionStr, LuxStr, VoltageStr, IsTeachIn,
-                  text_utils:integer_to_bits( DataTailAsInt ),
+                [ oceanic_text:motion_detection_to_string( MotionDetected ),
+                  LuxStr, VoltageStr, IsTeachIn,
+                  text_utils:binary_to_bits( SubDataTail ),
                   oceanic_text:get_best_naming( MaybeDeviceName,
                     MaybeDeviceShortName, SenderEurid ),
                   oceanic_text:maybe_optional_data_to_string(
                     MaybeDecodedOptData, OptData ) ] )
         end,
-        basic_utils:ignore_unused( DataTail ) ),
+        basic_utils:ignore_unused( SubDataTail ) ),
 
     { MaybeTelCount, MaybeDestEurid, MaybeDBm, MaybeSecLvl } =
         resolve_maybe_decoded_data( MaybeDecodedOptData ),
@@ -2067,7 +2063,9 @@ decode_vld_smart_plug_packet(
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
       UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
         MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+            % Already known if branching here:
+            _InferredEepId=smart_plug ),
 
     RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -2236,7 +2234,8 @@ decode_vld_smart_plug_packet(
     { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
       _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
       MaybeDeviceShortName, _MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _MaybeInferredEepId=undefined ),
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -2276,7 +2275,7 @@ This corresponds to smart, metering plugs bidirectional actuators that may
 control (switch on/off) most electrical loads (e.g. appliances) and may report
 metering information.
 
-See decode_vld_smart_plug_packet/7 for extra details.
+See `decode_vld_smart_plug_packet/7` for extra details.
 
 Discussed in `[EEP-spec]` p. 143.
 """.
@@ -2295,7 +2294,9 @@ decode_vld_smart_plug_with_metering_packet(
     { NewDeviceTable, NewDevice, Now, MaybeLastSeen,
       UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
         MaybeDeviceShortName, MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+             % Already known if branching here:
+            _InferredEepId=smart_plug_with_metering ),
 
     RecState = State#oceanic_state{ device_table=NewDeviceTable },
 
@@ -2452,7 +2453,8 @@ decode_vld_smart_plug_with_metering_packet(
     { NewDeviceTable, _NewDevice, _Now, _MaybeLastSeen,
       _UndefinedDiscoverOrigin, _IsBackOnline, MaybeDeviceName,
       MaybeDeviceShortName, _MaybeEepId } =
-        oceanic:record_known_device_success( Device, DeviceTable ),
+        oceanic:record_known_device_success( Device, DeviceTable,
+            _MaybeInferredEepId=undefined ),
 
     NewState = State#oceanic_state{ device_table=NewDeviceTable },
 
