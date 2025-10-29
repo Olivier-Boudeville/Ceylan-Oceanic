@@ -516,7 +516,7 @@
     motion_detected :: boolean(),
 
     % The illuminance measured (if any):
-    illuminance :: option( uunit_utils:lux() ),
+    illuminance :: option( unit_utils:lux() ),
 
     % Any reported voltage:
     supply_voltage :: option( unit_utils:volts() ),
