@@ -2239,16 +2239,55 @@ get_base_state( SerialServerPid ) ->
         % Starting with a bogus value, not wanting an option/1 type:
         emitter_eurid=oceanic_text:string_to_eurid( ?default_emitter_eurid ),
         device_table=EmptyTable,
-        command_queue=queue:new(),
-        waited_command_info=undefined,
+        % Set later:
+        %command_queue=queue:new(),
+        %waited_command_info=undefined,
         last_traffic_seen=time_utils:get_timestamp() },
 
+    % In some (rare) cases, instead of receiving a data message of, say, 13
+    % bytes from port, we may have instead: '[serial] Error reported (12): empty
+    % read.: Broken pipe' and, say, an invalid, empty data tail. So:
+
+    InitMaxCount = 5,
+
+    try_init( _Count=0, InitMaxCount, CommonCmd, CmdTelegram, InitialState ).
+
+
+
+try_init( _Count=MaxCount, MaxCount, _CommonCmd, _CmdTelegram, _State ) ->
+
+    % Apparently in some cases, past requests (of previous executions) may
+    % accumulate: possibly serial or, more probably, tty-related buffers could
+    % be reset more (if an attempt fails, at least often the next ones fail as
+    % well). An reliable solution seems to unplug and re-plug the USB Enocean
+    % dongle (fortunately this does not happen frequently).
+    %
+    trace_bridge:error_fmt( "Unable to determine the base EURID of this "
+                            "gateway, despite ~B attempts.", [ MaxCount ] ),
+
+    throw( no_base_eurid_obtained );
+
+
+try_init( Count, MaxCount, CommonCmd, CmdTelegram, State ) ->
+
+    ResetState = State#oceanic_state{
+        command_queue=queue:new(),
+        waited_command_info=undefined },
+
     ExecState = execute_command_impl( _CmdType=CommonCmd, CmdTelegram,
-                                      _Requester=internal, InitialState ),
+                                      _Requester=internal, ResetState ),
 
     % Blank start:
-    wait_initial_base_command( _ToSkipLen=0, _MaybeAccChunk=undefined,
-                               ExecState ).
+    case wait_initial_base_command( _ToSkipLen=0, _MaybeAccChunk=undefined,
+                                    Count, ExecState ) of
+
+        base_eurid_timeout ->
+            try_init( Count+1, MaxCount, CommonCmd, CmdTelegram, ExecState );
+
+        ReadyState ->
+            ReadyState
+
+    end.
 
 
 
@@ -2256,14 +2295,17 @@ get_base_state( SerialServerPid ) ->
 Returns an initialised, Oceanic state, once the initial base ID request has been
 properly answered.
 """.
--spec wait_initial_base_command( count(), option( telegram_tail() ),
+-spec wait_initial_base_command( count(), option( telegram_tail() ), count(),
                                  oceanic_state() ) -> oceanic_state().
-wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
+wait_initial_base_command( ToSkipLen, MaybeNextTelTail, Count, State ) ->
 
     cond_utils:if_defined( oceanic_debug_tty,
         trace_bridge:debug_fmt( "Waiting initial base request "
             "(ToSkipLen=~B, MaybeNextTelTail=~w).",
             [ ToSkipLen, MaybeNextTelTail ] ) ),
+
+    % Sufficient:
+    TimeoutMs = 2000,
 
     receive
 
@@ -2320,7 +2362,7 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
                         [ oceanic_text:device_event_to_string( OtherEvent ) ] ),
 
                     wait_initial_base_command( _NewToSkipLen=0,
-                                               NewMaybeNextTelTail, ReadState );
+                        NewMaybeNextTelTail, Count, ReadState );
 
 
                 { Unsuccessful, NewToSkipLen, NewMaybeNextTelTail, NewState } ->
@@ -2336,7 +2378,7 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
                     %       [ Unsuccessful, NewMaybeNextTelTail ] ) ),
 
                     wait_initial_base_command( NewToSkipLen,
-                                               NewMaybeNextTelTail, NewState );
+                        NewMaybeNextTelTail, Count, NewState );
 
                 { considerCommandTimeout, CmdCount } ->
                     throw( { timeout_initial_base_request, CmdCount } )
@@ -2347,7 +2389,8 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
             trace_bridge:warning_fmt( "Unexpected serial message while waiting "
                 "base command: ~p; ignoring it.", [ Msg ] ),
 
-            wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
+            wait_initial_base_command( ToSkipLen, MaybeNextTelTail, Count,
+                                       State )
 
         % Commented-out, as not wanting to intercept messages to be processed
         % next (like {getOceanicEurid, CallerPid}):
@@ -2359,12 +2402,12 @@ wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State ) ->
         %   wait_initial_base_command( ToSkipLen, MaybeNextTelTail, State )
 
     % Extra time-out for additional safety:
-    after 2000 ->
+    after TimeoutMs ->
+        trace_bridge:warning_fmt( "Unable to determine the base EURID of "
+            "this gateway (attempt #~B; after ~ts).",
+            [ Count+1, time_utils:time_out_to_string( TimeoutMs ) ] ),
 
-        trace_bridge:error( "Unable to determine the base EURID of "
-                            "this gateway." ),
-
-       throw( no_base_eurid_obtained )
+       base_eurid_timeout
 
     end.
 
@@ -2749,13 +2792,13 @@ decide_auto_periodicity( _EepId=thermo_hygro_high ) ->
 
 
 decide_auto_periodicity( _EepId=motion_detector ) ->
-    auto;
+    none;
 
 decide_auto_periodicity( _EepId=occupancy_detector ) ->
-    auto;
+    none;
 
 decide_auto_periodicity( _EepId=motion_detector_with_illumination ) ->
-    auto;
+    none;
 
 % Typically opening detectors:
 decide_auto_periodicity( _EepId=single_input_contact ) ->
