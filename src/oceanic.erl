@@ -269,8 +269,8 @@ A user-level device designator, for example in listened event specifications.
 
 
 -doc """
-An (internal) element designating a device, either thanks to an EURID (as an
-integer), or thanks to a short name (as an atom).
+An (internal) element designating a device, thanks to a short name (as an atom)
+otherwise thanks to an EURID (as an integer).
 """.
 -type device_designator() :: eurid() | device_short_name().
 
@@ -2587,7 +2587,7 @@ declare_devices( _DeviceCfgs=[], ShortNames, DeviceTable ) ->
 
     end;
 
-% Adding ExtraDevInfo if needed:
+% Adding ExtraDevInfo if needed, branching to next clause:
 declare_devices( _DeviceCfgs=[ { DevDesigSpec, EuridStr, EepStr } | T ],
                  DevShortNames, DeviceTable ) ->
     declare_devices(
@@ -2616,7 +2616,7 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
             throw( { invalid_device_configured_short_name, ShortNameAtom, DC } )
         end,
 
-    % As multiple short names may not defined:
+    % As short names may not be defined:
     NewDevShortNames = case ShortNameAtom of
 
         undefined ->
@@ -6323,9 +6323,7 @@ get_actuator_eeps() ->
 
 
 
--doc """
-Returns the type of the specified device event.
-""".
+-doc "Returns the type of the specified device event.".
 -spec get_event_type( device_event() ) -> device_event_type().
 get_event_type( DevEventTuple ) ->
     % The record tag:
