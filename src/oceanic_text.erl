@@ -971,9 +971,7 @@ describe_device( Eurid, State ) when is_integer( Eurid ) ->
 
 describe_device( DevShortName, State ) when is_atom( DevShortName ) ->
 
-    DevTable = State#oceanic_state.device_table,
-
-    case oceanic:get_designated_device( DevShortName, DevTable ) of
+    case oceanic:get_designated_device( DevShortName, State ) of
 
         undefined ->
             text_utils:bin_format( "unknown device of short name ~ts",
@@ -2228,6 +2226,9 @@ device_type_to_string( _DevType=thermometer ) ->
 device_type_to_string( _DevType=thermo_hygro_sensor ) ->
     "thermo-hygro sensor";
 
+device_type_to_string( _DevType=motion_detector ) ->
+    "motion detector";
+
 device_type_to_string( _DevType=opening_detector ) ->
     "opening detector";
 
@@ -2237,11 +2238,11 @@ device_type_to_string( _DevType=push_button ) ->
 device_type_to_string( _DevType=double_rocker ) ->
     "double rocker";
 
-device_type_to_string( _DevType=in_wall_module ) ->
-    "in-wall module";
-
 device_type_to_string( _DevType=smart_plug ) ->
     "smart plug";
+
+device_type_to_string( _DevType=in_wall_module ) ->
+    "in-wall module";
 
 % Never fail here:
 device_type_to_string( DevType ) ->
