@@ -1324,7 +1324,7 @@ least one type of events.
   | 'push_button'
   | 'double_rocker'
   | 'smart_plug'
-  | 'module'. % Typically in-wall modules.
+  | 'in_wall_module'.
 
 
 -doc """
@@ -2482,11 +2482,12 @@ load_configuration( ConfFilePath, State ) ->
 Registers the specified additional Oceanic configuration in the specified
 Oceanic server.
 
-Refer to load_configuration/2 for key information.
+Refer to `load_configuration/2` for key information.
 """.
 -spec add_configuration_settings( oceanic_settings(), oceanic_server_pid() ) ->
         void().
 add_configuration_settings( OcSettings, OcSrvPid ) ->
+    trace_bridge:debug_fmt( "Adding Oceanic settings ~p.", [ OcSettings ] ),
     OcSrvPid ! { addConfigurationSettings, OcSettings }.
 
 
@@ -2496,7 +2497,7 @@ Registers internally the specified Oceanic configuration, overriding any prior
 settings, and returns a corresponding updated state.
 """.
 -spec apply_conf_settings( oceanic_settings(), oceanic_state() ) ->
-                                oceanic_state().
+                                                oceanic_state().
 apply_conf_settings( OcSettings, State ) ->
 
     case extract_settings( OcSettings, _Acc=[], State ) of
@@ -2724,6 +2725,11 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
                                  expected_periodicity=ActPeriod,
                                  request_queue=queue:new(),
                                  extra_info_table=ShrunkDevInfoTable },
+
+    cond_utils:if_defined( oceanic_debug_requests, trace_bridge:debug_fmt(
+        "Declaring device: ~ts",
+        [ oceanic_text:device_to_string( DeviceRec ) ] ) ),
+
 
     table:has_entry( Eurid, DeviceTable ) andalso
         trace_bridge:warning_fmt( "Overriding entry for device "
@@ -3629,7 +3635,9 @@ Returns any EURID found for the specified corresponding device designator.
 get_designated_eurid( DevShortName,
                       #oceanic_state{ device_table=DevTable } )
                                       when is_atom( DevShortName ) ->
-    DevRecord = get_designated_device_from_short_name( DevShortName, DevTable ),
+    DevRecord = get_designated_device_from_short_name( DevShortName,
+        table:values( DevTable ) ),
+
     DevRecord#enocean_device.eurid;
 
 get_designated_eurid( DeviceEurid, _State ) when is_integer( DeviceEurid ) ->
@@ -3651,25 +3659,43 @@ get_designated_device( DevShortName,
     get_designated_device_from_short_name( DevShortName,
                                            table:values( DevTable ) );
 
-get_designated_device( DeviceEurid, _State ) when is_integer( DeviceEurid ) ->
-    DeviceEurid;
+get_designated_device( DeviceEurid, #oceanic_state{ device_table=DevTable } )
+                                        when is_integer( DeviceEurid ) ->
+    case table:lookup_entry( _K=DeviceEurid, DevTable ) of
 
-get_designated_device( _DevDesig, _State ) ->
+        { value, DevRecord }  ->
+            DevRecord;
+
+        key_not_found ->
+            trace_bridge:warning_fmt( "Unable to find a device from ~ts.",
+                [ oceanic_text:eurid_to_string( DeviceEurid ) ] ),
+
+            undefined
+
+    end;
+
+get_designated_device( DevDesig, _State ) ->
     %trace_bridge:error_fmt( "Invalid device designator: '~w'.",
     %                        [ DevDesig ] ),
-    undefined.
 
+    trace_bridge:warning_fmt( "Unable to find a device from designator '~p' "
+        "(whose type is ~ts).",
+        [ DevDesig, type_utils:get_type_of( DevDesig ) ] ),
+
+    undefined.
 
 
 % (helper)
 -spec get_designated_device_from_short_name( device_short_name(),
         [ enocean_device() ] ) -> option( enocean_device() ).
-get_designated_device_from_short_name( _DevShortName, _Devs=[] ) ->
+get_designated_device_from_short_name( DevShortName, _Devs=[] ) ->
+    trace_bridge:warning_fmt( "Unable to find a device from short name '~p'.",
+                              [ DevShortName ] ),
     undefined;
 
 get_designated_device_from_short_name( DevShortName,
-        _Devs=[ Dev=#enocean_device{ short_name=DevShortName } | _T ] ) ->
-    Dev;
+        _Devs=[ DevRecord=#enocean_device{ short_name=DevShortName } | _T ] ) ->
+    DevRecord;
 
 get_designated_device_from_short_name( DevShortName, _Devs=[ _Dev | T ] ) ->
     get_designated_device_from_short_name( DevShortName, T ).
