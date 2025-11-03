@@ -2487,7 +2487,7 @@ Refer to `load_configuration/2` for key information.
 -spec add_configuration_settings( oceanic_settings(), oceanic_server_pid() ) ->
         void().
 add_configuration_settings( OcSettings, OcSrvPid ) ->
-    trace_bridge:debug_fmt( "Adding Oceanic settings ~p.", [ OcSettings ] ),
+    %trace_bridge:debug_fmt( "Adding Oceanic settings ~p.", [ OcSettings ] ),
     OcSrvPid ! { addConfigurationSettings, OcSettings }.
 
 
