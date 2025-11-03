@@ -525,12 +525,18 @@ decode_rps_push_button_packet( DB_0= <<DB_0AsInt:8>>, SenderEurid,
     %                  % Superfluous parentheses:
     %                  DB_0AsInt band ( bnot ?b4 ) =:= 0 ),
 
-    OtherBits = DB_0AsInt band ( bnot ?b4 ),
-    OtherBits =:= 0 orelse
-        trace_bridge:error_fmt( "Unexpected bits when decoding push-button "
-            "packet based on DB_0=~ts: ~ts.",
-             [ text_utils:integer_to_bits( DB_0AsInt ),
-               text_utils:integer_to_bits( OtherBits ) ] ),
+    % Apparently we can have DB_0 equal to 0b101-0000, whereas the first 1 shall
+    % be 0 according to [EEP-spec] p. 15.
+    %
+    cond_utils:if_defined( oceanic_debug_decoding,
+        begin
+            OtherBits = DB_0AsInt band ( bnot ?b4 ),
+            OtherBits =:= 0 orelse
+                trace_bridge:warning_fmt( "Unexpected bits when decoding "
+                    "push-button packet based on DB_0=~ts: ~ts.",
+                    [ text_utils:integer_to_bits( DB_0AsInt ),
+                      text_utils:integer_to_bits( OtherBits ) ] )
+        end ),
 
     { PTMSwitchModuleType, NuType, RepCount } = get_rps_status_info( Status ),
 
