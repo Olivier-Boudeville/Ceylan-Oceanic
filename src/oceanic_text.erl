@@ -822,10 +822,10 @@ repeater_count_to_string( RC ) ->
 
 -doc "Returns a textual description of the specified button state.".
 -spec get_button_state_description( button_state() ) -> ustring().
-get_button_state_description( _ButtonState=pressed ) ->
+get_button_state_description( _ButtonState=is_pressed ) ->
     "pressed";
 
-get_button_state_description( _ButtonState=released ) ->
+get_button_state_description( _ButtonState=is_released ) ->
     "released".
 
 
