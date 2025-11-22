@@ -1858,6 +1858,7 @@ device_table_to_string( DeviceTable ) ->
 device_to_string( #enocean_device{ eurid=Eurid,
                                    name=MaybeName,
                                    eep=MaybeEepId,
+                                   type=MaybeDevType,
                                    discovered_through=DiscOrigin,
                                    first_seen=MaybeFirstTimestamp,
                                    last_seen=MaybeLastTimestamp,
@@ -2067,10 +2068,11 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
     ExtraInfoStr = table:to_string( ExtraInfoTable, _DescriptionType=bullet ),
 
-    text_utils:format( "~ts applying ~ts; it has ~ts~ts~ts~ts; ~ts; ~ts; ~ts; "
-        "regarding extra information: ~ts",
-        [ NameStr, EepDescStr, SeenStr, DiscStr, TeleStr, ErrStr,
-          AvailStr, PeriodStr, ReqStr, ExtraInfoStr ] ).
+    text_utils:format( "~ts applying ~ts, typed as a ~ts; it has ~ts~ts~ts~ts; "
+        "~ts; ~ts; ~ts; regarding extra information: ~ts",
+        [ NameStr, EepDescStr, device_type_to_string( MaybeDevType ), SeenStr,
+          DiscStr, TeleStr, ErrStr, AvailStr, PeriodStr, ReqStr,
+          ExtraInfoStr ] ).
 
 
 
