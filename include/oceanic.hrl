@@ -78,7 +78,7 @@
 %
 % (at least 1)
 %
--define( default_max_send_count, 25 ).
+-define( default_max_send_count, 50 ).
 % For testing:
 %-define( default_max_send_count, 5 ).
 
@@ -123,9 +123,12 @@
 
     % The EEP (if any is defined and registered) of this device:
     %
-    % (nevertheless in the general case a device may implement multiple EEPs)
+    % (however, in the general case, a device may implement multiple EEPs)
     %
     eep :: option( oceanic:eep_id() ),
+
+    % Any type determined for this device:
+    type :: option( oceanic:device_type() ),
 
     % Tells how this device was discovered:
     discovered_through :: oceanic:discovery_origin(),
@@ -137,6 +140,8 @@
     last_seen = undefined :: option( time_utils:timestamp() ),
 
     % Tells whether this device is considered by Oceanic to be online or lost:
+    % (device might be just configured)
+    %
     availability = undefined :: option( oceanic:availability_status() ),
 
     % Tells whether this device was successfully registered by this gateway
