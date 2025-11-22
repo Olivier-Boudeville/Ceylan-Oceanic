@@ -2157,7 +2157,7 @@ decode_vld_smart_plug_packet(
     end,
 
     trace_bridge:warning_fmt(
-        "Non-metering plug ~ts reports an output power of ~w.",
+        "(non-metering plug ~ts reports an output power of ~w)",
         [ oceanic_text:get_best_naming( MaybeDeviceName, MaybeDeviceShortName,
                                    SenderEurid ),
           OutputPower ] ),
