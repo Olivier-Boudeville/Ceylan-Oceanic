@@ -148,7 +148,8 @@ through an Oceanic server**.
 
 
 % Extra features:
--export([ get_sensor_eeps/0, get_command_eeps/0, get_actuator_eeps/0 ]).
+-export([ get_sensor_eeps/0, get_command_eeps/0, get_actuator_eeps/0,
+          guess_type_from_eep/1 ]).
 
 
 % For execution as (e)script:
@@ -324,6 +325,7 @@ telegram sending).
 -doc """
 Tells whether a given device is considered by Oceanic to be online or lost.
 """.
+% Maybe 'failed' could be added (e.g. if a smart plug failed to switch on):
 -type availability_status() :: 'online' | 'lost'.
 
 
@@ -1313,8 +1315,8 @@ Note that they correspond to the tags of the corresponding records (see
 -doc """
 Lists the known functional types of devices.
 
-Each type of device corresponds to an EEP or a set thereof, and is to send at
-least one type of events.
+Allows notably to abstract out EEPs: each type of device corresponds to an EEP
+or a set thereof, and is to send at least one type of events.
 """.
 -type device_type() ::
     'thermometer'
@@ -1379,6 +1381,18 @@ Information regarding a device (e.g. a double rocker) that is emulated in order
 to forge telegrams that it could send, typically in order to trigger actuators.
 """.
 -type virtual_emitter_info() :: option( tuploid( device_info_value() ) ).
+
+
+-doc """
+State information regarding a device known of Oceanic.
+
+Typically to be sent to higher-level code so that it can know the configured
+devices that did not emit any telegram (yet).
+""".
+-type device_state_info() :: { eurid(), option( device_name() ),
+    option( device_short_name() ), option( eep_id() ), option( device_type() ),
+    option( timestamp() ), option( availability_status() ) }.
+
 
 
 -doc """
@@ -2259,11 +2273,22 @@ try_init( _Count=MaxCount, MaxCount, _CommonCmd, _CmdTelegram, _State ) ->
     % Apparently in some cases, past requests (of previous executions) may
     % accumulate: possibly serial or, more probably, tty-related buffers could
     % be reset more (if an attempt fails, at least often the next ones fail as
-    % well). An reliable solution seems to unplug and re-plug the USB Enocean
-    % dongle (fortunately this does not happen frequently).
+    % well). Another common culprit is having another (UNIX) process controlling
+    % that tty (e.g. tests failing whereas an Oceanic-using server is running).
+    %
+    % So:
+    %
+    % - first try to detect any competing process (e.g. with 'fuser
+    % /dev/ttyUSBEnOcean')
+    %
+    % - as a last resort solution (at least almost never needed), unplug and
+    % re-plug the USB Enocean dongle (fortunately this does not happen
+    % frequently).
     %
     trace_bridge:error_fmt( "Unable to determine the base EURID of this "
-                            "gateway, despite ~B attempts.", [ MaxCount ] ),
+        "gateway, despite ~B attempts "
+        "(is the Enocean tty used by another process?).",
+        [ MaxCount ] ),
 
     throw( no_base_eurid_obtained );
 
@@ -2721,6 +2746,7 @@ declare_devices( _DeviceCfgs=[ DC={ _DevDesigSpec={ NameStr, ShortNameAtom },
                                  name=text_utils:ensure_binary( NameStr ),
                                  short_name=ShortNameAtom,
                                  eep=MaybeEepId,
+                                 type=guess_type_from_eep( MaybeEepId ),
                                  discovered_through=configuration,
                                  expected_periodicity=ActPeriod,
                                  request_queue=queue:new(),
@@ -3130,9 +3156,9 @@ interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
 % Non-matching case:
 interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 
-    cond_utils:if_defined( us_main_debug_home_automation,
+    cond_utils:if_defined( oceanic_debug_requests,
         trace_bridge:debug_fmt(
-            "(this event ~ts does not match the presence switching ~ts)",
+            "(this event ~ts does not match the ~ts)",
             [ oceanic_text:device_event_to_string( DevEvent ),
               oceanic_text:cits_to_string( CITS ) ] ),
         basic_utils:ignore_unused( [ CITS, DevEvent ] ) ),
@@ -3294,6 +3320,7 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
                              name=undefined,
                              % (no short_name)
                              eep=MaybeEepId,
+                             type=guess_type_from_eep( MaybeEepId ),
                              discovered_through=teaching,
                              first_seen=Now,
                              last_seen=Now,
@@ -3305,12 +3332,13 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
         { value, Device=#enocean_device{ eep=undefined,
                                          telegram_count=TelCount } } ->
             Device#enocean_device{ eep=MaybeEepId,
+                                   type=guess_type_from_eep( MaybeEepId ),
                                    last_seen=Now,
                                    telegram_count=TelCount+1 };
 
         { value, Device=#enocean_device{ eep=KnownEepId,
                                          telegram_count=TelCount } } ->
-            NewEepId = case KnownEepId of
+            case KnownEepId of
 
                 MaybeEepId ->
                     MaybeEepId;
@@ -3325,7 +3353,7 @@ declare_device_from_teach_in( Eurid, Eep, DeviceTable ) ->
 
             end,
 
-            Device#enocean_device{ eep=NewEepId,
+            Device#enocean_device{ % 'eep' and thus 'type' already correct.
                                    last_seen=Now,
                                    telegram_count=TelCount+1 }
 
@@ -3605,7 +3633,7 @@ trigger_actuators_reciprocal( CEESs, OcSrvPid ) ->
 -spec perform_action( device_action(), oceanic_state() ) -> oceanic_state().
 perform_action( _DeviceAction={ DeviceOperation, DeviceDesignator }, State ) ->
 
-    case get_designated_device( DeviceDesignator, State ) of
+    case get_designated_eurid( DeviceDesignator, State ) of
 
         undefined ->
 
@@ -3708,9 +3736,10 @@ get_designated_device_from_short_name( DevShortName, _Devs=[ _Dev | T ] ) ->
 perform_action_on( TargetEurid, DeviceOperation, State )
         when DeviceOperation =:= switch_on; DeviceOperation =:= switch_off ->
 
-    trace_bridge:debug_fmt( "Performing operation ~ts on device ~ts.",
+    cond_utils:if_defined( oceanic_debug_requests, trace_bridge:debug_fmt(
+        "Performing operation ~ts on device ~ts.",
         [ DeviceOperation,
-          oceanic_text:describe_device( TargetEurid, State ) ] ),
+          oceanic_text:describe_device( TargetEurid, State ) ] ) ),
 
     trigger_actuator_impl( TargetEurid, DeviceOperation, State );
 
@@ -3743,16 +3772,16 @@ is_serial_available( OcSrvPid ) ->
     receive
 
         onSerialAvailableReport ->
-            cond_utils:if_defined( oceanic_debug_tty,
-                trace_bridge:debug( "Serial interface reported as available." ),
-                ok ),
+
+            cond_utils:if_defined( oceanic_debug_tty, trace_bridge:debug(
+                "Serial interface reported as available." ) ),
+
             true;
 
         onSerialNotAvailableReport ->
-            cond_utils:if_defined( oceanic_debug_tty,
-                trace_bridge:error(
-                    "Serial interface reported as not available." ),
-                ok ),
+
+            cond_utils:if_defined( oceanic_debug_tty, trace_bridge:error(
+                "Serial interface reported as not available." ) ),
 
             false
 
@@ -4283,7 +4312,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
             PastListeners = State#oceanic_state.event_listeners,
 
             NewListeners = case list_utils:delete_if_existing( ListenerPid,
-                                                PastListeners ) of
+                    PastListeners ) of
 
                 not_found ->
                     trace_bridge:error_fmt( "Requested to remove event "
@@ -4308,6 +4337,13 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
             NewState = apply_conf_settings( OcSettings, State ),
             oceanic_loop( ToSkipLen, MaybeTelTail, NewState );
+
+
+        { getAllDeviceStateInfo, CallerPid } ->
+            Devs = table:values( State#oceanic_state.device_table ),
+            DevStateInfos = [ get_state_info( D ) || D <- Devs ],
+            CallerPid ! { notifyDeviceStateInfos, [ DevStateInfos ] },
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
 
 
         % So that the traces emitted by Oceanic thanks to trace_bridge:* are
@@ -4910,23 +4946,22 @@ get_default_operation_for( ActDesig, State ) ->
          undefined ->
             throw( { unregistered_actuator_device, ActDesig } );
 
-        #enocean_device{ eep=Eep } ->
-            get_base_operation_for_eep( Eep )
+        #enocean_device{ type=DevType } ->
+            get_base_operation_for_type( DevType )
 
     end.
 
 
 
--doc "Returns the base operation corresponding to the specified EEP.".
--spec get_base_operation_for_eep( eep_id() ) -> device_operation().
-get_base_operation_for_eep( _Eep=smart_plug ) ->
+-doc """
+Returns the base operation corresponding to the specified type of device.
+""".
+-spec get_base_operation_for_type( device_type() ) -> device_operation().
+get_base_operation_for_type( _DevType=smart_plug ) ->
     switch_on;
 
-get_base_operation_for_eep( _Eep=smart_plug_with_metering ) ->
-    switch_on;
-
-get_base_operation_for_eep( Eep ) ->
-    throw( { no_base_operation_for_eep, Eep } ).
+get_base_operation_for_type( DevType ) ->
+    throw( { no_base_operation_for_device_type, DevType } ).
 
 
 
@@ -5781,6 +5816,19 @@ get_maybe_next_tail( Chunk ) ->
 
 
 
+-doc "Returns the state information corresponding to the specified device.".
+-spec get_state_info( enocean_device() ) -> device_state_info().
+get_state_info( #enocean_device{ eurid=Eurid,
+                                 name=MaybeBinName,
+                                 short_name=MaybeBinShortName,
+                                 eep=MaybeEepId,
+                                 type=MaybeDevType,
+                                 last_seen=MaybeLastSeenTimestamp,
+                                 availability=MaybeAvailStatus } ) ->
+    { Eurid, MaybeBinName, MaybeBinShortName, MaybeEepId, MaybeDevType,
+      MaybeLastSeenTimestamp, MaybeAvailStatus }.
+
+
 
 -doc """
 Records that a telegram could be successfully decoded for the specified device,
@@ -5805,18 +5853,20 @@ record_device_success( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
             DiscoverOrigin = listening,
 
-            NewDevice = #enocean_device{ eurid=Eurid,
-                                         name=undefined,
-                                         short_name=undefined,
-                                         eep=MaybeInferredEepId,
-                                         discovered_through=DiscoverOrigin,
-                                         first_seen=Now,
-                                         last_seen=Now,
-                                         availability=online,
-                                         telegram_count=1,
-                                         error_count=0,
-                                         expected_periodicity=none,
-                                         request_queue=queue:new() },
+            NewDevice = #enocean_device{
+                eurid=Eurid,
+                name=undefined,
+                short_name=undefined,
+                eep=MaybeInferredEepId,
+                type=guess_type_from_eep( MaybeInferredEepId ),
+                discovered_through=DiscoverOrigin,
+                first_seen=Now,
+                last_seen=Now,
+                availability=online,
+                telegram_count=1,
+                error_count=0,
+                expected_periodicity=none,
+                request_queue=queue:new() },
 
             % Necessarily new:
             NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
@@ -5900,12 +5950,14 @@ record_known_device_success( Device=#enocean_device{
     ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
         TeleCount, Device#enocean_device.error_count, Now ),
 
-    UpdatedDevice = Device#enocean_device{ eep=BestEepId,
-                                           first_seen=NewFirstSeen,
-                                           last_seen=Now,
-                                           availability=online,
-                                           telegram_count=TeleCount+1,
-                                           activity_timer=ResetTimer },
+    UpdatedDevice = Device#enocean_device{
+        eep=BestEepId,
+        type=guess_type_from_eep( BestEepId ),
+        first_seen=NewFirstSeen,
+        last_seen=Now,
+        availability=online,
+        telegram_count=TeleCount+1,
+        activity_timer=ResetTimer },
 
     NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
@@ -5940,18 +5992,20 @@ record_device_failure( Eurid, DeviceTable, MaybeInferredEepId ) ->
 
             DiscoverOrigin = listening,
 
-            NewDevice = #enocean_device{ eurid=Eurid,
-                                         name=undefined,
-                                         short_name=undefined,
-                                         eep=MaybeInferredEepId,
-                                         discovered_through=DiscoverOrigin,
-                                         first_seen=Now,
-                                         last_seen=Now,
-                                         availability=online,
-                                         telegram_count=0,
-                                         error_count=1,
-                                         expected_periodicity=none,
-                                         request_queue=queue:new() },
+            NewDevice = #enocean_device{
+                eurid=Eurid,
+                name=undefined,
+                short_name=undefined,
+                eep=MaybeInferredEepId,
+                type=guess_type_from_eep( MaybeInferredEepId ),
+                discovered_through=DiscoverOrigin,
+                first_seen=Now,
+                last_seen=Now,
+                availability=online,
+                telegram_count=0,
+                error_count=1,
+                expected_periodicity=none,
+                request_queue=queue:new() },
 
             % Necessarily new:
             NewDeviceTable = table:add_entry( Eurid, NewDevice, DeviceTable ),
@@ -6038,12 +6092,14 @@ record_known_device_failure( Device=#enocean_device{
     ResetTimer = reset_timer( MaybeActTimer, Eurid, Periodicity, NewFirstSeen,
         Device#enocean_device.telegram_count, ErrCount, Now ),
 
-    UpdatedDevice = Device#enocean_device{ eep=MaybeBestEepId,
-                                           first_seen=NewFirstSeen,
-                                           last_seen=Now,
-                                           availability=online,
-                                           error_count=ErrCount+1,
-                                           activity_timer=ResetTimer },
+    UpdatedDevice = Device#enocean_device{
+        eep=MaybeBestEepId,
+        type=guess_type_from_eep( MaybeBestEepId ),
+        first_seen=NewFirstSeen,
+        last_seen=Now,
+        availability=online,
+        error_count=ErrCount+1,
+        activity_timer=ResetTimer },
 
     NewDeviceTable = table:add_entry( Eurid, UpdatedDevice, DeviceTable ),
 
@@ -6186,7 +6242,8 @@ synchronous_stop( SrvPid ) ->
     receive
 
         oceanic_terminated ->
-            ok
+            trace_bridge:debug_fmt( "Oceanic server ~w terminated.",
+                                    [ SrvPid ] )
 
     end.
 
@@ -6338,6 +6395,70 @@ get_actuator_eeps() ->
    set_utils:new(  [ smart_plug, smart_plug_with_metering,
                      single_channel_module, double_channel_module ] ).
 
+
+
+-doc """
+Tries to derive from any specified EEP the type of the corresponding emitting
+device.
+""".
+-spec guess_type_from_eep( option( eep_id() ) ) -> option( device_type() ).
+guess_type_from_eep( _EepId=thermometer ) ->
+    thermometer;
+
+
+guess_type_from_eep( _EepId=thermo_hygro_low ) ->
+    thermo_hygro_sensor;
+
+guess_type_from_eep( _EepId=thermo_hygro_mid ) ->
+    thermo_hygro_sensor;
+
+guess_type_from_eep( _EepId=thermo_hygro_high ) ->
+    thermo_hygro_sensor;
+
+
+guess_type_from_eep( _EepId=motion_detector ) ->
+    motion_detector;
+
+guess_type_from_eep( _EepId=occupancy_detector ) ->
+    motion_detector;
+
+guess_type_from_eep( _EepId=motion_detector_with_illumination ) ->
+    motion_detector;
+
+
+guess_type_from_eep( _EepId=push_button ) ->
+    push_button;
+
+
+guess_type_from_eep( _EepId=double_rocker_switch_style_1 ) ->
+    double_rocker;
+
+guess_type_from_eep( _EepId=double_rocker_switch_style_2 ) ->
+    double_rocker;
+
+guess_type_from_eep( _EepId=double_rocker_multipress ) ->
+    double_rocker;
+
+
+guess_type_from_eep( _EepId=single_input_contact ) ->
+    opening_detector;
+
+
+guess_type_from_eep( _EepId=smart_plug ) ->
+    smart_plug;
+
+guess_type_from_eep( _EepId=smart_plug_with_metering ) ->
+    smart_plug;
+
+
+guess_type_from_eep( _EepId=single_channel_module ) ->
+    in_wall_module;
+
+guess_type_from_eep( _EepId=double_channel_module ) ->
+    in_wall_module;
+
+guess_type_from_eep( _MaybeEepId=undefined ) ->
+    undefined.
 
 
 
