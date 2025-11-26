@@ -280,7 +280,6 @@ decode_packet( _PacketType=response_type,
                 [ ReturnCode, State#oceanic_state.command_count ] ),
             { invalid, _ToSkipLen=0, NextMaybeTelTail, RespState };
 
-
         ok_return ->
             oceanic_common_command:decode_response_tail( WaitedCmdTrk,
                 DataTail, OptData, NextMaybeTelTail, RespState );
@@ -2156,10 +2155,10 @@ decode_vld_smart_plug_packet(
 
     end,
 
-    trace_bridge:warning_fmt(
+    trace_bridge:debug_fmt(
         "(non-metering plug ~ts reports an output power of ~w)",
         [ oceanic_text:get_best_naming( MaybeDeviceName, MaybeDeviceShortName,
-                                   SenderEurid ),
+                                        SenderEurid ),
           OutputPower ] ),
 
     MaybeCmd = oceanic_generated:get_second_for_vld_d2_00_cmd( CmdAsInt ),

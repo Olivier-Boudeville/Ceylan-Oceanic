@@ -323,10 +323,11 @@ telegram sending).
 
 
 -doc """
-Tells whether a given device is considered by Oceanic to be online or lost.
+Tells whether a given device is considered by Oceanic to be online, lost or
+unreachable (typically an actuator like a smart plug failing to acknowledge a
+request).
 """.
-% Maybe 'failed' could be added (e.g. if a smart plug failed to switch on):
--type availability_status() :: 'online' | 'lost'.
+-type availability_status() :: 'online' | 'lost' | 'unreachable'.
 
 
 -doc """
@@ -1324,7 +1325,7 @@ or a set thereof, and is to send at least one type of events.
   | 'motion_detector'
   | 'opening_detector' % Currently the only kind of single_contact that we know
   | 'push_button'
-  | 'double_rocker'
+  | 'double_rocker' % An Enocean gateway will appear as such to another one
   | 'smart_plug'
   | 'in_wall_module'.
 
@@ -4223,7 +4224,6 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                                 ExpandedReqQueue, DevRecord, State );
 
                        false ->
-
                             basic_utils:assert_equal( SentCount, MaxCount ),
 
                             manage_request_failure( ActEurid, DevRecord,
@@ -4537,7 +4537,10 @@ specified actuator.
 """.
 -spec manage_request_failure( eurid(), enocean_device(), count(),
                               oceanic_state() ) -> oceanic_state().
-manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
+manage_request_failure( ActEurid, DevRecord=#enocean_device{
+            waited_request_info={ #request_tracking{ operation=Operation },
+                                  _TimerRef } },
+        FailedCount, State=#oceanic_state{ event_listeners=EvListeners } ) ->
 
     % Special-casing Eltako smart plugs for their request failure, as if they
     % are already in the target state (e.g. off, for example initially, when all
@@ -4546,7 +4549,7 @@ manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
     % failed.
     %
     % As a result, as soon as a switch ack sent by such plugs is lost, the
-    % corresponding request will be reported failed.
+    % corresponding request will be reported to be failed.
 
     DevInfoTable = DevRecord#enocean_device.extra_info_table,
 
@@ -4572,10 +4575,17 @@ manage_request_failure( ActEurid, DevRecord, FailedCount, State ) ->
 
     ReqQueue = DevRecord#enocean_device.request_queue,
 
+    DeviceMsg = { onEnoceanDeviceRequestFailed,
+                  [ ActEurid, Operation, self() ] },
+
+    [ LPid ! DeviceMsg || LPid <- EvListeners ],
+
     % ReqInfo cleared, and ExpandedReqQueue to be set in
     % DevRecord next:
     %
-    handle_next_request( _MaybeReqInfo=undefined, ReqQueue, DevRecord, State ).
+    handle_next_request( _MaybeReqInfo=undefined, ReqQueue,
+        DevRecord#enocean_device{ availability=unreachable }, State ).
+
 
 
 % Trigger internal helpers.
@@ -6545,8 +6555,9 @@ new one obtained from the specified device timestamp.
 -spec update_last_seen_info( device_event(), option( timestamp() ) ) ->
                                                 option( timestamp() ).
 update_last_seen_info( DevEvent, MaybePrevTimestamp ) ->
+
     % Updates only if relevant:
-    case get_last_seen_info( DevEvent ) of
+    NewMaybeTimestamp = case get_last_seen_info( DevEvent ) of
 
         undefined ->
             MaybePrevTimestamp;
@@ -6554,7 +6565,14 @@ update_last_seen_info( DevEvent, MaybePrevTimestamp ) ->
         EventTimestamp ->
             EventTimestamp
 
-    end.
+    end,
+
+    trace_utils:debug_fmt( "From event ~w, with MaybePrevTimestamp=~w, "
+        "determined new last seen info as ~w.",
+        [ DevEvent, MaybePrevTimestamp, NewMaybeTimestamp ] ),
+
+    NewMaybeTimestamp.
+
 
 
 

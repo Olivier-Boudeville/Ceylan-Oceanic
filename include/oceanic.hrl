@@ -139,8 +139,10 @@
     % The timestamp (if any) at which this device was last seen:
     last_seen = undefined :: option( time_utils:timestamp() ),
 
-    % Tells whether this device is considered by Oceanic to be online or lost:
-    % (device might be just configured)
+    % Tells whether this device is considered by Oceanic to be online, lost,
+    % unreachable:
+    %
+    % (device might be as well only configured)
     %
     availability = undefined :: option( oceanic:availability_status() ),
 

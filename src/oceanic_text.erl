@@ -1997,7 +1997,10 @@ device_to_string( #enocean_device{ eurid=Eurid,
                     "this device is considered online";
 
                 lost ->
-                    "this device is considered lost"
+                    "this device is considered lost";
+
+               unreachable  ->
+                    "this device is considered unreachable"
 
             end,
 
