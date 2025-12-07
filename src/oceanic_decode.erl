@@ -1597,8 +1597,8 @@ decode_4bs_motion_detector_with_illumination_packet( DB_3,
             Lx;
 
         1001 ->
-            trace_bridge:warning( "Illumination over range reported for motion "
-                "detector ~ts.",
+            trace_bridge:warning_fmt( "Illumination over range reported "
+                "for motion detector ~ts.",
                 [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
             undefined;
 
@@ -2685,23 +2685,19 @@ get_button_locator( _Enum=3, _AppStyle=1 ) ->
 %
 get_button_locator( _Enum=0, _AppStyle=2 ) ->
     % button_ai / button A, top
-    %{ _Channel=1, _Pos=top };
-    { _Channel=2, _Pos=bottom };
+    { _Channel=1, _Pos=bottom };
 
 get_button_locator( _Enum=1, _AppStyle=2 ) ->
     % button_ao / button A, bottom
-    %{ _Channel=1, _Pos=bottom };
-    { _Channel=2, _Pos=top };
+    { _Channel=1, _Pos=top };
 
 get_button_locator( _Enum=2, _AppStyle=2 ) ->
     % button_bi / button B, top
-    %{ _Channel=2, _Pos=top };
-    { _Channel=1, _Pos=bottom };
+    { _Channel=2, _Pos=bottom };
 
 get_button_locator( _Enum=3, _AppStyle=2 ) ->
     % button_bo / button B, bottom
-    %{ _Channel=2, _Pos=bottom }.
-    { _Channel=1, _Pos=top }.
+    { _Channel=2, _Pos=top }.
 
 
 

@@ -83,7 +83,10 @@ Ceylan-Oceanic.
 
     get_eep_description/1, get_eep_description/2,
     get_eep_short_description/1, get_eep_short_description/2,
-    get_device_description/1 ]).
+    get_device_description/1,
+
+    device_operation_to_string/1,
+    request_tracking_to_string/1 ]).
 
 
 
@@ -145,6 +148,7 @@ Ceylan-Oceanic.
 -type decoded_optional_data() :: oceanic:decoded_optional_data().
 
 -type command_tracking() :: oceanic:command_tracking().
+-type request_tracking() :: oceanic:request_tracking().
 
 -type eep() :: oceanic:eep().
 -type eep_id() :: oceanic:eep_id().
@@ -157,6 +161,7 @@ Ceylan-Oceanic.
 -type device_table() :: oceanic:device_table().
 -type device_event() :: oceanic:device_event().
 -type device_description() :: oceanic:device_description().
+-type device_operation() :: oceanic:device_operation().
 -type device_state_change_spec() :: oceanic:device_state_change_spec().
 
 -type button_locator() :: oceanic:button_locator().
@@ -345,32 +350,32 @@ maybe_optional_data_to_string( DecodedOptData, _OptData ) ->
 -doc "Returns a textual description of the designated button.".
 -spec button_designator_to_string( button_designator() ) -> ustring().
 button_designator_to_string( button_ai ) ->
-    "bottom A button";
+    "A bottom button";
 
 button_designator_to_string( button_ao ) ->
-    "top A button";
+    "A top button";
 
 button_designator_to_string( button_bi ) ->
-    "bottom B button";
+    "B bottom button";
 
 button_designator_to_string( button_bo ) ->
-    "top B button".
+    "B top button".
 
 
 
 -doc "Returns a textual description of the located button.".
 -spec button_locator_to_string( button_locator() ) -> ustring().
 button_locator_to_string( { _Channel=1, _Pos=bottom } ) ->
-    "bottom A button";
+    "A bottom button";
 
 button_locator_to_string( { _Channel=1, _Pos=top } ) ->
-    "top A button";
+    "A top button";
 
 button_locator_to_string( { _Channel=2, _Pos=bottom } ) ->
-    "bottom B button";
+    "B bottom button";
 
 button_locator_to_string( { _Channel=2, _Pos=top } ) ->
-    "top B button".
+    "B top button".
 
 
 
@@ -832,10 +837,10 @@ get_button_state_description( _ButtonState=is_released ) ->
 -doc "Returns a textual description of the specified button transition.".
 -spec get_button_transition_description( button_transition() ) -> ustring().
 get_button_transition_description( _ButtonTrans=just_pressed ) ->
-    "just pressed";
+    "just-pressed";
 
 get_button_transition_description( _ButtonTrans=just_released ) ->
-    "just released".
+    "just-released".
 
 
 
@@ -1189,7 +1194,7 @@ device_event_to_string( #double_rocker_switch_event{
         dbm=MaybeDBm,
         security_level=MaybeSecLvl,
         first_action_button=FirstButtonLocator,
-        first_designator=FirstButtonDesignator,
+        %first_designator=FirstButtonDesignator,
         energy_bow=ButtonTransition,
         second_action_button=SecondButtonLocator,
         second_designator=SecondButtonDesignator,
@@ -1219,11 +1224,16 @@ device_event_to_string( #double_rocker_switch_event{
 
     end,
 
-    text_utils:format( "double-rocker device ~ts has its ~ts (~ts) ~ts, "
+    % "(~ts)" removed for button designator, as not only it duplicated the
+    % locator information, but also incorrectly as not taking into account the
+    % application style of the rocker; resulted in "xxx has its bottom A button
+    % (bottom B button) just pressed".
+    %
+    text_utils:format( "double-rocker device ~ts has its ~ts ~ts, "
         "whereas its second action ~ts, at ~ts; this is declared~ts; ~ts; ~ts",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           button_locator_to_string( FirstButtonLocator ),
-          button_designator_to_string( FirstButtonDesignator ),
+          %button_designator_to_string( FirstButtonDesignator ),
           get_button_transition_description( ButtonTransition ), SecondStr,
           time_utils:timestamp_to_string( Timestamp ),
           optional_data_to_string( MaybeTelCount, MaybeDestEurid, MaybeDBm,
@@ -2079,11 +2089,33 @@ device_to_string( #enocean_device{ eurid=Eurid,
 
 
 
--doc "Returns a description of the specified device, as seen from Oceanic.".
+-doc """
+Returns a textual description of the specified device, as seen from Oceanic.
+""".
 -spec get_device_description( enocean_device() ) -> device_description().
 get_device_description( Device ) ->
     text_utils:string_to_binary( device_to_string( Device ) ).
 
+
+
+-doc "Returns a textual description of the specified device operation.".
+-spec device_operation_to_string( device_operation() ) -> ustring().
+device_operation_to_string( _DevOp=switch_on ) ->
+    "switching on";
+
+device_operation_to_string( _DevOp=switch_off ) ->
+    "switching off".
+
+
+
+-doc """
+Returns a textual description of the specified request tracking information.
+""".
+-spec request_tracking_to_string( request_tracking() ) -> ustring().
+request_tracking_to_string( #request_tracking{ target_eurid=Eurid,
+                                               operation=DevOp } ) ->
+    text_utils:format( "the tracking of a ~ts operation onto ~ts",
+        [ device_operation_to_string( DevOp ), eurid_to_string( Eurid ) ] ).
 
 
 
@@ -2093,14 +2125,14 @@ get_device_description( Device ) ->
 -spec command_tracking_to_string( command_tracking() ) -> ustring().
 % Requester is either PID or 'internal':
 command_tracking_to_string( #command_tracking{ command_type=undefined,
-                                             command_telegram=CmdTelegram,
-                                             requester=Requester } ) ->
+                                               command_telegram=CmdTelegram,
+                                               requester=Requester } ) ->
     text_utils:format( "command based on ~ts, on behalf of "
         "requester ~w", [ telegram_to_string( CmdTelegram ), Requester ] );
 
 command_tracking_to_string( #command_tracking{ command_type=CmdType,
-                                             command_telegram=CmdTelegram,
-                                             requester=Requester } ) ->
+                                               command_telegram=CmdTelegram,
+                                               requester=Requester } ) ->
     text_utils:format( "command of type ~p, based on ~ts, on behalf of "
         "requester ~w",
         [ CmdType, telegram_to_string( CmdTelegram ), Requester ] ).
@@ -2275,11 +2307,13 @@ specification.
 device_state_change_spec_to_string( _DevType=double_rocker,
         _CanonDRSCSpec={ Channel, ButPos, ButTrans } ) ->
     text_utils:format( "double-rocker channel #~B, ~ts button position "
-                       "and a ~ts transition", [ Channel, ButPos, ButTrans ] );
+        "and a ~ts transition",
+        [ Channel, ButPos, get_button_transition_description( ButTrans ) ] );
 
 device_state_change_spec_to_string( _DevType=push_button,
                                     _CanonPBSCSpec=ButTrans ) ->
-    text_utils:format( "a toggle on a ~ts transition", [ ButTrans ] );
+    text_utils:format( "a toggle on a ~ts transition",
+                       [ get_button_transition_description( ButTrans ) ] );
 
 device_state_change_spec_to_string( DevType, _CanonSCSpec ) ->
     text_utils:format( "an unknown state change for a device of type '~ts'",
@@ -2391,7 +2425,8 @@ canon_emitted_event_spec_to_string(
 
 canon_emitted_event_spec_to_string( _CEES={ DevDesig, DevOp } ) ->
     text_utils:format( "actuator ~ts, to perform a ~ts operation",
-                       [ device_designator_to_string( DevDesig ), DevOp ] ).
+        [ device_designator_to_string( DevDesig ),
+          device_operation_to_string( DevOp ) ] ).
 
 
 
@@ -2408,7 +2443,8 @@ canon_emitted_event_spec_to_string( _CEES={ DevDesig, _MaybeDevOp=undefined },
 
 canon_emitted_event_spec_to_string( _CEES={ DevDesig, DevOp }, OcSrvPid ) ->
     text_utils:format( "~ts, to perform a ~ts operation",
-        [ oceanic:get_device_description( DevDesig, OcSrvPid ), DevOp ] ).
+        [ oceanic:get_device_description( DevDesig, OcSrvPid ),
+          device_operation_to_string( DevOp ) ] ).
 
 
 -doc """
