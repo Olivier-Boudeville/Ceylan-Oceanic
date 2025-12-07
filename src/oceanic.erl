@@ -97,8 +97,7 @@ through an Oceanic server**.
 % records:
 %
 -export([ get_event_type/1, get_source_eurid/1,
-          get_channel/1,
-          get_button_reference/1,
+          get_channel/1, get_button_reference/1,
 
           get_maybe_device_name/1, get_maybe_device_short_name/1,
           get_best_device_name_from/1, get_best_device_name_from/2,
@@ -106,7 +105,8 @@ through an Oceanic server**.
           get_maybe_eep/1, resolve_eep/1, get_broadcast_eurid/0,
           get_timestamp/1, get_last_seen_info/1, update_last_seen_info/2,
           get_subtelegram_count/1, get_maybe_destination_eurid/1,
-          get_maybe_dbm/1, get_maybe_security_level/1, device_triggered/1 ]).
+          get_maybe_dbm/1, get_maybe_security_level/1,
+          device_triggered/1 ]).
 
 
 % Helper API for Oceanic user code:
@@ -115,7 +115,8 @@ through an Oceanic server**.
           string_to_eurid/1,
 
           get_reciprocal_state_change_spec/2,
-          event_matches_trigger/2,
+          is_cits_matching/3, event_matches_trigger/2,
+          get_designator_pair/1,
 
           get_all_device_types/0, is_valid_device_type/1,
 
@@ -137,8 +138,8 @@ through an Oceanic server**.
           get_device_convention/2, check_device_operation/1,
           handle_next_command/2, handle_next_request/4,
 
+          canonicalise_listened_event_spec/1,
           canonicalise_listened_event_specs/1,
-          canonicalise_listened_event_specs/2,
           canonicalise_emitted_event_specs/1,
           canonicalise_emitted_event_specs/2,
 
@@ -213,7 +214,7 @@ own economy (then notified as a term).
 
 A requester process uses this server for command sending on its behalf, and is
 to be notified of the outcome of it (see
-oceanic_common_command:send_common_command/2).
+`oceanic_common_command:send_common_command/2`).
 """.
 -type requester() :: pid() | 'internal'.
 
@@ -606,11 +607,26 @@ link table entries).
 
 
 -doc """
-Describes a channel (e.g. for a double rocker having channel A as first row, and
-channel B as second row).
+Describes a channel.
+
+To interpret a double rocker, once the back labels are oriented so that they can
+be read directly, just flip horizontally the double rocker and then rotate it of
++Pi/2. Then two columns can be seen, the left one being channel A (e.g
+disc/circle), the right one being channel B (e.g. +/-).
+
+Said differently, in a "normal" position (flipped horizontally when labels were
+readable), the top row is channel B, and the botton one is channel A); one
+should consider that labels should have been rotated of +Pi/2 to be less
+confusing).
 
 Instead of a letter, channels are designated here with an integer, so 1
 corresponds to channel A, 2 to channel B, etc.
+
+To make the matter worse, pushing the button at the same location of an
+identical double rocker except for the displayed pictograms may rely on
+different conventions (doubly-inversed, in terms of A/B and top/bottom...); so
+for example arrow in/arrow out will not correspond to disc/circle, and Sun/Moon
+will not correspond to +/-; just adjust accordingly in one's configuration.
 
 A single rocker uses only one channel, A.
 """.
@@ -809,8 +825,9 @@ In application style 1, which is our reference, the O position is the top/up
 one, while the I position is the bottom/down one, whereas the opposite holds for
 application style 2.
 
-One prefer designating buttons based on their semantics (thus this type) or
-their channel and position (as a keypad, regardless of any specific meaning).
+As it is remarkably unclear, even if one may designate buttons based on their
+semantics (thus this type), one may prefer thinking in terms of channel and
+position (as a keypad, regardless of any specific meaning).
 """.
 -type button_designator() ::
                  % Comments apply to our reference, application style 1:
@@ -1475,7 +1492,7 @@ Abbreviated as CSCS.
 
 -doc """
 Describes how the server can be triggered by a device, by specifying its type
-and the event that it may have sent - which will lead the trigger to be
+and the precise event that it may have sent - which will lead the trigger to be
 validated.
 
 Notably used to decode incoming trigger events.
@@ -1496,7 +1513,7 @@ For example, `{double_rocker, {2, bottom, just_released}}.`.
 -doc """
 A canonical incoming trigger specification.
 
-Canonicalised, internal version of incoming_trigger_spec().
+Canonicalised, internal version of `incoming_trigger_spec/0`.
 
 Abbreviated as CITS.
 """.
@@ -1525,14 +1542,30 @@ User-level type.
 
 
 -doc """
-Canonicalised, internal version of listened_event_spec().
+Canonicalised, internal version of `listened_event_spec/0`.
 
 For example: `{"25af97a0", {double_rocker, {2, bottom, just_released}}}`.
+
+A device designator is still used rather than directly an EURID, as depending on
+use a short name can be referenced without having the calling code able to
+determine an EURID from it.
 
 Abbreviated as CLES.
 """.
 -type canon_listened_event_spec() ::
     { EmitterDevice :: device_designator(), canon_incoming_trigger_spec() }.
+
+
+-doc """
+Fully canonicalised version of `canon_listened_event_spec/0`.
+
+For example: `{"25af97a0", {double_rocker, {2, bottom, just_released}}}`.
+
+No short names anymore, just EURIDs here.
+Abbreviated as FCLES.
+""".
+-type fully_canon_listened_event_spec() ::
+    { EmitterEurid :: eurid(), canon_incoming_trigger_spec() }.
 
 
 -doc """
@@ -1672,6 +1705,8 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
 
                incoming_trigger_spec/0, canon_incoming_trigger_spec/0,
                listened_event_spec/0, canon_listened_event_spec/0,
+               fully_canon_listened_event_spec/0,
+
                emitted_event_spec/0, event_match_trigger_outcome/0,
 
                timer_ref/0 ]).
@@ -3098,6 +3133,26 @@ get_maybe_matching_cits( EmitterEurid, DevShortName, _CLESs=[ _ | T ] ) ->
 
 
 
+
+-doc """
+Returns whether the specified CITS matches the specified event
+""".
+-spec is_cits_matching( device_event(), eurid(),
+                        canon_listened_event_spec() ) -> boolean().
+is_cits_matching( DevEvent, DevEurid, CITS ) ->
+
+    % We just want to interpret the explicitly-defined CITS:
+    case interpret_cits_matching( CITS, DevEurid, DevEvent ) of
+
+        { true, _DevEurid, _NewStatus=on } ->
+            true;
+
+        _ -> % Corresponds to 'false' or {true, _DevEurid, _NewStatus=off}:
+            false
+
+    end.
+
+
 -doc """
 Reports any trigger matching and corresponding device new logical status, based
 on the specified CITS and device event.
@@ -3177,27 +3232,30 @@ interpret_cits_matching( CITS, _DevEurid, DevEvent ) ->
 Canonicalises the specified user-level listening event specifications.
 
 Checks everything but the targeted devices: device short names may still be
-specified instead of actual EURIDs: the actual enocean_device records will be
+specified instead of actual EURIDs: the actual `enocean_device` records will be
 needed for the final conversions to EURIDs.
 """.
 -spec canonicalise_listened_event_specs( [ listened_event_spec() ] ) ->
                                             [ canon_listened_event_spec() ].
 % Better than "bad generator" with a list comprehension:
 canonicalise_listened_event_specs( LESs ) when is_list( LESs ) ->
-    canonicalise_listened_event_specs( LESs, _Acc=[] );
+    [ canonicalise_listened_event_spec( LES ) || LES <- LESs ];
 
 canonicalise_listened_event_specs( Other ) ->
     throw( { invalid_listened_event_specs, non_list, Other } ).
 
 
 
-% (sub-helper)
-canonicalise_listened_event_specs( _LESs=[], Acc ) ->
-    % Preferring preserving order:
-    lists:reverse( Acc );
+-doc """
+Canonicalises the specified user-level listening event specification.
 
-canonicalise_listened_event_specs( _LESs=[ { MaybeUserDevDesig, ITS } | T ],
-                                   Acc ) ->
+Checks everything but the targeted devices: device short names may still be
+specified instead of actual EURIDs: the actual `enocean_device` records will be
+needed for the final conversions to EURIDs.
+""".
+-spec canonicalise_listened_event_spec( listened_event_spec() ) ->
+                                            canon_listened_event_spec().
+canonicalise_listened_event_spec( { MaybeUserDevDesig, ITS } ) ->
 
     DevDesig = get_internal_device_designator( MaybeUserDevDesig ),
 
@@ -3236,11 +3294,9 @@ canonicalise_listened_event_specs( _LESs=[ { MaybeUserDevDesig, ITS } | T ],
 
     end,
 
-    CLES = { DevDesig, CITS },
+    _CLES={ DevDesig, CITS };
 
-    canonicalise_listened_event_specs( T, [ CLES | Acc ] );
-
-canonicalise_listened_event_specs( _LESs=[ Other | _T ], _Acc ) ->
+canonicalise_listened_event_spec( Other ) ->
     throw( { invalid_listened_event_spec, non_pair, Other } ).
 
 
@@ -3632,20 +3688,19 @@ trigger_actuators_reciprocal( CEESs, OcSrvPid ) ->
 
 -doc "Performs the specified device action.".
 -spec perform_action( device_action(), oceanic_state() ) -> oceanic_state().
-perform_action( _DeviceAction={ DeviceOperation, DeviceDesignator }, State ) ->
+perform_action( _DeviceAction={ DevOp, DeviceDesignator }, State ) ->
 
     case get_designated_eurid( DeviceDesignator, State ) of
 
         undefined ->
-
             trace_bridge:error_fmt( "Unknown device designated by '~w'; "
-                "operation '~w' not performed.",
-                [ DeviceDesignator, DeviceOperation ] ),
+                "~ts operation not performed.", [ DeviceDesignator,
+                    oceanic_text:device_operation_to_string( DevOp ) ] ),
 
             State;
 
         DevEurid ->
-            perform_action_on( DevEurid, DeviceOperation, State )
+            perform_action_on( DevEurid, DevOp, State )
 
     end;
 
@@ -3734,22 +3789,21 @@ get_designated_device_from_short_name( DevShortName, _Devs=[ _Dev | T ] ) ->
 -doc "Performs the specified action on the specified device.".
 -spec perform_action_on( eurid(), device_operation(), oceanic_state() ) ->
                                                 oceanic_state().
-perform_action_on( TargetEurid, DeviceOperation, State )
-        when DeviceOperation =:= switch_on; DeviceOperation =:= switch_off ->
+perform_action_on( TargetEurid, DevOp, State )
+        when DevOp =:= switch_on; DevOp =:= switch_off ->
 
     cond_utils:if_defined( oceanic_debug_requests, trace_bridge:debug_fmt(
-        "Performing operation ~ts on device ~ts.",
-        [ DeviceOperation,
+        "Performing a ~ts operation on device ~ts.",
+        [ oceanic_text:device_operation_to_string( DevOp ),
           oceanic_text:describe_device( TargetEurid, State ) ] ) ),
 
-    trigger_actuator_impl( TargetEurid, DeviceOperation, State );
+    trigger_actuator_impl( TargetEurid, DevOp, State );
 
-perform_action_on( TargetEurid, DeviceOperation, State ) ->
+perform_action_on( TargetEurid, DevOp, State ) ->
 
     trace_bridge:error_fmt( "Unsupported operation ~w (requested to be "
         "performed on device ~ts); nothing done.",
-        [ DeviceOperation,
-          oceanic_text:describe_device( TargetEurid, State ) ] ),
+        [ DevOp, oceanic_text:describe_device( TargetEurid, State ) ] ),
 
     State.
 
@@ -4020,7 +4074,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                 DevRecord ->
                     ReqTrk = #request_tracking{ request_telegram=RockerTelegram,
                                                 target_eurid=ActEurid,
-                                                operation=fixme,
+                                                operation=unknown_operation,
                                                 sent_count=1,
                                                 % No requester PID:
                                                 requester=internal },
@@ -4029,6 +4083,7 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
                     % MaybeReqInfo and ExpandedReqQueue to be set in DevRecord
                     % next:
+                    %
                     MaybeReqInfo = DevRecord#enocean_device.waited_request_info,
 
                     handle_next_request( MaybeReqInfo, ExpandedReqQueue,
@@ -4256,10 +4311,11 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                            ThisTimerRef } ->
 
                     trace_bridge:error_fmt( "Time-out received for "
-                            "internal command ~ts (timer reference: ~w), "
-                            "and ignored.",
-                            [ oceanic_text:command_tracking_to_string(
-                                CmdReq ), ThisTimerRef ] ),
+                        "internal command ~ts (timer reference: ~w), and "
+                        "ignored (possibly another UNIX process is using "
+                        "that tty).",
+                        [ oceanic_text:command_tracking_to_string( CmdReq ),
+                          ThisTimerRef ] ),
 
                     State#oceanic_state{ waited_command_info=undefined };
 
@@ -4538,7 +4594,9 @@ specified actuator.
 -spec manage_request_failure( eurid(), enocean_device(), count(),
                               oceanic_state() ) -> oceanic_state().
 manage_request_failure( ActEurid, DevRecord=#enocean_device{
-            waited_request_info={ #request_tracking{ operation=Operation },
+            name=MaybeDevName,
+            short_name=MaybeDevShortName,
+            waited_request_info={ #request_tracking{ operation=DevOp },
                                   _TimerRef } },
         FailedCount, State=#oceanic_state{ event_listeners=EvListeners } ) ->
 
@@ -4557,9 +4615,11 @@ manage_request_failure( ActEurid, DevRecord=#enocean_device{
     Convention =
         table:get_value_with_default( convention, standard, DevInfoTable ),
 
-    Msg = text_utils:format( "Request time-out received for actuator ~ts, "
-        "giving up re-sending it, as it reached its maximum send count of ~B.",
-         [ oceanic_text:describe_device( ActEurid, State ), FailedCount ] ),
+    Msg = text_utils:format( "Request time-out received for a ~ts operation "
+        "on actuator ~ts, giving up re-sending it, as it reached its maximum "
+        "send count of ~B.",
+        [ oceanic_text:device_operation_to_string( DevOp ),
+          oceanic_text:describe_device( ActEurid, State ), FailedCount ] ),
 
     case Convention of
 
@@ -4576,7 +4636,7 @@ manage_request_failure( ActEurid, DevRecord=#enocean_device{
     ReqQueue = DevRecord#enocean_device.request_queue,
 
     DeviceMsg = { onEnoceanDeviceRequestFailed,
-                  [ ActEurid, Operation, self() ] },
+        [ ActEurid, MaybeDevName, MaybeDevShortName, DevOp, self() ] },
 
     [ LPid ! DeviceMsg || LPid <- EvListeners ],
 
@@ -4837,8 +4897,10 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
                 ShrunkReqQueue } ->
 
             cond_utils:if_defined( oceanic_debug_requests,
-                trace_bridge:debug_fmt( "Dequeuing next request ~w, "
-                    "enqueuing as a new command.", [ OldestReqTrk ] ) ),
+                trace_bridge:debug_fmt( "Dequeuing ~ts, enqueuing "
+                    "as a new command.",
+                    [ oceanic_text:request_tracking_to_string(
+                        OldestReqTrk ) ] ) ),
 
             CmdState = execute_command_impl( _CmdType=telegram_sending,
                 ReqTelegram, _Requester=internal, State ),
@@ -4854,9 +4916,10 @@ handle_next_request( _MaybeWaitRqInfo=undefined, CurrentReqQueue, DevRecord,
 
             cond_utils:if_defined( oceanic_debug_requests,
                 trace_bridge:debug_fmt( "No request was on the air for ~ts, "
-                    "dequeued ~w posted as a command (size of shrunk "
+                    "dequeued ~ts posted as a command (size of shrunk "
                     "queue: ~B; timer ref: ~w).",
-                    [ oceanic_text:eurid_to_string( ActEurid ), OldestReqTrk,
+                    [ oceanic_text:eurid_to_string( ActEurid ),
+                      oceanic_text:request_tracking_to_string( OldestReqTrk ),
                       queue:len( ShrunkReqQueue ), TimerRef ] ) ),
 
             ReqInfo = { OldestReqTrk, TimerRef },
@@ -6567,9 +6630,9 @@ update_last_seen_info( DevEvent, MaybePrevTimestamp ) ->
 
     end,
 
-    trace_utils:debug_fmt( "From event ~w, with MaybePrevTimestamp=~w, "
-        "determined new last seen info as ~w.",
-        [ DevEvent, MaybePrevTimestamp, NewMaybeTimestamp ] ),
+    %trace_utils:debug_fmt( "From event ~w, with MaybePrevTimestamp=~w, "
+    %    "determined new last seen info as ~w.",
+    %    [ DevEvent, MaybePrevTimestamp, NewMaybeTimestamp ] ),
 
     NewMaybeTimestamp.
 
