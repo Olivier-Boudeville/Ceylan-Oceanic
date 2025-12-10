@@ -2323,7 +2323,7 @@ try_init( _Count=MaxCount, MaxCount, _CommonCmd, _CmdTelegram, _State ) ->
     %
     trace_bridge:error_fmt( "Unable to determine the base EURID of this "
         "gateway, despite ~B attempts "
-        "(is the Enocean tty used by another process?).",
+        "(is the tty of the Enocean gateway used by another process?).",
         [ MaxCount ] ),
 
     throw( no_base_eurid_obtained );
@@ -3112,8 +3112,7 @@ Returns (any, first) CITS that matches the specified emitter EURID, among the
 specified CLES.
 """.
 -spec get_maybe_matching_cits( eurid(), option( device_short_name() ),
-                               [ canon_listened_event_spec() ] ) ->
-                                    option( canon_incoming_trigger_spec() ).
+  [ canon_listened_event_spec() ] ) -> option( canon_incoming_trigger_spec() ).
 get_maybe_matching_cits( _EmitterEurid, _MaybeDevShortName, _CLESs=[] ) ->
     undefined;
 
@@ -4019,11 +4018,11 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
         { triggerActuatorsReciprocal, CEESs } ->
 
-             cond_utils:if_defined( oceanic_debug_activity,
+            cond_utils:if_defined( oceanic_debug_activity,
                 trace_bridge:debug_fmt( "Triggering reciprocally "
                     "actuators based on ~w.", [ CEESs ] ) ),
 
-           TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
+            TrigState = trigger_actuators_reciprocal_impl( CEESs, State ),
             oceanic_loop( ToSkipLen, MaybeTelTail, TrigState );
 
 
@@ -4256,14 +4255,24 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                     case SentCount < MaxCount of
 
                         true ->
-                            cond_utils:if_defined( oceanic_debug_requests,
-                                trace_bridge:warning_fmt( "Request time-out "
-                                    "received for actuator ~ts, re-sending it, "
-                                    "as it was already sent ~B times, while "
-                                    "maximum send count is ~B.",
-                                    [ oceanic_text:describe_device( ActEurid,
-                                                                    State ),
-                                      SentCount, MaxCount ] ) ),
+
+                            % As checking retries is often of interest:
+
+                            %cond_utils:if_defined( oceanic_debug_requests,
+                            %    trace_bridge:warning_fmt(
+
+                            trace_bridge:debug_fmt(
+                                "Request time-out received for a ~ts "
+                                "operation for actuator ~ts, re-sending "
+                                "it, as it was already sent ~B times, "
+                                "while its maximum send count is ~B.",
+                                [ oceanic_text:device_operation_to_string(
+                                    ReqTrk#request_tracking.operation ),
+                                  oceanic_text:describe_device( ActEurid,
+                                                                State ),
+                                  SentCount, MaxCount ] ),
+
+                            %),
 
                             NewReqTrk = ReqTrk#request_tracking{
                                 sent_count=SentCount+1 },
@@ -4516,6 +4525,23 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
 
                 { decoded, DeviceEvent, _MaybeDiscoverOrigin, _IsBackOnline,
                   _MaybeDevice, _NewMaybeTelTail, _NewState } ->
+                    DeviceEvent;
+
+                { unresolved_first_seen, DeviceEvent, Device, _NewToSkipLen,
+                  _NewMaybeTelTail, _NewState } ->
+                    trace_bridge:warning_fmt( "An unresolved device (~ts) was "
+                        "first seen, with the following event: ~ts",
+                        [ oceanic_text:device_to_string( Device ),
+                          oceanic_text:device_event_to_string( DeviceEvent )
+                        ] ),
+                    DeviceEvent;
+
+                { unresolved, DeviceEvent, _NewToSkipLen, _NewMaybeTelTail,
+                  _NewState } ->
+                    trace_bridge:warning_fmt( "An already-seen unresolved "
+                        "device sent the following event: ~ts",
+                        [ oceanic_text:device_event_to_string( DeviceEvent )
+                        ] ),
                     DeviceEvent;
 
                 { DecError, _NewToSkipLen, _NewMaybeTelTail, _NewState } ->
@@ -4833,6 +4859,9 @@ trigger_actuators_impl( _CEESs=[], State ) ->
     State;
 
 trigger_actuators_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ], State ) ->
+
+    wait_between_sendings(),
+
     TrigState = trigger_actuator_impl( ActEurid, MaybeDevOp, State ),
     trigger_actuators_impl( T, TrigState ).
 
@@ -4871,8 +4900,21 @@ trigger_actuators_reciprocal_impl( _CEESs=[], State ) ->
 
 trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
                                    State ) ->
+    wait_between_sendings(),
+
     TrigState = trigger_actuator_reciprocal_impl( ActEurid, MaybeDevOp, State ),
     trigger_actuators_reciprocal_impl( T, TrigState ).
+
+
+
+-doc """
+Waits between consecutived sending, in the hope that it helps too much
+synchronicity and thus too many collisions in the air between
+sendings / receivings (and thus lost telegrams).
+""".
+wait_between_sendings() ->
+    timer:sleep( _Ms=133 ).
+    %ok.
 
 
 
