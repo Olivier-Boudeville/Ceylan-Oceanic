@@ -75,7 +75,9 @@ that the last element of the returned tuples is the Oceanic state.
       oceanic_state() }
 
     % Device not configured and EEP cannot be determined, once already seen:
+    %
     % (even less interest in returning the corresponding device)
+    %
   | { 'unresolved', unresolved_device_event(), ToSkipLen :: count(),
       NextMaybeTelTail :: option( telegram_tail() ), oceanic_state() }
 
@@ -935,7 +937,8 @@ handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
                                operation=switch_on }, TimerRef } },
-        _ButtonLocator={ _Channel=1, _ButPos=top },
+        %_ButtonLocator={ _Channel=1, _ButPos=top },
+        _ButtonLocator={ _Channel, _ButPos=top },
         _ButtonTransition=just_pressed, SenderEurid, State )  ->
 
     { ok, cancel } = timer:cancel( TimerRef ),
@@ -952,7 +955,8 @@ handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
                                operation=switch_off }, TimerRef } },
-        _ButtonLocator={ _Channel=1, _ButPos=bottom },
+        %_ButtonLocator={ _Channel=1, _ButPos=bottom },
+        _ButtonLocator={ _Channel, _ButPos=bottom },
         _ButtonTransition=just_pressed, SenderEurid, State )  ->
 
     { ok, cancel } = timer:cancel( TimerRef ),
@@ -2209,6 +2213,7 @@ decode_vld_smart_plug_packet(
     Event = #smart_plug_status_report_event{
         source_eurid=SenderEurid,
         name=MaybeDeviceName,
+        short_name=MaybeDeviceShortName,
         eep=MaybeEepId,
         timestamp=Now,
         last_seen=MaybeLastSeen,
