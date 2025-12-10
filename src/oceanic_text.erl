@@ -1831,7 +1831,7 @@ get_name_description( _MaybeName=undefined, ShortName, Eurid ) ->
                        [ ShortName, eurid_to_string( Eurid ) ] );
 
 get_name_description( Name, _MaybeShortName=undefined, Eurid ) ->
-    text_utils:format( "'~ts' (whose EURID is ~ts)",
+    text_utils:format( "named '~ts' (whose EURID is ~ts)",
                        [ Name, eurid_to_string( Eurid ) ] );
 
 get_name_description( Name, ShortName, Eurid ) ->
