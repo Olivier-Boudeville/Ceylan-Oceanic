@@ -172,30 +172,32 @@ actual_test( TtyPath ) ->
     % broadcast transmission); its EEP is double_rocker_switch (F6-02-01):
     %
     PressOnButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
-        SourceEurid, SourceAppStyle, SwitchOnButtonLoc, pressed,
+        SourceEurid, SourceAppStyle, SwitchOnButtonLoc, just_pressed,
         MaybeTargetEurid ),
 
+    ReleaseOnButtonTelegram =
+        oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+            SourceAppStyle, SwitchOnButtonLoc, just_released,
+            MaybeTargetEurid ),
 
-    ReleaseOnButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
-        SourceEurid, SourceAppStyle, SwitchOnButtonLoc, released,
-        MaybeTargetEurid ),
 
+    PressOffButtonTelegram =
+        oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+            SourceAppStyle, SwitchOffButtonLoc, just_pressed,
+            MaybeTargetEurid ),
 
-    PressOffButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
-        SourceEurid, SourceAppStyle, SwitchOffButtonLoc, pressed,
-        MaybeTargetEurid ),
-
-    ReleaseOffButtonTelegram = oceanic_encode:encode_double_rocker_switch_telegram(
-        SourceEurid, SourceAppStyle, SwitchOffButtonLoc,
-        released, MaybeTargetEurid ),
+    ReleaseOffButtonTelegram =
+        oceanic_encode:encode_double_rocker_switch_telegram( SourceEurid,
+            SourceAppStyle, SwitchOffButtonLoc, just_released,
+            MaybeTargetEurid ),
 
     SwitchTelegrams = [ PressOnButtonTelegram, ReleaseOnButtonTelegram,
                         PressOffButtonTelegram, ReleaseOffButtonTelegram ],
 
     basic_utils:ignore_unused( [ SourceAppStyle, SwitchTelegrams ] ),
 
-    DecodeStr = case oceanic:decode_telegram( PressOffButtonTelegram,
-                                              OcSrvPid ) of
+    DecodeStr = case oceanic_decode:decode_telegram( PressOffButtonTelegram,
+                                                     OcSrvPid ) of
 
         DecodingError when is_atom( DecodingError ) ->
             text_utils:format( "a decoding error (~ts)", [ DecodingError ] );
@@ -209,7 +211,7 @@ actual_test( TtyPath ) ->
     test_facilities:display( "The generated telegrams, "
         "based on source EURID ~ts, are: ~ts"
         "Decoding the 'pressed' one for the 'off' button results in ~ts",
-        [ oceanic:eurid_to_string( SourceEurid ),
+        [ oceanic_text:eurid_to_string( SourceEurid ),
           text_utils:strings_to_string( [
             oceanic:telegram_to_string( T ) || T <- SwitchTelegrams ] ),
           DecodeStr ] ),
