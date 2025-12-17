@@ -78,7 +78,8 @@
 %
 % (at least 1)
 %
--define( default_max_send_count, 50 ).
+% This is huge, yet wireless communications are awfully unreliable:
+-define( default_max_send_count, 100 ).
 % For testing:
 %-define( default_max_send_count, 5 ).
 
