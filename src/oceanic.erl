@@ -4277,6 +4277,16 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
                             NewReqTrk = ReqTrk#request_tracking{
                                 sent_count=SentCount+1 },
 
+                            % Actually useless, as this time-out has already
+                            % been triggered after a longer delay (see
+                            % default_max_request_response_waiting_duration):
+                            %
+                            % Blocking a bit the server, but possibly of help:
+                            %DelayMs = random_utils:get_uniform_value(
+                            %    _Min=10, _Max=400 ),
+                            %
+                            %timer:sleep( DelayMs ),
+
                             ReqQueue = DevRecord#enocean_device.request_queue,
 
                             ExpandedReqQueue = queue:in( NewReqTrk, ReqQueue ),
@@ -4908,13 +4918,16 @@ trigger_actuators_reciprocal_impl( _CEESs=[ { ActEurid, MaybeDevOp } | T ],
 
 
 -doc """
-Waits between consecutived sending, in the hope that it helps too much
+Waits between consecutived sending, in the hope that it prevents too much
 synchronicity and thus too many collisions in the air between
 sendings / receivings (and thus lost telegrams).
 """.
 wait_between_sendings() ->
-    timer:sleep( _Ms=133 ).
-    %ok.
+    % Increased, as 133 was suspected of worsening a lot the situation:
+    %timer:sleep( _Ms=283 ).
+
+    % Was possibly counter-productive:
+    ok.
 
 
 
