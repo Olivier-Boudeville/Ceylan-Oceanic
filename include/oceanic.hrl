@@ -78,8 +78,14 @@
 %
 % (at least 1)
 %
-% This is huge, yet wireless communications are awfully unreliable:
--define( default_max_send_count, 100 ).
+% Wireless communications are certainly unreliable, but if one considers
+% specifying a much higher count here (e.g. 100), then the root cause is most
+% probably a bad reception quality, due to (1) a bad antenna (try another one),
+% or, less likely, (2) a bad Enocean gateway (USB dongle) or (3) devices that
+% are too far apart. Fix these elements before increasing the next count:
+%
+-define( default_max_send_count, 20 ).
+
 % For testing:
 %-define( default_max_send_count, 5 ).
 
