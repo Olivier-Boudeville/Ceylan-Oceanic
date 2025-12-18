@@ -932,7 +932,9 @@ handle_possible_eltako_switching_request_answer(
 
     State;
 
-% switch_on request waited:
+% This device is tracking this emitter (SenderEurid), and a switch_on request is
+% waited:
+%
 handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
@@ -950,7 +952,7 @@ handle_possible_eltako_switching_request_answer(
     oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
         Device#enocean_device.request_queue, Device, State );
 
-% switch_off request waited:
+% Same, but a switch_off request is waited:
 handle_possible_eltako_switching_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
@@ -985,8 +987,12 @@ handle_possible_eltako_switching_request_answer(
     %oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
     %    Device#enocean_device.request_queue, Device, State ).
 
-    State.
+    State;
 
+% Device is tracking another emitter (target_eurid not matching SenderEurid):
+handle_possible_eltako_switching_request_answer( _Device, _ButtonLocator,
+        _ButtonTransition, _SenderEurid, State ) ->
+    State.
 
 
 -doc """
@@ -2305,7 +2311,7 @@ decode_vld_smart_plug_with_metering_packet(
       UndefinedDiscoverOrigin, IsBackOnline, MaybeDeviceName,
         MaybeDeviceShortName, MaybeEepId } =
         oceanic:record_known_device_success( Device, DeviceTable,
-             % Already known if branching here:
+            % Already known if branching here:
             _InferredEepId=smart_plug_with_metering ),
 
     RecState = State#oceanic_state{ device_table=NewDeviceTable },
@@ -2512,7 +2518,10 @@ handle_possible_power_request_answer(
 
     State;
 
-% switch_on request waited:
+
+% This device is tracking this emitter (SenderEurid), and a switch_on request is
+% waited:
+%
 handle_possible_power_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
@@ -2529,7 +2538,7 @@ handle_possible_power_request_answer(
         Device#enocean_device.request_queue, Device, State );
 
 
-% switch_off request waited:
+% Same, but a switch_off request is waited:
 handle_possible_power_request_answer(
         Device=#enocean_device{ waited_request_info={
             #request_tracking{ target_eurid=SenderEurid,
@@ -2559,9 +2568,13 @@ handle_possible_power_request_answer(
         [ Operation, oceanic_text:get_device_description( Device ) ] ),
 
     oceanic:handle_next_request( _MaybeWaitRqInfo=undefined,
-        Device#enocean_device.request_queue, Device, State ).
+        Device#enocean_device.request_queue, Device, State );
 
 
+% Device is tracking another emitter (target_eurid not matching SenderEurid):
+handle_possible_power_request_answer( _Device, _PowerReport, _SenderEurid,
+                                      State )  ->
+    State.
 
 
 
