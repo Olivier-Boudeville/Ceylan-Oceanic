@@ -4612,7 +4612,18 @@ oceanic_loop( ToSkipLen, MaybeTelTail, State ) ->
             trace_bridge:debug_fmt(
                 "Oceanic server ~w terminated synchronously.", [ self() ] );
 
-        UnexpectedMsg ->
+
+        { onSerialExit, [ Port, Status ] } ->
+            trace_bridge:error_fmt( "Received a serial exit message "
+                "from port ~w, for a status ~B; this may happen if "
+                "a corresponding Enocean USB dongle was disconnected. "
+                "No message expected to be received anymore.",
+                [ Port, Status ] ),
+
+            oceanic_loop( ToSkipLen, MaybeTelTail, State );
+
+
+         UnexpectedMsg ->
             trace_bridge:warning_fmt( "Oceanic server ~w received an "
                 "unexpected message: '~w', ignoring it.",
                 [ self(), UnexpectedMsg ] ),
