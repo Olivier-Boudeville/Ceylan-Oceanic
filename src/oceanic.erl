@@ -1,4 +1,4 @@
-% Copyright (C) 2022-2025 Olivier Boudeville
+% Copyright (C) 2022-2026 Olivier Boudeville
 %
 % This file is part of the Ceylan-Oceanic library.
 %
@@ -78,6 +78,7 @@ through an Oceanic server**.
     get_oceanic_eurid/1,
 
     % General-purpose:
+    get_all_device_event_types/0,
     get_device_description/2,
     get_button_ref_description/2, get_button_ref_descriptions/2,
 
@@ -301,7 +302,6 @@ telegram sending).
     %
   | 'none'
 
-
     % Supposes that periodical reports shall be expected and applies a
     % reasonable default duration.
     %
@@ -339,10 +339,12 @@ device status.
 """.
 -type device_status() ::
 
-    % For example for a smart plug when driven by a rocker:
+    % For example for a smart plug when driven by a rocker, or a motion detector
+    % being 'on' iff such a motion is detected:
+    %
     'on' | 'off'
 
-    % For example for a smart plugs when driven by a push button:
+    % For example for a smart plug when driven by a push button:
   | 'inverted'
 
   | term().
@@ -1180,7 +1182,7 @@ Refer to `[EEP-spec]` p. 35 for further details.
 -doc """
 Event sent by EEP A5-07-01: "Occupancy with Supply voltage monitor".
 
-Refer to [EEP-spec] p. 39 for further details.
+Refer to `[EEP-spec]` p. 39 for further details.
 """.
 -type motion_detector_event() :: #motion_detector_event{}.
 
@@ -1311,7 +1313,8 @@ See also their corresponding tags, defined in `device_event_type/0`.
 Lists the known types of device events.
 
 Note that they correspond to the tags of the corresponding records (see
-`device_event/0`).
+`device_event/0`) and that, if modifying this type,
+`get_all_device_event_types/0` shall be updated accordingly).
 """.
 -type device_event_type() ::
     'thermometer_event'
@@ -1322,7 +1325,8 @@ Note that they correspond to the tags of the corresponding records (see
   | 'double_rocker_switch_event'
   | 'double_rocker_multipress_event'
   | 'smart_plug_status_report_event'
-    % Later: 'single_channel_module_event' and 'double_channel_module_event'
+  | 'single_channel_module_event'
+  | 'double_channel_module_event'
 
     % Other events:
   | 'teach_request_event'
@@ -1433,6 +1437,34 @@ information.
 -type state_change_info() :: term().
 
 
+-doc """
+Describes a stage change of a motion detector (no illuminance threshold
+specifically taken into account).
+""".
+-type motion_detector_state_change_spec() ::
+    canon_motion_detector_state_change_spec().
+
+
+-doc """
+Canonical version of `motion_detector_state_change_spec/0`.
+
+Both a user-level and an internal type.
+""".
+-type canon_motion_detector_state_change_spec() :: boolean(). % MotionDetected
+
+
+
+-doc "Describes a stage change of a push-button.".
+-type push_button_state_change_spec() :: canon_push_button_state_change_spec().
+
+
+-doc """
+Canonical version of `push_button_state_change_spec/0`.
+
+Both a user-level and an internal type.
+""".
+-type canon_push_button_state_change_spec() :: button_transition().
+
 
 
 -doc "Describes a stage change of a double-rocker.".
@@ -1453,15 +1485,6 @@ Both a user-level and an internal type.
     { channel(), button_position(), button_transition() }.
 
 
--doc "Describes a stage change of a push-button.".
--type push_button_state_change_spec() :: canon_push_button_state_change_spec().
-
-
--doc """
-Canonical version of `push_button_state_change_spec/0`.
-""".
--type canon_push_button_state_change_spec() :: button_transition().
-
 
 
 -doc """
@@ -1472,8 +1495,9 @@ Used both for incoming and outgoing telegrams.
 Abbreviated as SCS.
 """.
 -type device_state_change_spec() ::
-    double_rocker_state_change_spec()
+    motion_detector_state_change_spec()
   | push_button_state_change_spec()
+  | double_rocker_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -1483,8 +1507,9 @@ Canonical, internal version of `device_state_change_spec/0`.
 Abbreviated as CSCS.
 """.
 -type canon_device_state_change_spec() ::
-    canon_double_rocker_state_change_spec()
+    canon_motion_detector_state_change_spec()
   | canon_push_button_state_change_spec()
+  | canon_double_rocker_state_change_spec()
   | tuploid( state_change_info() ).
 
 
@@ -1501,12 +1526,12 @@ For example, `{double_rocker, {2, bottom, just_released}}.`.
 """.
 -type incoming_trigger_spec() ::
 
-    { 'double_rocker', double_rocker_state_change_spec() }
-
-  | { 'push_button', push_button_state_change_spec() }
+   { 'motion_detector', motion_detector_state_change_spec() }
+ | { 'push_button', push_button_state_change_spec() }
+ | { 'double_rocker', double_rocker_state_change_spec() }
 
     % General form:
-  | { device_type(), device_state_change_spec() }.
+ | { device_type(), device_state_change_spec() }.
 
 
 
@@ -1569,12 +1594,23 @@ Abbreviated as FCLES.
 
 
 -doc """
+The directive associated to a match, i.e. what should be done on the status
+(presence, alarm, etc.) conditioned by that match.
+""".
+-type match_directive() :: 'set' | 'unset' | 'invert'.
+
+
+-doc """
 The outcome of the match of a trigger event, possibly telling which is the
-triggering device and the new device status that shall be set.
+triggering device and what corresponding directive shall be applied.
 """.
 -type event_match_trigger_outcome() ::
+
+    % Not matching:
     'false'
-  | { 'true', SourceDevice :: eurid(), device_status() }.
+
+    % Matching for the specified device, yielding to the specified directive:
+  | { 'true', SourceDevice :: eurid(), match_directive() }.
 
 
 
@@ -1697,6 +1733,9 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
                state_change_info/0,
                device_state_change_spec/0, canon_device_state_change_spec/0,
 
+               motion_detector_state_change_spec/0,
+               canon_motion_detector_state_change_spec/0,
+
                push_button_state_change_spec/0,
                canon_push_button_state_change_spec/0,
 
@@ -1707,7 +1746,8 @@ For example: `{send_local, #Ref<0.2988593563.3655860231.2515>}`.
                listened_event_spec/0, canon_listened_event_spec/0,
                fully_canon_listened_event_spec/0,
 
-               emitted_event_spec/0, event_match_trigger_outcome/0,
+               emitted_event_spec/0,
+               event_match_trigger_outcome/0, match_directive/0,
 
                timer_ref/0 ]).
 
@@ -2832,8 +2872,8 @@ the specified EEP (if any).
 We consider that devices implementing some EEPs do not send periodical state
 updates.
 
-For example contact switches shall not be left on `auto`, otherwise they are
-likely to be considered lost after some time.
+For example most contact switches shall not be left on `auto`, otherwise they
+are likely to be considered lost after some time.
 
 If the choice made here is not relevant for a given device, declare for it an
 explicit (non-auto) periodicity.
@@ -3068,6 +3108,14 @@ plug off).
 """.
 -spec get_reciprocal_state_change_spec( device_type(),
         canon_device_state_change_spec() ) -> canon_device_state_change_spec().
+% Like next clause:
+get_reciprocal_state_change_spec( _DevType=motion_detector, _CSCS=undefined ) ->
+    undefined;
+
+% Just alternating:
+get_reciprocal_state_change_spec( _DevType=push_button, _CSCS=undefined ) ->
+    undefined;
+
 get_reciprocal_state_change_spec( _DevType=double_rocker,
                                   _CSCS={ Channel, _ButPos=top, ButTrans } ) ->
     % By convention, same transition, other button of the rocker:
@@ -3075,11 +3123,7 @@ get_reciprocal_state_change_spec( _DevType=double_rocker,
 
 get_reciprocal_state_change_spec( _DevType=double_rocker,
         _CSCS={ Channel, _ButPos=bottom, ButTrans } ) ->
-    { Channel, top, ButTrans };
-
-% Just alternating:
-get_reciprocal_state_change_spec( _DevType=push_button, _CSCS=undefined ) ->
-    undefined.
+    { Channel, top, ButTrans }.
 
 
 
@@ -3101,6 +3145,12 @@ event_matches_trigger( DevEvent, CLESs ) ->
             false;
 
         CITS ->
+            cond_utils:if_defined( us_main_debug_home_automation,
+                trace_bridge:debug_fmt( "CITS found for device: ~p, "
+                    "checking whether the following event may match: ~ts",
+                    [ CITS,
+                      oceanic_text:device_event_to_string( DevEvent ) ] ) ),
+
             interpret_cits_matching( CITS, DevEurid, DevEvent )
 
     end.
@@ -3134,32 +3184,61 @@ get_maybe_matching_cits( EmitterEurid, DevShortName, _CLESs=[ _ | T ] ) ->
 
 
 -doc """
-Returns whether the specified CITS matches the specified event
+Returns whether the specified CITS matches the specified event (i.e. rocker
+being pressed/released, button being pushed or not, motion being detected or
+not, etc., depending on the specified CITS).
 """.
 -spec is_cits_matching( device_event(), eurid(),
                         canon_listened_event_spec() ) -> boolean().
 is_cits_matching( DevEvent, DevEurid, CITS ) ->
 
-    % We just want to interpret the explicitly-defined CITS:
+    % We just want to interpret the explicitly-defined CITS, and react on
+    % "positively matching" conditions:
+    %
     case interpret_cits_matching( CITS, DevEurid, DevEvent ) of
 
-        { true, _DevEurid, _NewStatus=on } ->
+        { true, _DevEurid, _NewStatus=set } ->
             true;
 
-        _ -> % Corresponds to 'false' or {true, _DevEurid, _NewStatus=off}:
+        { true, _DevEurid, _NewStatus=invert } ->
+            true;
+
+        _ -> % Corresponds to 'false' or {true, _DevEurid, _NewStatus=unset}:
             false
 
     end.
 
 
+
 -doc """
-Reports any trigger matching and corresponding device new logical status, based
-on the specified CITS and device event.
+Reports any trigger matching and its corresponding match directive, based on the
+specified CITS and device event.
 """.
 -spec interpret_cits_matching( canon_incoming_trigger_spec(), eurid(),
                 device_event() ) -> event_match_trigger_outcome().
-% Here a double-rocker change spec matches (therefore in terms of device type,
-% channel, button position and transition):
+% Here, depending on MotionDetected being true or false, a motion or the absence
+% of motion was to be detected, and it is the case:
+%
+interpret_cits_matching(
+        _CITS={ _DevType=motion_detector, _CSCS=MotionDetected },
+        DevEurid,
+        _DevEvent=#motion_detector_event{
+                    motion_detected=MotionDetected } ) ->
+
+    { true, DevEurid, _MatchDirective=set };
+
+
+% Here this detection change was not listened by this motion detector:
+interpret_cits_matching( _CITS={ _DevType=motion_detector, _CSCS },
+        _DevEurid,
+        _DevEvent=#motion_detector_event{} ) ->
+
+    % So not '{ true, DevEurid, _MatchDirective=unset }':
+    false;
+
+
+% Here a double-rocker change spec fully matches (therefore in terms of device
+% type, channel, button position and transition):
 %
 interpret_cits_matching(
         _CITS={ _DevType=double_rocker, _CSCS={ Channel, ButPos, ButTrans } },
@@ -3168,12 +3247,13 @@ interpret_cits_matching(
             first_action_button={ Channel, ButPos },
             energy_bow=ButTrans } ) ->
 
-    { true, DevEurid, _NewStatus=on };
+    { true, DevEurid, _MatchDirective=set };
 
 
 % Here, same as previous clause, a double-rocker change spec matches (therefore
 % in terms of device type, channel and transition), except for the different -
-% hence opposite - button position:
+% hence opposite - button position, correspondig to the opposite of the previous
+% clause:
 %
 interpret_cits_matching(
         _CITS={ _DevType=double_rocker, _CSCS={ Channel, _ButPos, ButTrans } },
@@ -3182,20 +3262,21 @@ interpret_cits_matching(
             first_action_button={ Channel, _OppositeButPos },
             energy_bow=ButTrans } ) ->
 
-    { true, DevEurid, _NewStatus=off };
+    { true, DevEurid, _MatchDirective=unset };
 
 
 % Here a push-button change spec matches, i.e. the specified button transition
 % does; acting as a rocker (alternating between two states, on and off) based on
-% a single button transition (either 'just_pressed' or 'just_released', not
-% both, otherwise a user action would trigger press then release, and this would
-% lead to a double transition)
+% a single button transition (either 'just_pressed' or 'just_released'), not
+% both (otherwise a user action would trigger press then release, and this would
+% lead to a double transition); so we cannot set or unset, just tell that the
+% underlying status should be inverted:
 %
 interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS=ButtonTransition },
         DevEurid,
         _DevEvent=#push_button_switch_event{ transition=ButtonTransition } ) ->
 
-    { true, DevEurid, _NewStatus=inverted };
+    { true, DevEurid, _MatchDirective=invert };
 
 
 % Non-listened button transition for this push-button:
@@ -3204,7 +3285,6 @@ interpret_cits_matching( _CITS={ _DevType=push_button, _CSCS },
         _DevEvent=#push_button_switch_event{} ) ->
 
     false;
-
 
 % Add here clauses if wanting to match other CITS/events.
 
@@ -3272,6 +3352,15 @@ canonicalise_listened_event_spec( { MaybeUserDevDesig, ITS } ) ->
         P={ push_button, ButTrans } ->
             is_valid_button_transition( ButTrans ) orelse
                 throw( { invalid_button_transition, ButTrans } ),
+            P;
+
+
+        motion_detector ->
+            { motion_detector, _MotDetect=true };
+
+        P={ motion_detector, MotDetect } ->
+            is_boolean( MotDetect ) orelse
+                throw( { invalid_motion_detection, MotDetect } ),
             P;
 
         { OtherDeviceType, ChangeSpec } when is_atom( OtherDeviceType ) ->
@@ -5311,8 +5400,8 @@ integrate_all_telegrams( ToSkipLen, MaybeTelTail, Chunk, State ) ->
         { unresolved, UnresolvedDevEvent, NewToSkipLen, NextMaybeTelTail,
           NewState } ->
 
-            DeviceMsg = { onEnoceanUnresolvedDevice,
-                          [ UnresolvedDevEvent, self() ] },
+            DeviceMsg =
+                { onEnoceanUnresolvedDevice, [ UnresolvedDevEvent, self() ] },
 
             [ LPid ! DeviceMsg
                 || LPid <- NewState#oceanic_state.event_listeners ],
@@ -6276,11 +6365,11 @@ reset_timer( MaybeActTimer, Eurid, _Periodicity=auto, FirstSeen,
 
     TimedMsg = { onActivityTimeout, Eurid, NextDelayMs },
 
-    cond_utils:if_defined( oceanic_debug_activity,
+    %cond_utils:if_defined( oceanic_debug_activity,
         trace_bridge:debug_fmt( "Setting an automatic activity timer for "
             "device whose EURID is ~ts, for a duration of ~ts.",
             [ oceanic_text:eurid_to_string( Eurid ),
-              time_utils:duration_to_string( NextDelayMs ) ] ) ),
+              time_utils:duration_to_string( NextDelayMs ) ] ), % ),
 
     { ok, TimerRef } = timer:send_after( NextDelayMs, TimedMsg ),
     TimerRef;
@@ -6320,25 +6409,27 @@ reset_timer( MaybeActTimer, Eurid, PeriodicityMs, _FirstSeen,
                                             milliseconds().
 compute_next_timeout( FirstSeen, TeleCount, ErrCount, Now ) ->
 
-    % Adding a fixed and a 120% margin to hopefully avoid most of the false
+    % Adding a fixed and a 150% margin to hopefully avoid most of the false
     % alarms (many devices are *very* irregular, possibly related to their state
     % of charge):
     %
-    SeenDurationMs = 2200 * time_utils:get_duration( FirstSeen, Now ),
+    SeenDurationMs = 2500 * time_utils:get_duration( FirstSeen, Now ),
 
     SeenCount = TeleCount + ErrCount,
 
-    % A fixed (10 minute) margin can only help:
-    FixedMarginMs = 10 * 60 * 1000,
+    % A fixed (15 minute) margin can only help:
+    FixedMarginMs = 15 * 60 * 1000,
 
     FixedMarginMs + case SeenCount of
 
-        % No possible evaluation yet, starting with a larger default duration:
-        0 ->
-            2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity );
+        % No possible evaluation yet, starting with a relatively large default
+        % duration:
+        %
+        SC when SC > 1  ->
+            erlang:max( ?min_activity_timeout, SeenDurationMs div SC );
 
         _ ->
-            erlang:max( ?min_activity_timeout, SeenDurationMs div SeenCount )
+            2 * 1000 * time_utils:dhms_to_seconds( ?default_dhms_periodicity )
 
     end.
 
@@ -6616,6 +6707,17 @@ get_event_type( DevEventTuple ) ->
     erlang:element( _PosIdx=1, DevEventTuple ).
 
 
+-doc "Returns a list of all the known types of device events.".
+-spec get_all_device_event_types() -> [ device_event_type() ].
+get_all_device_event_types() ->
+    [ thermometer_event, thermo_hygro_event, motion_detector_event,
+      single_input_contact_event, push_button_switch_event,
+      double_rocker_switch_event, double_rocker_multipress_event,
+      smart_plug_status_report_event, single_channel_module_event,
+      double_channel_module_event, teach_request_event, command_response ].
+
+
+
 -doc """
 Returns the EURID of the emitting device stored in the specified device event.
 """.
@@ -6846,6 +6948,10 @@ device_triggered( #double_rocker_switch_event{ energy_bow=pressed } ) ->
 
 % Unclear:
 device_triggered( #double_rocker_switch_event{ second_action_valid=true } ) ->
+   true;
+
+% Possibly relevant:
+device_triggered( #motion_detector_event{ motion_detected=true } ) ->
    true;
 
 device_triggered( _DevEventTuple ) ->
