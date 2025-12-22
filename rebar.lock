@@ -1,8 +1,8 @@
 [{<<"erlang-serial">>,
   {git,"https://github.com/Olivier-Boudeville/erlang-serial.git",
-       {ref,"5302f3ab825a26872005a1622df6678291297072"}},
+       {ref,"dce789bf9680adf8f3d100f0575097ba73a90676"}},
   0},
  {<<"myriad">>,
   {git,"https://github.com/Olivier-Boudeville/Ceylan-Myriad.git",
-       {ref,"6a334e274586dd4d76a8bedcebccf396dd52c491"}},
+       {ref,"852d49d1a9b83b1588f9fb70ad0da0c7ce164a8e"}},
   0}].
