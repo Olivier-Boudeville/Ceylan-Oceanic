@@ -96,6 +96,8 @@ Ceylan-Oceanic.
           describe_device/2,
 
           device_event_to_string/1, device_event_to_short_string/1,
+          device_event_to_concise_string/1,
+
           get_name_description/3, device_table_to_string/1,
           device_to_string/1 ]).
 
@@ -484,14 +486,15 @@ interpret_briefly_hardware_status( _HStatus=nominal ) ->
     undefined;
 
 interpret_briefly_hardware_status( _HStatus=warning ) ->
-    "a warning hardware status";
+    "warning hardware status declared";
 
 interpret_briefly_hardware_status( _HStatus=failure ) ->
-    "a failed hardware status";
+    "failed hardware raised declared";
 
 interpret_briefly_hardware_status( _HStatus=unsupported ) ->
-    % Too frequent: "an unknown hardware status".
+    % Too frequent: "unknown hardware status declared".
     undefined.
+
 
 
 -doc "Interprets the specified local control information.".
@@ -1816,6 +1819,209 @@ device_event_to_short_string( time_out ) ->
 
 device_event_to_short_string( OtherEvent ) ->
     text_utils:format( "Unknown event to summarise: ~p.", [ OtherEvent ] ).
+
+
+
+-doc """
+Returns a very concise textual description of the specified device event,
+designed for user-friendly compact reporting.
+""".
+-spec device_event_to_concise_string( device_event() ) -> ustring().
+device_event_to_concise_string( #thermometer_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        temperature=Temp } ) ->
+    text_utils:format( "thermometer ~ts reports ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          unit_utils:temperature_to_string( Temp ) ] );
+
+device_event_to_concise_string( #thermo_hygro_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        temperature=MaybeTemperature,
+        relative_humidity=RelativeHumidity } ) ->
+
+    TempStr = case MaybeTemperature of
+
+        undefined ->
+            "no specific temperature";
+
+        Temp ->
+            unit_utils:temperature_to_string( Temp )
+
+    end,
+
+    text_utils:format( "sensor ~ts reports ~ts and ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          TempStr, relative_humidity_to_string( RelativeHumidity ) ] );
+
+
+device_event_to_concise_string( #motion_detector_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        motion_detected=MotionDetected } ) ->
+
+    % Timestamp already available:
+    text_utils:format( "motion detector ~ts reports ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          motion_detection_to_string( MotionDetected ) ] );
+
+
+device_event_to_concise_string( #motion_detector_event_with_illumination{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        motion_detected=MotionDetected,
+        illuminance=MaybeIlluminance } ) ->
+
+    % Timestamp already available:
+    text_utils:format( "motion detector ~ts reports "
+        "~ts and ~ts.",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          motion_detection_to_string( MotionDetected ),
+          maybe_illuminance_to_string( MaybeIlluminance ) ] );
+
+device_event_to_concise_string( #single_input_contact_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        contact=ContactStatus } ) ->
+
+    % Apparently either state transitions or just periodic state reports:
+    text_utils:format( "single-contact ~ts is in ~ts state",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          get_contact_status_description( ContactStatus ) ] );
+
+
+device_event_to_concise_string( #push_button_switch_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        transition=ButtonTransition } ) ->
+    text_utils:format( "push-button ~ts has been ~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          get_button_transition_description( ButtonTransition ) ] );
+
+
+device_event_to_concise_string( #smart_plug_status_report_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        power_failure_detected=PFDetected,
+        overcurrent_triggered=OCTriggered,
+        hardware_status=HardwareStatus,
+        output_power=OutputPower } ) ->
+
+    MaybePFStr = interpret_briefly_power_failure( PFDetected ),
+
+    MaybeOCStr = interpret_briefly_overcurrent_trigger( OCTriggered ),
+
+    HSStr = interpret_briefly_hardware_status( HardwareStatus ),
+
+    ReportStr = case list_utils:filter_out_undefined(
+                        [ MaybePFStr, MaybeOCStr, HSStr ] ) of
+
+        [] ->
+            "";
+
+        Strs ->
+            text_utils:format( "; "
+                                ++ text_utils:strings_to_listed_string( Strs ) )
+
+    end,
+
+    text_utils:format( "smart-plug ~ts reports that it ~ts~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          interpret_power_report( OutputPower ), ReportStr ] );
+
+
+device_event_to_concise_string( #double_rocker_switch_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        first_action_button=FirstButtonLocator,
+        energy_bow=ButtonTransition,
+        second_action_button=SecondButtonLocator,
+        second_action_valid=IsValid } ) ->
+
+    SecondStr = case IsValid of
+
+            true ->
+                 text_utils:format( ", whereas its second action ~ts is valid",
+                    [ button_locator_to_string( SecondButtonLocator ) ] );
+
+            false ->
+                ""
+
+    end,
+
+    text_utils:format( "double-rocker ~ts has its ~ts ~ts~ts",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          button_locator_to_string( FirstButtonLocator ),
+          get_button_transition_description( ButtonTransition ),
+          SecondStr ] );
+
+
+device_event_to_concise_string( #double_rocker_multipress_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        button_counting=MaybeButtonCounting,
+        energy_bow=ButtonTransition } ) ->
+
+    TransStr = case MaybeButtonCounting of
+
+        undefined ->
+            "an unknown number of buttons (abnormal)";
+
+        none ->
+            "no button";
+
+        three_or_four ->
+            "3 or 4 buttons"
+
+    end ++ " " ++ get_button_transition_description( ButtonTransition ),
+
+    text_utils:format( "double-rocker ~ts has ~ts simultaneously",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          TransStr ] );
+
+
+device_event_to_concise_string( #unresolved_device_event{
+        source_eurid=Eurid,
+        type_hint=TelTypeHint } ) ->
+    text_utils:format( "no known status for the device of EURID ~ts "
+        "(unresolved EEP; type hint: ~ts)",
+        [ eurid_to_string( Eurid ), TelTypeHint ] );
+
+
+device_event_to_concise_string( #teach_request_event{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        response_expected=ResponseExpected,
+        request_type=ReqType } ) ->
+
+    TeachType = case ReqType of
+
+        teach_in ->
+            "in";
+
+        teach_out ->
+            "out"
+
+    end,
+
+    text_utils:format( "initiator device ~ts sent a teach-~ts request "
+        "(response expected: ~ts)",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ), TeachType,
+          ResponseExpected ] );
+
+device_event_to_concise_string( OtherEvent ) ->
+    text_utils:format( "unknown event to summarise: ~p", [ OtherEvent ] ).
 
 
 
