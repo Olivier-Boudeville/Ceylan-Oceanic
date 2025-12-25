@@ -1,4 +1,4 @@
-% Copyright (C) 2025-2025 Olivier Boudeville
+% Copyright (C) 2025-2026 Olivier Boudeville
 %
 % This file is part of the Ceylan-Oceanic library.
 %
@@ -139,6 +139,7 @@ Ceylan-Oceanic.
 -type percent() :: math_utils:percent().
 
 -type celsius() :: unit_utils:celsius().
+-type lux() :: unit_utils:lux().
 
 -type eurid() :: oceanic:eurid().
 
@@ -557,6 +558,15 @@ motion_detection_to_string( _MotionDetected=false ) ->
     "no motion".
 
 
+-doc "Returns a short textual description of the specified motion detection.".
+-spec motion_detection_to_short_string( boolean() ) -> ustring().
+motion_detection_to_short_string( _MotionDetected=true ) ->
+    "a motion detection";
+
+motion_detection_to_short_string( _MotionDetected=false ) ->
+    "no motion".
+
+
 -doc "Returns a textual description of any specified supply voltage.".
 -spec maybe_voltage_to_string( option( unit_utils:volts() ) ) -> ustring().
 maybe_voltage_to_string( _MaybeVoltage=undefined ) ->
@@ -569,7 +579,7 @@ maybe_voltage_to_string( Voltage ) ->
 
 
 -doc "Returns a textual description of any specified illuminance.".
--spec maybe_illuminance_to_string( option( unit_utils:lux() ) ) -> ustring().
+-spec maybe_illuminance_to_string( option( lux() ) ) -> ustring().
 maybe_illuminance_to_string( _MaybeIlluminance=undefined ) ->
     "no specific illuminance";
 
@@ -577,6 +587,11 @@ maybe_illuminance_to_string( Illuminance ) ->
     text_utils:format( "an illuminance of ~ts",
                        [ unit_utils:illuminance_to_string( Illuminance ) ] ).
 
+
+-doc "Returns a textual description of any specified illuminance.".
+-spec illuminance_to_short_string( lux() ) -> ustring().
+illuminance_to_short_string( Illuminance ) ->
+    unit_utils:illuminance_to_string( Illuminance ).
 
 
 
@@ -1853,7 +1868,7 @@ device_event_to_concise_string( #thermo_hygro_event{
 
     end,
 
-    text_utils:format( "sensor ~ts reports ~ts and ~ts",
+    text_utils:format( "thermometer ~ts reports ~ts and ~ts",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
           TempStr, relative_humidity_to_string( RelativeHumidity ) ] );
 
@@ -1867,7 +1882,7 @@ device_event_to_concise_string( #motion_detector_event{
     % Timestamp already available:
     text_utils:format( "motion detector ~ts reports ~ts",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
-          motion_detection_to_string( MotionDetected ) ] );
+          motion_detection_to_short_string( MotionDetected ) ] );
 
 
 device_event_to_concise_string( #motion_detector_event_with_illumination{
@@ -1875,14 +1890,26 @@ device_event_to_concise_string( #motion_detector_event_with_illumination{
         name=MaybeName,
         short_name=MaybeShortName,
         motion_detected=MotionDetected,
-        illuminance=MaybeIlluminance } ) ->
+        illuminance=undefined } ) ->
+
+    % Timestamp already available:
+    text_utils:format( "motion detector ~ts reports ~ts.",
+        [ get_name_description( MaybeName, MaybeShortName, Eurid ),
+          motion_detection_to_short_string( MotionDetected ) ] );
+
+device_event_to_concise_string( #motion_detector_event_with_illumination{
+        source_eurid=Eurid,
+        name=MaybeName,
+        short_name=MaybeShortName,
+        motion_detected=MotionDetected,
+        illuminance=Illuminance } ) ->
 
     % Timestamp already available:
     text_utils:format( "motion detector ~ts reports "
         "~ts and ~ts.",
         [ get_name_description( MaybeName, MaybeShortName, Eurid ),
-          motion_detection_to_string( MotionDetected ),
-          maybe_illuminance_to_string( MaybeIlluminance ) ] );
+          motion_detection_to_short_string( MotionDetected ),
+          illuminance_to_short_string( Illuminance ) ] );
 
 device_event_to_concise_string( #single_input_contact_event{
         source_eurid=Eurid,
