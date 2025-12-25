@@ -62,9 +62,12 @@ Ceylan-Oceanic.
     interpret_local_control/1, interpret_power_report/1,
     interpret_briefly_power_report/1,
 
-    temperature_to_string/1, relative_humidity_to_string/1,
-    motion_detection_to_string/1, maybe_voltage_to_string/1,
-    maybe_illuminance_to_string/1, learn_to_string/1,
+    temperature_to_string/1,
+    relative_humidity_to_string/1, relative_humidity_to_short_string/1,
+    motion_detection_to_string/1, motion_detection_to_short_string/1,
+    maybe_voltage_to_string/1,
+    maybe_illuminance_to_string/1, illuminance_to_short_string/1,
+    learn_to_string/1,
 
     eurid_to_string/1, maybe_eurid_to_string/1,
     eurid_to_short_string/1,
@@ -546,6 +549,12 @@ temperature_to_string( Temperature ) ->
 -spec relative_humidity_to_string( percent() ) -> ustring().
 relative_humidity_to_string( HPerCent ) ->
     text_utils:format( "a relative humidity of ~.1f%", [ HPerCent ] ).
+
+
+-doc "Returns a short textual description of the specified relative humidity.".
+-spec relative_humidity_to_short_string( percent() ) -> ustring().
+relative_humidity_to_short_string( HPerCent ) ->
+    text_utils:format( "~.1f% humidity", [ HPerCent ] ).
 
 
 -doc "Returns a textual description of the specified motion detection.".
