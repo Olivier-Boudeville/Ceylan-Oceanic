@@ -1,4 +1,4 @@
-% Copyright (C) 2022-2025 Olivier Boudeville
+% Copyright (C) 2022-2026 Olivier Boudeville
 %
 % Author: Olivier Boudeville [olivier (dot) boudeville (at) esperide (dot) com]
 %

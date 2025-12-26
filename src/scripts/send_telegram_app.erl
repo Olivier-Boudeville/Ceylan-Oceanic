@@ -1,4 +1,4 @@
-% Copyright (C) 2022-2025 Olivier Boudeville
+% Copyright (C) 2022-2026 Olivier Boudeville
 %
 % Module defined in order to be able to test the password generation services
 % outside of an escript context.
