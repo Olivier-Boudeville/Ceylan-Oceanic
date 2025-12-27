@@ -84,7 +84,7 @@
 % or, less likely, (2) a bad Enocean gateway (USB dongle) or (3) devices that
 % are too far apart. Fix these elements before increasing the next count:
 %
--define( default_max_send_count, 20 ).
+-define( default_max_send_count, 50 ).
 
 % For testing:
 %-define( default_max_send_count, 5 ).
