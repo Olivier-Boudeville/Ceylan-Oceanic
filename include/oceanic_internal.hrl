@@ -34,10 +34,6 @@
 -define( sync_byte, 85 ). % i.e. 0x55
 
 
-% Most number of retries in terms of request sending:
--define( max_request_retries, 15 ).
-
-
 % Definition of the overall state of an Oceanic server, including configuration
 % (typically loaded from an ETF file).
 %
