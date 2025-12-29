@@ -1607,9 +1607,12 @@ decode_4bs_motion_detector_with_illumination_packet( DB_3,
             Lx;
 
         1001 ->
-            trace_bridge:warning_fmt( "Illumination over range reported "
-                "for motion detector ~ts.",
-                [ oceanic_text:eurid_to_string( SenderEurid ) ] ),
+            % Just notified that it is saturated, typically during a sunny
+            % afternoon:
+            %
+            trace_bridge:info_fmt( "Illumination over-range reported "
+                "by the following motion detector: ~ts.",
+                [ oceanic_text:describe_device( SenderEurid, State ) ] ),
             undefined;
 
 
